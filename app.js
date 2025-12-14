@@ -44,32 +44,46 @@
     return best;
   }
 
+  // ==== UI BASE ====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
       <h2 style="text-align:center">Roleta — Par vencedor (±1)</h2>
       <div id="linhas"></div>
-      <div id="botoes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-width:520px;margin:12px auto"></div>
+      <div id="botoes"
+           style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
+                  max-width:520px;margin:12px auto"></div>
       <div style="text-align:center">
-        <button onclick="hist=[];render()">Clear</button>
+        <button id="clearBtn">Clear</button>
       </div>
     </div>
   `;
+
+  const linhasDiv = document.getElementById("linhas");
+  const botoesDiv = document.getElementById("botoes");
 
   for(let i=1;i<=5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
     d.style="border:1px solid #666;background:#222;border-radius:6px;padding:8px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center";
-    document.getElementById("linhas").appendChild(d);
+    linhasDiv.appendChild(d);
   }
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.onclick=()=>{hist.push(n);render();};
-    document.getElementById("botoes").appendChild(b);
+    b.onclick=()=>{
+      hist.push(n);
+      render();
+    };
+    botoesDiv.appendChild(b);
   }
 
-  window.render = function(){
+  document.getElementById("clearBtn").onclick = () => {
+    hist = [];
+    render();
+  };
+
+  function render(){
     let p = melhorPar();
     let ca = p ? cover(p.a) : new Set();
     let cb = p ? cover(p.b) : new Set();
@@ -83,7 +97,9 @@
         w.style="display:flex;flex-direction:column;align-items:center";
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=\`padding:6px 8px;border-radius:6px;font-size:20px;background:\${cor(n)};color:\${cor(n)==="#000"?"#fff":"#000"}\`;
+        d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
+                 background:${cor(n)};
+                 color:${cor(n)==="#000"?"#fff":"#000"}`;
         w.appendChild(d);
         if(p && (ca.has(n)||cb.has(n))){
           let t=document.createElement("div");
@@ -94,7 +110,7 @@
         h.appendChild(w);
       });
     }
-  };
+  }
 
   render();
 
