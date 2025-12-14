@@ -1,7 +1,8 @@
 (function () {
 
+  // ===== CONFIGURAÇÃO BASE =====
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
-  const reds = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
+  const reds  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 
   const terminais = {
     0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
@@ -9,9 +10,24 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
+  // 🎨 CORES FIXAS POR TERMINAL
+  const coresT = {
+    0:"#00e5ff",
+    1:"#ff1744",
+    2:"#00e676",
+    3:"#ff9100",
+    4:"#d500f9",
+    5:"#ffee58",
+    6:"#2979ff",
+    7:"#ff4081",
+    8:"#76ff03",
+    9:"#8d6e63"
+  };
+
   let hist = [];
 
-  function cor(n){
+  // ===== FUNÇÕES =====
+  function corNumero(n){
     if(n===0) return "#0f0";
     return reds.includes(n) ? "#e74c3c" : "#000";
   }
@@ -27,7 +43,7 @@
     return s;
   }
 
-  // 🔥 lógica final
+  // 🔥 seleção balanceada (14 giros / máx 2 repetições por T)
   function melhoresParesBalanceados(){
     if(hist.length < 3) return [];
 
@@ -55,7 +71,6 @@
       usados[p.a] = usados[p.a] || 0;
       usados[p.b] = usados[p.b] || 0;
 
-      // cada terminal pode aparecer no máx 2 linhas
       if(usados[p.a] >= 2 || usados[p.b] >= 2) continue;
 
       escolhidos.push(p);
@@ -71,11 +86,15 @@
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — 5 pares balanceados (14 giros)</h2>
+      <h2 style="text-align:center">Roleta — 5 pares (14 giros)</h2>
+
       <div id="linhas"></div>
+
       <div id="botoes"
-           style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
-                  max-width:520px;margin:12px auto"></div>
+        style="display:grid;grid-template-columns:repeat(9,1fr);
+               gap:4px;max-width:520px;margin:12px auto">
+      </div>
+
       <div style="text-align:center">
         <button id="clearBtn">Clear</button>
       </div>
@@ -85,6 +104,7 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
+  // cria 5 linhas
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
@@ -92,12 +112,13 @@
     linhasDiv.appendChild(d);
   }
 
+  // botões 0–36
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
     b.onclick=()=>{
       hist.push(n);
-      if(hist.length>100) hist.shift();
+      if(hist.length>200) hist.shift();
       render();
     };
     botoesDiv.appendChild(b);
@@ -128,14 +149,16 @@
         let d=document.createElement("div");
         d.textContent=n;
         d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
-                 background:${cor(n)};
-                 color:${cor(n)==="#000"?"#fff":"#000"}`;
+                 background:${corNumero(n)};
+                 color:${corNumero(n)==="#000"?"#fff":"#000"}`;
         w.appendChild(d);
 
+        // 🔹 marca TODOS que pertencem ao par
         if(ca.has(n) || cb.has(n)){
+          let terminal = ca.has(n) ? p.a : p.b;
           let t=document.createElement("div");
-          t.textContent = ca.has(n) ? "T"+p.a : "T"+p.b;
-          t.style="font-size:12px;color:#39ff14";
+          t.textContent="T"+terminal;
+          t.style=`font-size:12px;font-weight:bold;color:${coresT[terminal]}`;
           w.appendChild(t);
         }
 
