@@ -16,7 +16,7 @@
     return reds.includes(n) ? "#e74c3c" : "#000";
   }
 
-  function cover(t){
+  function coverTerminal(t){
     let s = new Set();
     terminais[t].forEach(n=>{
       let i = track.indexOf(n);
@@ -27,27 +27,31 @@
     return s;
   }
 
-  function melhorPar(){
-    if(hist.length < 1) return null;
-    let ult = hist.slice(-14);
-    let best = null, bestHits = -1;
-    let covs = [];
-    for(let t=0;t<10;t++) covs[t]=cover(t);
+  function melhoresPares(){
+    if(hist.length < 2) return [];
+    let ult = hist.slice(-6);
+    let pares = [];
+    let covers = [];
+    for(let t=0;t<10;t++) covers[t] = coverTerminal(t);
 
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
-        let h=0;
-        ult.forEach(n=>{ if(covs[a].has(n)||covs[b].has(n)) h++; });
-        if(h>bestHits){ bestHits=h; best={a,b}; }
+        let hits = 0;
+        ult.forEach(n=>{
+          if(covers[a].has(n) || covers[b].has(n)) hits++;
+        });
+        pares.push({a,b,hits});
       }
     }
-    return best;
+
+    pares.sort((x,y)=>y.hits-x.hits);
+    return pares.slice(0,5);
   }
 
-  // ==== UI BASE ====
+  // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — Par vencedor (±1)</h2>
+      <h2 style="text-align:center">Roleta — 5 melhores pares (±1)</h2>
       <div id="linhas"></div>
       <div id="botoes"
            style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
@@ -61,7 +65,7 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  for(let i=1;i<=5;i++){
+  for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
     d.style="border:1px solid #666;background:#222;border-radius:6px;padding:8px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center";
@@ -73,6 +77,7 @@
     b.textContent=n;
     b.onclick=()=>{
       hist.push(n);
+      if(hist.length>50) hist.shift();
       render();
     };
     botoesDiv.appendChild(b);
@@ -84,29 +89,36 @@
   };
 
   function render(){
-    let p = melhorPar();
-    let ca = p ? cover(p.a) : new Set();
-    let cb = p ? cover(p.b) : new Set();
-    let ult = hist.slice(-14).reverse();
+    let ult = hist.slice(-6).reverse();
+    let pares = melhoresPares();
 
-    for(let i=1;i<=5;i++){
+    for(let i=0;i<5;i++){
       let h=document.getElementById("hist"+i);
       h.innerHTML="";
+
+      if(!pares[i]) continue;
+      let p = pares[i];
+      let ca = coverTerminal(p.a);
+      let cb = coverTerminal(p.b);
+
       ult.forEach(n=>{
         let w=document.createElement("div");
         w.style="display:flex;flex-direction:column;align-items:center";
+
         let d=document.createElement("div");
         d.textContent=n;
         d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
                  background:${cor(n)};
                  color:${cor(n)==="#000"?"#fff":"#000"}`;
         w.appendChild(d);
-        if(p && (ca.has(n)||cb.has(n))){
+
+        if(ca.has(n) || cb.has(n)){
           let t=document.createElement("div");
-          t.textContent=ca.has(n)?"T"+p.a:"T"+p.b;
+          t.textContent = ca.has(n) ? "T"+p.a : "T"+p.b;
           t.style="font-size:12px;color:#39ff14";
           w.appendChild(t);
         }
+
         h.appendChild(w);
       });
     }
