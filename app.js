@@ -27,10 +27,10 @@
     return s;
   }
 
-  function melhoresPares(){
+  function melhoresParesUnicos(){
     if(hist.length < 2) return [];
     let ult = hist.slice(-6);
-    let pares = [];
+    let todos = [];
     let covers = [];
     for(let t=0;t<10;t++) covers[t] = coverTerminal(t);
 
@@ -40,18 +40,34 @@
         ult.forEach(n=>{
           if(covers[a].has(n) || covers[b].has(n)) hits++;
         });
-        pares.push({a,b,hits});
+        todos.push({a,b,hits});
       }
     }
 
-    pares.sort((x,y)=>y.hits-x.hits);
-    return pares.slice(0,5);
+    // ordena por desempenho
+    todos.sort((x,y)=>y.hits-x.hits);
+
+    // seleciona 5 pares ÚNICOS
+    let usados = new Set();
+    let result = [];
+
+    for(let p of todos){
+      let key = p.a + "-" + p.b;
+      if(usados.has(key)) continue;
+
+      usados.add(key);
+      result.push(p);
+
+      if(result.length === 5) break;
+    }
+
+    return result;
   }
 
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — 5 melhores pares (±1)</h2>
+      <h2 style="text-align:center">Roleta — 5 pares distintos (±1)</h2>
       <div id="linhas"></div>
       <div id="botoes"
            style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
@@ -90,13 +106,13 @@
 
   function render(){
     let ult = hist.slice(-6).reverse();
-    let pares = melhoresPares();
+    let pares = melhoresParesUnicos();
 
     for(let i=0;i<5;i++){
       let h=document.getElementById("hist"+i);
       h.innerHTML="";
-
       if(!pares[i]) continue;
+
       let p = pares[i];
       let ca = coverTerminal(p.a);
       let cb = coverTerminal(p.b);
