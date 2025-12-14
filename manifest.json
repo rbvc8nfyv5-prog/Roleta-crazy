@@ -1,0 +1,15 @@
+{
+  "name": "Roleta",
+  "short_name": "Roleta",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111",
+  "theme_color": "#111",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1055/1055672.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
