@@ -27,13 +27,15 @@
     return s;
   }
 
-  function melhoresParesUnicos(){
-    if(hist.length < 2) return [];
-    let ult = hist.slice(-6);
-    let todos = [];
+  // 🔥 lógica final
+  function melhoresParesBalanceados(){
+    if(hist.length < 3) return [];
+
+    let ult = hist.slice(-14);
     let covers = [];
     for(let t=0;t<10;t++) covers[t] = coverTerminal(t);
 
+    let todos = [];
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
         let hits = 0;
@@ -44,30 +46,32 @@
       }
     }
 
-    // ordena por desempenho
     todos.sort((x,y)=>y.hits-x.hits);
 
-    // seleciona 5 pares ÚNICOS
-    let usados = new Set();
-    let result = [];
+    let usados = {};
+    let escolhidos = [];
 
     for(let p of todos){
-      let key = p.a + "-" + p.b;
-      if(usados.has(key)) continue;
+      usados[p.a] = usados[p.a] || 0;
+      usados[p.b] = usados[p.b] || 0;
 
-      usados.add(key);
-      result.push(p);
+      // cada terminal pode aparecer no máx 2 linhas
+      if(usados[p.a] >= 2 || usados[p.b] >= 2) continue;
 
-      if(result.length === 5) break;
+      escolhidos.push(p);
+      usados[p.a]++;
+      usados[p.b]++;
+
+      if(escolhidos.length === 5) break;
     }
 
-    return result;
+    return escolhidos;
   }
 
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — 5 pares distintos (±1)</h2>
+      <h2 style="text-align:center">Roleta — 5 pares balanceados (14 giros)</h2>
       <div id="linhas"></div>
       <div id="botoes"
            style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;
@@ -93,7 +97,7 @@
     b.textContent=n;
     b.onclick=()=>{
       hist.push(n);
-      if(hist.length>50) hist.shift();
+      if(hist.length>100) hist.shift();
       render();
     };
     botoesDiv.appendChild(b);
@@ -105,8 +109,8 @@
   };
 
   function render(){
-    let ult = hist.slice(-6).reverse();
-    let pares = melhoresParesUnicos();
+    let ult = hist.slice(-14).reverse();
+    let pares = melhoresParesBalanceados();
 
     for(let i=0;i<5;i++){
       let h=document.getElementById("hist"+i);
