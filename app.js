@@ -4,35 +4,28 @@
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
   const reds  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 
-  // cores fixas dos T
+  const terminais = {
+    0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
+    4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],
+    7:[7,17,27],8:[8,18,28],9:[9,19,29]
+  };
+
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",
     5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  // 🐎 Cavalos
   const coresCavalos = {
     A:"#9c27b0", // 258
     B:"#2196f3", // 0369
     C:"#4caf50"  // 147
   };
 
-  // 📦 Dúzias
-  const coresDuzia = {
-    1:"#4caf50",
-    2:"#2196f3",
-    3:"#9c27b0"
-  };
-
-  // 📊 Colunas
-  const coresColuna = {
-    1:"#fbc02d",
-    2:"#e53935",
-    3:"#1e88e5"
-  };
+  const coresColuna = { 1:"#fbc02d", 2:"#e53935", 3:"#1e88e5" };
+  const coresDuzia  = { 1:"#4caf50", 2:"#2196f3", 3:"#9c27b0" };
 
   let modoCavalos = false;
-  let modoRotulo = "T"; // T | D | C
+  let modoRotulo = "T"; // T | C | D
   let hist = [];
 
   // ===== FUNÇÕES =====
@@ -55,17 +48,42 @@
     return modoCavalos ? corNumeroCavalos(n) : corNumeroNormal(n);
   }
 
-  function rotuloDuzia(n){
-    if(n === 0) return null;
-    if(n <= 12) return { txt:"D1", cor:coresDuzia[1] };
-    if(n <= 24) return { txt:"D2", cor:coresDuzia[2] };
-    return { txt:"D3", cor:coresDuzia[3] };
+  function coverTerminal(t){
+    let s = new Set();
+    terminais[t].forEach(n=>{
+      let i = track.indexOf(n);
+      s.add(n);
+      s.add(track[(i+36)%37]);
+      s.add(track[(i+1)%37]);
+    });
+    return s;
   }
 
-  function rotuloColuna(n){
-    if(n === 0) return null;
-    let c = n % 3 === 1 ? 1 : n % 3 === 2 ? 2 : 3;
-    return { txt:"C"+c, cor:coresColuna[c] };
+  function melhoresPares(){
+    if(hist.length < 3) return [];
+
+    let ult = hist.slice(-14);
+    let covers = [];
+    for(let t=0;t<10;t++) covers[t] = coverTerminal(t);
+
+    let todos = [];
+    for(let a=0;a<10;a++){
+      for(let b=a+1;b<10;b++){
+        let hits = 0;
+        ult.forEach(n=>{
+          if(covers[a].has(n) || covers[b].has(n)) hits++;
+        });
+        let erros = ult.length - hits;
+        todos.push({a,b,erros,hits});
+      }
+    }
+
+    todos.sort((x,y)=>{
+      if(x.erros !== y.erros) return x.erros - y.erros;
+      return y.hits - x.hits;
+    });
+
+    return todos.slice(0,5);
   }
 
   // ===== UI =====
@@ -91,7 +109,7 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // linhas do tempo
+  // cria 5 linhas
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.style=`
@@ -109,8 +127,8 @@
 
   // botões modo
   btnCavalos.onclick = ()=>{ modoCavalos=!modoCavalos; render(); };
-  btnColuna.onclick  = ()=>{ modoRotulo = modoRotulo==="C"?"T":"C"; render(); };
-  btnDuzia.onclick   = ()=>{ modoRotulo = modoRotulo==="D"?"T":"D"; render(); };
+  btnColuna.onclick  = ()=>{ modoRotulo = modoRotulo==="C" ? "T" : "C"; render(); };
+  btnDuzia.onclick   = ()=>{ modoRotulo = modoRotulo==="D" ? "T" : "D"; render(); };
 
   // botões 0–36
   for(let n=0;n<=36;n++){
@@ -122,11 +140,17 @@
 
   function render(){
     let ult = hist.slice(-14).reverse();
+    let pares = melhoresPares();
     let linhas = linhasDiv.children;
 
     for(let i=0;i<5;i++){
       let h = linhas[i];
-      h.innerHTML = "";
+      h.innerHTML="";
+      let p = pares[i];
+      if(!p) continue;
+
+      let ca = coverTerminal(p.a);
+      let cb = coverTerminal(p.b);
 
       ult.forEach(n=>{
         let w=document.createElement("div");
@@ -144,14 +168,30 @@
         `;
         w.appendChild(d);
 
-        let r = null;
-        if(modoRotulo==="D") r = rotuloDuzia(n);
-        if(modoRotulo==="C") r = rotuloColuna(n);
+        let rotulo = null;
 
-        if(r){
+        // MODO T → só se pertence ao PAR
+        if(modoRotulo==="T" && (ca.has(n) || cb.has(n))){
+          let t = ca.has(n) ? p.a : p.b;
+          rotulo = { txt:"T"+t, cor:coresT[t] };
+        }
+
+        // MODO COLUNA → linha inteira
+        if(modoRotulo==="C" && n!==0){
+          let c = n%3===1 ? 1 : n%3===2 ? 2 : 3;
+          rotulo = { txt:"C"+c, cor:coresColuna[c] };
+        }
+
+        // MODO DÚZIA → linha inteira
+        if(modoRotulo==="D" && n!==0){
+          let d = n<=12 ? 1 : n<=24 ? 2 : 3;
+          rotulo = { txt:"D"+d, cor:coresDuzia[d] };
+        }
+
+        if(rotulo){
           let lb=document.createElement("div");
-          lb.textContent=r.txt;
-          lb.style=`font-size:11px;font-weight:bold;color:${r.cor}`;
+          lb.textContent=rotulo.txt;
+          lb.style=`font-size:11px;font-weight:bold;color:${rotulo.cor}`;
           w.appendChild(lb);
         }
 
