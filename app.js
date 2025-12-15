@@ -1,6 +1,6 @@
 (function(){
 
-/* ================= CONFIGURAÇÃO ================= */
+/* ================= CONFIG ================= */
 
 const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
 const reds  = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
@@ -16,17 +16,8 @@ const coresT = {
  5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
 };
 
-// 5 pares fixos (visual)
 const pares = [[0,1],[2,3],[4,5],[6,7],[8,9]];
-
 let hist = [];
-
-// estado por linha
-let estado = Array(5).fill(null).map(()=>({
-  ativo:false,
-  tipo:null,     // "curto" | "longo"
-  ultimoLado:null
-}));
 
 /* ================= FUNÇÕES ================= */
 
@@ -46,22 +37,20 @@ function coverT(t){
   return s;
 }
 
-/* 🔒 PADRÃO RELATIVO AO PAR (A/B) — SÓ FECHA NO FINAL */
+// 🔒 PADRÕES FECHADOS
 function fechaPadrao(seq){
   let len = seq.length;
 
-  // PADRÃO CURTO: A-B-A
-  if(len >= 3){
-    if(seq[len-3] === "A" && seq[len-2] === "B" && seq[len-1] === "A"){
-      return { tipo:"curto", ultimo:"A" };
-    }
+  if(len >= 3 &&
+     seq[len-3]==="A" &&
+     seq[len-2]==="B" &&
+     seq[len-1]==="A"){
+    return "curto";
   }
 
-  // PADRÃO LONGO: A-B-B-A-B-B
-  if(len >= 6){
-    if(seq.slice(len-6).join("") === "ABBABB"){
-      return { tipo:"longo", ultimo:"B" };
-    }
+  if(len >= 6 &&
+     seq.slice(len-6).join("") === "ABBABB"){
+    return "longo";
   }
 
   return null;
@@ -78,126 +67,115 @@ document.body.innerHTML = `
     grid-template-columns:repeat(9,1fr);
     gap:4px;
     max-width:520px;
-    margin:12px auto">
-  </div>
+    margin:12px auto"></div>
 </div>
 `;
 
 const linhas = document.getElementById("linhas");
 const botoes = document.getElementById("botoes");
 
-/* cria linhas */
-for(let i=0;i<5;i++){
-  let box = document.createElement("div");
-  box.innerHTML = `
-    <div id="hist${i}" style="
-      border:1px solid #666;
-      background:#222;
-      border-radius:6px;
-      padding:8px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      justify-content:center"></div>
-    <div id="info${i}" style="
-      text-align:center;
-      font-size:13px;
-      margin-bottom:12px"></div>
-  `;
-  linhas.appendChild(box);
-}
+/* ================= BOTÕES ================= */
 
-/* botões 0–36 */
 for(let n=0;n<=36;n++){
-  let b = document.createElement("button");
-  b.textContent = n;
-  b.onclick = ()=>{ hist.push(n); render(); };
+  let b=document.createElement("button");
+  b.textContent=n;
+  b.onclick=()=>{ hist.push(n); render(); };
   botoes.appendChild(b);
 }
 
 /* ================= RENDER ================= */
 
 function render(){
+  linhas.innerHTML = "";
   let ult = hist.slice(-14).reverse();
+  let padroesAtivos = [];
 
-  for(let i=0;i<5;i++){
-    let h = document.getElementById("hist"+i);
-    let info = document.getElementById("info"+i);
-    h.innerHTML = ""; info.innerHTML = "";
+  // 1️⃣ PROCURA PADRÕES
+  pares.forEach((par,i)=>{
+    let [a,b]=par;
+    let ca=coverT(a), cb=coverT(b);
+    let seq=[];
 
-    let [a,b] = pares[i];
-    let ca = coverT(a);
-    let cb = coverT(b);
-    let seq = [];
+    ult.forEach(n=>{
+      if(ca.has(n)) seq.push("A");
+      else if(cb.has(n)) seq.push("B");
+    });
 
-    ult.forEach((n,idx)=>{
-      let w = document.createElement("div");
-      w.style = "display:flex;flex-direction:column;align-items:center";
+    let tipo = fechaPadrao(seq);
+    if(tipo){
+      padroesAtivos.push({par, tipo});
+    }
+  });
 
-      let d = document.createElement("div");
-      d.textContent = n;
-      d.style = `
-        padding:6px 8px;
-        border-radius:6px;
-        font-size:20px;
+  // 2️⃣ DEFINE O QUE MOSTRAR
+  let lista = padroesAtivos.length
+    ? padroesAtivos.map(p=>p.par)
+    : melhoresPares();
+
+  lista.forEach(par=>{
+    let [a,b]=par;
+    let ca=coverT(a), cb=coverT(b);
+
+    let box=document.createElement("div");
+    box.style="border:1px solid #666;background:#222;border-radius:6px;padding:8px;margin-bottom:10px";
+
+    let h=document.createElement("div");
+    h.style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center";
+
+    ult.forEach(n=>{
+      let w=document.createElement("div");
+      w.style="display:flex;flex-direction:column;align-items:center";
+
+      let d=document.createElement("div");
+      d.textContent=n;
+      d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
         background:${corNum(n)};
-        color:${corNum(n)==="#000"?"#fff":"#000"}
-      `;
-
-      // remover global apenas pela 1ª linha
-      if(i === 0){
-        d.style.cursor = "pointer";
-        d.onclick = ()=>{
-          hist.splice(hist.length-1-idx,1);
-          render();
-        };
-      }
+        color:${corNum(n)==="#000"?"#fff":"#000"}`;
 
       w.appendChild(d);
 
-      // marcação relativa A / B
-      if(ca.has(n) || cb.has(n)){
-        let lado = ca.has(n) ? "A" : "B";
-        seq.push(lado);
-
-        let t = ca.has(n) ? a : b;
-        let lbl = document.createElement("div");
-        lbl.textContent = "T"+t;
-        lbl.style = `font-size:12px;font-weight:bold;color:${coresT[t]}`;
+      if(ca.has(n)||cb.has(n)){
+        let t = ca.has(n)?a:b;
+        let lbl=document.createElement("div");
+        lbl.textContent="T"+t;
+        lbl.style=`font-size:12px;font-weight:bold;color:${coresT[t]}`;
         w.appendChild(lbl);
       }
 
       h.appendChild(w);
     });
 
-    /* ===== CONTINUIDADE CORRETA ===== */
-    let e = estado[i];
+    box.appendChild(h);
 
-    if(!e.ativo){
-      let f = fechaPadrao(seq);
-      if(f){
-        e.ativo = true;
-        e.tipo = f.tipo;
-        e.ultimoLado = f.ultimo;
-      }
-    } else {
-      // só quebra se entrar no par e quebrar a lógica
-      if(seq.length){
-        let atual = seq[seq.length-1];
-        if(atual !== e.ultimoLado){
-          e.ativo = false;
-          e.tipo = null;
-          e.ultimoLado = null;
-        }
-      }
+    let info=document.createElement("div");
+    info.style="text-align:center;font-size:13px;margin-top:4px";
+
+    let p = padroesAtivos.find(x=>x.par[0]===a && x.par[1]===b);
+    if(p){
+      info.textContent = p.tipo==="curto"
+        ? "🎯 PADRÃO FECHADO: A–B–A"
+        : "🎯 PADRÃO FECHADO: A–B–B–A–B–B";
     }
 
-    if(e.ativo){
-      info.textContent = e.tipo === "curto"
-        ? "🎯 PADRÃO ATIVO (CONTÍNUO): T1–T2–T1"
-        : "🎯 PADRÃO ATIVO (CONTÍNUO): T1–T2–T2–T1–T2–T2";
-    }
-  }
+    box.appendChild(info);
+    linhas.appendChild(box);
+  });
+}
+
+// 🔹 MELHORES PARES (fallback)
+function melhoresPares(){
+  let scores=[];
+  pares.forEach(par=>{
+    let [a,b]=par;
+    let ca=coverT(a), cb=coverT(b);
+    let c=0;
+    hist.slice(-14).forEach(n=>{
+      if(ca.has(n)||cb.has(n)) c++;
+    });
+    scores.push({par,score:c});
+  });
+  scores.sort((x,y)=>y.score-x.score);
+  return scores.slice(0,5).map(x=>x.par);
 }
 
 render();
