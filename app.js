@@ -10,17 +10,17 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  // cores FIXAS dos T (NUNCA mudam)
+  // cores fixas dos T (NUNCA mudam)
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",
     5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  // 🐎 cores dos NÚMEROS no modo cavalos
+  // 🐎 cores dos cavalos (por TERMINAL)
   const coresCavalos = {
-    "258": "#9c27b0",   // roxo
-    "0369": "#2196f3",  // azul
-    "147": "#4caf50"    // verde
+    A:"#9c27b0", // 258
+    B:"#2196f3", // 0369
+    C:"#4caf50"  // 147
   };
 
   let modoCavalos = false;
@@ -33,10 +33,17 @@
     return reds.includes(n) ? "#e74c3c" : "#000";
   }
 
+  function terminalDoNumero(n){
+    return n % 10;
+  }
+
   function corNumeroCavalos(n){
-    if([2,5,8].includes(n)) return coresCavalos["258"];
-    if([0,3,6,9].includes(n)) return coresCavalos["0369"];
-    if([1,4,7].includes(n)) return coresCavalos["147"];
+    let t = terminalDoNumero(n);
+
+    if([2,5,8].includes(t)) return coresCavalos.A;
+    if([0,3,6,9].includes(t)) return coresCavalos.B;
+    if([1,4,7].includes(t)) return coresCavalos.C;
+
     return corNumeroNormal(n);
   }
 
@@ -98,7 +105,7 @@
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — Pares Mais Assertivos (14 giros)</h2>
+      <h2 style="text-align:center">Roleta — Pares Mais Assertivos</h2>
 
       <div id="linhas"></div>
 
