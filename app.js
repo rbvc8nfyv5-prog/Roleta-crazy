@@ -34,7 +34,7 @@
     return s;
   }
 
-  // 🔥 melhores pares = MENOS ERROS nos últimos 14
+  // 🔥 Pares mais assertivos = MENOS ERROS nos últimos 14
   function melhoresParesAssertivos(){
     if(hist.length < 3) return [];
 
@@ -54,7 +54,6 @@
       }
     }
 
-    // ordena por MENOS erros, depois mais hits
     todos.sort((x,y)=>{
       if(x.erros !== y.erros) return x.erros - y.erros;
       return y.hits - x.hits;
@@ -66,7 +65,6 @@
     for(let p of todos){
       usados[p.a] = usados[p.a] || 0;
       usados[p.b] = usados[p.b] || 0;
-
       if(usados[p.a] >= 2 || usados[p.b] >= 2) continue;
 
       escolhidos.push(p);
@@ -81,11 +79,9 @@
 
   // ===== UI =====
   document.body.innerHTML = `
-    <div style="padding:14px;max-width:1100px;margin:auto">
+    <div style="padding:12px;max-width:1100px;margin:auto">
       <h2 style="text-align:center">Roleta — Pares Mais Assertivos (14 giros)</h2>
-
       <div id="linhas"></div>
-
       <div id="botoes"
         style="display:grid;grid-template-columns:repeat(9,1fr);
                gap:4px;max-width:520px;margin:12px auto">
@@ -96,11 +92,24 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // cria 5 linhas
+  // cria 5 linhas (grid fixo de 14 colunas)
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #666;background:#222;border-radius:6px;padding:8px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center";
+    d.style = `
+      border:1px solid #666;
+      background:#222;
+      border-radius:6px;
+      padding:6px;
+      margin-bottom:8px;
+
+      display:grid;
+      grid-template-columns:repeat(14, 1fr);
+      gap:4px;
+
+      justify-items:center;
+      align-items:start;
+    `;
     linhasDiv.appendChild(d);
   }
 
@@ -131,21 +140,28 @@
 
       ult.forEach((n,idx)=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center";
+        w.style="display:flex;flex-direction:column;align-items:center;width:100%";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
-                 background:${corNumero(n)};
-                 color:${corNumero(n)==="#000"?"#fff":"#000"};
-                 cursor:${i===0?"pointer":"default"}`;
+        d.style = `
+          width:100%;
+          padding:4px 0;
+          border-radius:6px;
+          font-size:14px;
+          text-align:center;
 
-        // 🟢 CLIQUE NA 1ª LINHA → REMOVE SOMENTE O NÚMERO
+          background:${corNumero(n)};
+          color:${corNumero(n)==="#000"?"#fff":"#000"};
+          cursor:${i===0?"pointer":"default"};
+        `;
+
+        // 🟢 Clique na 1ª linha → remove só o número
         if(i === 0){
           d.onclick = ()=>{
             let realIndex = hist.length - 1 - idx;
             if(realIndex >= 0){
-              hist.splice(realIndex, 1);
+              hist.splice(realIndex,1);
               render();
             }
           };
@@ -157,7 +173,11 @@
           let terminal = ca.has(n) ? p.a : p.b;
           let t=document.createElement("div");
           t.textContent="T"+terminal;
-          t.style=`font-size:12px;font-weight:bold;color:${coresT[terminal]}`;
+          t.style = `
+            font-size:10px;
+            font-weight:bold;
+            color:${coresT[terminal]};
+          `;
           w.appendChild(t);
         }
 
