@@ -17,40 +17,19 @@
 
   const coresCavalos = {
     A:"#9c27b0", // 258
-    B:"#2196f3", // 0369
-    C:"#4caf50"  // 147
+    B:"#4caf50", // 147
+    C:"#2196f3"  // 0369
   };
 
-  const coresColuna = { 1:"#fbc02d", 2:"#e53935", 3:"#1e88e5" };
-  const coresDuzia  = { 1:"#4caf50", 2:"#2196f3", 3:"#9c27b0" };
+  const cavalos = {
+    A:[2,5,8],
+    B:[1,4,7],
+    C:[0,3,6,9]
+  };
 
-  const espelhosBase = [11,12,13,21,22,23,31,32,33];
-
-  let modoCavalos = false;
-  let modoRotulo = "T"; // T | C | D
-  let modoEspelhos = false;
   let hist = [];
 
   // ===== FUNÇÕES =====
-  function terminalDoNumero(n){ return n % 10; }
-
-  function corNumeroNormal(n){
-    if(n === 0) return "#0f0";
-    return reds.includes(n) ? "#e74c3c" : "#000";
-  }
-
-  function corNumeroCavalos(n){
-    let t = terminalDoNumero(n);
-    if([2,5,8].includes(t)) return coresCavalos.A;
-    if([0,3,6,9].includes(t)) return coresCavalos.B;
-    if([1,4,7].includes(t)) return coresCavalos.C;
-    return corNumeroNormal(n);
-  }
-
-  function corNumero(n){
-    return modoCavalos ? corNumeroCavalos(n) : corNumeroNormal(n);
-  }
-
   function coverTerminal(t){
     let s = new Set();
     terminais[t].forEach(n=>{
@@ -62,65 +41,74 @@
     return s;
   }
 
-  function buildEspelhos(){
-    let s = new Set();
-    espelhosBase.forEach(n=>{
-      let i = track.indexOf(n);
-      if(i >= 0){
-        s.add(track[(i+36)%37]);
-        s.add(track[i]);
-        s.add(track[(i+1)%37]);
-      }
-    });
-    return s;
+  function cavaloDoNumero(n){
+    let t = n % 10;
+    if(cavalos.A.includes(t)) return "A";
+    if(cavalos.B.includes(t)) return "B";
+    return "C";
   }
 
-  const espelhosSet = buildEspelhos();
-
-  function melhoresPares(){
+  // 🔥 NOVA FUNÇÃO: pares baseados em cavalos fortes
+  function melhoresParesPorCavalos(){
     if(hist.length < 3) return [];
 
     let ult = hist.slice(-14);
-    let covers = [];
-    for(let t=0;t<10;t++) covers[t] = coverTerminal(t);
 
-    let todos = [];
-    for(let a=0;a<10;a++){
-      for(let b=a+1;b<10;b++){
-        let hits = 0;
-        ult.forEach(n=>{
-          if(covers[a].has(n) || covers[b].has(n)) hits++;
-        });
-        let erros = ult.length - hits;
-        todos.push({a,b,erros,hits});
+    // 1) força dos cavalos
+    let scoreCavalos = {A:0,B:0,C:0};
+    ult.forEach(n=>{
+      scoreCavalos[cavaloDoNumero(n)]++;
+    });
+
+    // 2) ordenar cavalos
+    let ordemCavalos = Object.keys(scoreCavalos)
+      .sort((a,b)=>scoreCavalos[b]-scoreCavalos[a]);
+
+    // 3) gerar combinações cavalo x cavalo
+    let paresCavalos = [];
+    for(let i=0;i<ordemCavalos.length;i++){
+      for(let j=i+1;j<ordemCavalos.length;j++){
+        paresCavalos.push([ordemCavalos[i],ordemCavalos[j]]);
       }
     }
 
-    todos.sort((x,y)=>{
+    let todosPares = [];
+
+    // 4) cavalo x cavalo → pares T–T
+    paresCavalos.forEach(([c1,c2])=>{
+      cavalos[c1].forEach(t1=>{
+        cavalos[c2].forEach(t2=>{
+          let ca = coverTerminal(t1);
+          let cb = coverTerminal(t2);
+
+          let hits = 0;
+          ult.forEach(n=>{
+            if(ca.has(n) || cb.has(n)) hits++;
+          });
+
+          let erros = ult.length - hits;
+          todosPares.push({a:t1,b:t2,erros,hits});
+        });
+      });
+    });
+
+    // 5) ordenar e pegar top 5
+    todosPares.sort((x,y)=>{
       if(x.erros !== y.erros) return x.erros - y.erros;
       return y.hits - x.hits;
     });
 
-    return todos.slice(0,5);
+    return todosPares.slice(0,5);
   }
 
-  // ===== UI =====
+  // ===== UI BÁSICA =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — Pares Mais Assertivos</h2>
-
+      <h2 style="text-align:center">Roleta — Pares por Cavalos Fortes</h2>
       <div id="linhas"></div>
-
-      <div style="text-align:center;margin-top:10px">
-        <button id="btnCavalos">🐎 Cavalos</button>
-        <button id="btnColuna">Coluna</button>
-        <button id="btnDuzia">Dúzia</button>
-        <button id="btnEspelhos">Espelhos</button>
-      </div>
-
       <div id="botoes"
         style="display:grid;grid-template-columns:repeat(9,1fr);
-               gap:4px;max-width:520px;margin:12px auto">
+        gap:4px;max-width:520px;margin:12px auto">
       </div>
     </div>
   `;
@@ -128,7 +116,6 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // linhas
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.style=`
@@ -144,13 +131,6 @@
     linhasDiv.appendChild(d);
   }
 
-  // botões modo
-  btnCavalos.onclick = ()=>{ modoCavalos=!modoCavalos; render(); };
-  btnColuna.onclick  = ()=>{ modoRotulo = modoRotulo==="C" ? "T" : "C"; render(); };
-  btnDuzia.onclick   = ()=>{ modoRotulo = modoRotulo==="D" ? "T" : "D"; render(); };
-  btnEspelhos.onclick= ()=>{ modoEspelhos=!modoEspelhos; render(); };
-
-  // botões 0–36
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
@@ -160,7 +140,7 @@
 
   function render(){
     let ult = hist.slice(-14).reverse();
-    let pares = melhoresPares();
+    let pares = melhoresParesPorCavalos();
     let linhas = linhasDiv.children;
 
     for(let i=0;i<5;i++){
@@ -178,47 +158,15 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`
-          width:100%;
-          padding:4px 0;
-          border-radius:6px;
-          text-align:center;
-          background:${corNumero(n)};
-          color:#fff;
-        `;
+        d.style="padding:4px 0;border-radius:6px;background:#333;color:#fff";
         w.appendChild(d);
 
-        // T / C / D
-        let rotulo = null;
-
-        if(modoRotulo==="T" && (ca.has(n) || cb.has(n))){
+        if(ca.has(n) || cb.has(n)){
           let t = ca.has(n) ? p.a : p.b;
-          rotulo = { txt:"T"+t, cor:coresT[t] };
-        }
-
-        if(modoRotulo==="C" && n!==0){
-          let c = n%3===1 ? 1 : n%3===2 ? 2 : 3;
-          rotulo = { txt:"C"+c, cor:coresColuna[c] };
-        }
-
-        if(modoRotulo==="D" && n!==0){
-          let d = n<=12 ? 1 : n<=24 ? 2 : 3;
-          rotulo = { txt:"D"+d, cor:coresDuzia[d] };
-        }
-
-        if(rotulo){
           let lb=document.createElement("div");
-          lb.textContent=rotulo.txt;
-          lb.style=`font-size:11px;font-weight:bold;color:${rotulo.cor}`;
+          lb.textContent="T"+t;
+          lb.style=`font-size:11px;font-weight:bold;color:${coresT[t]}`;
           w.appendChild(lb);
-        }
-
-        // ESPELHOS
-        if(modoEspelhos && espelhosSet.has(n)){
-          let e=document.createElement("div");
-          e.textContent="E";
-          e.style="font-size:11px;font-weight:bold;color:#fff";
-          w.appendChild(e);
         }
 
         h.appendChild(w);
