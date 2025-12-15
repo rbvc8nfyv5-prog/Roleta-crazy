@@ -24,10 +24,14 @@
 
   const espelhosBase = [11,12,13,21,22,23,31,32,33];
 
+  // ===== ESTADO =====
   let modoCavalos = false;
-  let modoRotulo = "T"; // T | C | D
-  let modoEspelhos = false;
+  let modoRotulo = "T";      // T | C | D
+  let modoEspelhos = false;  // E
   let hist = [];
+
+  // ✅ NOVO: abre com 1 linha
+  let mostrar5Linhas = false; // false = 1 linha | true = 5 linhas
 
   // ===== FUNÇÕES BASE =====
   function terminal(n){ return n % 10; }
@@ -176,7 +180,7 @@
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — 5 pares (14 giros)</h2>
+      <h2 style="text-align:center">Roleta — Pares (14 giros)</h2>
 
       <div id="linhas"></div>
 
@@ -187,6 +191,7 @@
       </div>
 
       <div style="text-align:center;margin-top:10px">
+        <button id="btnTerminais">Terminais</button>
         <button id="btnCavalos">🐎 Cavalos</button>
         <button id="btnColuna">Coluna</button>
         <button id="btnDuzia">Dúzia</button>
@@ -203,6 +208,7 @@
   const linhasDiv=document.getElementById("linhas");
   const botoesDiv=document.getElementById("botoes");
 
+  // cria SEMPRE 5 linhas, mas vamos esconder/mostrar
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
@@ -211,6 +217,13 @@
              grid-template-columns:repeat(14,1fr);gap:4px`;
     linhasDiv.appendChild(d);
   }
+
+  // botão Terminais: alterna 1 linha / 5 linhas
+  btnTerminais.onclick = ()=>{
+    mostrar5Linhas = !mostrar5Linhas;
+    btnTerminais.style.border = mostrar5Linhas ? "2px solid #4caf50" : "";
+    render();
+  };
 
   btnCavalos.onclick=()=>{modoCavalos=!modoCavalos;render();};
   btnColuna.onclick =()=>{modoRotulo=(modoRotulo==="C"?"T":"C");render();};
@@ -228,7 +241,16 @@
     const ult=hist.slice(-14).reverse();
     const pares=melhoresPares();
 
+    // ✅ controla linhas visíveis
     for(let i=0;i<5;i++){
+      const linha = document.getElementById("hist"+i);
+      linha.style.display = (mostrar5Linhas || i===0) ? "grid" : "none";
+    }
+
+    // renderiza só as linhas que estiverem ativas
+    const limite = mostrar5Linhas ? 5 : 1;
+
+    for(let i=0;i<limite;i++){
       let h=document.getElementById("hist"+i);
       h.innerHTML="";
       let p=pares[i];
@@ -245,6 +267,8 @@
         d.style=`padding:4px 0;border-radius:6px;
                  background:${corNumero(n)};color:#fff;
                  cursor:${i===0?"pointer":"default"}`;
+
+        // clique na 1ª linha remove do histórico (todas linhas)
         if(i===0){
           d.onclick=()=>{
             const real=hist.length-1-idx;
@@ -253,6 +277,7 @@
         }
         w.appendChild(d);
 
+        // rótulos
         if(modoRotulo==="T"&&(ca.has(n)||cb.has(n))){
           let t=ca.has(n)?p.a:p.b;
           let lb=document.createElement("div");
@@ -283,6 +308,7 @@
           e.style="font-size:11px;font-weight:bold;color:#fff";
           w.appendChild(e);
         }
+
         h.appendChild(w);
       });
     }
@@ -291,6 +317,8 @@
       analisarCentros().join(" · ");
   }
 
+  // inicia com 1 linha visível
+  btnTerminais.style.border = "";
   render();
 
 })();
