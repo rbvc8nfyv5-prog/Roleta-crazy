@@ -129,7 +129,7 @@
       let ca = coverTerminal(p.a);
       let cb = coverTerminal(p.b);
 
-      ult.forEach(n=>{
+      ult.forEach((n,idx)=>{
         let w=document.createElement("div");
         w.style="display:flex;flex-direction:column;align-items:center";
 
@@ -140,11 +140,14 @@
                  color:${corNumero(n)==="#000"?"#fff":"#000"};
                  cursor:${i===0?"pointer":"default"}`;
 
-        // 🔴 CLIQUE NA 1ª LINHA → APAGA TUDO
+        // 🟢 CLIQUE NA 1ª LINHA → REMOVE SOMENTE O NÚMERO
         if(i === 0){
           d.onclick = ()=>{
-            hist = [];
-            render();
+            let realIndex = hist.length - 1 - idx;
+            if(realIndex >= 0){
+              hist.splice(realIndex, 1);
+              render();
+            }
           };
         }
 
