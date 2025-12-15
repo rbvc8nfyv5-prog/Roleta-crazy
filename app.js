@@ -16,7 +16,13 @@ const coresT = {
  5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
 };
 
-const pares = [[0,1],[2,3],[4,5],[6,7],[8,9]];
+// pares possíveis analisados
+const pares = [
+  [0,1],[0,2],[0,3],[1,2],[1,3],
+  [2,3],[2,4],[3,4],[4,5],[5,6],
+  [6,7],[7,8],[8,9],[1,9]
+];
+
 let hist = [];
 
 /* ================= FUNÇÕES ================= */
@@ -37,20 +43,25 @@ function coverT(t){
   return s;
 }
 
-// 🔒 PADRÕES FECHADOS
-function fechaPadrao(seq){
-  let len = seq.length;
+/* 🔒 PADRÃO FECHADO NO ÚLTIMO NÚMERO */
+function detectaPadraoNoUltimo(hist, ca, cb){
+  let seq = [];
 
-  if(len >= 3 &&
-     seq[len-3]==="A" &&
-     seq[len-2]==="B" &&
-     seq[len-1]==="A"){
-    return "curto";
+  // começa SEMPRE do último número inserido
+  for(let i = hist.length - 1; i >= 0 && seq.length < 6; i--){
+    let n = hist[i];
+    if(ca.has(n)) seq.unshift("A");
+    else if(cb.has(n)) seq.unshift("B");
   }
 
-  if(len >= 6 &&
-     seq.slice(len-6).join("") === "ABBABB"){
-    return "longo";
+  // ABA
+  if(seq.length >= 3 && seq.slice(-3).join("") === "ABA"){
+    return "ABA";
+  }
+
+  // ABBABB
+  if(seq.length >= 6 && seq.slice(-6).join("") === "ABBABB"){
+    return "ABBABB";
   }
 
   return null;
@@ -60,7 +71,7 @@ function fechaPadrao(seq){
 
 document.body.innerHTML = `
 <div style="padding:14px;max-width:1100px;margin:auto">
-  <h2 style="text-align:center">Roleta — Análise de Padrões</h2>
+  <h2 style="text-align:center">Roleta — Padrões no Último Giro</h2>
   <div id="linhas"></div>
   <div id="botoes" style="
     display:grid;
@@ -74,8 +85,7 @@ document.body.innerHTML = `
 const linhas = document.getElementById("linhas");
 const botoes = document.getElementById("botoes");
 
-/* ================= BOTÕES ================= */
-
+/* botões 0–36 */
 for(let n=0;n<=36;n++){
   let b=document.createElement("button");
   b.textContent=n;
@@ -88,29 +98,21 @@ for(let n=0;n<=36;n++){
 function render(){
   linhas.innerHTML = "";
   let ult = hist.slice(-14).reverse();
-  let padroesAtivos = [];
 
-  // 1️⃣ PROCURA PADRÕES
-  pares.forEach((par,i)=>{
+  let padroes = [];
+
+  // 1️⃣ procura PADRÃO FECHADO AGORA
+  pares.forEach(par=>{
     let [a,b]=par;
     let ca=coverT(a), cb=coverT(b);
-    let seq=[];
-
-    ult.forEach(n=>{
-      if(ca.has(n)) seq.push("A");
-      else if(cb.has(n)) seq.push("B");
-    });
-
-    let tipo = fechaPadrao(seq);
+    let tipo = detectaPadraoNoUltimo(hist, ca, cb);
     if(tipo){
-      padroesAtivos.push({par, tipo});
+      padroes.push({par, tipo});
     }
   });
 
-  // 2️⃣ DEFINE O QUE MOSTRAR
-  let lista = padroesAtivos.length
-    ? padroesAtivos.map(p=>p.par)
-    : melhoresPares();
+  // 2️⃣ define o que mostrar
+  let lista = padroes.length ? padroes.map(p=>p.par) : melhoresPares();
 
   lista.forEach(par=>{
     let [a,b]=par;
@@ -150,11 +152,11 @@ function render(){
     let info=document.createElement("div");
     info.style="text-align:center;font-size:13px;margin-top:4px";
 
-    let p = padroesAtivos.find(x=>x.par[0]===a && x.par[1]===b);
+    let p = padroes.find(x=>x.par[0]===a && x.par[1]===b);
     if(p){
-      info.textContent = p.tipo==="curto"
-        ? "🎯 PADRÃO FECHADO: A–B–A"
-        : "🎯 PADRÃO FECHADO: A–B–B–A–B–B";
+      info.textContent = p.tipo==="ABA"
+        ? "🎯 PADRÃO FECHADO AGORA: A–B–A"
+        : "🎯 PADRÃO FECHADO AGORA: A–B–B–A–B–B";
     }
 
     box.appendChild(info);
@@ -162,7 +164,7 @@ function render(){
   });
 }
 
-// 🔹 MELHORES PARES (fallback)
+// fallback — melhores pares por força
 function melhoresPares(){
   let scores=[];
   pares.forEach(par=>{
