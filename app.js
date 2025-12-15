@@ -10,18 +10,9 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  // 🎨 CORES FIXAS POR TERMINAL
   const coresT = {
-    0:"#00e5ff",
-    1:"#ff1744",
-    2:"#00e676",
-    3:"#ff9100",
-    4:"#d500f9",
-    5:"#ffee58",
-    6:"#2979ff",
-    7:"#ff4081",
-    8:"#76ff03",
-    9:"#8d6e63"
+    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",
+    5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
   let hist = [];
@@ -43,8 +34,8 @@
     return s;
   }
 
-  // 🔥 seleção balanceada (14 giros / máx 2 repetições por T)
-  function melhoresParesBalanceados(){
+  // 🔥 melhores pares = MENOS ERROS nos últimos 14
+  function melhoresParesAssertivos(){
     if(hist.length < 3) return [];
 
     let ult = hist.slice(-14);
@@ -58,11 +49,16 @@
         ult.forEach(n=>{
           if(covers[a].has(n) || covers[b].has(n)) hits++;
         });
-        todos.push({a,b,hits});
+        let erros = ult.length - hits;
+        todos.push({a,b,hits,erros});
       }
     }
 
-    todos.sort((x,y)=>y.hits-x.hits);
+    // ordena por MENOS erros, depois mais hits
+    todos.sort((x,y)=>{
+      if(x.erros !== y.erros) return x.erros - y.erros;
+      return y.hits - x.hits;
+    });
 
     let usados = {};
     let escolhidos = [];
@@ -86,17 +82,13 @@
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:14px;max-width:1100px;margin:auto">
-      <h2 style="text-align:center">Roleta — 5 pares (14 giros)</h2>
+      <h2 style="text-align:center">Roleta — Pares Mais Assertivos (14 giros)</h2>
 
       <div id="linhas"></div>
 
       <div id="botoes"
         style="display:grid;grid-template-columns:repeat(9,1fr);
                gap:4px;max-width:520px;margin:12px auto">
-      </div>
-
-      <div style="text-align:center">
-        <button id="clearBtn">Clear</button>
       </div>
     </div>
   `;
@@ -124,14 +116,9 @@
     botoesDiv.appendChild(b);
   }
 
-  document.getElementById("clearBtn").onclick = () => {
-    hist = [];
-    render();
-  };
-
   function render(){
     let ult = hist.slice(-14).reverse();
-    let pares = melhoresParesBalanceados();
+    let pares = melhoresParesAssertivos();
 
     for(let i=0;i<5;i++){
       let h=document.getElementById("hist"+i);
@@ -150,10 +137,19 @@
         d.textContent=n;
         d.style=`padding:6px 8px;border-radius:6px;font-size:20px;
                  background:${corNumero(n)};
-                 color:${corNumero(n)==="#000"?"#fff":"#000"}`;
+                 color:${corNumero(n)==="#000"?"#fff":"#000"};
+                 cursor:${i===0?"pointer":"default"}`;
+
+        // 🔴 CLIQUE NA 1ª LINHA → APAGA TUDO
+        if(i === 0){
+          d.onclick = ()=>{
+            hist = [];
+            render();
+          };
+        }
+
         w.appendChild(d);
 
-        // 🔹 marca TODOS que pertencem ao par
         if(ca.has(n) || cb.has(n)){
           let terminal = ca.has(n) ? p.a : p.b;
           let t=document.createElement("div");
