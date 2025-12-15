@@ -1,6 +1,6 @@
 (function () {
 
-  // ===== CONFIGURAÇÃO BASE =====
+  // ================= CONFIGURAÇÃO BASE =================
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
   const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
@@ -10,7 +10,15 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  // ===== SETORES (MANTIDOS) =====
+  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+
+  const coresT = {
+    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
+    4:"#d500f9",5:"#ffee58",6:"#2979ff",
+    7:"#ff4081",8:"#76ff03",9:"#8d6e63"
+  };
+
+  // ================= SETORES =================
   const setores = {
     TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
@@ -25,29 +33,39 @@
     VOISINS:"#8e24aa"
   };
 
-  const coresT = {
-    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
-    4:"#d500f9",5:"#ffee58",6:"#2979ff",
-    7:"#ff4081",8:"#76ff03",9:"#8d6e63"
-  };
-
+  // ================= ESTADO =================
   let hist = [];
-  let modoSetores = true;
+  let mostrar5Linhas = false;
+  let modoCavalos = false;
+  let modoRotulo = "T"; // T | C | D
+  let modoEspelhos = false;
+  let modoSetores = false;
 
-  // ===== FUNÇÕES =====
-  const corBase = n => n===0 ? "#0f0" : reds.has(n) ? "#e74c3c" : "#111";
+  // ================= FUNÇÕES =================
+  function terminal(n){ return n % 10; }
+
+  function cavaloDoTerminal(t){
+    if(cavalos.A.includes(t)) return "A";
+    if(cavalos.B.includes(t)) return "B";
+    return "C";
+  }
+
+  function corBase(n){
+    if(n===0) return "#0f0";
+    return reds.has(n) ? "#e74c3c" : "#111";
+  }
 
   function setorDoNumero(n){
-    for(let s in setores){
-      if(setores[s].has(n)) return s;
-    }
+    for(let s in setores) if(setores[s].has(n)) return s;
     return null;
   }
 
   function corNumero(n){
-    if(!modoSetores) return corBase(n);
-    let s = setorDoNumero(n);
-    return s ? coresSetor[s] : corBase(n);
+    if(modoSetores){
+      let s = setorDoNumero(n);
+      if(s) return coresSetor[s];
+    }
+    return corBase(n);
   }
 
   function coverTerminal(t){
@@ -61,57 +79,89 @@
     return s;
   }
 
-  function melhorPar(){
-    if(hist.length < 5) return null;
+  function melhoresPares(){
+    if(hist.length < 5) return [];
     let ult = hist.slice(-14);
     let covers = Array.from({length:10},(_,t)=>coverTerminal(t));
-    let best = null;
+    let pares = [];
 
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
         let hits = ult.filter(n=>covers[a].has(n)||covers[b].has(n)).length;
-        if(!best || hits > best.hits){
-          best = {a,b,hits};
-        }
+        pares.push({a,b,hits});
       }
     }
-    return best;
+    return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
   }
 
-  // ===== UI =====
-  document.body.innerHTML = `
-    <div style="padding:10px;max-width:1100px;margin:auto;color:#fff">
-      <h4 style="text-align:center;margin:6px 0">Roleta</h4>
+  function analisarCentros(){
+    if(hist.length < 8) return [];
+    let ult = hist.slice(-14);
+    let candidatos = [...new Set(ult.slice(-6))];
 
-      <div id="linha"
-        style="border:1px solid #555;
-               background:#222;
-               border-radius:6px;
-               padding:6px;
-               display:flex;
-               flex-wrap:nowrap;
-               gap:6px;
-               justify-content:center;
-               overflow:hidden">
+    function dist(a,b){
+      let ia=track.indexOf(a), ib=track.indexOf(b);
+      let d=Math.abs(ia-ib);
+      return Math.min(d,37-d);
+    }
+
+    let centros=[];
+    for(let n of candidatos){
+      if(centros.every(x=>dist(x,n)>=6)){
+        centros.push(n);
+        if(centros.length===3) break;
+      }
+    }
+    return centros;
+  }
+
+  // ================= UI =================
+  document.body.innerHTML = `
+    <div style="padding:12px;max-width:1100px;margin:auto;color:#fff">
+
+      <h3 style="text-align:center">App Caballerro</h3>
+
+      <div id="linhas"></div>
+
+      <div id="centrosBox"
+        style="border:1px solid #666;background:#111;border-radius:6px;
+               padding:6px;margin:8px 0;text-align:center">
+        🎯 Centros: <span id="centrosTxt"></span>
       </div>
 
-      <div style="text-align:center;margin:8px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+        <button id="btnTerm">Terminais</button>
+        <button id="btnCav">Cavalos</button>
+        <button id="btnCol">Coluna</button>
+        <button id="btnDuz">Dúzia</button>
+        <button id="btnEsp">Espelhos</button>
         <button id="btnSet">Setores</button>
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);gap:5px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);
+               gap:4px;margin-top:10px">
       </div>
+
     </div>
   `;
 
-  const linhaDiv = document.getElementById("linha");
+  const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  document.getElementById("btnSet").onclick = ()=>{
-    modoSetores = !modoSetores;
-    render();
-  };
+  for(let i=0;i<5;i++){
+    let d=document.createElement("div");
+    d.id="hist"+i;
+    d.style="border:1px solid #555;background:#222;border-radius:6px;padding:6px;margin-bottom:6px;display:flex;gap:6px;justify-content:center";
+    linhasDiv.appendChild(d);
+  }
+
+  btnTerm.onclick=()=>{mostrar5Linhas=!mostrar5Linhas;render();};
+  btnCav.onclick =()=>{modoCavalos=!modoCavalos;render();};
+  btnCol.onclick =()=>{modoRotulo=(modoRotulo==="C"?"T":"C");render();};
+  btnDuz.onclick =()=>{modoRotulo=(modoRotulo==="D"?"T":"D");render();};
+  btnEsp.onclick =()=>{modoEspelhos=!modoEspelhos;render();};
+  btnSet.onclick =()=>{modoSetores=!modoSetores;render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
@@ -121,40 +171,51 @@
   }
 
   function render(){
-    linhaDiv.innerHTML="";
-    let p = melhorPar();
-    if(!p) return;
-
-    let ca = coverTerminal(p.a);
-    let cb = coverTerminal(p.b);
     let ult = hist.slice(-14);
+    let pares = melhoresPares();
 
-    ult.forEach(n=>{
-      let w=document.createElement("div");
-      w.style="display:flex;flex-direction:column;align-items:center;min-width:32px";
+    for(let i=0;i<5;i++){
+      let h=document.getElementById("hist"+i);
+      h.style.display = (mostrar5Linhas || i===0) ? "flex" : "none";
+      h.innerHTML="";
+      let p = pares[i];
+      if(!p) continue;
 
-      let d=document.createElement("div");
-      d.textContent=n;
-      d.style=`padding:4px 0;
-               width:32px;
-               border-radius:6px;
-               background:${corNumero(n)};
-               color:#fff;
-               font-size:14px;
-               text-align:center`;
+      let ca = coverTerminal(p.a);
+      let cb = coverTerminal(p.b);
 
-      w.appendChild(d);
+      ult.forEach((n,idx)=>{
+        let w=document.createElement("div");
+        w.style="display:flex;flex-direction:column;align-items:center";
 
-      if(ca.has(n)||cb.has(n)){
-        let t = ca.has(n)?p.a:p.b;
-        let lb=document.createElement("div");
-        lb.textContent="T"+t;
-        lb.style=`font-size:10px;color:${coresT[t]}`;
-        w.appendChild(lb);
-      }
+        let d=document.createElement("div");
+        d.textContent=n;
+        d.style=`padding:4px 6px;border-radius:6px;
+                 background:${corNumero(n)};
+                 color:#fff;font-size:14px;
+                 cursor:${i===0?"pointer":"default"}`;
+        if(i===0){
+          d.onclick=()=>{
+            let real=hist.length-ult.length+idx;
+            hist.splice(real,1);render();
+          };
+        }
+        w.appendChild(d);
 
-      linhaDiv.appendChild(w);
-    });
+        if(modoRotulo==="T"&&(ca.has(n)||cb.has(n))){
+          let t = ca.has(n)?p.a:p.b;
+          let lb=document.createElement("div");
+          lb.textContent="T"+t;
+          lb.style=`font-size:10px;color:${coresT[t]}`;
+          w.appendChild(lb);
+        }
+
+        h.appendChild(w);
+      });
+    }
+
+    document.getElementById("centrosTxt").textContent =
+      analisarCentros().join(" · ");
   }
 
   render();
