@@ -24,6 +24,8 @@
   };
 
   let modoCavalos = false;
+  let modoRotulo = "T"; // "T" | "C" | "D"
+
   let hist = [];
   let paresManuais = [null, null, null, null, null];
 
@@ -39,11 +41,9 @@
 
   function corNumeroCavalos(n){
     let t = terminalDoNumero(n);
-
     if([2,5,8].includes(t)) return coresCavalos.A;
     if([0,3,6,9].includes(t)) return coresCavalos.B;
     if([1,4,7].includes(t)) return coresCavalos.C;
-
     return corNumeroNormal(n);
   }
 
@@ -102,6 +102,29 @@
     return res;
   }
 
+  // ===== RÓTULOS =====
+  function rotuloTerminal(n){
+    let t = terminalDoNumero(n);
+
+    if(modoRotulo === "T"){
+      return { txt: "T"+t, cor: coresT[t] };
+    }
+
+    if(modoRotulo === "C"){
+      if(n === 0) return null;
+      let col = n % 3 === 1 ? 1 : n % 3 === 2 ? 2 : 3;
+      return { txt: "C"+col, cor: "#fff" };
+    }
+
+    if(modoRotulo === "D"){
+      if(n === 0) return null;
+      let d = n <= 12 ? 1 : n <= 24 ? 2 : 3;
+      return { txt: "D"+d, cor: "#fff" };
+    }
+
+    return null;
+  }
+
   // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
@@ -109,8 +132,10 @@
 
       <div id="linhas"></div>
 
-      <div style="text-align:center;margin-top:10px">
+      <div style="text-align:center;margin-top:8px">
         <button id="btnCavalos">🐎 Cavalos</button>
+        <button id="btnColuna">Coluna</button>
+        <button id="btnDuzia">Dúzia</button>
       </div>
 
       <div id="botoes"
@@ -123,7 +148,7 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // cria linhas
+  // ===== LINHAS =====
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
@@ -141,12 +166,27 @@
     linhasDiv.appendChild(d);
   }
 
-  document.getElementById("btnCavalos").onclick = ()=>{
-    modoCavalos = !modoCavalos;
+  // ===== BOTÕES DE MODO =====
+  function atualizarBotoes(){
+    btnColuna.style.border = modoRotulo==="C" ? "2px solid #4caf50" : "";
+    btnDuzia.style.border  = modoRotulo==="D" ? "2px solid #4caf50" : "";
+  }
+
+  btnCavalos.onclick = ()=>{ modoCavalos=!modoCavalos; render(); };
+
+  btnColuna.onclick = ()=>{
+    modoRotulo = modoRotulo==="C" ? "T" : "C";
+    atualizarBotoes();
     render();
   };
 
-  // botões 0–36
+  btnDuzia.onclick = ()=>{
+    modoRotulo = modoRotulo==="D" ? "T" : "D";
+    atualizarBotoes();
+    render();
+  };
+
+  // ===== BOTÕES 0–36 =====
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
@@ -201,11 +241,13 @@
         w.appendChild(d);
 
         if(ca.has(n) || cb.has(n)){
-          let t = ca.has(n) ? p.a : p.b;
-          let lb=document.createElement("div");
-          lb.textContent="T"+t;
-          lb.style=`font-size:10px;font-weight:bold;color:${coresT[t]}`;
-          w.appendChild(lb);
+          let r = rotuloTerminal(n);
+          if(r){
+            let lb=document.createElement("div");
+            lb.textContent=r.txt;
+            lb.style=`font-size:10px;font-weight:bold;color:${r.cor}`;
+            w.appendChild(lb);
+          }
         }
 
         h.appendChild(w);
