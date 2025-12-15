@@ -1,4 +1,4 @@
- (function () {
+(function () {
 
   // ===== CONFIGURAÇÃO BASE =====
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
@@ -10,13 +10,22 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
+  // cores normais por terminal
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",
     5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
+  // 🐎 cores por grupo de cavalos
+  const coresCavalos = {
+    "258": "#9c27b0",   // roxo
+    "0369": "#2196f3",  // azul
+    "147": "#4caf50"    // verde
+  };
+
+  let modoCavalos = false;
   let hist = [];
-  let paresManuais = [null, null, null, null, null]; // 👈 UM POR LINHA
+  let paresManuais = [null, null, null, null, null];
 
   // ===== FUNÇÕES =====
   function corNumero(n){
@@ -33,6 +42,14 @@
       s.add(track[(i+1)%37]);
     });
     return s;
+  }
+
+  function corDoTerminal(t){
+    if(!modoCavalos) return coresT[t];
+    if([2,5,8].includes(t)) return coresCavalos["258"];
+    if([0,3,6,9].includes(t)) return coresCavalos["0369"];
+    if([1,4,7].includes(t)) return coresCavalos["147"];
+    return "#fff";
   }
 
   function melhoresParesAssertivos(){
@@ -75,71 +92,51 @@
     return res;
   }
 
-  // ===== UI BASE =====
+  // ===== UI =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
       <h2 style="text-align:center">Roleta — Pares Mais Assertivos (14 giros)</h2>
       <div id="linhas"></div>
-      <div id="botoes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-width:520px;margin:12px auto"></div>
+
+      <div style="text-align:center;margin-top:10px">
+        <button id="btnCavalos">🐎 Cavalos</button>
+      </div>
+
+      <div id="botoes"
+        style="display:grid;grid-template-columns:repeat(9,1fr);
+               gap:4px;max-width:520px;margin:12px auto">
+      </div>
     </div>
   `;
 
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // ===== CRIA LINHAS =====
+  // cria linhas
   for(let i=0;i<5;i++){
-    let wrap = document.createElement("div");
-    wrap.style = "position:relative;margin-bottom:8px";
-
-    let menuBtn = document.createElement("div");
-    menuBtn.textContent = "⋯";
-    menuBtn.style = "position:absolute;top:6px;right:8px;cursor:pointer;font-size:18px;z-index:5";
-
-    let menu = document.createElement("div");
-    menu.style = "display:none;position:absolute;top:28px;right:8px;background:#111;border:1px solid #555;padding:6px;border-radius:6px;z-index:10";
-
-    let selecionados = [];
-
-    for(let t=0;t<10;t++){
-      let b = document.createElement("div");
-      b.textContent = "T"+t;
-      b.style = `color:${coresT[t]};padding:4px;cursor:pointer`;
-      b.onclick = ()=>{
-        if(selecionados.includes(t)) return;
-        selecionados.push(t);
-        if(selecionados.length === 2){
-          paresManuais[i] = { a: selecionados[0], b: selecionados[1] };
-          selecionados = [];
-          menu.style.display = "none";
-          render();
-        }
-      };
-      menu.appendChild(b);
-    }
-
-    menuBtn.onclick = ()=> menu.style.display = menu.style.display === "none" ? "block" : "none";
-
-    let linha = document.createElement("div");
-    linha.id = "hist"+i;
-    linha.style = `
+    let d=document.createElement("div");
+    d.id="hist"+i;
+    d.style=`
       border:1px solid #666;
       background:#222;
       border-radius:6px;
       padding:6px;
+      margin-bottom:8px;
       display:grid;
       grid-template-columns:repeat(14,1fr);
       gap:4px;
       justify-items:center;
     `;
-
-    wrap.appendChild(menuBtn);
-    wrap.appendChild(menu);
-    wrap.appendChild(linha);
-    linhasDiv.appendChild(wrap);
+    linhasDiv.appendChild(d);
   }
 
-  // ===== BOTÕES 0–36 =====
+  // botão cavalos
+  document.getElementById("btnCavalos").onclick = ()=>{
+    modoCavalos = !modoCavalos;
+    render();
+  };
+
+  // botões 0–36
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
@@ -197,7 +194,7 @@
           let t = ca.has(n) ? p.a : p.b;
           let lb=document.createElement("div");
           lb.textContent="T"+t;
-          lb.style=`font-size:10px;font-weight:bold;color:${coresT[t]}`;
+          lb.style=`font-size:10px;font-weight:bold;color:${corDoTerminal(t)}`;
           w.appendChild(lb);
         }
 
