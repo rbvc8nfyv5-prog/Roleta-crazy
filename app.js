@@ -1,4 +1,4 @@
-(function () {
+ (function () {
 
   // ===== CONFIGURAÇÃO BASE =====
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
@@ -16,6 +16,7 @@
   };
 
   let hist = [];
+  let paresManuais = [null, null, null, null, null]; // 👈 UM POR LINHA
 
   // ===== FUNÇÕES =====
   function corNumero(n){
@@ -34,7 +35,6 @@
     return s;
   }
 
-  // 🔥 Pares mais assertivos = MENOS ERROS nos últimos 14
   function melhoresParesAssertivos(){
     if(hist.length < 3) return [];
 
@@ -50,7 +50,7 @@
           if(covers[a].has(n) || covers[b].has(n)) hits++;
         });
         let erros = ult.length - hits;
-        todos.push({a,b,hits,erros});
+        todos.push({a,b,erros,hits});
       }
     }
 
@@ -60,60 +60,86 @@
     });
 
     let usados = {};
-    let escolhidos = [];
+    let res = [];
 
     for(let p of todos){
       usados[p.a] = usados[p.a] || 0;
       usados[p.b] = usados[p.b] || 0;
       if(usados[p.a] >= 2 || usados[p.b] >= 2) continue;
-
-      escolhidos.push(p);
+      res.push(p);
       usados[p.a]++;
       usados[p.b]++;
-
-      if(escolhidos.length === 5) break;
+      if(res.length === 5) break;
     }
 
-    return escolhidos;
+    return res;
   }
 
-  // ===== UI =====
+  // ===== UI BASE =====
   document.body.innerHTML = `
     <div style="padding:12px;max-width:1100px;margin:auto">
       <h2 style="text-align:center">Roleta — Pares Mais Assertivos (14 giros)</h2>
       <div id="linhas"></div>
-      <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);
-               gap:4px;max-width:520px;margin:12px auto">
-      </div>
+      <div id="botoes" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-width:520px;margin:12px auto"></div>
     </div>
   `;
 
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // cria 5 linhas (grid fixo de 14 colunas)
+  // ===== CRIA LINHAS =====
   for(let i=0;i<5;i++){
-    let d=document.createElement("div");
-    d.id="hist"+i;
-    d.style = `
+    let wrap = document.createElement("div");
+    wrap.style = "position:relative;margin-bottom:8px";
+
+    let menuBtn = document.createElement("div");
+    menuBtn.textContent = "⋯";
+    menuBtn.style = "position:absolute;top:6px;right:8px;cursor:pointer;font-size:18px;z-index:5";
+
+    let menu = document.createElement("div");
+    menu.style = "display:none;position:absolute;top:28px;right:8px;background:#111;border:1px solid #555;padding:6px;border-radius:6px;z-index:10";
+
+    let selecionados = [];
+
+    for(let t=0;t<10;t++){
+      let b = document.createElement("div");
+      b.textContent = "T"+t;
+      b.style = `color:${coresT[t]};padding:4px;cursor:pointer`;
+      b.onclick = ()=>{
+        if(selecionados.includes(t)) return;
+        selecionados.push(t);
+        if(selecionados.length === 2){
+          paresManuais[i] = { a: selecionados[0], b: selecionados[1] };
+          selecionados = [];
+          menu.style.display = "none";
+          render();
+        }
+      };
+      menu.appendChild(b);
+    }
+
+    menuBtn.onclick = ()=> menu.style.display = menu.style.display === "none" ? "block" : "none";
+
+    let linha = document.createElement("div");
+    linha.id = "hist"+i;
+    linha.style = `
       border:1px solid #666;
       background:#222;
       border-radius:6px;
       padding:6px;
-      margin-bottom:8px;
-
       display:grid;
-      grid-template-columns:repeat(14, 1fr);
+      grid-template-columns:repeat(14,1fr);
       gap:4px;
-
       justify-items:center;
-      align-items:start;
     `;
-    linhasDiv.appendChild(d);
+
+    wrap.appendChild(menuBtn);
+    wrap.appendChild(menu);
+    wrap.appendChild(linha);
+    linhasDiv.appendChild(wrap);
   }
 
-  // botões 0–36
+  // ===== BOTÕES 0–36 =====
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
@@ -127,14 +153,14 @@
 
   function render(){
     let ult = hist.slice(-14).reverse();
-    let pares = melhoresParesAssertivos();
+    let auto = melhoresParesAssertivos();
 
     for(let i=0;i<5;i++){
       let h=document.getElementById("hist"+i);
       h.innerHTML="";
-      if(!pares[i]) continue;
+      let p = paresManuais[i] || auto[i];
+      if(!p) continue;
 
-      let p = pares[i];
       let ca = coverTerminal(p.a);
       let cb = coverTerminal(p.b);
 
@@ -144,23 +170,21 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style = `
+        d.style=`
           width:100%;
+          font-size:14px;
           padding:4px 0;
           border-radius:6px;
-          font-size:14px;
           text-align:center;
-
           background:${corNumero(n)};
           color:${corNumero(n)==="#000"?"#fff":"#000"};
           cursor:${i===0?"pointer":"default"};
         `;
 
-        // 🟢 Clique na 1ª linha → remove só o número
-        if(i === 0){
-          d.onclick = ()=>{
+        if(i===0){
+          d.onclick=()=>{
             let realIndex = hist.length - 1 - idx;
-            if(realIndex >= 0){
+            if(realIndex>=0){
               hist.splice(realIndex,1);
               render();
             }
@@ -170,15 +194,11 @@
         w.appendChild(d);
 
         if(ca.has(n) || cb.has(n)){
-          let terminal = ca.has(n) ? p.a : p.b;
-          let t=document.createElement("div");
-          t.textContent="T"+terminal;
-          t.style = `
-            font-size:10px;
-            font-weight:bold;
-            color:${coresT[terminal]};
-          `;
-          w.appendChild(t);
+          let t = ca.has(n) ? p.a : p.b;
+          let lb=document.createElement("div");
+          lb.textContent="T"+t;
+          lb.style=`font-size:10px;font-weight:bold;color:${coresT[t]}`;
+          w.appendChild(lb);
         }
 
         h.appendChild(w);
