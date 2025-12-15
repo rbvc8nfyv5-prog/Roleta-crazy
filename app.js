@@ -24,8 +24,11 @@
   const coresColuna = { 1:"#fbc02d", 2:"#e53935", 3:"#1e88e5" };
   const coresDuzia  = { 1:"#4caf50", 2:"#2196f3", 3:"#9c27b0" };
 
+  const espelhosBase = [11,12,13,21,22,23,31,32,33];
+
   let modoCavalos = false;
   let modoRotulo = "T"; // T | C | D
+  let modoEspelhos = false;
   let hist = [];
 
   // ===== FUNÇÕES =====
@@ -58,6 +61,21 @@
     });
     return s;
   }
+
+  function buildEspelhos(){
+    let s = new Set();
+    espelhosBase.forEach(n=>{
+      let i = track.indexOf(n);
+      if(i >= 0){
+        s.add(track[(i+36)%37]);
+        s.add(track[i]);
+        s.add(track[(i+1)%37]);
+      }
+    });
+    return s;
+  }
+
+  const espelhosSet = buildEspelhos();
 
   function melhoresPares(){
     if(hist.length < 3) return [];
@@ -97,6 +115,7 @@
         <button id="btnCavalos">🐎 Cavalos</button>
         <button id="btnColuna">Coluna</button>
         <button id="btnDuzia">Dúzia</button>
+        <button id="btnEspelhos">Espelhos</button>
       </div>
 
       <div id="botoes"
@@ -109,7 +128,7 @@
   const linhasDiv = document.getElementById("linhas");
   const botoesDiv = document.getElementById("botoes");
 
-  // cria 5 linhas
+  // linhas
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.style=`
@@ -129,6 +148,7 @@
   btnCavalos.onclick = ()=>{ modoCavalos=!modoCavalos; render(); };
   btnColuna.onclick  = ()=>{ modoRotulo = modoRotulo==="C" ? "T" : "C"; render(); };
   btnDuzia.onclick   = ()=>{ modoRotulo = modoRotulo==="D" ? "T" : "D"; render(); };
+  btnEspelhos.onclick= ()=>{ modoEspelhos=!modoEspelhos; render(); };
 
   // botões 0–36
   for(let n=0;n<=36;n++){
@@ -168,21 +188,19 @@
         `;
         w.appendChild(d);
 
+        // T / C / D
         let rotulo = null;
 
-        // MODO T → só se pertence ao PAR
         if(modoRotulo==="T" && (ca.has(n) || cb.has(n))){
           let t = ca.has(n) ? p.a : p.b;
           rotulo = { txt:"T"+t, cor:coresT[t] };
         }
 
-        // MODO COLUNA → linha inteira
         if(modoRotulo==="C" && n!==0){
           let c = n%3===1 ? 1 : n%3===2 ? 2 : 3;
           rotulo = { txt:"C"+c, cor:coresColuna[c] };
         }
 
-        // MODO DÚZIA → linha inteira
         if(modoRotulo==="D" && n!==0){
           let d = n<=12 ? 1 : n<=24 ? 2 : 3;
           rotulo = { txt:"D"+d, cor:coresDuzia[d] };
@@ -193,6 +211,14 @@
           lb.textContent=rotulo.txt;
           lb.style=`font-size:11px;font-weight:bold;color:${rotulo.cor}`;
           w.appendChild(lb);
+        }
+
+        // ESPELHOS
+        if(modoEspelhos && espelhosSet.has(n)){
+          let e=document.createElement("div");
+          e.textContent="E";
+          e.style="font-size:11px;font-weight:bold;color:#fff";
+          w.appendChild(e);
         }
 
         h.appendChild(w);
