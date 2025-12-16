@@ -13,9 +13,9 @@
   const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
   const setores = {
-    TIER: new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
+    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
-    ZERO:new Set([0,3,12,15,26,32,35]),
+    ZERO:    new Set([0,3,12,15,26,32,35]),
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
@@ -32,11 +32,10 @@
 
   // ================= ESTADO =================
   let hist = [];
-  let mostrar5 = false;          // começa com 1 linha
+  let mostrar5 = false;
   let modoCavalos = false;
   let modoSetores = false;
-  let modoRotulo = "T";          // T | C | D
-  let modoEspelho = false;       // ESPELHO
+  let modoRotulo = "T"; // T | C | D
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -100,10 +99,6 @@
     return usados;
   }
 
-  function setAtivo(btn, ativo){
-    btn.style.border = ativo ? "2px solid #fff" : "1px solid #555";
-  }
-
   // ================= UI =================
   document.body.innerHTML = `
     <div style="padding:10px;color:#fff;max-width:100vw;overflow-x:hidden">
@@ -117,7 +112,6 @@
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
         <button id="bTerm">Terminais</button>
-        <button id="bEsp">Espelho</button>
         <button id="bCav">Cavalos</button>
         <button id="bCol">Coluna</button>
         <button id="bDuz">Dúzia</button>
@@ -128,6 +122,14 @@
     </div>
   `;
 
+  // 🔧 CORREÇÃO OBRIGATÓRIA (SEM ALTERAR LÓGICA)
+  const bTerm = document.getElementById("bTerm");
+  const bCav  = document.getElementById("bCav");
+  const bCol  = document.getElementById("bCol");
+  const bDuz  = document.getElementById("bDuz");
+  const bSet  = document.getElementById("bSet");
+  const nums  = document.getElementById("nums");
+
   const linhas=document.getElementById("linhas");
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -136,22 +138,11 @@
     linhas.appendChild(d);
   }
 
-  bTerm.onclick=()=>{mostrar5=!mostrar5;setAtivo(bTerm,mostrar5);render();};
-  bEsp.onclick=()=>{modoEspelho=!modoEspelho;setAtivo(bEsp,modoEspelho);render();};
-  bCav.onclick=()=>{modoCavalos=!modoCavalos;setAtivo(bCav,modoCavalos);render();};
-  bSet.onclick=()=>{modoSetores=!modoSetores;setAtivo(bSet,modoSetores);render();};
-
-  bCol.onclick=()=>{
-    modoRotulo = modoRotulo==="C"?"T":"C";
-    setAtivo(bCol,modoRotulo==="C");
-    render();
-  };
-
-  bDuz.onclick=()=>{
-    modoRotulo = modoRotulo==="D"?"T":"D";
-    setAtivo(bDuz,modoRotulo==="D");
-    render();
-  };
+  bTerm.onclick=()=>{mostrar5=!mostrar5;render();};
+  bCav.onclick=()=>{modoCavalos=!modoCavalos;render();};
+  bCol.onclick=()=>{modoRotulo=modoRotulo==="C"?"T":"C";render();};
+  bDuz.onclick=()=>{modoRotulo=modoRotulo==="D"?"T":"D";render();};
+  bSet.onclick=()=>{modoSetores=!modoSetores;render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
@@ -162,9 +153,7 @@
   }
 
   function render(){
-    let ult = hist.slice(-14).reverse();
-    if(modoEspelho) ult = [...ult].reverse();
-
+    let ult=hist.slice(-14).reverse();
     let pares=melhoresPares();
 
     for(let i=0;i<5;i++){
@@ -172,15 +161,48 @@
       h.style.display=(mostrar5||i===0)?"flex":"none";
       h.innerHTML="";
       let p=pares[i];
-
-      ult.forEach(n=>{
+      ult.forEach((n,idx)=>{
         let w=document.createElement("div");
         let d=document.createElement("div");
         d.textContent=n;
         d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
                  background:${corNumero(n)};color:#fff;border-radius:4px;
-                 text-align:center`;
+                 text-align:center;cursor:${i===0?"pointer":"default"}`;
+        if(i===0){
+          d.onclick=()=>{
+            let pos=hist.length-ult.length+idx;
+            hist.splice(pos,1);
+            render();
+          };
+        }
         w.appendChild(d);
+
+        if(p){
+          if(modoRotulo==="T"){
+            let ca=coverTerminal(p.a), cb=coverTerminal(p.b);
+            if(ca.has(n)||cb.has(n)){
+              let t=ca.has(n)?p.a:p.b;
+              let l=document.createElement("div");
+              l.textContent="T"+t;
+              l.style=`font-size:9px;color:${coresT[t]}`;
+              w.appendChild(l);
+            }
+          }
+          if(modoRotulo==="C"&&coluna(n)){
+            let c=coluna(n);
+            let l=document.createElement("div");
+            l.textContent="C"+c;
+            l.style=`font-size:9px;color:${coresColuna[c]}`;
+            w.appendChild(l);
+          }
+          if(modoRotulo==="D"&&duzia(n)){
+            let dzz=duzia(n);
+            let l=document.createElement("div");
+            l.textContent="D"+dzz;
+            l.style=`font-size:9px;color:${coresDuzia[dzz]}`;
+            w.appendChild(l);
+          }
+        }
         h.appendChild(w);
       });
     }
