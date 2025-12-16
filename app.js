@@ -55,7 +55,7 @@
   }
 
   function corBase(n){
-    if(n===0) return "#0f0";
+    if(n === 0) return "#0f0";
     return reds.has(n) ? "#e74c3c" : "#222";
   }
 
@@ -89,7 +89,6 @@
   }
 
   function melhoresPares(){
-    if(hist.length < 5) return [];
     let ult = hist.slice(-14);
     let covers = Array.from({length:10},(_,t)=>coverTerminal(t));
     let pares=[];
@@ -103,7 +102,7 @@
   }
 
   function analisarCentros(){
-    if(hist.length < 8) return [];
+    if(hist.length < 6) return [];
     let ult = hist.slice(-14).reverse();
     let candidatos = [...new Set(ult.slice(0,6))];
 
@@ -165,6 +164,8 @@
   function marcarAtivo(btn, ativo){
     btn.style.border = ativo ? "2px solid #ffd700" : "1px solid #444";
     btn.style.boxShadow = ativo ? "0 0 6px #ffd700" : "none";
+    btn.style.fontSize = "16px";
+    btn.style.padding = "8px 12px";
   }
 
   btnTerm.onclick=()=>{mostrar5Linhas=!mostrar5Linhas;marcarAtivo(btnTerm,mostrar5Linhas);render();};
@@ -189,51 +190,44 @@
       let h=document.getElementById("hist"+i);
       h.style.display = (mostrar5Linhas || i===0) ? "flex" : "none";
       h.innerHTML="";
-      let p = pares[i];
-      if(!p) continue;
 
-      let ca = coverTerminal(p.a);
-      let cb = coverTerminal(p.b);
-
-      ult.forEach(n=>{
+      ult.forEach((n,idx)=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center;min-width:28px";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:24px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:28px;height:28px;
-                 line-height:28px;
+        d.style=`width:24px;height:24px;
+                 line-height:24px;
                  border-radius:5px;
                  background:${corNumero(n)};
                  color:#fff;
-                 font-size:14px;
-                 text-align:center`;
+                 font-size:12px;
+                 text-align:center;
+                 cursor:${i===0?"pointer":"default"}`;
+
+        if(i===0){
+          d.onclick=()=>{
+            let pos = hist.length - ult.length + idx;
+            hist.splice(pos,1);
+            render();
+          };
+        }
+
         w.appendChild(d);
 
-        if(modoRotulo==="T" && (ca.has(n)||cb.has(n))){
-          let t = ca.has(n)?p.a:p.b;
-          let lb=document.createElement("div");
-          lb.textContent="T"+t;
-          lb.style=`font-size:10px;color:${coresT[t]}`;
-          w.appendChild(lb);
-        }
+        let p = pares[i];
+        if(p){
+          let ca = coverTerminal(p.a);
+          let cb = coverTerminal(p.b);
 
-        if(modoRotulo==="C" && n!==0){
-          let c = (n%3===1)?1:(n%3===2)?2:3;
-          let colColor = ["","#42a5f5","#66bb6a","#ffa726"][c];
-          let lb=document.createElement("div");
-          lb.textContent="C"+c;
-          lb.style=`font-size:10px;color:${colColor}`;
-          w.appendChild(lb);
-        }
-
-        if(modoRotulo==="D" && n!==0){
-          let dzz = Math.ceil(n/12);
-          let dzColor = ["","#ab47bc","#26c6da","#ffee58"][dzz];
-          let lb=document.createElement("div");
-          lb.textContent="D"+dzz;
-          lb.style=`font-size:10px;color:${dzColor}`;
-          w.appendChild(lb);
+          if(modoRotulo==="T" && (ca.has(n)||cb.has(n))){
+            let t = ca.has(n)?p.a:p.b;
+            let lb=document.createElement("div");
+            lb.textContent="T"+t;
+            lb.style=`font-size:10px;color:${coresT[t]}`;
+            w.appendChild(lb);
+          }
         }
 
         h.appendChild(w);
