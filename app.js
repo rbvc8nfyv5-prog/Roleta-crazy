@@ -12,19 +12,19 @@
 
   const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
-  const coresCavalo = {
-    A:"#9c27b0", B:"#1e88e5", C:"#43a047"
-  };
-
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
     4:"#d500f9",5:"#ffee58",6:"#2979ff",
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
+  const coresCavalo = {
+    A:"#9c27b0", B:"#1e88e5", C:"#43a047"
+  };
+
   // 🎯 CORES COLUNA / DÚZIA
-  const coresColuna = { 1:"#2196f3", 2:"#4caf50", 3:"#9c27b0" };
-  const coresDuzia  = { 1:"#4caf50", 2:"#2196f3", 3:"#e53935" };
+  const coresColuna = {1:"#2196f3",2:"#4caf50",3:"#9c27b0"};
+  const coresDuzia  = {1:"#4caf50",2:"#2196f3",3:"#e53935"};
 
   // ================= ESTADO =================
   let hist = [];
@@ -33,7 +33,6 @@
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
-
   const coluna = n => n === 0 ? null : ((n - 1) % 3) + 1;
   const duzia  = n => n === 0 ? null : Math.ceil(n / 12);
 
@@ -78,36 +77,20 @@
 
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:12px;max-width:100vw;overflow-x:hidden;color:#fff">
+    <div style="padding:10px;max-width:100vw;overflow-x:hidden;color:#fff">
 
-      <!-- 🎄 TEMA DE NATAL -->
-      <div style="
-        border:2px solid #2e7d32;
-        background:linear-gradient(135deg,#0b1f0f,#122b18);
-        border-radius:12px;
-        padding:14px;
-        margin-bottom:10px;
-        text-align:center;
-        box-shadow:0 0 12px rgba(255,215,0,.3)
-      ">
-        <div style="font-size:22px;font-weight:bold;color:#ffd700">
-          🎄 App Caballerro ✨
-        </div>
-        <div style="font-size:14px;color:#c8e6c9">
-          Estratégia • Pares • Leitura Avançada
-        </div>
-      </div>
+      <h3 style="text-align:center;margin:6px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0">
+      <div style="display:flex;gap:10px;justify-content:center;margin:8px 0">
         <button id="btnCav">🐎 Cavalos</button>
         <button id="btnCol">Coluna</button>
         <button id="btnDuz">Dúzia</button>
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);gap:10px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:8px">
       </div>
     </div>
   `;
@@ -118,7 +101,7 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #444;background:#111;border-radius:8px;padding:8px;margin-bottom:8px;display:flex;gap:6px;justify-content:center";
+    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:6px;margin-bottom:6px;display:flex;gap:6px;justify-content:center";
     linhasDiv.appendChild(d);
   }
 
@@ -129,7 +112,7 @@
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:20px;padding:12px;border-radius:8px";
+    b.style="font-size:18px;padding:10px;border-radius:6px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
@@ -143,20 +126,30 @@
       h.innerHTML="";
       let p = pares[i];
 
-      ult.forEach(n=>{
+      ult.forEach((n,idx)=>{
         let w=document.createElement("div");
         w.style="display:flex;flex-direction:column;align-items:center";
 
         let d=document.createElement("div");
         d.textContent=n;
         d.style=`
-          width:26px;height:26px;line-height:26px;
-          border-radius:6px;
+          width:24px;height:24px;line-height:24px;
+          border-radius:5px;
           background:${corNumero(n)};
           color:#fff;
-          font-size:13px;
+          font-size:12px;
           text-align:center;
+          cursor:${i===0?"pointer":"default"}
         `;
+
+        if(i===0){
+          d.onclick=()=>{
+            let pos = hist.length - ult.length + idx;
+            hist.splice(pos,1);
+            render();
+          };
+        }
+
         w.appendChild(d);
 
         if(p){
