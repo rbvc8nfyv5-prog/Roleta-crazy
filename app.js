@@ -10,17 +10,7 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  const cavalos = {
-    A:[2,5,8],
-    B:[0,3,6,9],
-    C:[1,4,7]
-  };
-
-  const coresCavalo = {
-    A:"#8e24aa",
-    B:"#1e88e5",
-    C:"#43a047"
-  };
+  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
@@ -28,6 +18,7 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
+  // ================= SETORES =================
   const setores = {
     TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
@@ -59,7 +50,7 @@
   }
 
   function corBase(n){
-    if(n === 0) return "#0f0";
+    if(n===0) return "#0f0";
     return reds.has(n) ? "#e74c3c" : "#222";
   }
 
@@ -71,9 +62,6 @@
   }
 
   function corNumero(n){
-    if(modoCavalos){
-      return coresCavalo[cavaloDoTerminal(terminal(n))];
-    }
     if(modoSetores){
       let s = setorDoNumero(n);
       if(s) return coresSetor[s];
@@ -106,12 +94,39 @@
     return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
   }
 
+  function analisarCentros(){
+    if(hist.length < 8) return [];
+    let ult = hist.slice(-14);
+    let candidatos = [...new Set(ult.slice(0,6))];
+
+    function dist(a,b){
+      let ia=track.indexOf(a), ib=track.indexOf(b);
+      let d=Math.abs(ia-ib);
+      return Math.min(d,37-d);
+    }
+
+    let centros=[];
+    for(let n of candidatos){
+      if(centros.every(x=>dist(x,n)>=6)){
+        centros.push(n);
+        if(centros.length===3) break;
+      }
+    }
+    return centros;
+  }
+
   // ================= UI =================
   document.body.innerHTML = `
     <div style="padding:8px;max-width:100vw;overflow-x:hidden;color:#fff">
+
       <h3 style="text-align:center;margin:4px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
+
+      <div style="border:1px solid #555;background:#111;border-radius:6px;
+                  padding:4px;margin:6px 0;text-align:center;font-size:12px">
+        🎯 Centros: <span id="centrosTxt"></span>
+      </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
         <button id="btnTerm">Terminais</button>
@@ -146,13 +161,13 @@
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:12px;padding:4px";
+    b.style="font-size:11px;padding:3px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
 
   function render(){
-    let ult = hist.slice(-14);
+    let ult = hist.slice(-14).reverse(); // ✅ último à esquerda
     let pares = melhoresPares();
 
     for(let i=0;i<5;i++){
@@ -165,18 +180,18 @@
       let ca = coverTerminal(p.a);
       let cb = coverTerminal(p.b);
 
-      ult.forEach((n,idx)=>{
+      ult.forEach(n=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center;min-width:24px";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:22px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:24px;height:24px;
-                 line-height:24px;
+        d.style=`width:22px;height:22px;
+                 line-height:22px;
                  border-radius:4px;
                  background:${corNumero(n)};
                  color:#fff;
-                 font-size:12px;
+                 font-size:11px;
                  text-align:center`;
         w.appendChild(d);
 
@@ -207,6 +222,9 @@
         h.appendChild(w);
       });
     }
+
+    document.getElementById("centrosTxt").textContent =
+      analisarCentros().join(" · ");
   }
 
   render();
