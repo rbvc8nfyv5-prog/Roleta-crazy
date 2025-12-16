@@ -17,9 +17,9 @@
   };
 
   const coresCavalo = {
-    A:"#9c27b0",   // 258
-    B:"#1e88e5",   // 0369
-    C:"#43a047"    // 147
+    A:"#9c27b0",
+    B:"#1e88e5",
+    C:"#43a047"
   };
 
   const coresT = {
@@ -28,7 +28,6 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  // ================= SETORES =================
   const setores = {
     TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
@@ -130,18 +129,18 @@
 
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:6px;max-width:100vw;overflow-x:hidden;color:#fff">
+    <div style="padding:8px;max-width:100vw;overflow-x:hidden;color:#fff">
 
-      <h3 style="text-align:center;margin:2px 0">App Caballerro</h3>
+      <h3 style="text-align:center;margin:4px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
 
       <div style="border:1px solid #555;background:#111;border-radius:6px;
-                  padding:3px;margin:4px 0;text-align:center;font-size:11px">
-        🎯 Centros: <span id="centrosTxt"></span>
+                  padding:6px;margin:6px 0;text-align:center;font-size:14px">
+        🎯 Centros: <span id="centrosTxt" style="font-size:15px;font-weight:bold"></span>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:4px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
         <button id="btnTerm">Terminais</button>
         <button id="btnCav">🐎 Cavalos</button>
         <button id="btnCol">Coluna</button>
@@ -150,7 +149,7 @@
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);gap:3px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px">
       </div>
     </div>
   `;
@@ -161,7 +160,7 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:3px;margin-bottom:3px;display:flex;gap:3px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
+    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:4px;margin-bottom:4px;display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
     linhasDiv.appendChild(d);
   }
 
@@ -174,7 +173,7 @@
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:10px;padding:3px";
+    b.style="font-size:14px;padding:6px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
@@ -195,16 +194,16 @@
 
       ult.forEach(n=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center;min-width:20px";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:26px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:20px;height:20px;
-                 line-height:20px;
+        d.style=`width:26px;height:26px;
+                 line-height:26px;
                  border-radius:4px;
                  background:${corNumero(n)};
                  color:#fff;
-                 font-size:10px;
+                 font-size:12.5px;
                  text-align:center`;
         w.appendChild(d);
 
@@ -212,7 +211,7 @@
           let t = ca.has(n)?p.a:p.b;
           let lb=document.createElement("div");
           lb.textContent="T"+t;
-          lb.style=`font-size:8px;color:${coresT[t]}`;
+          lb.style=`font-size:9px;color:${coresT[t]}`;
           w.appendChild(lb);
         }
 
@@ -221,7 +220,7 @@
           let colColor = ["","#42a5f5","#66bb6a","#ffa726"][c];
           let lb=document.createElement("div");
           lb.textContent="C"+c;
-          lb.style=`font-size:8px;color:${colColor}`;
+          lb.style=`font-size:9px;color:${colColor}`;
           w.appendChild(lb);
         }
 
@@ -230,7 +229,7 @@
           let dzColor = ["","#ab47bc","#26c6da","#ffee58"][dzz];
           let lb=document.createElement("div");
           lb.textContent="D"+dzz;
-          lb.style=`font-size:8px;color:${dzColor}`;
+          lb.style=`font-size:9px;color:${dzColor}`;
           w.appendChild(lb);
         }
 
