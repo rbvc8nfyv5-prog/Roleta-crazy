@@ -1,6 +1,6 @@
 (function () {
 
-  // ================= CONFIG BASE =================
+  // ================= CONFIGURAÇÃO BASE =================
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
   const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
@@ -19,42 +19,28 @@
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
+  const espelhosBase = [11,12,13,21,22,23,31,32,33];
+
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
     4:"#d500f9",5:"#ffee58",6:"#2979ff",
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
-  const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
-  const coresColuna = {1:"#42a5f5",2:"#66bb6a",3:"#ffa726"};
-  const coresDuzia  = {1:"#66bb6a",2:"#42a5f5",3:"#ef5350"};
-
   // ================= ESTADO =================
   let hist = [];
-  let mostrar5 = false;
+  let mostrar5 = true;
   let modoCavalos = false;
   let modoSetores = false;
   let modoRotulo = "T"; // T | C | D
+  let modoEspelho = false;
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
   const coluna = n => n===0?null:((n-1)%3)+1;
   const duzia = n => n===0?null:Math.ceil(n/12);
 
-  function cavaloDoTerminal(t){
-    if(cavalos.A.includes(t)) return "A";
-    if(cavalos.B.includes(t)) return "B";
-    return "C";
-  }
-
-  function corNumero(n){
-    if(modoCavalos){
-      return coresCavalo[cavaloDoTerminal(terminal(n))];
-    }
-    if(modoSetores){
-      for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
-    }
+  function corBase(n){
     if(n===0) return "#0f0";
     return reds.has(n) ? "#e74c3c" : "#222";
   }
@@ -70,71 +56,68 @@
     return s;
   }
 
-  function melhoresPares(){
-    let ult=hist.slice(-14);
-    let pares=[];
-    for(let a=0;a<10;a++){
-      for(let b=a+1;b<10;b++){
-        let ca=coverTerminal(a), cb=coverTerminal(b);
-        let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
-        pares.push({a,b,hits});
-      }
-    }
-    return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
+  function isEspelho(n){
+    let s=new Set();
+    espelhosBase.forEach(b=>{
+      let i=track.indexOf(b);
+      s.add(b);
+      s.add(track[(i+36)%37]);
+      s.add(track[(i+1)%37]);
+    });
+    return s.has(n);
   }
 
-  function analisarCentros(){
-    if(hist.length<6) return [];
-    let ult=hist.slice(-14).reverse();
-    let usados=[];
-    for(let n of ult){
-      if(usados.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=6;
-      })){
-        usados.push(n);
-        if(usados.length===3) break;
-      }
+  function melhoresPares(){
+    let ult=hist.slice(-14);
+    let covers=Array.from({length:10},(_,t)=>coverTerminal(t));
+    let arr=[];
+    for(let a=0;a<10;a++)for(let b=a+1;b<10;b++){
+      let h=ult.filter(n=>covers[a].has(n)||covers[b].has(n)).length;
+      arr.push({a,b,h});
     }
-    return usados;
+    return arr.sort((x,y)=>y.h-x.h).slice(0,5);
+  }
+
+  function marcar(btn,ativo){
+    btn.style.border=ativo?"2px solid #ffd700":"1px solid #444";
   }
 
   // ================= UI =================
-  document.body.innerHTML = `
+  document.body.innerHTML=`
     <div style="padding:10px;color:#fff;max-width:100vw;overflow-x:hidden">
       <h3 style="text-align:center">App Caballerro</h3>
 
       <div id="linhas"></div>
 
-      <div style="border:1px solid #666;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVOS: <span id="centros"></span>
-      </div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
-        <button id="bTerm">Terminais</button>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
+        <button id="bT">Terminais</button>
         <button id="bCav">Cavalos</button>
         <button id="bCol">Coluna</button>
         <button id="bDuz">Dúzia</button>
         <button id="bSet">Setores</button>
+        <button id="bEsp">Espelho</button>
       </div>
 
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:8px"></div>
+      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px"></div>
     </div>
   `;
 
   const linhas=document.getElementById("linhas");
+  const nums=document.getElementById("nums");
+
   for(let i=0;i<5;i++){
-    let d=document.createElement("div");
-    d.id="h"+i;
-    d.style="display:flex;gap:4px;justify-content:center;margin-bottom:4px";
-    linhas.appendChild(d);
+    let q=document.createElement("div");
+    q.id="hist"+i;
+    q.style="border:1px solid #555;border-radius:8px;padding:6px;margin-bottom:6px;display:flex;gap:4px;justify-content:center;overflow:hidden";
+    linhas.appendChild(q);
   }
 
-  bTerm.onclick=()=>{mostrar5=!mostrar5;render();};
-  bCav.onclick=()=>{modoCavalos=!modoCavalos;render();};
-  bCol.onclick=()=>{modoRotulo=modoRotulo==="C"?"T":"C";render();};
-  bDuz.onclick=()=>{modoRotulo=modoRotulo==="D"?"T":"D";render();};
-  bSet.onclick=()=>{modoSetores=!modoSetores;render();};
+  bT.onclick=()=>{modoRotulo="T";marcar(bT,true);render();};
+  bCav.onclick=()=>{modoCavalos=!modoCavalos;marcar(bCav,modoCavalos);render();};
+  bCol.onclick=()=>{modoRotulo=modoRotulo==="C"?"T":"C";marcar(bCol,modoRotulo==="C");render();};
+  bDuz.onclick=()=>{modoRotulo=modoRotulo==="D"?"T":"D";marcar(bDuz,modoRotulo==="D");render();};
+  bSet.onclick=()=>{modoSetores=!modoSetores;marcar(bSet,modoSetores);render();};
+  bEsp.onclick=()=>{modoEspelho=!modoEspelho;marcar(bEsp,modoEspelho);render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
@@ -149,17 +132,23 @@
     let pares=melhoresPares();
 
     for(let i=0;i<5;i++){
-      let h=document.getElementById("h"+i);
-      h.style.display=(mostrar5||i===0)?"flex":"none";
+      let h=document.getElementById("hist"+i);
       h.innerHTML="";
       let p=pares[i];
+      if(!p) continue;
+      let ca=coverTerminal(p.a),cb=coverTerminal(p.b);
+
       ult.forEach((n,idx)=>{
         let w=document.createElement("div");
+        w.style="display:flex;flex-direction:column;align-items:center";
+
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
-                 background:${corNumero(n)};color:#fff;border-radius:4px;
-                 text-align:center;cursor:${i===0?"pointer":"default"}`;
+        d.style=`width:24px;height:24px;line-height:24px;
+                 border-radius:4px;background:${corBase(n)};
+                 color:#fff;font-size:12px;text-align:center;
+                 cursor:${i===0?"pointer":"default"}`;
+
         if(i===0){
           d.onclick=()=>{
             let pos=hist.length-ult.length+idx;
@@ -167,39 +156,41 @@
             render();
           };
         }
+
         w.appendChild(d);
 
-        if(p){
-          if(modoRotulo==="T"){
-            let ca=coverTerminal(p.a), cb=coverTerminal(p.b);
-            if(ca.has(n)||cb.has(n)){
-              let t=ca.has(n)?p.a:p.b;
-              let l=document.createElement("div");
-              l.textContent="T"+t;
-              l.style=`font-size:9px;color:${coresT[t]}`;
-              w.appendChild(l);
-            }
-          }
-          if(modoRotulo==="C"&&coluna(n)){
-            let c=coluna(n);
-            let l=document.createElement("div");
-            l.textContent="C"+c;
-            l.style=`font-size:9px;color:${coresColuna[c]}`;
-            w.appendChild(l);
-          }
-          if(modoRotulo==="D"&&duzia(n)){
-            let dzz=duzia(n);
-            let l=document.createElement("div");
-            l.textContent="D"+dzz;
-            l.style=`font-size:9px;color:${coresDuzia[dzz]}`;
-            w.appendChild(l);
-          }
+        if(modoRotulo==="T"&&(ca.has(n)||cb.has(n))){
+          let t=ca.has(n)?p.a:p.b;
+          let lb=document.createElement("div");
+          lb.textContent="T"+t;
+          lb.style=`font-size:10px;color:${coresT[t]}`;
+          w.appendChild(lb);
         }
+
+        if(modoRotulo==="C"&&coluna(n)){
+          let lb=document.createElement("div");
+          lb.textContent="C"+coluna(n);
+          lb.style="font-size:10px;color:#4fc3f7";
+          w.appendChild(lb);
+        }
+
+        if(modoRotulo==="D"&&duzia(n)){
+          let lb=document.createElement("div");
+          lb.textContent="D"+duzia(n);
+          lb.style="font-size:10px;color:#aed581";
+          w.appendChild(lb);
+        }
+
+        if(modoEspelho&&isEspelho(n)){
+          let lb=document.createElement("div");
+          lb.textContent="E";
+          lb.style="font-size:10px;color:#ffd700";
+          w.appendChild(lb);
+        }
+
         h.appendChild(w);
       });
     }
-
-    document.getElementById("centros").textContent=analisarCentros().join(" · ");
   }
 
   render();
