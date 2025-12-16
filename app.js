@@ -10,11 +10,7 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  const cavalos = {
-    A:[2,5,8],
-    B:[0,3,6,9],
-    C:[1,4,7]
-  };
+  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
   const coresCavalo = {
     A:"#9c27b0",
@@ -129,18 +125,20 @@
 
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:8px;max-width:100vw;overflow-x:hidden;color:#fff">
+    <div style="padding:10px;max-width:100vw;overflow-x:hidden;color:#fff">
 
-      <h3 style="text-align:center;margin:4px 0">App Caballerro</h3>
+      <h3 style="text-align:center;margin:6px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
 
-      <div style="border:1px solid #555;background:#111;border-radius:6px;
-                  padding:6px;margin:6px 0;text-align:center;font-size:14px">
-        🎯 Centros: <span id="centrosTxt" style="font-size:15px;font-weight:bold"></span>
+      <div style="border:2px solid #ffd700;background:#111;border-radius:8px;
+                  padding:10px;margin:8px 0;text-align:center">
+        <div style="font-size:18px;font-weight:bold;color:#ffd700">🎯 ALVOS</div>
+        <div id="centrosTxt"
+             style="font-size:22px;font-weight:bold;letter-spacing:2px;margin-top:4px"></div>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0">
         <button id="btnTerm">Terminais</button>
         <button id="btnCav">🐎 Cavalos</button>
         <button id="btnCol">Coluna</button>
@@ -149,7 +147,7 @@
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:8px">
       </div>
     </div>
   `;
@@ -160,20 +158,25 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:4px;margin-bottom:4px;display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
+    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:6px;margin-bottom:6px;display:flex;gap:6px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
     linhasDiv.appendChild(d);
   }
 
-  btnTerm.onclick=()=>{mostrar5Linhas=!mostrar5Linhas;render();};
-  btnCav.onclick =()=>{modoCavalos=!modoCavalos;render();};
-  btnCol.onclick =()=>{modoRotulo=(modoRotulo==="C"?"T":"C");render();};
-  btnDuz.onclick =()=>{modoRotulo=(modoRotulo==="D"?"T":"D");render();};
-  btnSet.onclick =()=>{modoSetores=!modoSetores;render();};
+  function marcarAtivo(btn, ativo){
+    btn.style.border = ativo ? "2px solid #ffd700" : "1px solid #444";
+    btn.style.boxShadow = ativo ? "0 0 6px #ffd700" : "none";
+  }
+
+  btnTerm.onclick=()=>{mostrar5Linhas=!mostrar5Linhas;marcarAtivo(btnTerm,mostrar5Linhas);render();};
+  btnCav.onclick =()=>{modoCavalos=!modoCavalos;marcarAtivo(btnCav,modoCavalos);render();};
+  btnCol.onclick =()=>{modoRotulo=(modoRotulo==="C"?"T":"C");marcarAtivo(btnCol,modoRotulo==="C");render();};
+  btnDuz.onclick =()=>{modoRotulo=(modoRotulo==="D"?"T":"D");marcarAtivo(btnDuz,modoRotulo==="D");render();};
+  btnSet.onclick =()=>{modoSetores=!modoSetores;marcarAtivo(btnSet,modoSetores);render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:14px;padding:6px";
+    b.style="font-size:18px;padding:10px;border-radius:6px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
@@ -194,16 +197,16 @@
 
       ult.forEach(n=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center;min-width:26px";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:28px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:26px;height:26px;
-                 line-height:26px;
-                 border-radius:4px;
+        d.style=`width:28px;height:28px;
+                 line-height:28px;
+                 border-radius:5px;
                  background:${corNumero(n)};
                  color:#fff;
-                 font-size:12.5px;
+                 font-size:14px;
                  text-align:center`;
         w.appendChild(d);
 
@@ -211,7 +214,7 @@
           let t = ca.has(n)?p.a:p.b;
           let lb=document.createElement("div");
           lb.textContent="T"+t;
-          lb.style=`font-size:9px;color:${coresT[t]}`;
+          lb.style=`font-size:10px;color:${coresT[t]}`;
           w.appendChild(lb);
         }
 
@@ -220,7 +223,7 @@
           let colColor = ["","#42a5f5","#66bb6a","#ffa726"][c];
           let lb=document.createElement("div");
           lb.textContent="C"+c;
-          lb.style=`font-size:9px;color:${colColor}`;
+          lb.style=`font-size:10px;color:${colColor}`;
           w.appendChild(lb);
         }
 
@@ -229,7 +232,7 @@
           let dzColor = ["","#ab47bc","#26c6da","#ffee58"][dzz];
           let lb=document.createElement("div");
           lb.textContent="D"+dzz;
-          lb.style=`font-size:9px;color:${dzColor}`;
+          lb.style=`font-size:10px;color:${dzColor}`;
           w.appendChild(lb);
         }
 
@@ -238,7 +241,7 @@
     }
 
     document.getElementById("centrosTxt").textContent =
-      analisarCentros().join(" · ");
+      analisarCentros().join("   ");
   }
 
   render();
