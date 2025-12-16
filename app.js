@@ -10,7 +10,17 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+  const cavalos = {
+    A:[2,5,8],
+    B:[0,3,6,9],
+    C:[1,4,7]
+  };
+
+  const coresCavalo = {
+    A:"#8e24aa",
+    B:"#1e88e5",
+    C:"#43a047"
+  };
 
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
@@ -18,7 +28,6 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  // ================= SETORES =================
   const setores = {
     TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
@@ -38,11 +47,10 @@
   let mostrar5Linhas = false;
   let modoCavalos = false;
   let modoRotulo = "T"; // T | C | D
-  let modoEspelhos = false;
   let modoSetores = false;
 
   // ================= FUNÇÕES =================
-  function terminal(n){ return n % 10; }
+  const terminal = n => n % 10;
 
   function cavaloDoTerminal(t){
     if(cavalos.A.includes(t)) return "A";
@@ -51,16 +59,21 @@
   }
 
   function corBase(n){
-    if(n===0) return "#0f0";
-    return reds.has(n) ? "#e74c3c" : "#111";
+    if(n === 0) return "#0f0";
+    return reds.has(n) ? "#e74c3c" : "#222";
   }
 
   function setorDoNumero(n){
-    for(let s in setores) if(setores[s].has(n)) return s;
+    for(let s in setores){
+      if(setores[s].has(n)) return s;
+    }
     return null;
   }
 
   function corNumero(n){
+    if(modoCavalos){
+      return coresCavalo[cavaloDoTerminal(terminal(n))];
+    }
     if(modoSetores){
       let s = setorDoNumero(n);
       if(s) return coresSetor[s];
@@ -83,8 +96,7 @@
     if(hist.length < 5) return [];
     let ult = hist.slice(-14);
     let covers = Array.from({length:10},(_,t)=>coverTerminal(t));
-    let pares = [];
-
+    let pares=[];
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
         let hits = ult.filter(n=>covers[a].has(n)||covers[b].has(n)).length;
@@ -94,55 +106,24 @@
     return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
   }
 
-  function analisarCentros(){
-    if(hist.length < 8) return [];
-    let ult = hist.slice(-14);
-    let candidatos = [...new Set(ult.slice(-6))];
-
-    function dist(a,b){
-      let ia=track.indexOf(a), ib=track.indexOf(b);
-      let d=Math.abs(ia-ib);
-      return Math.min(d,37-d);
-    }
-
-    let centros=[];
-    for(let n of candidatos){
-      if(centros.every(x=>dist(x,n)>=6)){
-        centros.push(n);
-        if(centros.length===3) break;
-      }
-    }
-    return centros;
-  }
-
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:12px;max-width:1100px;margin:auto;color:#fff">
-
-      <h3 style="text-align:center">App Caballerro</h3>
+    <div style="padding:8px;max-width:100vw;overflow-x:hidden;color:#fff">
+      <h3 style="text-align:center;margin:4px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
 
-      <div id="centrosBox"
-        style="border:1px solid #666;background:#111;border-radius:6px;
-               padding:6px;margin:8px 0;text-align:center">
-        🎯 Centros: <span id="centrosTxt"></span>
-      </div>
-
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
         <button id="btnTerm">Terminais</button>
-        <button id="btnCav">Cavalos</button>
+        <button id="btnCav">🐎 Cavalos</button>
         <button id="btnCol">Coluna</button>
         <button id="btnDuz">Dúzia</button>
-        <button id="btnEsp">Espelhos</button>
         <button id="btnSet">Setores</button>
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);
-               gap:4px;margin-top:10px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">
       </div>
-
     </div>
   `;
 
@@ -152,7 +133,7 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #555;background:#222;border-radius:6px;padding:6px;margin-bottom:6px;display:flex;gap:6px;justify-content:center";
+    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:4px;margin-bottom:4px;display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
     linhasDiv.appendChild(d);
   }
 
@@ -160,12 +141,12 @@
   btnCav.onclick =()=>{modoCavalos=!modoCavalos;render();};
   btnCol.onclick =()=>{modoRotulo=(modoRotulo==="C"?"T":"C");render();};
   btnDuz.onclick =()=>{modoRotulo=(modoRotulo==="D"?"T":"D");render();};
-  btnEsp.onclick =()=>{modoEspelhos=!modoEspelhos;render();};
   btnSet.onclick =()=>{modoSetores=!modoSetores;render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
+    b.style="font-size:12px;padding:4px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
@@ -186,36 +167,46 @@
 
       ult.forEach((n,idx)=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:24px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`padding:4px 6px;border-radius:6px;
+        d.style=`width:24px;height:24px;
+                 line-height:24px;
+                 border-radius:4px;
                  background:${corNumero(n)};
-                 color:#fff;font-size:14px;
-                 cursor:${i===0?"pointer":"default"}`;
-        if(i===0){
-          d.onclick=()=>{
-            let real=hist.length-ult.length+idx;
-            hist.splice(real,1);render();
-          };
-        }
+                 color:#fff;
+                 font-size:12px;
+                 text-align:center`;
         w.appendChild(d);
 
-        if(modoRotulo==="T"&&(ca.has(n)||cb.has(n))){
+        if(modoRotulo==="T" && (ca.has(n)||cb.has(n))){
           let t = ca.has(n)?p.a:p.b;
           let lb=document.createElement("div");
           lb.textContent="T"+t;
-          lb.style=`font-size:10px;color:${coresT[t]}`;
+          lb.style=`font-size:9px;color:${coresT[t]}`;
+          w.appendChild(lb);
+        }
+
+        if(modoRotulo==="C" && n!==0){
+          let c = (n%3===1)?1:(n%3===2)?2:3;
+          let lb=document.createElement("div");
+          lb.textContent="C"+c;
+          lb.style="font-size:9px;color:#90caf9";
+          w.appendChild(lb);
+        }
+
+        if(modoRotulo==="D" && n!==0){
+          let dzz = Math.ceil(n/12);
+          let lb=document.createElement("div");
+          lb.textContent="D"+dzz;
+          lb.style="font-size:9px;color:#a5d6a7";
           w.appendChild(lb);
         }
 
         h.appendChild(w);
       });
     }
-
-    document.getElementById("centrosTxt").textContent =
-      analisarCentros().join(" · ");
   }
 
   render();
