@@ -10,7 +10,17 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+  const cavalos = {
+    A:[2,5,8],
+    B:[0,3,6,9],
+    C:[1,4,7]
+  };
+
+  const coresCavalo = {
+    A:"#9c27b0",   // 258
+    B:"#1e88e5",   // 0369
+    C:"#43a047"    // 147
+  };
 
   const coresT = {
     0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
@@ -62,6 +72,9 @@
   }
 
   function corNumero(n){
+    if(modoCavalos){
+      return coresCavalo[cavaloDoTerminal(terminal(n))];
+    }
     if(modoSetores){
       let s = setorDoNumero(n);
       if(s) return coresSetor[s];
@@ -96,7 +109,7 @@
 
   function analisarCentros(){
     if(hist.length < 8) return [];
-    let ult = hist.slice(-14);
+    let ult = hist.slice(-14).reverse();
     let candidatos = [...new Set(ult.slice(0,6))];
 
     function dist(a,b){
@@ -117,18 +130,18 @@
 
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:8px;max-width:100vw;overflow-x:hidden;color:#fff">
+    <div style="padding:6px;max-width:100vw;overflow-x:hidden;color:#fff">
 
-      <h3 style="text-align:center;margin:4px 0">App Caballerro</h3>
+      <h3 style="text-align:center;margin:2px 0">App Caballerro</h3>
 
       <div id="linhas"></div>
 
       <div style="border:1px solid #555;background:#111;border-radius:6px;
-                  padding:4px;margin:6px 0;text-align:center;font-size:12px">
+                  padding:3px;margin:4px 0;text-align:center;font-size:11px">
         🎯 Centros: <span id="centrosTxt"></span>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0">
+      <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin:4px 0">
         <button id="btnTerm">Terminais</button>
         <button id="btnCav">🐎 Cavalos</button>
         <button id="btnCol">Coluna</button>
@@ -137,7 +150,7 @@
       </div>
 
       <div id="botoes"
-        style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px">
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:3px">
       </div>
     </div>
   `;
@@ -148,7 +161,7 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="hist"+i;
-    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:4px;margin-bottom:4px;display:flex;gap:4px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
+    d.style="border:1px solid #444;background:#111;border-radius:6px;padding:3px;margin-bottom:3px;display:flex;gap:3px;justify-content:center;flex-wrap:nowrap;overflow:hidden";
     linhasDiv.appendChild(d);
   }
 
@@ -161,13 +174,13 @@
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:11px;padding:3px";
+    b.style="font-size:10px;padding:3px";
     b.onclick=()=>{hist.push(n);render();};
     botoesDiv.appendChild(b);
   }
 
   function render(){
-    let ult = hist.slice(-14).reverse(); // ✅ último à esquerda
+    let ult = hist.slice(-14).reverse();
     let pares = melhoresPares();
 
     for(let i=0;i<5;i++){
@@ -182,16 +195,16 @@
 
       ult.forEach(n=>{
         let w=document.createElement("div");
-        w.style="display:flex;flex-direction:column;align-items:center;min-width:22px";
+        w.style="display:flex;flex-direction:column;align-items:center;min-width:20px";
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:22px;height:22px;
-                 line-height:22px;
+        d.style=`width:20px;height:20px;
+                 line-height:20px;
                  border-radius:4px;
                  background:${corNumero(n)};
                  color:#fff;
-                 font-size:11px;
+                 font-size:10px;
                  text-align:center`;
         w.appendChild(d);
 
@@ -199,23 +212,25 @@
           let t = ca.has(n)?p.a:p.b;
           let lb=document.createElement("div");
           lb.textContent="T"+t;
-          lb.style=`font-size:9px;color:${coresT[t]}`;
+          lb.style=`font-size:8px;color:${coresT[t]}`;
           w.appendChild(lb);
         }
 
         if(modoRotulo==="C" && n!==0){
           let c = (n%3===1)?1:(n%3===2)?2:3;
+          let colColor = ["","#42a5f5","#66bb6a","#ffa726"][c];
           let lb=document.createElement("div");
           lb.textContent="C"+c;
-          lb.style="font-size:9px;color:#90caf9";
+          lb.style=`font-size:8px;color:${colColor}`;
           w.appendChild(lb);
         }
 
         if(modoRotulo==="D" && n!==0){
           let dzz = Math.ceil(n/12);
+          let dzColor = ["","#ab47bc","#26c6da","#ffee58"][dzz];
           let lb=document.createElement("div");
           lb.textContent="D"+dzz;
-          lb.style="font-size:9px;color:#a5d6a7";
+          lb.style=`font-size:8px;color:${dzColor}`;
           w.appendChild(lb);
         }
 
