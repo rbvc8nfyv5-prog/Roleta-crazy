@@ -1,254 +1,164 @@
-(function () {
+(function(){
 
-  // ================= CONFIG BASE =================
-  const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
-  const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+/* ================= BASE ================= */
+const track=[32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
+const terminais={
+0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
+4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],
+7:[7,17,27],8:[8,18,28],9:[9,19,29]
+};
+const coresT={0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"};
 
-  const terminais = {
-    0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
-    4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],
-    7:[7,17,27],8:[8,18,28],9:[9,19,29]
-  };
+let hist=[];
+let ultimoDominante=null;
+let migracoes={};
 
-  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+/* ================= FUNÇÕES BASE ================= */
+function coverTerminal(t){
+ let s=new Set();
+ terminais[t].forEach(n=>{
+  let i=track.indexOf(n);
+  s.add(n);
+  s.add(track[(i+36)%37]);
+  s.add(track[(i+1)%37]);
+ });
+ return s;
+}
 
-  const setores = {
-    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
-    ORPHANS:new Set([1,20,14,31,9,17,34,6]),
-    ZERO:    new Set([0,3,12,15,26,32,35]),
-    VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
-  };
-
-  const coresT = {
-    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
-    4:"#d500f9",5:"#ffee58",6:"#2979ff",
-    7:"#ff4081",8:"#76ff03",9:"#8d6e63"
-  };
-
-  const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
-  const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
-
-  // ================= ESTADO =================
-  let hist = [];
-  let mostrar5 = false;
-  let modoCavalos = false;
-  let modoSetores = false;
-
-  // ================= FUNÇÕES =================
-  const terminal = n => n % 10;
-
-  function cavaloDoTerminal(t){
-    if(cavalos.A.includes(t)) return "A";
-    if(cavalos.B.includes(t)) return "B";
-    return "C";
+function melhoresPares(){
+ let ult=hist.slice(-14);
+ let pares=[];
+ for(let a=0;a<10;a++){
+  for(let b=a+1;b<10;b++){
+   let ca=coverTerminal(a),cb=coverTerminal(b);
+   let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
+   pares.push({a,b,hits});
   }
+ }
+ return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
+}
 
-  function corNumero(n){
-    if(modoCavalos) return coresCavalo[cavaloDoTerminal(terminal(n))];
-    if(modoSetores){
-      for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
-    }
-    if(n === 0) return "#2ecc71";
-    return reds.has(n) ? "#e74c3c" : "#7f8c8d";
-  }
+/* ================= PASSO 2 ================= */
+function analisarLinhas(){
+ let ult10=hist.slice(-10);
+ let ult5=hist.slice(-5);
+ let pares=melhoresPares();
 
-  function coverTerminal(t){
-    let s=new Set();
-    terminais[t].forEach(n=>{
-      let i=track.indexOf(n);
-      s.add(n);
-      s.add(track[(i+36)%37]);
-      s.add(track[(i+1)%37]);
-    });
-    return s;
-  }
+ return pares.map((p,i)=>{
+  let ca=coverTerminal(p.a),cb=coverTerminal(p.b);
+  let h10=ult10.filter(n=>ca.has(n)||cb.has(n)).length;
+  let h5=ult5.filter(n=>ca.has(n)||cb.has(n)).length;
+  return {linha:i+1,par:`T${p.a}-${p.b}`,h10,h5};
+ });
+}
 
-  function melhoresPares(){
-    let ult=hist.slice(-14);
-    let pares=[];
-    for(let a=0;a<10;a++){
-      for(let b=a+1;b<10;b++){
-        let ca=coverTerminal(a), cb=coverTerminal(b);
-        let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
-        pares.push({a,b,hits});
-      }
-    }
-    return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
-  }
+function detectarMigracao(leitura){
+ let dominante=leitura.reduce((a,b)=>b.h10>a.h10?b:a,leitura[0]);
 
-  function analisarCentros(){
-    if(hist.length<6) return [];
-    let ult=hist.slice(-14).reverse();
-    let usados=[];
-    for(let n of ult){
-      if(usados.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=6;
-      })){
-        usados.push(n);
-        if(usados.length===3) break;
-      }
-    }
-    return usados;
-  }
+ if(ultimoDominante && ultimoDominante!==dominante.linha){
+  let key=`L${ultimoDominante}->L${dominante.linha}`;
+  migracoes[key]=(migracoes[key]||0)+1;
+ }
 
-  function alvoSeco(){
-    let centros = analisarCentros();
-    if(centros.length < 3) return [];
+ ultimoDominante=dominante.linha;
+ return dominante;
+}
 
-    let range = new Set();
-    centros.forEach(c=>{
-      let i = track.indexOf(c);
-      for(let d=-4; d<=4; d++){
-        range.add(track[(i+37+d)%37]);
-      }
-    });
+/* ================= UI ================= */
+let app=document.getElementById("caballerroApp");
+if(app)app.remove();
+app=document.createElement("div");
+app.id="caballerroApp";
+app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
+document.body.appendChild(app);
 
-    let secos=[];
-    for(let n of range){
-      if(secos.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=4;
-      })){
-        secos.push(n);
-        if(secos.length===6) break;
-      }
-    }
-    return secos;
-  }
+app.innerHTML=`
+<div style="padding:10px;max-width:900px;margin:auto">
+<h3 style="text-align:center">App Caballerro</h3>
 
-  // ================= UI =================
-  let app = document.getElementById("caballerroApp");
-  if(app) app.remove();
+<div id="linhas"></div>
 
-  app = document.createElement("div");
-  app.id = "caballerroApp";
-  app.style = `
-    position:fixed;
-    inset:0;
-    background:#111;
-    color:#fff;
-    z-index:999999;
-    font-family:Arial;
-    overflow:auto;
-  `;
-  document.body.appendChild(app);
+<div style="border:1px solid #666;padding:6px;margin:6px 0">
+📊 <b>LEITURA DAS LINHAS</b>
+<div id="leitura"></div>
+</div>
 
-  app.innerHTML = `
-    <div style="padding:10px;max-width:900px;margin:auto">
-      <h3 style="text-align:center">App Caballerro</h3>
+<div style="border:1px dashed #999;padding:6px;margin:6px 0">
+📌 <b>SITUAÇÃO DA MESA</b>
+<div id="situacao"></div>
+</div>
 
-      <div id="linhas"></div>
+<div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
 
-      <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVO: <span id="centros"></span>
-      </div>
+<div style="text-align:center;margin-top:10px">
+<button id="bClear" style="padding:8px 16px;border:none;border-radius:6px;background:#c62828;color:#fff">Clear</button>
+</div>
+</div>
+`;
 
-      <div style="border:1px dashed #777;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVO SECO: <span id="alvoSeco"></span>
-      </div>
+const linhas=app.querySelector("#linhas");
+const leituraBox=app.querySelector("#leitura");
+const situacaoBox=app.querySelector("#situacao");
+const nums=app.querySelector("#nums");
 
-      <div style="display:flex;gap:6px;justify-content:center">
-        <button id="bTerm">Top 5</button>
-        <button id="bCav">Cavalos</button>
-        <button id="bSet">Setores</button>
-      </div>
+for(let i=0;i<5;i++){
+ let d=document.createElement("div");
+ d.id="h"+i;
+ d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
+ linhas.appendChild(d);
+}
 
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
+app.querySelector("#bClear").onclick=()=>{hist=[];ultimoDominante=null;migracoes={};render();};
 
-      <!-- 🔴 BOTÃO CLEAR -->
-      <div style="text-align:center;margin-top:10px">
-        <button id="bClear"
-          style="
-            padding:8px 16px;
-            font-size:14px;
-            border:none;
-            border-radius:6px;
-            background:#c62828;
-            color:#fff;
-            cursor:pointer;
-          ">
-          Clear
-        </button>
-      </div>
-    </div>
-  `;
+for(let n=0;n<=36;n++){
+ let b=document.createElement("button");
+ b.textContent=n;
+ b.style="font-size:16px;padding:8px;border:none;border-radius:4px";
+ b.onclick=()=>{hist.push(n);render();};
+ nums.appendChild(b);
+}
 
-  const linhas = app.querySelector("#linhas");
-  const nums   = app.querySelector("#nums");
-  const bClear = app.querySelector("#bClear");
+/* ================= RENDER ================= */
+function render(){
+ let ult=hist.slice(-14).reverse();
+ let pares=melhoresPares();
 
-  for(let i=0;i<5;i++){
-    let d=document.createElement("div");
-    d.id="h"+i;
-    d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
-    linhas.appendChild(d);
-  }
+ for(let i=0;i<5;i++){
+  let h=document.getElementById("h"+i);
+  h.innerHTML="";
+  let p=pares[i]; if(!p)continue;
+  let ca=coverTerminal(p.a),cb=coverTerminal(p.b);
 
-  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
-  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
-  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+  ult.forEach(n=>{
+   let box=document.createElement("div");
+   box.style="display:flex;flex-direction:column;align-items:center";
+   let d=document.createElement("div");
+   d.textContent=n;
+   d.style="width:26px;height:26px;line-height:26px;background:#444;border-radius:4px;text-align:center";
+   box.appendChild(d);
+   let t=document.createElement("div");
+   if(ca.has(n)){t.textContent="T"+p.a;t.style.color=coresT[p.a];}
+   else if(cb.has(n)){t.textContent="T"+p.b;t.style.color=coresT[p.b];}
+   if(t.textContent)box.appendChild(t);
+   h.appendChild(box);
+  });
+ }
 
-  // 🧹 CLEAR
-  bClear.onclick = () => {
-    hist = [];
-    render();
-  };
+ let leitura=analisarLinhas();
+ leituraBox.innerHTML="";
+ leitura.forEach(l=>{
+  let cor=l.h10>=6?"#4caf50":l.h10>=4?"#ffb300":"#e53935";
+  leituraBox.innerHTML+=`L${l.linha} (${l.par}): <span style="color:${cor}">${l.h10}/10</span><br>`;
+ });
 
-  for(let n=0;n<=36;n++){
-    let b=document.createElement("button");
-    b.textContent=n;
-    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;cursor:pointer";
-    b.onclick=()=>{hist.push(n);render();};
-    nums.appendChild(b);
-  }
+ let dom=detectarMigracao(leitura);
+ let migTexto=Object.entries(migracoes).map(([k,v])=>`${k} (${v}x)`).join(" | ");
+ situacaoBox.innerHTML=`
+Linha dominante: <b>L${dom.linha} (${dom.par})</b><br>
+Migrações detectadas: ${migTexto||"nenhuma"}
+`;
+}
 
-  function render(){
-    let ult=hist.slice(-14).reverse();
-    let pares=melhoresPares();
-
-    for(let i=0;i<5;i++){
-      let h=document.getElementById("h"+i);
-      h.style.display=(mostrar5||i===0)?"flex":"none";
-      h.innerHTML="";
-
-      let par = pares[i];
-      if(!par) continue;
-
-      let coverA = coverTerminal(par.a);
-      let coverB = coverTerminal(par.b);
-
-      ult.forEach(n=>{
-        let box=document.createElement("div");
-        box.style="display:flex;flex-direction:column;align-items:center";
-
-        let d=document.createElement("div");
-        d.textContent=n;
-        d.style=`width:26px;height:26px;line-height:26px;
-                 font-size:12px;background:${corNumero(n)};
-                 color:#fff;border-radius:4px;text-align:center`;
-        box.appendChild(d);
-
-        let t=document.createElement("div");
-        t.style="font-size:10px;line-height:10px";
-
-        if(coverA.has(n)){
-          t.textContent="T"+par.a;
-          t.style.color=coresT[par.a];
-        } else if(coverB.has(n)){
-          t.textContent="T"+par.b;
-          t.style.color=coresT[par.b];
-        }
-
-        if(t.textContent) box.appendChild(t);
-        h.appendChild(box);
-      });
-    }
-
-    app.querySelector("#centros").textContent=analisarCentros().join(" · ");
-    app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
-  }
-
-  render();
+render();
 
 })();
