@@ -137,6 +137,7 @@
   app.innerHTML = `
     <div style="padding:10px;max-width:900px;margin:auto">
       <h3 style="text-align:center">App Caballerro</h3>
+
       <div id="linhas"></div>
 
       <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
@@ -154,11 +155,28 @@
       </div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
+
+      <!-- 🔴 BOTÃO CLEAR -->
+      <div style="text-align:center;margin-top:10px">
+        <button id="bClear"
+          style="
+            padding:8px 16px;
+            font-size:14px;
+            border:none;
+            border-radius:6px;
+            background:#c62828;
+            color:#fff;
+            cursor:pointer;
+          ">
+          Clear
+        </button>
+      </div>
     </div>
   `;
 
   const linhas = app.querySelector("#linhas");
   const nums   = app.querySelector("#nums");
+  const bClear = app.querySelector("#bClear");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -170,6 +188,12 @@
   app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
   app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
   app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+
+  // 🧹 CLEAR
+  bClear.onclick = () => {
+    hist = [];
+    render();
+  };
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
