@@ -19,6 +19,12 @@
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
+  const coresT = {
+    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
+    4:"#d500f9",5:"#ffee58",6:"#2979ff",
+    7:"#ff4081",8:"#76ff03",9:"#8d6e63"
+  };
+
   const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
   const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
 
@@ -43,15 +49,26 @@
       for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
     }
     if(n === 0) return "#2ecc71";
-    return reds.has(n) ? "#e74c3c" : "#7f8c8d"; // cinza visível
+    return reds.has(n) ? "#e74c3c" : "#7f8c8d";
+  }
+
+  function coverTerminal(t){
+    let s=new Set();
+    terminais[t].forEach(n=>{
+      let i=track.indexOf(n);
+      s.add(n);
+      s.add(track[(i+36)%37]);
+      s.add(track[(i+1)%37]);
+    });
+    return s;
   }
 
   function melhoresPares(){
-    let ult = hist.slice(-14);
-    let pares = [];
+    let ult=hist.slice(-14);
+    let pares=[];
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
-        let ca=new Set(terminais[a]), cb=new Set(terminais[b]);
+        let ca=coverTerminal(a), cb=coverTerminal(b);
         let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
         pares.push({a,b,hits});
       }
@@ -100,7 +117,7 @@
     return secos;
   }
 
-  // ================= UI (ISOLADA) =================
+  // ================= UI =================
   let app = document.getElementById("caballerroApp");
   if(app) app.remove();
 
@@ -119,8 +136,7 @@
 
   app.innerHTML = `
     <div style="padding:10px;max-width:900px;margin:auto">
-      <h3 style="text-align:center;margin:6px 0">App Caballerro</h3>
-
+      <h3 style="text-align:center">App Caballerro</h3>
       <div id="linhas"></div>
 
       <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
@@ -131,7 +147,7 @@
         🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      <div style="display:flex;gap:6px;justify-content:center">
         <button id="bTerm">Top 5</button>
         <button id="bCav">Cavalos</button>
         <button id="bSet">Setores</button>
@@ -147,7 +163,7 @@
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="h"+i;
-    d.style="display:flex;gap:4px;justify-content:center;margin-bottom:4px";
+    d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
     linhas.appendChild(d);
   }
 
@@ -171,18 +187,42 @@
       let h=document.getElementById("h"+i);
       h.style.display=(mostrar5||i===0)?"flex":"none";
       h.innerHTML="";
+
+      let par = pares[i];
+      if(!par) continue;
+
+      let coverA = coverTerminal(par.a);
+      let coverB = coverTerminal(par.b);
+
       ult.forEach(n=>{
+        let box=document.createElement("div");
+        box.style="display:flex;flex-direction:column;align-items:center";
+
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
-                 background:${corNumero(n)};color:#fff;border-radius:4px;
-                 text-align:center`;
-        h.appendChild(d);
+        d.style=`width:26px;height:26px;line-height:26px;
+                 font-size:12px;background:${corNumero(n)};
+                 color:#fff;border-radius:4px;text-align:center`;
+        box.appendChild(d);
+
+        let t=document.createElement("div");
+        t.style="font-size:10px;line-height:10px";
+
+        if(coverA.has(n)){
+          t.textContent="T"+par.a;
+          t.style.color=coresT[par.a];
+        } else if(coverB.has(n)){
+          t.textContent="T"+par.b;
+          t.style.color=coresT[par.b];
+        }
+
+        if(t.textContent) box.appendChild(t);
+        h.appendChild(box);
       });
     }
 
-    app.querySelector("#centros").textContent = analisarCentros().join(" · ");
-    app.querySelector("#alvoSeco").textContent = alvoSeco().join(" · ");
+    app.querySelector("#centros").textContent=analisarCentros().join(" · ");
+    app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
   }
 
   render();
