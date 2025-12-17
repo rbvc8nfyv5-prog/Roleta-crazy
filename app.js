@@ -97,25 +97,17 @@
     return usados;
   }
 
-  // 🎯 ALVO SECO (6 números secos dentro do alvo)
   function alvoSeco(){
     let centros = analisarCentros();
     if(centros.length < 3) return [];
-
-    let range = new Set();
+    let range=new Set();
     centros.forEach(c=>{
-      let i = track.indexOf(c);
-      for(let d=-4; d<=4; d++){
-        range.add(track[(i+37+d)%37]);
-      }
+      let i=track.indexOf(c);
+      for(let d=-4;d<=4;d++) range.add(track[(i+37+d)%37]);
     });
-
-    let ordenado = [...range].sort(
-      (a,b)=>track.indexOf(a)-track.indexOf(b)
-    );
-
+    let ord=[...range].sort((a,b)=>track.indexOf(a)-track.indexOf(b));
     let secos=[];
-    for(let n of ordenado){
+    for(let n of ord){
       if(secos.every(x=>{
         let d=Math.abs(track.indexOf(x)-track.indexOf(n));
         return Math.min(d,37-d)>=4;
@@ -129,9 +121,8 @@
 
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:10px;color:#fff;max-width:100vw">
+    <div style="padding:10px;color:#fff">
       <h3 style="text-align:center">App Caballerro</h3>
-
       <div id="linhas"></div>
 
       <div style="border:1px solid #666;padding:6px;text-align:center;margin:6px 0">
@@ -142,7 +133,7 @@
         🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      <div style="display:flex;gap:6px;justify-content:center">
         <button id="bTerm">Terminais</button>
         <button id="bCav">Cavalos</button>
         <button id="bCol">Coluna</button>
@@ -154,12 +145,12 @@
     </div>
   `;
 
-  const bTerm = document.getElementById("bTerm");
-  const bCav  = document.getElementById("bCav");
-  const bCol  = document.getElementById("bCol");
-  const bDuz  = document.getElementById("bDuz");
-  const bSet  = document.getElementById("bSet");
-  const nums  = document.getElementById("nums");
+  const bTerm=bTerm=document.getElementById("bTerm");
+  const bCav=document.getElementById("bCav");
+  const bCol=document.getElementById("bCol");
+  const bDuz=document.getElementById("bDuz");
+  const bSet=document.getElementById("bSet");
+  const nums=document.getElementById("nums");
   const linhas=document.getElementById("linhas");
 
   for(let i=0;i<5;i++){
@@ -197,9 +188,43 @@
         let d=document.createElement("div");
         d.textContent=n;
         d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
-                 background:${corNumero(n)};color:#fff;border-radius:4px;
-                 text-align:center`;
+        background:${corNumero(n)};color:#fff;border-radius:4px;text-align:center;
+        cursor:${i===0?"pointer":"default"}`;
+        if(i===0){
+          d.onclick=()=>{
+            let pos=hist.length-ult.length+idx;
+            hist.splice(pos,1);
+            render();
+          };
+        }
         w.appendChild(d);
+
+        if(p){
+          if(modoRotulo==="T"){
+            let ca=coverTerminal(p.a), cb=coverTerminal(p.b);
+            if(ca.has(n)||cb.has(n)){
+              let t=ca.has(n)?p.a:p.b;
+              let l=document.createElement("div");
+              l.textContent="T"+t;
+              l.style=`font-size:9px;color:${coresT[t]}`;
+              w.appendChild(l);
+            }
+          }
+          if(modoRotulo==="C"&&coluna(n)){
+            let c=coluna(n);
+            let l=document.createElement("div");
+            l.textContent="C"+c;
+            l.style=`font-size:9px;color:${coresColuna[c]}`;
+            w.appendChild(l);
+          }
+          if(modoRotulo==="D"&&duzia(n)){
+            let dz=duzia(n);
+            let l=document.createElement("div");
+            l.textContent="D"+dz;
+            l.style=`font-size:9px;color:${coresDuzia[dz]}`;
+            w.appendChild(l);
+          }
+        }
         h.appendChild(w);
       });
     }
