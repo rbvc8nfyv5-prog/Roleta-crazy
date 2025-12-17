@@ -10,6 +10,8 @@
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
+  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+
   const setores = {
     TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
@@ -23,11 +25,33 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
+  const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
+  const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
+
   // ================= ESTADO =================
   let hist = [];
   let mostrar5 = false;
+  let modoCavalos = false;
+  let modoSetores = false;
 
   // ================= FUNÇÕES =================
+  const terminal = n => n % 10;
+
+  function cavaloDoTerminal(t){
+    if(cavalos.A.includes(t)) return "A";
+    if(cavalos.B.includes(t)) return "B";
+    return "C";
+  }
+
+  function corNumero(n){
+    if(modoCavalos) return coresCavalo[cavaloDoTerminal(terminal(n))];
+    if(modoSetores){
+      for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
+    }
+    if(n === 0) return "#2ecc71";
+    return reds.has(n) ? "#e74c3c" : "#7f8c8d";
+  }
+
   function coverTerminal(t){
     let s=new Set();
     terminais[t].forEach(n=>{
@@ -93,43 +117,27 @@
     return secos;
   }
 
-  function alvoSeco15(){
-    let centros = analisarCentros();
-    if(centros.length < 3) return [];
-
-    let range = new Set();
-    centros.forEach(c=>{
-      let i = track.indexOf(c);
-      for(let d=-6; d<=6; d++){
-        range.add(track[(i+37+d)%37]);
-      }
-    });
-
-    let secos=[];
-    for(let n of range){
-      if(secos.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=3;
-      })){
-        secos.push(n);
-        if(secos.length===15) break;
-      }
-    }
-    return secos;
-  }
-
   // ================= UI =================
-  let app=document.getElementById("caballerroApp");
+  let app = document.getElementById("caballerroApp");
   if(app) app.remove();
 
-  app=document.createElement("div");
-  app.id="caballerroApp";
-  app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
+  app = document.createElement("div");
+  app.id = "caballerroApp";
+  app.style = `
+    position:fixed;
+    inset:0;
+    background:#111;
+    color:#fff;
+    z-index:999999;
+    font-family:Arial;
+    overflow:auto;
+  `;
   document.body.appendChild(app);
 
-  app.innerHTML=`
+  app.innerHTML = `
     <div style="padding:10px;max-width:900px;margin:auto">
       <h3 style="text-align:center">App Caballerro</h3>
+
       <div id="linhas"></div>
 
       <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
@@ -140,23 +148,35 @@
         🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
-      <div style="border:1px dashed #999;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVO SECO 15: <span id="alvoSeco15"></span>
+      <div style="display:flex;gap:6px;justify-content:center">
+        <button id="bTerm">Top 5</button>
+        <button id="bCav">Cavalos</button>
+        <button id="bSet">Setores</button>
       </div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
 
+      <!-- 🔴 BOTÃO CLEAR -->
       <div style="text-align:center;margin-top:10px">
         <button id="bClear"
-          style="padding:8px 16px;font-size:14px;border:none;border-radius:6px;background:#c62828;color:#fff;cursor:pointer">
+          style="
+            padding:8px 16px;
+            font-size:14px;
+            border:none;
+            border-radius:6px;
+            background:#c62828;
+            color:#fff;
+            cursor:pointer;
+          ">
           Clear
         </button>
       </div>
     </div>
   `;
 
-  const linhas=app.querySelector("#linhas");
-  const nums=app.querySelector("#nums");
+  const linhas = app.querySelector("#linhas");
+  const nums   = app.querySelector("#nums");
+  const bClear = app.querySelector("#bClear");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -165,7 +185,15 @@
     linhas.appendChild(d);
   }
 
-  app.querySelector("#bClear").onclick=()=>{hist=[];render();};
+  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
+  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
+  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+
+  // 🧹 CLEAR
+  bClear.onclick = () => {
+    hist = [];
+    render();
+  };
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
@@ -181,12 +209,14 @@
 
     for(let i=0;i<5;i++){
       let h=document.getElementById("h"+i);
+      h.style.display=(mostrar5||i===0)?"flex":"none";
       h.innerHTML="";
-      let par=pares[i];
+
+      let par = pares[i];
       if(!par) continue;
 
-      let ca=coverTerminal(par.a);
-      let cb=coverTerminal(par.b);
+      let coverA = coverTerminal(par.a);
+      let coverB = coverTerminal(par.b);
 
       ult.forEach(n=>{
         let box=document.createElement("div");
@@ -194,22 +224,29 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style="width:26px;height:26px;line-height:26px;font-size:12px;background:#444;color:#fff;border-radius:4px;text-align:center";
+        d.style=`width:26px;height:26px;line-height:26px;
+                 font-size:12px;background:${corNumero(n)};
+                 color:#fff;border-radius:4px;text-align:center`;
         box.appendChild(d);
 
         let t=document.createElement("div");
         t.style="font-size:10px;line-height:10px";
-        if(ca.has(n)){t.textContent="T"+par.a;t.style.color=coresT[par.a];}
-        else if(cb.has(n)){t.textContent="T"+par.b;t.style.color=coresT[par.b];}
-        if(t.textContent) box.appendChild(t);
 
+        if(coverA.has(n)){
+          t.textContent="T"+par.a;
+          t.style.color=coresT[par.a];
+        } else if(coverB.has(n)){
+          t.textContent="T"+par.b;
+          t.style.color=coresT[par.b];
+        }
+
+        if(t.textContent) box.appendChild(t);
         h.appendChild(box);
       });
     }
 
     app.querySelector("#centros").textContent=analisarCentros().join(" · ");
     app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
-    app.querySelector("#alvoSeco15").textContent=alvoSeco15().join(" · ");
   }
 
   render();
