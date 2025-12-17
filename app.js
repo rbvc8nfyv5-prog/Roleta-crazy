@@ -199,17 +199,17 @@
         }
         w.appendChild(d);
 
-        if(p){
-          if(modoRotulo==="T"){
-            let ca=coverTerminal(p.a), cb=coverTerminal(p.b);
-            if(ca.has(n)||cb.has(n)){
-              let t=ca.has(n)?p.a:p.b;
-              let l=document.createElement("div");
-              l.textContent="T"+t;
-              l.style=`font-size:9px;color:${coresT[t]}`;
-              w.appendChild(l);
-            }
-          }
+        if (p) {
+  // 🔹 TERMINAL SEMPRE VISÍVEL
+  let ca = coverTerminal(p.a), cb = coverTerminal(p.b);
+  if (ca.has(n) || cb.has(n)) {
+    let t = ca.has(n) ? p.a : p.b;
+    let l = document.createElement("div");
+    l.textContent = "T" + t;
+    l.style = `font-size:9px;color:${coresT[t]}`;
+    w.appendChild(l);
+  }
+}
           if(modoRotulo==="C"&&coluna(n)){
             let c=coluna(n);
             let l=document.createElement("div");
