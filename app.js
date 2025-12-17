@@ -35,7 +35,7 @@
   let mostrar5 = false;
   let modoCavalos = false;
   let modoSetores = false;
-  let modoRotulo = "T"; // T | C | D
+  let modoRotulo = "T";
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -49,9 +49,7 @@
   }
 
   function corNumero(n){
-    if(modoCavalos){
-      return coresCavalo[cavaloDoTerminal(terminal(n))];
-    }
+    if(modoCavalos) return coresCavalo[cavaloDoTerminal(terminal(n))];
     if(modoSetores){
       for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
     }
@@ -99,15 +97,49 @@
     return usados;
   }
 
+  // 🎯 ALVO SECO (6 números secos dentro do alvo)
+  function alvoSeco(){
+    let centros = analisarCentros();
+    if(centros.length < 3) return [];
+
+    let range = new Set();
+    centros.forEach(c=>{
+      let i = track.indexOf(c);
+      for(let d=-4; d<=4; d++){
+        range.add(track[(i+37+d)%37]);
+      }
+    });
+
+    let ordenado = [...range].sort(
+      (a,b)=>track.indexOf(a)-track.indexOf(b)
+    );
+
+    let secos=[];
+    for(let n of ordenado){
+      if(secos.every(x=>{
+        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
+        return Math.min(d,37-d)>=4;
+      })){
+        secos.push(n);
+        if(secos.length===6) break;
+      }
+    }
+    return secos;
+  }
+
   // ================= UI =================
   document.body.innerHTML = `
-    <div style="padding:10px;color:#fff;max-width:100vw;overflow-x:hidden">
+    <div style="padding:10px;color:#fff;max-width:100vw">
       <h3 style="text-align:center">App Caballerro</h3>
 
       <div id="linhas"></div>
 
       <div style="border:1px solid #666;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVOS: <span id="centros"></span>
+        🎯 ALVO: <span id="centros"></span>
+      </div>
+
+      <div style="border:1px dashed #aaa;padding:6px;text-align:center;margin:6px 0">
+        🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
@@ -122,15 +154,14 @@
     </div>
   `;
 
-  // 🔧 CORREÇÃO OBRIGATÓRIA (SEM ALTERAR LÓGICA)
   const bTerm = document.getElementById("bTerm");
   const bCav  = document.getElementById("bCav");
   const bCol  = document.getElementById("bCol");
   const bDuz  = document.getElementById("bDuz");
   const bSet  = document.getElementById("bSet");
   const nums  = document.getElementById("nums");
-
   const linhas=document.getElementById("linhas");
+
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="h"+i;
@@ -167,47 +198,14 @@
         d.textContent=n;
         d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
                  background:${corNumero(n)};color:#fff;border-radius:4px;
-                 text-align:center;cursor:${i===0?"pointer":"default"}`;
-        if(i===0){
-          d.onclick=()=>{
-            let pos=hist.length-ult.length+idx;
-            hist.splice(pos,1);
-            render();
-          };
-        }
+                 text-align:center`;
         w.appendChild(d);
-
-        if(p){
-          if(modoRotulo==="T"){
-            let ca=coverTerminal(p.a), cb=coverTerminal(p.b);
-            if(ca.has(n)||cb.has(n)){
-              let t=ca.has(n)?p.a:p.b;
-              let l=document.createElement("div");
-              l.textContent="T"+t;
-              l.style=`font-size:9px;color:${coresT[t]}`;
-              w.appendChild(l);
-            }
-          }
-          if(modoRotulo==="C"&&coluna(n)){
-            let c=coluna(n);
-            let l=document.createElement("div");
-            l.textContent="C"+c;
-            l.style=`font-size:9px;color:${coresColuna[c]}`;
-            w.appendChild(l);
-          }
-          if(modoRotulo==="D"&&duzia(n)){
-            let dzz=duzia(n);
-            let l=document.createElement("div");
-            l.textContent="D"+dzz;
-            l.style=`font-size:9px;color:${coresDuzia[dzz]}`;
-            w.appendChild(l);
-          }
-        }
         h.appendChild(w);
       });
     }
 
-    document.getElementById("centros").textContent=analisarCentros().join(" · ");
+    document.getElementById("centros").textContent = analisarCentros().join(" · ");
+    document.getElementById("alvoSeco").textContent = alvoSeco().join(" · ");
   }
 
   render();
