@@ -36,12 +36,18 @@
   let modoSetores = false;
 
   let contAlvo = 0;
+  let contSeco = 0;
+
   let eventoAlvo = null;
+  let eventoSeco = null;
 
   let vxAlvo = [];
+  let vxSeco = [];
   const MAX_VX = 6;
 
+  // 🔴 estado visual de próxima rodada
   let alvoAtivo = false;
+  let secoAtivo = false;
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -168,8 +174,9 @@
         <div id="vxAlvo" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
-      <div id="boxSeco" style="border:2px dashed #00e5ff;padding:6px;text-align:center;margin:6px 0">
+      <div id="boxSeco" style="border:2px dashed transparent;padding:6px;text-align:center;margin:6px 0">
         🎯 ALVO SECO: <span id="alvoSeco"></span>
+        <div id="vxSeco" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
@@ -203,8 +210,11 @@
     b.onclick=()=>{
       hist.push(n);
 
+      // ao inserir novo número, limpa indicação visual
       alvoAtivo = false;
+      secoAtivo = false;
 
+      // -------- ALVO (6) --------
       contAlvo++;
       if(contAlvo===6){
         eventoAlvo = analisarCentros();
@@ -216,6 +226,20 @@
         vxAlvo.push(area.has(n)?"V":"X");
         if(vxAlvo.length>MAX_VX) vxAlvo.shift();
         eventoAlvo=null;
+      }
+
+      // -------- SECO (8) --------
+      contSeco++;
+      if(contSeco===8){
+        eventoSeco = alvoSeco();
+        secoAtivo = true;
+        contSeco=0;
+      } else if(eventoSeco){
+        let area=new Set();
+        eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
+        vxSeco.push(area.has(n)?"V":"X");
+        if(vxSeco.length>MAX_VX) vxSeco.shift();
+        eventoSeco=null;
       }
 
       render();
@@ -245,8 +269,8 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=`width:26px;height:26px;line-height:26px;font-size:12px;
-                 background:${corNumero(n)};color:#fff;border-radius:4px;text-align:center`;
+        d.style=\`width:26px;height:26px;line-height:26px;font-size:12px;
+                 background:\${corNumero(n)};color:#fff;border-radius:4px;text-align:center\`;
         box.appendChild(d);
 
         let t=document.createElement("div");
@@ -263,9 +287,11 @@
     document.getElementById("centros").textContent = analisarCentros().join(" · ");
     document.getElementById("alvoSeco").textContent = alvoSeco().join(" · ");
 
-    document.getElementById("vxAlvo").innerHTML = vxAlvo.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
+    document.getElementById("vxAlvo").innerHTML = vxAlvo.map(v=>\`<div style="width:18px;height:18px;border-radius:4px;background:\${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">\${v}</div>\`).join("");
+    document.getElementById("vxSeco").innerHTML = vxSeco.map(v=>\`<div style="width:18px;height:18px;border-radius:4px;background:\${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">\${v}</div>\`).join("");
 
     document.getElementById("boxAlvo").style.borderColor = alvoAtivo ? "#ffd600" : "transparent";
+    document.getElementById("boxSeco").style.borderColor = secoAtivo ? "#00e5ff" : "transparent";
   }
 
   render();
