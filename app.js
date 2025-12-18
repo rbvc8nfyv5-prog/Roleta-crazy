@@ -1,6 +1,6 @@
 (function(){
 
-/* ================= BASE ================= */
+/* ================= CONFIG BASE ================= */
 const track=[32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
 const terminais={
 0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
@@ -9,9 +9,9 @@ const terminais={
 };
 const coresT={0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"};
 
+/* ================= ESTADO ================= */
 let hist=[];
-let ultimoDominante=null;
-let migracoes={};
+let memoria=[]; // padrões históricos
 
 /* ================= FUNÇÕES BASE ================= */
 function coverTerminal(t){
@@ -25,8 +25,8 @@ function coverTerminal(t){
  return s;
 }
 
-function melhoresPares(){
- let ult=hist.slice(-14);
+function melhoresPares(h){
+ let ult=h.slice(-14);
  let pares=[];
  for(let a=0;a<10;a++){
   for(let b=a+1;b<10;b++){
@@ -38,37 +38,76 @@ function melhoresPares(){
  return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
 }
 
-/* ================= PASSO 2 ================= */
-function analisarLinhas(){
- let ult10=hist.slice(-10);
- let ult5=hist.slice(-5);
- let pares=melhoresPares();
-
- return pares.map((p,i)=>{
+/* ================= ANÁLISE DE JANELA ================= */
+function estadoJanela(janela){
+ let pares=melhoresPares(janela);
+ let scores=pares.map(p=>{
   let ca=coverTerminal(p.a),cb=coverTerminal(p.b);
-  let h10=ult10.filter(n=>ca.has(n)||cb.has(n)).length;
-  let h5=ult5.filter(n=>ca.has(n)||cb.has(n)).length;
-  return {linha:i+1,par:`T${p.a}-${p.b}`,h10,h5};
+  let hits=janela.filter(n=>ca.has(n)||cb.has(n)).length;
+  return {par:`T${p.a}-${p.b}`,hits};
  });
+ scores.sort((a,b)=>b.hits-a.hits);
+ return {
+  dominante:scores[0].par,
+  score:scores.map(s=>s.hits),
+ };
 }
 
-function detectarMigracao(leitura){
- let dominante=leitura.reduce((a,b)=>b.h10>a.h10?b:a,leitura[0]);
+/* ================= CONSTRUIR MEMÓRIA ================= */
+function construirMemoria(){
+ memoria=[];
+ for(let i=0;i<=hist.length-11;i++){
+  let janela=hist.slice(i,i+10);
+  let prox=hist[i+10];
+  let estado=estadoJanela(janela);
+  memoria.push({
+   assinatura:estado.score.join(","),
+   dominante:estado.dominante,
+   prox
+  });
+ }
+}
 
- if(ultimoDominante && ultimoDominante!==dominante.linha){
-  let key=`L${ultimoDominante}->L${dominante.linha}`;
-  migracoes[key]=(migracoes[key]||0)+1;
+/* ================= COMPARAR COM AGORA ================= */
+function analisarAgora(){
+ if(hist.length<10||memoria.length<5) return null;
+
+ let atual=estadoJanela(hist.slice(-10));
+ let iguais=memoria.filter(m=>m.assinatura===atual.score.join(","));
+
+ if(iguais.length<3) return null;
+
+ let cont=0, mig=0;
+ iguais.forEach(m=>{
+  if(m.dominante===atual.dominante) cont++;
+  else mig++;
+ });
+
+ if(cont/iguais.length>=0.7){
+  return {
+   tipo:"CONTINUIDADE",
+   msg:"🟢 PADRÃO CONFIRMADO — continuar no mesmo par",
+   alvo:"Alvo Seco 6"
+  };
  }
 
- ultimoDominante=dominante.linha;
- return dominante;
+ if(mig/iguais.length>=0.7){
+  return {
+   tipo:"MIGRACAO",
+   msg:"🔄 PADRÃO DE MIGRAÇÃO — mudar leitura",
+   alvo:"Alvo Seco 15"
+  };
+ }
+
+ return {
+  tipo:"EVITAR",
+  msg:"⛔ PADRÃO INCONSISTENTE — evitar entrada",
+  alvo:null
+ };
 }
 
 /* ================= UI ================= */
-let app=document.getElementById("caballerroApp");
-if(app)app.remove();
-app=document.createElement("div");
-app.id="caballerroApp";
+let app=document.createElement("div");
 app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
 document.body.appendChild(app);
 
@@ -76,89 +115,50 @@ app.innerHTML=`
 <div style="padding:10px;max-width:900px;margin:auto">
 <h3 style="text-align:center">App Caballerro</h3>
 
-<div id="linhas"></div>
+<textarea id="txtHist" placeholder="Cole o histórico aqui"
+ style="width:100%;height:80px"></textarea>
+<button id="bLoad">Analisar Histórico</button>
 
-<div style="border:1px solid #666;padding:6px;margin:6px 0">
-📊 <b>LEITURA DAS LINHAS</b>
-<div id="leitura"></div>
-</div>
+<div id="indicacao" style="margin:10px 0;font-weight:bold"></div>
 
-<div style="border:1px dashed #999;padding:6px;margin:6px 0">
-📌 <b>SITUAÇÃO DA MESA</b>
-<div id="situacao"></div>
-</div>
-
-<div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
-
-<div style="text-align:center;margin-top:10px">
-<button id="bClear" style="padding:8px 16px;border:none;border-radius:6px;background:#c62828;color:#fff">Clear</button>
-</div>
+<div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px"></div>
 </div>
 `;
 
-const linhas=app.querySelector("#linhas");
-const leituraBox=app.querySelector("#leitura");
-const situacaoBox=app.querySelector("#situacao");
-const nums=app.querySelector("#nums");
+const indicacao=app.querySelector("#indicacao");
 
-for(let i=0;i<5;i++){
- let d=document.createElement("div");
- d.id="h"+i;
- d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
- linhas.appendChild(d);
-}
-
-app.querySelector("#bClear").onclick=()=>{hist=[];ultimoDominante=null;migracoes={};render();};
+/* ================= EVENTOS ================= */
+app.querySelector("#bLoad").onclick=()=>{
+ let txt=app.querySelector("#txtHist").value;
+ let nums=txt.match(/\d+/g);
+ if(!nums) return;
+ hist=nums.map(Number);
+ construirMemoria();
+ render();
+};
 
 for(let n=0;n<=36;n++){
  let b=document.createElement("button");
  b.textContent=n;
- b.style="font-size:16px;padding:8px;border:none;border-radius:4px";
- b.onclick=()=>{hist.push(n);render();};
- nums.appendChild(b);
+ b.onclick=()=>{
+  hist.push(n);
+  construirMemoria();
+  render();
+ };
+ app.querySelector("#nums").appendChild(b);
 }
 
 /* ================= RENDER ================= */
 function render(){
- let ult=hist.slice(-14).reverse();
- let pares=melhoresPares();
-
- for(let i=0;i<5;i++){
-  let h=document.getElementById("h"+i);
-  h.innerHTML="";
-  let p=pares[i]; if(!p)continue;
-  let ca=coverTerminal(p.a),cb=coverTerminal(p.b);
-
-  ult.forEach(n=>{
-   let box=document.createElement("div");
-   box.style="display:flex;flex-direction:column;align-items:center";
-   let d=document.createElement("div");
-   d.textContent=n;
-   d.style="width:26px;height:26px;line-height:26px;background:#444;border-radius:4px;text-align:center";
-   box.appendChild(d);
-   let t=document.createElement("div");
-   if(ca.has(n)){t.textContent="T"+p.a;t.style.color=coresT[p.a];}
-   else if(cb.has(n)){t.textContent="T"+p.b;t.style.color=coresT[p.b];}
-   if(t.textContent)box.appendChild(t);
-   h.appendChild(box);
-  });
- }
-
- let leitura=analisarLinhas();
- leituraBox.innerHTML="";
- leitura.forEach(l=>{
-  let cor=l.h10>=6?"#4caf50":l.h10>=4?"#ffb300":"#e53935";
-  leituraBox.innerHTML+=`L${l.linha} (${l.par}): <span style="color:${cor}">${l.h10}/10</span><br>`;
- });
-
- let dom=detectarMigracao(leitura);
- let migTexto=Object.entries(migracoes).map(([k,v])=>`${k} (${v}x)`).join(" | ");
- situacaoBox.innerHTML=`
-Linha dominante: <b>L${dom.linha} (${dom.par})</b><br>
-Migrações detectadas: ${migTexto||"nenhuma"}
+ let res=analisarAgora();
+ if(!res){
+  indicacao.textContent="— Nenhum padrão relevante —";
+ }else{
+  indicacao.innerHTML=`
+${res.msg}<br>
+🎯 ${res.alvo||"Sem alvo recomendado"}
 `;
+ }
 }
-
-render();
 
 })();
