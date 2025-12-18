@@ -13,9 +13,9 @@
   const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
   const setores = {
-    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
+    TIER:new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
-    ZERO:    new Set([0,3,12,15,26,32,35]),
+    ZERO:new Set([0,3,12,15,26,32,35]),
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
@@ -27,14 +27,19 @@
 
   const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
   const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
-
-  const corT3 = "#bdbdbd"; // terceiro T (fecha lacuna)
+  const corT3 = "#bdbdbd";
 
   // ================= ESTADO =================
   let hist = [];
   let mostrar5 = false;
   let modoCavalos = false;
   let modoSetores = false;
+
+  let contAlvo = 0;
+  let contSeco = 0;
+
+  let sinalAlvo = "";
+  let sinalSeco = "";
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -119,7 +124,6 @@
     return secos;
   }
 
-  // 👉 terceiro T que cobre falhas do par
   function terceiroT(par){
     let ult=hist.slice(-14);
     let ca=coverTerminal(par.a);
@@ -161,6 +165,8 @@
         🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
+      <div id="sinais" style="text-align:center;font-weight:bold;margin:8px 0"></div>
+
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
         <button id="bTerm">Top 5</button>
         <button id="bCav">Cavalos</button>
@@ -173,6 +179,7 @@
 
   const linhas=app.querySelector("#linhas");
   const nums=app.querySelector("#nums");
+  const sinaisBox=app.querySelector("#sinais");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -189,7 +196,24 @@
     let b=document.createElement("button");
     b.textContent=n;
     b.style="font-size:16px;padding:8px;border-radius:4px;border:none;background:#333;color:#fff";
-    b.onclick=()=>{hist.push(n);render();};
+    b.onclick=()=>{
+      hist.push(n);
+
+      contAlvo++;
+      contSeco++;
+
+      if(contAlvo===6){
+        sinalAlvo = `📢 SINAL ALVO (6): ${analisarCentros().join(" · ")}`;
+        contAlvo=0;
+      }
+
+      if(contSeco===8){
+        sinalSeco = `📢 SINAL SECO (8): ${alvoSeco().join(" · ")}`;
+        contSeco=0;
+      }
+
+      render();
+    };
     nums.appendChild(b);
   }
 
@@ -232,6 +256,11 @@
 
     app.querySelector("#centros").textContent=analisarCentros().join(" · ");
     app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
+
+    sinaisBox.innerHTML = `
+      ${sinalAlvo ? `<div>${sinalAlvo}</div>` : ""}
+      ${sinalSeco ? `<div>${sinalSeco}</div>` : ""}
+    `;
   }
 
   render();
