@@ -13,9 +13,9 @@
   const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
 
   const setores = {
-    TIER:new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
+    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
-    ZERO:new Set([0,3,12,15,26,32,35]),
+    ZERO:    new Set([0,3,12,15,26,32,35]),
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
@@ -27,30 +27,20 @@
 
   const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
   const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
-  const corT3 = "#bdbdbd";
+  const coresColuna = {1:"#42a5f5",2:"#66bb6a",3:"#ffa726"};
+  const coresDuzia  = {1:"#66bb6a",2:"#42a5f5",3:"#ef5350"};
 
   // ================= ESTADO =================
   let hist = [];
   let mostrar5 = false;
   let modoCavalos = false;
   let modoSetores = false;
-
-  let contAlvo = 0;
-  let contSeco = 0;
-
-  let eventoAlvo = null;
-  let eventoSeco = null;
-
-  let vxAlvo = [];
-  let vxSeco = [];
-  const MAX_VX = 6;
-
-  // 🔴 estado visual de próxima rodada
-  let alvoAtivo = false;
-  let secoAtivo = false;
+  let modoRotulo = "T";
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
+  const coluna = n => n===0?null:((n-1)%3)+1;
+  const duzia = n => n===0?null:Math.ceil(n/12);
 
   function cavaloDoTerminal(t){
     if(cavalos.A.includes(t)) return "A";
@@ -63,8 +53,8 @@
     if(modoSetores){
       for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
     }
-    if(n===0) return "#00c853";
-    return reds.has(n) ? "#e53935" : "#212121";
+    if(n===0) return "#0f0";
+    return reds.has(n) ? "#e74c3c" : "#222";
   }
 
   function coverTerminal(t){
@@ -75,16 +65,6 @@
       s.add(track[(i+36)%37]);
       s.add(track[(i+1)%37]);
     });
-    return s;
-  }
-
-  function vizinhos(n,dist){
-    let i=track.indexOf(n);
-    let s=new Set([n]);
-    for(let d=1;d<=dist;d++){
-      s.add(track[(i+d)%37]);
-      s.add(track[(i-d+37)%37]);
-    }
     return s;
   }
 
@@ -117,18 +97,25 @@
     return usados;
   }
 
+  // 🎯 ALVO SECO (6 números secos dentro do alvo)
   function alvoSeco(){
-    let centros=analisarCentros();
-    if(centros.length<3) return [];
-    let range=new Set();
+    let centros = analisarCentros();
+    if(centros.length < 3) return [];
+
+    let range = new Set();
     centros.forEach(c=>{
-      let i=track.indexOf(c);
-      for(let d=-4;d<=4;d++){
+      let i = track.indexOf(c);
+      for(let d=-4; d<=4; d++){
         range.add(track[(i+37+d)%37]);
       }
     });
+
+    let ordenado = [...range].sort(
+      (a,b)=>track.indexOf(a)-track.indexOf(b)
+    );
+
     let secos=[];
-    for(let n of range){
+    for(let n of ordenado){
       if(secos.every(x=>{
         let d=Math.abs(track.indexOf(x)-track.indexOf(n));
         return Math.min(d,37-d)>=4;
@@ -140,110 +127,59 @@
     return secos;
   }
 
-  function terceiroT(par){
-    let ult=hist.slice(-14);
-    let ca=coverTerminal(par.a);
-    let cb=coverTerminal(par.b);
-    let melhor=null, melhorHits=-1;
-    for(let t=0;t<10;t++){
-      if(t===par.a||t===par.b) continue;
-      let ct=coverTerminal(t);
-      let hits=ult.filter(n=>!ca.has(n)&&!cb.has(n)&&ct.has(n)).length;
-      if(hits>melhorHits){melhorHits=hits;melhor=t;}
-    }
-    return melhor;
-  }
-
   // ================= UI =================
-  let app=document.getElementById("caballerroApp");
-  if(app) app.remove();
-
-  app=document.createElement("div");
-  app.id="caballerroApp";
-  app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
-  document.body.appendChild(app);
-
-  app.innerHTML=`
-    <div style="padding:10px;max-width:900px;margin:auto">
+  document.body.innerHTML = `
+    <div style="padding:10px;color:#fff;max-width:100vw">
       <h3 style="text-align:center">App Caballerro</h3>
 
       <div id="linhas"></div>
 
-      <div id="boxAlvo" style="border:2px solid transparent;padding:6px;text-align:center;margin:6px 0">
+      <div style="border:1px solid #666;padding:6px;text-align:center;margin:6px 0">
         🎯 ALVO: <span id="centros"></span>
-        <div id="vxAlvo" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
-      <div id="boxSeco" style="border:2px dashed transparent;padding:6px;text-align:center;margin:6px 0">
+      <div style="border:1px dashed #aaa;padding:6px;text-align:center;margin:6px 0">
         🎯 ALVO SECO: <span id="alvoSeco"></span>
-        <div id="vxSeco" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
-        <button id="bTerm">Top 5</button>
+        <button id="bTerm">Terminais</button>
         <button id="bCav">Cavalos</button>
+        <button id="bCol">Coluna</button>
+        <button id="bDuz">Dúzia</button>
         <button id="bSet">Setores</button>
       </div>
 
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
+      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:8px"></div>
     </div>
   `;
 
-  const linhas=app.querySelector("#linhas");
-  const nums=app.querySelector("#nums");
+  const bTerm = document.getElementById("bTerm");
+  const bCav  = document.getElementById("bCav");
+  const bCol  = document.getElementById("bCol");
+  const bDuz  = document.getElementById("bDuz");
+  const bSet  = document.getElementById("bSet");
+  const nums  = document.getElementById("nums");
+  const linhas=document.getElementById("linhas");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
     d.id="h"+i;
-    d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
+    d.style="display:flex;gap:4px;justify-content:center;margin-bottom:4px";
     linhas.appendChild(d);
   }
 
-  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
-  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
-  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+  bTerm.onclick=()=>{mostrar5=!mostrar5;render();};
+  bCav.onclick=()=>{modoCavalos=!modoCavalos;render();};
+  bCol.onclick=()=>{modoRotulo=modoRotulo==="C"?"T":"C";render();};
+  bDuz.onclick=()=>{modoRotulo=modoRotulo==="D"?"T":"D";render();};
+  bSet.onclick=()=>{modoSetores=!modoSetores;render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;background:#333;color:#fff";
-    b.onclick=()=>{
-      hist.push(n);
-
-      // ao inserir novo número, limpa indicação visual
-      alvoAtivo = false;
-      secoAtivo = false;
-
-      // -------- ALVO (6) --------
-      contAlvo++;
-      if(contAlvo===6){
-        eventoAlvo = analisarCentros();
-        alvoAtivo = true;
-        contAlvo=0;
-      } else if(eventoAlvo){
-        let area=new Set();
-        eventoAlvo.forEach(c=>vizinhos(c,4).forEach(v=>area.add(v)));
-        vxAlvo.push(area.has(n)?"V":"X");
-        if(vxAlvo.length>MAX_VX) vxAlvo.shift();
-        eventoAlvo=null;
-      }
-
-      // -------- SECO (8) --------
-      contSeco++;
-      if(contSeco===8){
-        eventoSeco = alvoSeco();
-        secoAtivo = true;
-        contSeco=0;
-      } else if(eventoSeco){
-        let area=new Set();
-        eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
-        vxSeco.push(area.has(n)?"V":"X");
-        if(vxSeco.length>MAX_VX) vxSeco.shift();
-        eventoSeco=null;
-      }
-
-      render();
-    };
+    b.style="font-size:16px;padding:8px";
+    b.onclick=()=>{hist.push(n);render();};
     nums.appendChild(b);
   }
 
@@ -255,43 +191,21 @@
       let h=document.getElementById("h"+i);
       h.style.display=(mostrar5||i===0)?"flex":"none";
       h.innerHTML="";
-      let par=pares[i];
-      if(!par) continue;
-
-      let ca=coverTerminal(par.a);
-      let cb=coverTerminal(par.b);
-      let tc=terceiroT(par);
-      let cc=tc!==null?coverTerminal(tc):null;
-
-      ult.forEach(n=>{
-        let box=document.createElement("div");
-        box.style="display:flex;flex-direction:column;align-items:center";
-
+      let p=pares[i];
+      ult.forEach((n,idx)=>{
+        let w=document.createElement("div");
         let d=document.createElement("div");
         d.textContent=n;
-        d.style=\`width:26px;height:26px;line-height:26px;font-size:12px;
-                 background:\${corNumero(n)};color:#fff;border-radius:4px;text-align:center\`;
-        box.appendChild(d);
-
-        let t=document.createElement("div");
-        t.style="font-size:10px;line-height:10px";
-        if(ca.has(n)){t.textContent="T"+par.a;t.style.color=coresT[par.a];}
-        else if(cb.has(n)){t.textContent="T"+par.b;t.style.color=coresT[par.b];}
-        else if(cc&&cc.has(n)){t.textContent="T"+tc;t.style.color=corT3;}
-        if(t.textContent) box.appendChild(t);
-
-        h.appendChild(box);
+        d.style=`width:24px;height:24px;line-height:24px;font-size:12px;
+                 background:${corNumero(n)};color:#fff;border-radius:4px;
+                 text-align:center`;
+        w.appendChild(d);
+        h.appendChild(w);
       });
     }
 
     document.getElementById("centros").textContent = analisarCentros().join(" · ");
     document.getElementById("alvoSeco").textContent = alvoSeco().join(" · ");
-
-    document.getElementById("vxAlvo").innerHTML = vxAlvo.map(v=>\`<div style="width:18px;height:18px;border-radius:4px;background:\${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">\${v}</div>\`).join("");
-    document.getElementById("vxSeco").innerHTML = vxSeco.map(v=>\`<div style="width:18px;height:18px;border-radius:4px;background:\${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">\${v}</div>\`).join("");
-
-    document.getElementById("boxAlvo").style.borderColor = alvoAtivo ? "#ffd600" : "transparent";
-    document.getElementById("boxSeco").style.borderColor = secoAtivo ? "#00e5ff" : "transparent";
   }
 
   render();
