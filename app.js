@@ -2,11 +2,21 @@
 
   // ================= CONFIG BASE =================
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
+  const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
   const terminais = {
     0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
     4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
+  };
+
+  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
+
+  const setores = {
+    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
+    ORPHANS:new Set([1,20,14,31,9,17,34,6]),
+    ZERO:    new Set([0,3,12,15,26,32,35]),
+    VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
   const coresT = {
@@ -15,16 +25,39 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
-  const corT3 = "#bbbbbb"; // terceiro T (neutro)
+  const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
+  const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
+
+  const corT3 = "#bdbdbd"; // terceiro T (fecha lacuna)
 
   // ================= ESTADO =================
   let hist = [];
+  let mostrar5 = false;
+  let modoCavalos = false;
+  let modoSetores = false;
 
   // ================= FUNÇÕES =================
+  const terminal = n => n % 10;
+
+  function cavaloDoTerminal(t){
+    if(cavalos.A.includes(t)) return "A";
+    if(cavalos.B.includes(t)) return "B";
+    return "C";
+  }
+
+  function corNumero(n){
+    if(modoCavalos) return coresCavalo[cavaloDoTerminal(terminal(n))];
+    if(modoSetores){
+      for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
+    }
+    if(n===0) return "#00c853";
+    return reds.has(n) ? "#e53935" : "#212121";
+  }
+
   function coverTerminal(t){
-    let s = new Set();
+    let s=new Set();
     terminais[t].forEach(n=>{
-      let i = track.indexOf(n);
+      let i=track.indexOf(n);
       s.add(n);
       s.add(track[(i+36)%37]);
       s.add(track[(i+1)%37]);
@@ -33,69 +66,113 @@
   }
 
   function melhoresPares(){
-    let ult = hist.slice(-14);
-    let pares = [];
+    let ult=hist.slice(-14);
+    let pares=[];
     for(let a=0;a<10;a++){
       for(let b=a+1;b<10;b++){
-        let ca = coverTerminal(a), cb = coverTerminal(b);
-        let hits = ult.filter(n=>ca.has(n)||cb.has(n)).length;
+        let ca=coverTerminal(a), cb=coverTerminal(b);
+        let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
         pares.push({a,b,hits});
       }
     }
     return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
   }
 
-  // 👉 escolhe o TERCEIRO T que cobre as falhas do par
-  function terceiroT(par){
-    let ult = hist.slice(-14);
-    let ca = coverTerminal(par.a);
-    let cb = coverTerminal(par.b);
+  function analisarCentros(){
+    if(hist.length<6) return [];
+    let ult=hist.slice(-14).reverse();
+    let usados=[];
+    for(let n of ult){
+      if(usados.every(x=>{
+        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
+        return Math.min(d,37-d)>=6;
+      })){
+        usados.push(n);
+        if(usados.length===3) break;
+      }
+    }
+    return usados;
+  }
 
-    let melhor = null;
-    let melhorHits = -1;
+  function alvoSeco(){
+    let centros=analisarCentros();
+    if(centros.length<3) return [];
+
+    let range=new Set();
+    centros.forEach(c=>{
+      let i=track.indexOf(c);
+      for(let d=-4;d<=4;d++){
+        range.add(track[(i+37+d)%37]);
+      }
+    });
+
+    let secos=[];
+    for(let n of range){
+      if(secos.every(x=>{
+        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
+        return Math.min(d,37-d)>=4;
+      })){
+        secos.push(n);
+        if(secos.length===6) break;
+      }
+    }
+    return secos;
+  }
+
+  // 👉 terceiro T que cobre falhas do par
+  function terceiroT(par){
+    let ult=hist.slice(-14);
+    let ca=coverTerminal(par.a);
+    let cb=coverTerminal(par.b);
+    let melhor=null, melhorHits=-1;
 
     for(let t=0;t<10;t++){
-      if(t===par.a || t===par.b) continue;
-      let ct = coverTerminal(t);
-      let hits = ult.filter(n =>
-        !ca.has(n) && !cb.has(n) && ct.has(n)
-      ).length;
-
-      if(hits > melhorHits){
-        melhorHits = hits;
-        melhor = t;
+      if(t===par.a||t===par.b) continue;
+      let ct=coverTerminal(t);
+      let hits=ult.filter(n=>!ca.has(n)&&!cb.has(n)&&ct.has(n)).length;
+      if(hits>melhorHits){
+        melhorHits=hits;
+        melhor=t;
       }
     }
     return melhor;
   }
 
   // ================= UI =================
-  let app = document.getElementById("caballerroApp");
+  let app=document.getElementById("caballerroApp");
   if(app) app.remove();
 
-  app = document.createElement("div");
-  app.id = "caballerroApp";
-  app.style = `
-    position:fixed;
-    inset:0;
-    background:#111;
-    color:#fff;
-    z-index:999999;
-    font-family:Arial;
-    overflow:auto;
-  `;
+  app=document.createElement("div");
+  app.id="caballerroApp";
+  app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
   document.body.appendChild(app);
 
-  app.innerHTML = `
+  app.innerHTML=`
     <div style="padding:10px;max-width:900px;margin:auto">
       <h3 style="text-align:center">App Caballerro</h3>
+
       <div id="linhas"></div>
+
+      <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
+        🎯 ALVO: <span id="centros"></span>
+      </div>
+
+      <div style="border:1px dashed #777;padding:6px;text-align:center;margin:6px 0">
+        🎯 ALVO SECO: <span id="alvoSeco"></span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+        <button id="bTerm">Top 5</button>
+        <button id="bCav">Cavalos</button>
+        <button id="bSet">Setores</button>
+      </div>
+
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
     </div>
   `;
 
-  const linhas = app.querySelector("#linhas");
-  const nums   = app.querySelector("#nums");
+  const linhas=app.querySelector("#linhas");
+  const nums=app.querySelector("#nums");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -104,31 +181,33 @@
     linhas.appendChild(d);
   }
 
+  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
+  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
+  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;cursor:pointer";
-    b.onclick=()=>{
-      hist.push(n);
-      render();
-    };
+    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;background:#333;color:#fff";
+    b.onclick=()=>{hist.push(n);render();};
     nums.appendChild(b);
   }
 
   function render(){
-    let ult = hist.slice(-14).reverse();
-    let pares = melhoresPares();
+    let ult=hist.slice(-14).reverse();
+    let pares=melhoresPares();
 
     for(let i=0;i<5;i++){
-      let h = document.getElementById("h"+i);
+      let h=document.getElementById("h"+i);
+      h.style.display=(mostrar5||i===0)?"flex":"none";
       h.innerHTML="";
-      let par = pares[i];
+      let par=pares[i];
       if(!par) continue;
 
-      let ca = coverTerminal(par.a);
-      let cb = coverTerminal(par.b);
-      let tc = terceiroT(par);
-      let cc = tc!==null ? coverTerminal(tc) : null;
+      let ca=coverTerminal(par.a);
+      let cb=coverTerminal(par.b);
+      let tc=terceiroT(par);
+      let cc=tc!==null?coverTerminal(tc):null;
 
       ult.forEach(n=>{
         let box=document.createElement("div");
@@ -136,20 +215,23 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style="width:26px;height:26px;line-height:26px;font-size:12px;background:#444;border-radius:4px;text-align:center";
+        d.style=`width:26px;height:26px;line-height:26px;font-size:12px;
+                 background:${corNumero(n)};color:#fff;border-radius:4px;text-align:center`;
         box.appendChild(d);
 
         let t=document.createElement("div");
         t.style="font-size:10px;line-height:10px";
-
-        if(ca.has(n)){ t.textContent="T"+par.a; t.style.color=coresT[par.a]; }
-        else if(cb.has(n)){ t.textContent="T"+par.b; t.style.color=coresT[par.b]; }
-        else if(cc && cc.has(n)){ t.textContent="T"+tc; t.style.color=corT3; }
-
+        if(ca.has(n)){t.textContent="T"+par.a;t.style.color=coresT[par.a];}
+        else if(cb.has(n)){t.textContent="T"+par.b;t.style.color=coresT[par.b];}
+        else if(cc&&cc.has(n)){t.textContent="T"+tc;t.style.color=corT3;}
         if(t.textContent) box.appendChild(t);
+
         h.appendChild(box);
       });
     }
+
+    app.querySelector("#centros").textContent=analisarCentros().join(" · ");
+    app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
   }
 
   render();
