@@ -40,15 +40,15 @@
   let eventoAlvo = null;
   let eventoSeco = null;
 
+  let eventoSecoAtivo = false;
+  let esperaSeco = -1;
+
   let vxAlvo = [];
   let vxSeco = [];
   const MAX_VX = 6;
 
   let alvoAtivo = false;
   let secoAtivo = false;
-
-  // 🔴 novo controle: seco após 2 números do alvo
-  let esperaSeco = -1; // -1 = inativo, 0/1 = contagem
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -219,7 +219,7 @@
       if(contAlvo===6){
         eventoAlvo = analisarCentros();
         alvoAtivo = true;
-        esperaSeco = 0; // 🔴 inicia contagem para seco
+        esperaSeco = 0;
         contAlvo=0;
       } else if(eventoAlvo){
         let area=new Set();
@@ -229,22 +229,20 @@
         eventoAlvo=null;
       }
 
-      // -------- ESPERA DO SECO --------
+      // -------- CONTROLE DO SECO --------
       if(esperaSeco >= 0){
         esperaSeco++;
         if(esperaSeco === 2){
           eventoSeco = alvoSeco();
           secoAtivo = true;
-          esperaSeco = -1;
+          eventoSecoAtivo = true;
         }
-      }
-
-      // -------- VERIFICA SECO --------
-      if(eventoSeco){
+      } else if(eventoSecoAtivo){
         let area=new Set();
         eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
         vxSeco.push(area.has(n)?"V":"X");
         if(vxSeco.length>MAX_VX) vxSeco.shift();
+        eventoSecoAtivo=false;
         eventoSeco=null;
       }
 
