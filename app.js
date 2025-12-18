@@ -36,19 +36,12 @@
   let modoSetores = false;
 
   let contAlvo = 0;
-
   let eventoAlvo = null;
-  let eventoSeco = null;
-
-  let esperaSeco = -1;   // 👈 novo
-  let secoIndicado = false;
 
   let vxAlvo = [];
-  let vxSeco = [];
   const MAX_VX = 6;
 
   let alvoAtivo = false;
-  let secoAtivo = false;
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -155,7 +148,7 @@
     return melhor;
   }
 
-  // ================= UI (IGUAL AO BASE) =================
+  // ================= UI =================
   let app=document.getElementById("caballerroApp");
   if(app) app.remove();
 
@@ -164,31 +157,60 @@
   app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
   document.body.appendChild(app);
 
-  app.innerHTML = document.body.innerHTML = app.innerHTML = app.innerHTML; // mantém estrutura
+  app.innerHTML=`
+    <div style="padding:10px;max-width:900px;margin:auto">
+      <h3 style="text-align:center">App Caballerro</h3>
 
-  // ⚠️ UI mantida exatamente como no código que você enviou
-  // (nenhuma alteração visual)
+      <div id="linhas"></div>
 
-  // ================= EVENTO DOS NÚMEROS =================
-  const nums = document.getElementById("nums");
-  nums.querySelectorAll("button").forEach((b,n)=>{
+      <div id="boxAlvo" style="border:2px solid transparent;padding:6px;text-align:center;margin:6px 0">
+        🎯 ALVO: <span id="centros"></span>
+        <div id="vxAlvo" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
+      </div>
+
+      <div id="boxSeco" style="border:2px dashed #00e5ff;padding:6px;text-align:center;margin:6px 0">
+        🎯 ALVO SECO: <span id="alvoSeco"></span>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+        <button id="bTerm">Top 5</button>
+        <button id="bCav">Cavalos</button>
+        <button id="bSet">Setores</button>
+      </div>
+
+      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
+    </div>
+  `;
+
+  const linhas=app.querySelector("#linhas");
+  const nums=app.querySelector("#nums");
+
+  for(let i=0;i<5;i++){
+    let d=document.createElement("div");
+    d.id="h"+i;
+    d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
+    linhas.appendChild(d);
+  }
+
+  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
+  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
+  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
+
+  for(let n=0;n<=36;n++){
+    let b=document.createElement("button");
+    b.textContent=n;
+    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;background:#333;color:#fff";
     b.onclick=()=>{
       hist.push(n);
 
-      alvoAtivo=false;
-      secoAtivo=false;
+      alvoAtivo = false;
 
-      // -------- ALVO 6 --------
       contAlvo++;
       if(contAlvo===6){
         eventoAlvo = analisarCentros();
         alvoAtivo = true;
         contAlvo=0;
-
-        esperaSeco = 0;
-        secoIndicado = false;
-      }
-      else if(eventoAlvo){
+      } else if(eventoAlvo){
         let area=new Set();
         eventoAlvo.forEach(c=>vizinhos(c,4).forEach(v=>area.add(v)));
         vxAlvo.push(area.has(n)?"V":"X");
@@ -196,29 +218,56 @@
         eventoAlvo=null;
       }
 
-      // -------- ALVO SECO (CORRIGIDO) --------
-      if(esperaSeco>=0){
-        esperaSeco++;
-
-        // 2º número após o 6 → SINAL
-        if(esperaSeco===2 && !secoIndicado){
-          eventoSeco = alvoSeco();
-          secoAtivo = true;
-          secoIndicado = true;
-        }
-        // 3º número após o 6 → TIC
-        else if(esperaSeco===3 && eventoSeco){
-          let area=new Set();
-          eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
-          vxSeco.push(area.has(n)?"V":"X");
-          if(vxSeco.length>MAX_VX) vxSeco.shift();
-          eventoSeco=null;
-          esperaSeco=-1;
-        }
-      }
-
       render();
     };
-  });
+    nums.appendChild(b);
+  }
+
+  function render(){
+    let ult=hist.slice(-14).reverse();
+    let pares=melhoresPares();
+
+    for(let i=0;i<5;i++){
+      let h=document.getElementById("h"+i);
+      h.style.display=(mostrar5||i===0)?"flex":"none";
+      h.innerHTML="";
+      let par=pares[i];
+      if(!par) continue;
+
+      let ca=coverTerminal(par.a);
+      let cb=coverTerminal(par.b);
+      let tc=terceiroT(par);
+      let cc=tc!==null?coverTerminal(tc):null;
+
+      ult.forEach(n=>{
+        let box=document.createElement("div");
+        box.style="display:flex;flex-direction:column;align-items:center";
+
+        let d=document.createElement("div");
+        d.textContent=n;
+        d.style=`width:26px;height:26px;line-height:26px;font-size:12px;
+                 background:${corNumero(n)};color:#fff;border-radius:4px;text-align:center`;
+        box.appendChild(d);
+
+        let t=document.createElement("div");
+        t.style="font-size:10px;line-height:10px";
+        if(ca.has(n)){t.textContent="T"+par.a;t.style.color=coresT[par.a];}
+        else if(cb.has(n)){t.textContent="T"+par.b;t.style.color=coresT[par.b];}
+        else if(cc&&cc.has(n)){t.textContent="T"+tc;t.style.color=corT3;}
+        if(t.textContent) box.appendChild(t);
+
+        h.appendChild(box);
+      });
+    }
+
+    document.getElementById("centros").textContent = analisarCentros().join(" · ");
+    document.getElementById("alvoSeco").textContent = alvoSeco().join(" · ");
+
+    document.getElementById("vxAlvo").innerHTML = vxAlvo.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
+
+    document.getElementById("boxAlvo").style.borderColor = alvoAtivo ? "#ffd600" : "transparent";
+  }
+
+  render();
 
 })();
