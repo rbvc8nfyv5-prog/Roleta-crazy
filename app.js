@@ -38,8 +38,8 @@
   let contAlvo = 0;
   let contSeco = 0;
 
-  let sinalAlvo = "";
-  let sinalSeco = "";
+  let textoAlvo = "";
+  let textoSeco = "";
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -165,8 +165,6 @@
         🎯 ALVO SECO: <span id="alvoSeco"></span>
       </div>
 
-      <div id="sinais" style="text-align:center;font-weight:bold;margin:8px 0"></div>
-
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
         <button id="bTerm">Top 5</button>
         <button id="bCav">Cavalos</button>
@@ -179,7 +177,6 @@
 
   const linhas=app.querySelector("#linhas");
   const nums=app.querySelector("#nums");
-  const sinaisBox=app.querySelector("#sinais");
 
   for(let i=0;i<5;i++){
     let d=document.createElement("div");
@@ -203,13 +200,17 @@
       contSeco++;
 
       if(contAlvo===6){
-        sinalAlvo = `📢 SINAL ALVO (6): ${analisarCentros().join(" · ")}`;
-        contAlvo=0;
+        textoAlvo = analisarCentros().join(" · ");
+        contAlvo = 0;
+      } else {
+        textoAlvo = "";
       }
 
       if(contSeco===8){
-        sinalSeco = `📢 SINAL SECO (8): ${alvoSeco().join(" · ")}`;
-        contSeco=0;
+        textoSeco = alvoSeco().join(" · ");
+        contSeco = 0;
+      } else {
+        textoSeco = "";
       }
 
       render();
@@ -254,13 +255,8 @@
       });
     }
 
-    app.querySelector("#centros").textContent=analisarCentros().join(" · ");
-    app.querySelector("#alvoSeco").textContent=alvoSeco().join(" · ");
-
-    sinaisBox.innerHTML = `
-      ${sinalAlvo ? `<div>${sinalAlvo}</div>` : ""}
-      ${sinalSeco ? `<div>${sinalSeco}</div>` : ""}
-    `;
+    app.querySelector("#centros").textContent = textoAlvo;
+    app.querySelector("#alvoSeco").textContent = textoSeco;
   }
 
   render();
