@@ -1,180 +1,232 @@
 (function () {
 
   // ================= CONFIG BASE =================
-  const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
-  const reds = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  const track=[32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
+  const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 
-  const terminais = {
+  const terminais={
     0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
     4:[4,14,24,34],5:[5,15,25,35],6:[6,16,26,36],
     7:[7,17,27],8:[8,18,28],9:[9,19,29]
   };
 
-  const cavalos = { A:[2,5,8], B:[0,3,6,9], C:[1,4,7] };
-
-  const setores = {
+  const cavalos={A:[2,5,8],B:[0,3,6,9],C:[1,4,7]};
+  const setores={
     TIER:new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
     ORPHANS:new Set([1,20,14,31,9,17,34,6]),
     ZERO:new Set([0,3,12,15,26,32,35]),
     VOISINS:new Set([2,4,7,18,19,21,22,25,28,29])
   };
 
-  const coresT = {
-    0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",
-    4:"#d500f9",5:"#ffee58",6:"#2979ff",
-    7:"#ff4081",8:"#76ff03",9:"#8d6e63"
-  };
-
-  const coresCavalo = { A:"#9c27b0", B:"#1e88e5", C:"#43a047" };
-  const coresSetor = { TIER:"#e53935", ORPHANS:"#1e88e5", ZERO:"#43a047", VOISINS:"#8e24aa" };
-  const corT3 = "#bdbdbd";
+  const coresT={0:"#00e5ff",1:"#ff1744",2:"#00e676",3:"#ff9100",4:"#d500f9",5:"#ffee58",6:"#2979ff",7:"#ff4081",8:"#76ff03",9:"#8d6e63"};
+  const coresCavalo={A:"#9c27b0",B:"#1e88e5",C:"#43a047"};
+  const coresSetor={TIER:"#e53935",ORPHANS:"#1e88e5",ZERO:"#43a047",VOISINS:"#8e24aa"};
+  const corT3="#bdbdbd";
 
   // ================= ESTADO =================
-  let hist = [];
-  let mostrar5 = false;
-  let modoCavalos = false;
-  let modoSetores = false;
+  let hist=[];
+  let mostrar5=false,modoCavalos=false,modoSetores=false;
 
-  let contAlvo = 0;
-  let esperaSeco = -1; // 👈 controle correto do seco
+  let contAlvo=0;
+  let eventoAlvo=null;
 
-  let eventoAlvo = null;
-  let eventoSeco = null;
+  let esperaSeco=-1;       // controla N7 / N8
+  let eventoSeco=null;
+  let secoValidar=false;
 
-  let vxAlvo = [];
-  let vxSeco = [];
-  const MAX_VX = 6;
+  let alvoAtivo=false;
+  let secoAtivo=false;
 
-  let alvoAtivo = false;
-  let secoAtivo = false;
+  let vxAlvo=[],vxSeco=[];
+  const MAX_VX=6;
 
   // ================= FUNÇÕES =================
-  function corNumero(n){
-    if(modoCavalos){
-      if(cavalos.A.includes(n%10)) return coresCavalo.A;
-      if(cavalos.B.includes(n%10)) return coresCavalo.B;
-      return coresCavalo.C;
-    }
-    if(modoSetores){
-      for(let s in setores) if(setores[s].has(n)) return coresSetor[s];
-    }
-    if(n===0) return "#00c853";
-    return reds.has(n) ? "#e53935" : "#212121";
+  const terminal=n=>n%10;
+
+  function cavaloDoTerminal(t){
+    if(cavalos.A.includes(t))return"A";
+    if(cavalos.B.includes(t))return"B";
+    return"C";
   }
 
-  function vizinhos(n,dist){
-    let i=track.indexOf(n);
-    let s=new Set([n]);
-    for(let d=1;d<=dist;d++){
-      s.add(track[(i+d)%37]);
-      s.add(track[(i-d+37)%37]);
+  function corNumero(n){
+    if(modoCavalos)return coresCavalo[cavaloDoTerminal(terminal(n))];
+    if(modoSetores){for(let s in setores)if(setores[s].has(n))return coresSetor[s];}
+    if(n===0)return"#00c853";
+    return reds.has(n)?"#e53935":"#212121";
+  }
+
+  function coverTerminal(t){
+    let s=new Set();
+    terminais[t].forEach(n=>{
+      let i=track.indexOf(n);
+      s.add(n);
+      s.add(track[(i+36)%37]);
+      s.add(track[(i+1)%37]);
+    });
+    return s;
+  }
+
+  function vizinhos(n,d){
+    let i=track.indexOf(n),s=new Set([n]);
+    for(let k=1;k<=d;k++){s.add(track[(i+k)%37]);s.add(track[(i-k+37)%37]);}
+    return s;
+  }
+
+  function melhoresPares(){
+    let ult=hist.slice(-14),pares=[];
+    for(let a=0;a<10;a++)for(let b=a+1;b<10;b++){
+      let ca=coverTerminal(a),cb=coverTerminal(b);
+      let hits=ult.filter(n=>ca.has(n)||cb.has(n)).length;
+      pares.push({a,b,hits});
+    }
+    return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
+  }
+
+  function analisarCentros(){
+    if(hist.length<6)return[];
+    let ult=hist.slice(-14).reverse(),u=[];
+    for(let n of ult){
+      if(u.every(x=>Math.min(Math.abs(track.indexOf(x)-track.indexOf(n)),37-Math.abs(track.indexOf(x)-track.indexOf(n)))>=6)){
+        u.push(n);if(u.length===3)break;
+      }
+    }
+    return u;
+  }
+
+  function alvoSeco(){
+    let c=analisarCentros(),r=new Set(),s=[];
+    c.forEach(x=>{let i=track.indexOf(x);for(let d=-4;d<=4;d++)r.add(track[(i+d+37)%37]);});
+    for(let n of r){
+      if(s.every(x=>Math.min(Math.abs(track.indexOf(x)-track.indexOf(n)),37-Math.abs(track.indexOf(x)-track.indexOf(n)))>=4)){
+        s.push(n);if(s.length===6)break;
+      }
     }
     return s;
   }
 
-  function analisarCentros(){
-    if(hist.length<6) return [];
-    let ult=hist.slice(-14).reverse();
-    let usados=[];
-    for(let n of ult){
-      if(usados.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=6;
-      })){
-        usados.push(n);
-        if(usados.length===3) break;
-      }
+  function terceiroT(par){
+    let ult=hist.slice(-14),ca=coverTerminal(par.a),cb=coverTerminal(par.b),m=null,h=-1;
+    for(let t=0;t<10;t++){
+      if(t===par.a||t===par.b)continue;
+      let ct=coverTerminal(t);
+      let k=ult.filter(n=>!ca.has(n)&&!cb.has(n)&&ct.has(n)).length;
+      if(k>h){h=k;m=t;}
     }
-    return usados;
-  }
-
-  function alvoSeco(){
-    let centros=analisarCentros();
-    if(centros.length<3) return [];
-    let range=new Set();
-    centros.forEach(c=>{
-      let i=track.indexOf(c);
-      for(let d=-4;d<=4;d++){
-        range.add(track[(i+37+d)%37]);
-      }
-    });
-    return [...range].slice(0,6);
+    return m;
   }
 
   // ================= UI =================
   let app=document.getElementById("caballerroApp");
-  if(app) app.remove();
-
+  if(app)app.remove();
   app=document.createElement("div");
   app.id="caballerroApp";
   app.style="position:fixed;inset:0;background:#111;color:#fff;z-index:999999;font-family:Arial;overflow:auto";
   document.body.appendChild(app);
 
   app.innerHTML=`
-    <div style="padding:10px;max-width:900px;margin:auto">
-      <h3 style="text-align:center">App Caballerro</h3>
-      <div id="boxAlvo">🎯 ALVO: <span id="centros"></span></div>
-      <div id="boxSeco">🎯 ALVO SECO: <span id="alvoSeco"></span></div>
-      <div id="nums"></div>
-    </div>
-  `;
+  <div style="padding:10px;max-width:900px;margin:auto">
+    <h3 style="text-align:center">App Caballerro</h3>
+    <div id="linhas"></div>
 
-  const nums=app.querySelector("#nums");
+    <div id="boxAlvo" style="border:2px solid transparent;padding:6px;text-align:center;margin:6px 0">
+      🎯 ALVO: <span id="centros"></span>
+      <div id="vxAlvo" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
+    </div>
+
+    <div id="boxSeco" style="border:2px dashed transparent;padding:6px;text-align:center;margin:6px 0">
+      🎯 ALVO SECO: <span id="alvoSeco"></span>
+      <div id="vxSeco" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
+      <button id="bTerm">Top 5</button>
+      <button id="bCav">Cavalos</button>
+      <button id="bSet">Setores</button>
+    </div>
+
+    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
+  </div>`;
+
+  const linhas=app.querySelector("#linhas"),nums=app.querySelector("#nums");
+
+  for(let i=0;i<5;i++){
+    let d=document.createElement("div");
+    d.id="h"+i;
+    d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
+    linhas.appendChild(d);
+  }
+
+  app.querySelector("#bTerm").onclick=()=>{mostrar5=!mostrar5;render();};
+  app.querySelector("#bCav").onclick=()=>{modoCavalos=!modoCavalos;render();};
+  app.querySelector("#bSet").onclick=()=>{modoSetores=!modoSetores;render();};
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
     b.textContent=n;
-    b.style="margin:4px;padding:6px";
+    b.style="font-size:16px;padding:8px;border-radius:4px;border:none;background:#333;color:#fff";
     b.onclick=()=>{
       hist.push(n);
+      alvoAtivo=false;secoAtivo=false;
 
-      alvoAtivo=false;
-      secoAtivo=false;
-
-      // ---------- ALVO 6 ----------
+      // ALVO 6
       contAlvo++;
       if(contAlvo===6){
-        eventoAlvo = analisarCentros();
+        eventoAlvo=analisarCentros();
         alvoAtivo=true;
-        esperaSeco=0;     // 👈 inicia espera do seco
+        esperaSeco=0;
         contAlvo=0;
       } else if(eventoAlvo){
-        let area=new Set();
-        eventoAlvo.forEach(c=>vizinhos(c,4).forEach(v=>area.add(v)));
-        vxAlvo.push(area.has(n)?"V":"X");
-        if(vxAlvo.length>MAX_VX) vxAlvo.shift();
+        let a=new Set();eventoAlvo.forEach(c=>vizinhos(c,4).forEach(v=>a.add(v)));
+        vxAlvo.push(a.has(n)?"V":"X");if(vxAlvo.length>MAX_VX)vxAlvo.shift();
         eventoAlvo=null;
       }
 
-      // ---------- CONTROLE SECO ----------
+      // SECO sincronizado
       if(esperaSeco>=0){
         esperaSeco++;
-
-        // 👇 SÓ NO SEGUNDO NÚMERO
         if(esperaSeco===2){
           eventoSeco=alvoSeco();
           secoAtivo=true;
-        }
-
-        // 👇 VALIDA NO TERCEIRO
-        else if(esperaSeco===3 && eventoSeco){
-          let area=new Set();
-          eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
-          vxSeco.push(area.has(n)?"V":"X");
-          if(vxSeco.length>MAX_VX) vxSeco.shift();
-          eventoSeco=null;
-          esperaSeco=-1;
+          secoValidar=true;
+        } else if(esperaSeco===3 && secoValidar){
+          let a=new Set();eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>a.add(v)));
+          vxSeco.push(a.has(n)?"V":"X");if(vxSeco.length>MAX_VX)vxSeco.shift();
+          eventoSeco=null;secoValidar=false;esperaSeco=-1;
         }
       }
-
       render();
     };
     nums.appendChild(b);
   }
 
   function render(){
-    document.getElementById("centros").textContent = analisarCentros().join(" · ");
-    document.getElementById("alvoSeco").textContent = eventoSeco ? eventoSeco.join(" · ") : "";
+    let ult=hist.slice(-14).reverse(),pares=melhoresPares();
+    for(let i=0;i<5;i++){
+      let h=document.getElementById("h"+i);
+      h.style.display=(mostrar5||i===0)?"flex":"none";h.innerHTML="";
+      let p=pares[i];if(!p)continue;
+      let ca=coverTerminal(p.a),cb=coverTerminal(p.b),tc=terceiroT(p),cc=tc!==null?coverTerminal(tc):null;
+      ult.forEach(n=>{
+        let box=document.createElement("div");box.style="display:flex;flex-direction:column;align-items:center";
+        let d=document.createElement("div");
+        d.textContent=n;
+        d.style=`width:26px;height:26px;line-height:26px;font-size:12px;background:${corNumero(n)};color:#fff;border-radius:4px;text-align:center`;
+        box.appendChild(d);
+        let t=document.createElement("div");t.style="font-size:10px";
+        if(ca.has(n)){t.textContent="T"+p.a;t.style.color=coresT[p.a];}
+        else if(cb.has(n)){t.textContent="T"+p.b;t.style.color=coresT[p.b];}
+        else if(cc&&cc.has(n)){t.textContent="T"+tc;t.style.color=corT3;}
+        if(t.textContent)box.appendChild(t);
+        h.appendChild(box);
+      });
+    }
+    document.getElementById("centros").textContent=analisarCentros().join(" · ");
+    document.getElementById("alvoSeco").textContent=eventoSeco?eventoSeco.join(" · "):"";
+    document.getElementById("vxAlvo").innerHTML=vxAlvo.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
+    document.getElementById("vxSeco").innerHTML=vxSeco.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
+    document.getElementById("boxAlvo").style.borderColor=alvoAtivo?"#ffd600":"transparent";
+    document.getElementById("boxSeco").style.borderColor=secoAtivo?"#00e5ff":"transparent";
   }
 
   render();
