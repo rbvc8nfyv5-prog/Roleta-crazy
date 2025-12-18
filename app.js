@@ -15,6 +15,8 @@
     7:"#ff4081",8:"#76ff03",9:"#8d6e63"
   };
 
+  const corT3 = "#bbbbbb"; // terceiro T (neutro)
+
   // ================= ESTADO =================
   let hist = [];
 
@@ -43,45 +45,28 @@
     return pares.sort((x,y)=>y.hits-x.hits).slice(0,5);
   }
 
-  function analisarCentros(){
-    if(hist.length < 6) return [];
-    let ult = hist.slice(-14).reverse();
-    let usados = [];
-    for(let n of ult){
-      if(usados.every(x=>{
-        let d = Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d) >= 6;
-      })){
-        usados.push(n);
-        if(usados.length === 3) break;
+  // 👉 escolhe o TERCEIRO T que cobre as falhas do par
+  function terceiroT(par){
+    let ult = hist.slice(-14);
+    let ca = coverTerminal(par.a);
+    let cb = coverTerminal(par.b);
+
+    let melhor = null;
+    let melhorHits = -1;
+
+    for(let t=0;t<10;t++){
+      if(t===par.a || t===par.b) continue;
+      let ct = coverTerminal(t);
+      let hits = ult.filter(n =>
+        !ca.has(n) && !cb.has(n) && ct.has(n)
+      ).length;
+
+      if(hits > melhorHits){
+        melhorHits = hits;
+        melhor = t;
       }
     }
-    return usados;
-  }
-
-  function alvoSeco(){
-    let centros = analisarCentros();
-    if(centros.length < 3) return [];
-
-    let range = new Set();
-    centros.forEach(c=>{
-      let i = track.indexOf(c);
-      for(let d=-4; d<=4; d++){
-        range.add(track[(i+37+d)%37]);
-      }
-    });
-
-    let secos=[];
-    for(let n of range){
-      if(secos.every(x=>{
-        let d=Math.abs(track.indexOf(x)-track.indexOf(n));
-        return Math.min(d,37-d)>=4;
-      })){
-        secos.push(n);
-        if(secos.length===6) break;
-      }
-    }
-    return secos;
+    return melhor;
   }
 
   // ================= UI =================
@@ -104,26 +89,8 @@
   app.innerHTML = `
     <div style="padding:10px;max-width:900px;margin:auto">
       <h3 style="text-align:center">App Caballerro</h3>
-
       <div id="linhas"></div>
-
-      <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVO: <span id="centros"></span>
-      </div>
-
-      <div style="border:1px dashed #777;padding:6px;text-align:center;margin:6px 0">
-        🎯 ALVO SECO: <span id="alvoSeco"></span>
-      </div>
-
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
-
-      <div style="text-align:center;margin-top:10px">
-        <button id="bClear"
-          style="padding:8px 16px;font-size:14px;border:none;border-radius:6px;
-                 background:#c62828;color:#fff;cursor:pointer">
-          Clear
-        </button>
-      </div>
     </div>
   `;
 
@@ -136,11 +103,6 @@
     d.style="display:flex;gap:6px;justify-content:center;margin-bottom:6px";
     linhas.appendChild(d);
   }
-
-  app.querySelector("#bClear").onclick = ()=>{
-    hist = [];
-    render();
-  };
 
   for(let n=0;n<=36;n++){
     let b=document.createElement("button");
@@ -165,6 +127,8 @@
 
       let ca = coverTerminal(par.a);
       let cb = coverTerminal(par.b);
+      let tc = terceiroT(par);
+      let cc = tc!==null ? coverTerminal(tc) : null;
 
       ult.forEach(n=>{
         let box=document.createElement("div");
@@ -172,21 +136,20 @@
 
         let d=document.createElement("div");
         d.textContent=n;
-        d.style="width:26px;height:26px;line-height:26px;font-size:12px;background:#444;color:#fff;border-radius:4px;text-align:center";
+        d.style="width:26px;height:26px;line-height:26px;font-size:12px;background:#444;border-radius:4px;text-align:center";
         box.appendChild(d);
 
         let t=document.createElement("div");
         t.style="font-size:10px;line-height:10px";
+
         if(ca.has(n)){ t.textContent="T"+par.a; t.style.color=coresT[par.a]; }
         else if(cb.has(n)){ t.textContent="T"+par.b; t.style.color=coresT[par.b]; }
-        if(t.textContent) box.appendChild(t);
+        else if(cc && cc.has(n)){ t.textContent="T"+tc; t.style.color=corT3; }
 
+        if(t.textContent) box.appendChild(t);
         h.appendChild(box);
       });
     }
-
-    app.querySelector("#centros").textContent  = analisarCentros().join(" · ");
-    app.querySelector("#alvoSeco").textContent = alvoSeco().join(" · ");
   }
 
   render();
