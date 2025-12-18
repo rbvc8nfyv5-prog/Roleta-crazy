@@ -38,8 +38,12 @@
   let contAlvo = 0;
   let contSeco = 0;
 
-  let textoAlvo = "";
-  let textoSeco = "";
+  let eventoAlvo = null;
+  let eventoSeco = null;
+
+  let vxAlvo = [];
+  let vxSeco = [];
+  const MAX_VX = 6;
 
   // ================= FUNÇÕES =================
   const terminal = n => n % 10;
@@ -67,6 +71,16 @@
       s.add(track[(i+36)%37]);
       s.add(track[(i+1)%37]);
     });
+    return s;
+  }
+
+  function vizinhos(n,dist){
+    let i=track.indexOf(n);
+    let s=new Set([n]);
+    for(let d=1;d<=dist;d++){
+      s.add(track[(i+d)%37]);
+      s.add(track[(i-d+37)%37]);
+    }
     return s;
   }
 
@@ -102,7 +116,6 @@
   function alvoSeco(){
     let centros=analisarCentros();
     if(centros.length<3) return [];
-
     let range=new Set();
     centros.forEach(c=>{
       let i=track.indexOf(c);
@@ -110,7 +123,6 @@
         range.add(track[(i+37+d)%37]);
       }
     });
-
     let secos=[];
     for(let n of range){
       if(secos.every(x=>{
@@ -129,15 +141,11 @@
     let ca=coverTerminal(par.a);
     let cb=coverTerminal(par.b);
     let melhor=null, melhorHits=-1;
-
     for(let t=0;t<10;t++){
       if(t===par.a||t===par.b) continue;
       let ct=coverTerminal(t);
       let hits=ult.filter(n=>!ca.has(n)&&!cb.has(n)&&ct.has(n)).length;
-      if(hits>melhorHits){
-        melhorHits=hits;
-        melhor=t;
-      }
+      if(hits>melhorHits){melhorHits=hits;melhor=t;}
     }
     return melhor;
   }
@@ -159,10 +167,12 @@
 
       <div style="border:1px solid #555;padding:6px;text-align:center;margin:6px 0">
         🎯 ALVO: <span id="centros"></span>
+        <div id="vxAlvo" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
       <div style="border:1px dashed #777;padding:6px;text-align:center;margin:6px 0">
         🎯 ALVO SECO: <span id="alvoSeco"></span>
+        <div id="vxSeco" style="display:flex;gap:4px;justify-content:center;margin-top:4px"></div>
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center">
@@ -196,21 +206,30 @@
     b.onclick=()=>{
       hist.push(n);
 
+      // -------- ALVO (6) --------
       contAlvo++;
-      contSeco++;
-
       if(contAlvo===6){
-        textoAlvo = analisarCentros().join(" · ");
-        contAlvo = 0;
-      } else {
-        textoAlvo = "";
+        eventoAlvo = analisarCentros();
+        contAlvo=0;
+      } else if(eventoAlvo){
+        let area=new Set();
+        eventoAlvo.forEach(c=>vizinhos(c,4).forEach(v=>area.add(v)));
+        vxAlvo.push(area.has(n)?"V":"X");
+        if(vxAlvo.length>MAX_VX) vxAlvo.shift();
+        eventoAlvo=null;
       }
 
+      // -------- SECO (8) --------
+      contSeco++;
       if(contSeco===8){
-        textoSeco = alvoSeco().join(" · ");
-        contSeco = 0;
-      } else {
-        textoSeco = "";
+        eventoSeco = alvoSeco();
+        contSeco=0;
+      } else if(eventoSeco){
+        let area=new Set();
+        eventoSeco.forEach(c=>vizinhos(c,1).forEach(v=>area.add(v)));
+        vxSeco.push(area.has(n)?"V":"X");
+        if(vxSeco.length>MAX_VX) vxSeco.shift();
+        eventoSeco=null;
       }
 
       render();
@@ -255,8 +274,11 @@
       });
     }
 
-    app.querySelector("#centros").textContent = textoAlvo;
-    app.querySelector("#alvoSeco").textContent = textoSeco;
+    app.querySelector("#centros").textContent = analisarCentros().join(" · ");
+    app.querySelector("#alvoSeco").textContent = alvoSeco().join(" · ");
+
+    app.querySelector("#vxAlvo").innerHTML = vxAlvo.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
+    app.querySelector("#vxSeco").innerHTML = vxSeco.map(v=>`<div style="width:18px;height:18px;border-radius:4px;background:${v==="V"?"#2e7d32":"#c62828"};color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center">${v}</div>`).join("");
   }
 
   render();
