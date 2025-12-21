@@ -1,7 +1,11 @@
 (function () {
 
   // ================= CONFIG BASE =================
-  const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
+  const track = [
+    32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,
+    23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,
+    12,35,3,26,0
+  ];
 
   const terminais = {
     0:[0,10,20,30],1:[1,11,21,31],2:[2,12,22,32],3:[3,13,23,33],
@@ -19,150 +23,146 @@
 
   function vizinhos(n){
     let i = track.indexOf(n);
-    return [
-      track[(i+36)%37],
-      track[(i+1)%37]
-    ];
+    return [track[(i+36)%37], track[(i+1)%37]];
   }
 
-  // ================= PAR DE TERMINAIS =================
-  function paresDeTerminais(){
+  // ================= TENDÊNCIA DA MESA =================
+  function tendenciaMesa(){
     let mapa = {};
-    let ult = hist.slice(-14);
+    hist.slice(-14).forEach(n=>{
+      mapa[terminal(n)] = (mapa[terminal(n)]||0)+1;
+      vizinhos(n).forEach(v=>{
+        mapa[terminal(v)] = (mapa[terminal(v)]||0)+1;
+      });
+    });
+    return mapa;
+  }
 
-    ult.forEach(n=>{
-      let t = terminal(n);
+  // ================= LEITURA DO TERMINAL ATUAL =================
+  function terminaisAtaque(){
+    if(hist.length === 0) return [];
+
+    let ultimo = hist[hist.length-1];
+    let tBase = terminal(ultimo);
+    let mapa = {};
+
+    terminais[tBase].forEach(n=>{
       vizinhos(n).forEach(v=>{
         let tv = terminal(v);
-        let par = [t, tv].sort().join("-");
-        mapa[par] = (mapa[par] || 0) + 1;
+        mapa[tv] = (mapa[tv]||0)+1;
       });
     });
 
-    return Object.entries(mapa)
-      .sort((a,b)=>b[1]-a[1]);
-  }
+    let tendencia = tendenciaMesa();
 
-  // ================= TERMINAIS FORTES =================
-  function terminaisFortes(){
-    let pares = paresDeTerminais();
-    let set = new Set();
-
-    pares.slice(0,3).forEach(p=>{
-      let [a,b] = p[0].split("-").map(Number);
-      set.add(a);
-      set.add(b);
-    });
-
-    return [...set].slice(0,3);
+    return Object.keys(mapa)
+      .map(t=>({
+        t:Number(t),
+        score: mapa[t] + (tendencia[t]||0)
+      }))
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,3)
+      .map(o=>o.t);
   }
 
   // ================= ALVOS =================
   function alvos(){
-    let ts = terminaisFortes();
-    let nums = [];
-
+    let ts = terminaisAtaque();
+    let res = [];
     ts.forEach(t=>{
       terminais[t].forEach(n=>{
-        vizinhos(n).forEach(v=>{
-          if(!nums.includes(v)) nums.push(v);
-        });
+        if(!res.includes(n)) res.push(n);
       });
     });
-
-    return nums.slice(0,3);
+    return res.slice(0,3);
   }
 
   // ================= ÂNCORAS =================
   function coberturaAncora(a){
     let i = track.indexOf(a);
-    return new Set([
-      track[(i+35)%37],
-      track[(i+36)%37],
-      a,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ]);
+    return [track[(i+36)%37], a, track[(i+1)%37]];
   }
 
   function ancoraDoNumero(n){
-    if(n === 14) return 22;
-    if(n === 34) return 13;
+    if(n===14) return 22;
+    if(n===34) return 13;
     for(let a of ancoras){
-      if(coberturaAncora(a).has(n)) return a;
+      if(coberturaAncora(a).includes(n)) return a;
     }
+    return ancoras[0];
+  }
+
+  function alvosMais(){
+    let base = alvos();
+    let res = [];
+    base.forEach(n=>{
+      let a = ancoraDoNumero(n);
+      if(!res.includes(a)) res.push(a);
+    });
+    base.forEach(n=>{
+      vizinhos(n).forEach(v=>{
+        let a = ancoraDoNumero(v);
+        if(res.length<4 && !res.includes(a)) res.push(a);
+      });
+    });
+    return res.slice(0,4);
   }
 
   // ================= ALVOS SECOS (INALTERADO) =================
   function alvoSeco(){
-    let ts = terminaisFortes();
+    let ts = terminaisAtaque();
     let secos = [];
-
     ts.forEach(t=>{
       terminais[t].forEach(n=>{
         if(secos.every(x=>{
-          let d = Math.abs(track.indexOf(x)-track.indexOf(n));
-          return Math.min(d,37-d) >= 4;
-        })){
-          secos.push(n);
-        }
+          let d=Math.abs(track.indexOf(x)-track.indexOf(n));
+          return Math.min(d,37-d)>=4;
+        })) secos.push(n);
       });
     });
-
     return secos.slice(0,6);
   }
 
   // ================= UI =================
-  document.body.style.background = "#111";
-  document.body.style.color = "#fff";
+  document.body.style.background="#111";
+  document.body.style.color="#fff";
 
-  document.body.innerHTML = `
-    <div style="padding:10px">
+  document.body.innerHTML=`
+    <div style="padding:10px;font-family:sans-serif">
       <h3 style="text-align:center">App Caballerro</h3>
 
-      <div style="margin-bottom:6px">
-        🕒 Linha do tempo: <span id="timeline"></span>
-      </div>
-
+      <div>🕒 Linha do tempo: <span id="tl"></span></div>
+      <div>📊 TERMINAIS ATAQUE: <span id="ta"></span></div>
       <div>🎯 ALVOS: <span id="alvos"></span></div>
       <div>🎯 ALVOS +: <span id="alvosMais"></span></div>
       <div>🎯 ALVOS SECOS: <span id="alvosSeco"></span></div>
-      <div>📊 TERMINAIS FORTES: <span id="tf"></span></div>
 
       <div id="nums"
-           style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px">
-      </div>
+        style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:10px"></div>
     </div>
   `;
 
-  const nums = document.getElementById("nums");
+  const nums=document.getElementById("nums");
 
   for(let n=0;n<=36;n++){
-    let b = document.createElement("button");
-    b.textContent = n;
-    b.style = "padding:8px;background:#333;color:#fff;border:1px solid #555";
-    b.onclick = ()=>{ hist.push(n); render(); };
+    let b=document.createElement("button");
+    b.textContent=n;
+    b.style="padding:8px;background:#333;color:#fff;border:1px solid #555";
+    b.onclick=()=>{hist.push(n);render();};
     nums.appendChild(b);
   }
 
   function render(){
-    document.getElementById("timeline").textContent =
+    document.getElementById("tl").textContent =
       hist.slice(-14).join(" · ");
-
-    let a = alvos();
-
+    document.getElementById("ta").textContent =
+      terminaisAtaque().map(t=>"T"+t).join(" · ");
     document.getElementById("alvos").textContent =
-      a.join(" · ");
-
-    // 🔴 AQUI É A ÚNICA MUDANÇA → 4 ALVOS +
+      alvos().join(" · ");
     document.getElementById("alvosMais").textContent =
-      a.map(n=>ancoraDoNumero(n)).slice(0,4).join(" · ");
-
+      alvosMais().join(" · ");
     document.getElementById("alvosSeco").textContent =
       alvoSeco().join(" · ");
-
-    document.getElementById("tf").textContent =
-      terminaisFortes().map(t=>"T"+t).join(" · ");
   }
 
   render();
