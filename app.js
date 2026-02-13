@@ -9,12 +9,14 @@
   ];
   const terminal = n => n % 10;
 
+  // ================= EIXOS =================
   const eixos = [
     { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
     { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
     { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
 
+  // ================= ESTADO =================
   let timeline = [];
   let janela = 6;
   let modoAtivo = "MANUAL";
@@ -47,12 +49,89 @@
     ];
   }
 
+  // ================= LEITOR ESTRUTURAL =================
+
+  function gerarEstrutura(){
+
+    if(timeline.length < 8) return [];
+
+    const usados = new Set();
+    const escolhidos = [];
+
+    function podeUsar(n){
+      const bloco = vizinhosRace(n);
+      return bloco.every(x => !usados.has(x));
+    }
+
+    function registrarBloco(n){
+      vizinhosRace(n).forEach(x=>usados.add(x));
+      escolhidos.push(n);
+    }
+
+    // Permanência
+    const freq = {};
+    timeline.forEach(n=>{
+      freq[n] = (freq[n]||0)+1;
+    });
+
+    const permanencia = Object.entries(freq)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x=>+x[0])
+      .find(n=>podeUsar(n));
+
+    if(permanencia!==undefined) registrarBloco(permanencia);
+
+    // Compensação (oposto no cilindro)
+    if(permanencia!==undefined){
+      const idx = track.indexOf(permanencia);
+      const compensacao = track[(idx+18)%37];
+      if(podeUsar(compensacao)) registrarBloco(compensacao);
+    }
+
+    // Lacuna
+    const naoSaiu = track.filter(n=>!timeline.includes(n));
+    const lacuna = naoSaiu.find(n=>podeUsar(n));
+    if(lacuna!==undefined) registrarBloco(lacuna);
+
+    // Permanência estrutural
+    const freqViz = {};
+    timeline.forEach(n=>{
+      vizinhosRace(n).forEach(v=>{
+        freqViz[v] = (freqViz[v]||0)+1;
+      });
+    });
+
+    const estrutural = Object.entries(freqViz)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x=>+x[0])
+      .find(n=>podeUsar(n));
+
+    if(estrutural!==undefined) registrarBloco(estrutural);
+
+    // Ruptura
+    const saltos = [];
+    for(let i=0;i<timeline.length-1;i++){
+      const a = track.indexOf(timeline[i]);
+      const b = track.indexOf(timeline[i+1]);
+      saltos.push({n:timeline[i], salto:Math.abs(a-b)});
+    }
+
+    const ruptura = saltos
+      .sort((a,b)=>b.salto-a.salto)
+      .map(x=>x.n)
+      .find(n=>podeUsar(n));
+
+    if(ruptura!==undefined) registrarBloco(ruptura);
+
+    return escolhidos.slice(0,5);
+  }
+
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
   document.body.innerHTML = `
-    <div style="padding:10px;max-width:1100px;margin:auto">
+    <div style="padding:10px;max-width:1000px;margin:auto">
       <h3 style="text-align:center">CSM</h3>
 
       <div style="border:1px solid #444;padding:8px">
@@ -73,10 +152,10 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <!-- ===== NOVO QUADRO ESTRUTURAL ===== -->
+      <!-- NOVO QUADRO -->
       <div id="estruturaBox"
            style="border:1px solid #00e676;
-                  padding:10px;
+                  padding:8px;
                   margin-bottom:10px;">
       </div>      <div style="display:flex;gap:6px;margin-bottom:6px">
         ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
@@ -105,88 +184,12 @@
       </div>
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
+
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
 
-  // ================= LÓGICA DOS 5 NÚMEROS =================
-
-  function gerarEstrutura(){
-
-    if(timeline.length < 8) return [];
-
-    const usados = new Set();
-    const escolhidos = [];
-
-    function podeUsar(n){
-      const bloco = vizinhosRace(n);
-      return bloco.every(x => !usados.has(x));
-    }
-
-    function registrarBloco(n){
-      vizinhosRace(n).forEach(x=>usados.add(x));
-      escolhidos.push(n);
-    }
-
-    // 1️⃣ Permanência → número mais repetido
-    const freq = {};
-    timeline.forEach(n=>{
-      freq[n] = (freq[n]||0)+1;
-    });
-
-    const permanencia = Object.entries(freq)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>podeUsar(n));
-
-    if(permanencia!==undefined) registrarBloco(permanencia);
-
-    // 2️⃣ Compensação → oposto no cilindro
-    if(permanencia!==undefined){
-      const idx = track.indexOf(permanencia);
-      const compensacao = track[(idx+18)%37];
-      if(podeUsar(compensacao)) registrarBloco(compensacao);
-    }
-
-    // 3️⃣ Lacuna → número que não saiu
-    const naoSaiu = track.filter(n=>!timeline.includes(n));
-    const lacuna = naoSaiu.find(n=>podeUsar(n));
-    if(lacuna!==undefined) registrarBloco(lacuna);
-
-    // 4️⃣ Permanência estrutural → vizinho mais frequente
-    const freqViz = {};
-    timeline.forEach(n=>{
-      vizinhosRace(n).forEach(v=>{
-        freqViz[v] = (freqViz[v]||0)+1;
-      });
-    });
-
-    const estrutural = Object.entries(freqViz)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>podeUsar(n));
-
-    if(estrutural!==undefined) registrarBloco(estrutural);
-
-    // 5️⃣ Ruptura → maior salto recente
-    const saltos = [];
-    for(let i=0;i<timeline.length-1;i++){
-      const a = track.indexOf(timeline[i]);
-      const b = track.indexOf(timeline[i+1]);
-      saltos.push({n:timeline[i], salto:Math.abs(a-b)});
-    }
-
-    const ruptura = saltos
-      .sort((a,b)=>b.salto-a.salto)
-      .map(x=>x.n)
-      .find(n=>podeUsar(n));
-
-    if(ruptura!==undefined) registrarBloco(ruptura);
-
-    return escolhidos.slice(0,5);
-  }
-
-  // ================= RESTANTE DO SEU CÓDIGO ORIGINAL =================
+  // ================= EVENTOS =================
 
   jan.onchange=e=>{ janela=+e.target.value; render(); };
 
@@ -213,15 +216,87 @@
     render();
   };
 
+  // ================= BOTÕES T =================
+  for(let t=0;t<=9;t++){
+    const b=document.createElement("button");
+    b.textContent="T"+t;
+    b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
+    b.onclick=()=>{
+      analises.MANUAL.filtros.has(t)
+        ? analises.MANUAL.filtros.delete(t)
+        : analises.MANUAL.filtros.add(t);
+
+      filtrosConjuntos.has(t)
+        ? filtrosConjuntos.delete(t)
+        : filtrosConjuntos.add(t);
+
+      render();
+    };
+    btnT.appendChild(b);
+  }
+
+  // ================= GRID 0–36 =================
+  for(let n=0;n<=36;n++){
+    const b=document.createElement("button");
+    b.textContent=n;
+    b.style="padding:8px;background:#333;color:#fff";
+    b.onclick=()=>add(n);
+    nums.appendChild(b);
+  }
+
+  function add(n){
+    timeline.unshift(n);
+    if(timeline.length>14) timeline.pop();
+    registrar(n);
+    calcularVizinho();
+    calcularNunum();
+    [3,4,5,6,7].forEach(calcularAutoT);
+    render();
+  }
+
+  col.onclick=()=>{
+    inp.value.split(/[\s,]+/)
+      .map(Number)
+      .filter(n=>n>=0&&n<=36)
+      .forEach(add);
+    inp.value="";
+  };
+
+  lim.onclick=()=>{
+    timeline=[];
+    filtrosConjuntos.clear();
+    Object.values(analises).forEach(a=>{
+      if(a.res) a.res=[];
+      if(a.filtros) a.filtros.clear();
+      if(a.motor) a.motor.clear();
+    });
+    modoAtivo="MANUAL";
+    autoTAtivo=null;
+    modoConjuntos=false;
+    btnConj.style.background="#444";
+    render();
+  };
+
+  // ================= RENDER =================
+
   function render(){
 
-    tl.innerHTML = timeline.join(" · ");
+    const res =
+      modoAtivo==="AUTO"
+        ? analises.AUTO[autoTAtivo]?.res || []
+        : analises[modoAtivo].res;
 
-    // ===== RENDER ESTRUTURAL =====
+    tl.innerHTML = timeline.map((n,i)=>{
+      const r=res[i];
+      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+      return `<span style="color:${c}">${n}</span>`;
+    }).join(" · ");
+
+    // ===== LEITOR ESTRUTURAL RENDER =====
     const estrutura = gerarEstrutura();
 
     estruturaBox.innerHTML = `
-      <b>Leitura Estrutural</b><br><br>
+      <b>Leitor Estrutural</b><br><br>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estrutura.map(n=>`
           <div style="
@@ -230,12 +305,57 @@
             border:1px solid #00e676;
             min-width:50px;
             text-align:center;
+            font-weight:bold;
           ">
             ${n}
           </div>
         `).join("")}
       </div>
     `;
+
+    // ===== EIXOS =====
+    const filtros =
+      modoAtivo==="AUTO"
+        ? analises.AUTO[autoTAtivo].filtros
+        : analises[modoAtivo].filtros;
+
+    const trios = triosSelecionados(filtros);
+    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
+    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
+    cZERO.innerHTML=por.ZERO.join("<div></div>");
+    cTIERS.innerHTML=por.TIERS.join("<div></div>");
+    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
+
+    // ===== CONJUNTOS =====
+    conjArea.style.display = modoConjuntos ? "block" : "none";
+    if(modoConjuntos){
+      const marcados=new Set();
+      filtrosConjuntos.forEach(t=>{
+        track.forEach(n=>{
+          if(terminal(n)===t){
+            vizinhosRace(n).forEach(v=>marcados.add(v));
+          }
+        });
+      });
+
+      conjArea.innerHTML = `
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
+          gap:4px;
+        ">
+          ${timeline.map(n=>`
+            <div style="
+              height:26px;
+              display:flex;align-items:center;justify-content:center;
+              background:${marcados.has(n)?"#00e676":"#222"};
+              color:#fff;font-size:10px;font-weight:700;
+              border-radius:4px;border:1px solid #333;
+            ">${n}</div>
+          `).join("")}
+        </div>
+      `;
+    }
 
   }
 
