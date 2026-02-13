@@ -2,13 +2,6 @@
 
   const track = [32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26,0];
 
-  const setores = {
-    TIER:    new Set([27,13,36,11,30,8,23,10,5,24,16,33]),
-    ORPHANS: new Set([1,20,14,31,9,17,34,6]),
-    ZERO:    new Set([0,3,12,15,26,32,35]),
-    VOISINS: new Set([2,4,7,18,19,21,22,25,28,29])
-  };
-
   let hist = [];
 
   document.body.innerHTML = `
@@ -62,81 +55,88 @@
 
     let ult = hist.slice(-5);
     let idx = ult.map(n => track.indexOf(n));
+    let ultimo = idx[idx.length-1];
 
-    // ===== 1️⃣ Leitura Angular =====
+    let candidatos = [];
+
+    // 1️⃣ Angular
     let offs = [];
     for(let i=1;i<idx.length;i++){
       offs.push(offset(idx[i-1],idx[i]));
     }
     let media = offs.reduce((a,b)=>a+b)/offs.length;
 
-    let estado;
-    if(media <= 4) estado = "PERMANENCIA";
-    else if(media <= 9) estado = "TRANSICAO";
-    else estado = "RUPTURA";
-
-    let ultimo = idx[idx.length-1];
-    let candidatos = [];
-
-    // ===== 2️⃣ Permanência =====
-    if(estado === "PERMANENCIA"){
-      candidatos.push(track[ultimo]);
-      candidatos.push(track[(ultimo+1)%37]);
-      candidatos.push(track[(ultimo-1+37)%37]);
-    }
-
-    // ===== 3️⃣ Transição =====
-    if(estado === "TRANSICAO"){
+    if(media <= 4) candidatos.push(track[ultimo]);
+    else if(media <= 9){
       let proj = (ultimo + Math.round(media)) % 37;
       candidatos.push(track[proj]);
-      candidatos.push(track[(proj+1)%37]);
-      candidatos.push(track[(proj-1+37)%37]);
-    }
-
-    // ===== 4️⃣ Ruptura =====
-    if(estado === "RUPTURA"){
+    } else {
       let oposto = (ultimo + 18) % 37;
       candidatos.push(track[oposto]);
-      candidatos.push(track[(oposto+1)%37]);
-      candidatos.push(track[(oposto-1+37)%37]);
     }
 
-    // ===== 5️⃣ Lacuna Física =====
-    let lacunaMaior = 0;
+    // 2️⃣ Permanência lateral
+    candidatos.push(track[(ultimo+1)%37]);
+
+    // 3️⃣ Compensação simples (lado oposto curto)
+    candidatos.push(track[(ultimo+9)%37]);
+
+    // 4️⃣ Lacuna física (ponto mais distante do último)
+    let maior = 0;
     let centroLacuna = null;
     for(let i=0;i<37;i++){
-      let vazio = true;
-      for(let n of ult){
-        if(track[i]===n){ vazio=false; break; }
-      }
-      if(vazio){
-        let dist = offset(i,ultimo);
-        if(dist > lacunaMaior){
-          lacunaMaior = dist;
-          centroLacuna = track[i];
-        }
+      let dist = offset(i,ultimo);
+      if(dist > maior){
+        maior = dist;
+        centroLacuna = track[i];
       }
     }
-    if(centroLacuna) candidatos.push(centroLacuna);
+    candidatos.push(centroLacuna);
 
-    // ===== 6️⃣ Preenchimento Angular =====
+    // 5️⃣ Preenchimento angular
     let mediaPos = Math.round(idx.reduce((a,b)=>a+b)/idx.length) % 37;
     candidatos.push(track[mediaPos]);
 
     // Remover duplicados
     candidatos = [...new Set(candidatos)];
 
-    // Garantir 5 centrais
+    // GARANTIR 5 SEM CONFLITO
     let finais = [];
     let usados = new Set();
 
-    for(let c of candidatos){
-      let zona = vizinhos2(c);
-      if(zona.every(n=>!usados.has(n))){
-        zona.forEach(n=>usados.add(n));
-        finais.push(c);
+    for(let base of candidatos){
+
+      let escolhido = null;
+
+      for(let t=0;t<6;t++){
+        let pos = (track.indexOf(base)+t)%37;
+        let cand = track[pos];
+        let zona = vizinhos2(cand);
+
+        if(zona.every(n=>!usados.has(n))){
+          escolhido = cand;
+          break;
+        }
       }
-      if(finais.length === 5) break;
+
+      if(escolhido){
+        vizinhos2(escolhido).forEach(n=>usados.add(n));
+        finais.push(escolhido);
+      }
+
+      if(finais.length===5) break;
+    }
+
+    // Se ainda faltar, completa girando disco
+    let i=0;
+    while(finais.length<5 && i<37){
+      let cand = track[i];
+      let zona = vizinhos2(cand);
+      if(zona.every(n=>!usados.has(n))){
+        vizinhos2(cand).forEach(n=>usados.add(n));
+        finais.push(cand);
+      }
+      i++;
     }
 
     return finais.slice(0,5);
