@@ -13,7 +13,7 @@
 
   document.body.innerHTML = `
     <div style="padding:10px;color:#fff;font-family:Arial">
-      <h3 style="text-align:center">Linha do Tempo + Análise</h3>
+      <h3 style="text-align:center">Modelo Dinâmico Original</h3>
       <div id="linhas"></div>
       <div style="border:1px solid #555;padding:6px;margin:6px 0;text-align:center">
         🎯 CENTRAIS: <span id="centrais"></span>
@@ -40,14 +40,6 @@
     nums.appendChild(b);
   }
 
-  function duzia(n){ return n===0?null:Math.ceil(n/12); }
-  function coluna(n){ return n===0?null:((n-1)%3)+1; }
-
-  function setor(n){
-    for(let s in setores) if(setores[s].has(n)) return s;
-    return null;
-  }
-
   function vizinhos2(n){
     let i = track.indexOf(n);
     return [
@@ -59,63 +51,95 @@
     ];
   }
 
+  function offset(a,b){
+    let d = Math.abs(a-b);
+    return Math.min(d,37-d);
+  }
+
   function gerarCentrais(){
 
-    if(hist.length < 6) return [];
+    if(hist.length < 5) return [];
 
-    let ult = hist.slice(-12);
+    let ult = hist.slice(-5);
+    let idx = ult.map(n => track.indexOf(n));
 
-    let contSet = {TIER:0,ORPHANS:0,ZERO:0,VOISINS:0};
-    let contDuz = [0,0,0];
-    let contCol = [0,0,0];
+    // ===== 1️⃣ Leitura Angular =====
+    let offs = [];
+    for(let i=1;i<idx.length;i++){
+      offs.push(offset(idx[i-1],idx[i]));
+    }
+    let media = offs.reduce((a,b)=>a+b)/offs.length;
 
-    ult.forEach(n=>{
-      let s = setor(n);
-      if(s) contSet[s]++;
-      let d = duzia(n);
-      if(d) contDuz[d-1]++;
-      let c = coluna(n);
-      if(c) contCol[c-1]++;
-    });
+    let estado;
+    if(media <= 4) estado = "PERMANENCIA";
+    else if(media <= 9) estado = "TRANSICAO";
+    else estado = "RUPTURA";
 
+    let ultimo = idx[idx.length-1];
     let candidatos = [];
 
-    for(let n=0;n<=36;n++){
-
-      let peso = 0;
-
-      let s = setor(n);
-      if(s) peso += contSet[s]*2;
-
-      let d = duzia(n);
-      if(d) peso += (Math.max(...contDuz)-contDuz[d-1])*2;
-
-      let c = coluna(n);
-      if(c) peso += (Math.max(...contCol)-contCol[c-1]);
-
-      if(ult.slice(-6).includes(n)) peso -= 5;
-
-      candidatos.push({n,peso});
+    // ===== 2️⃣ Permanência =====
+    if(estado === "PERMANENCIA"){
+      candidatos.push(track[ultimo]);
+      candidatos.push(track[(ultimo+1)%37]);
+      candidatos.push(track[(ultimo-1+37)%37]);
     }
 
-    candidatos.sort((a,b)=>b.peso-a.peso);
+    // ===== 3️⃣ Transição =====
+    if(estado === "TRANSICAO"){
+      let proj = (ultimo + Math.round(media)) % 37;
+      candidatos.push(track[proj]);
+      candidatos.push(track[(proj+1)%37]);
+      candidatos.push(track[(proj-1+37)%37]);
+    }
 
-    let usados = new Set();
-    let finais = [];
+    // ===== 4️⃣ Ruptura =====
+    if(estado === "RUPTURA"){
+      let oposto = (ultimo + 18) % 37;
+      candidatos.push(track[oposto]);
+      candidatos.push(track[(oposto+1)%37]);
+      candidatos.push(track[(oposto-1+37)%37]);
+    }
 
-    for(let obj of candidatos){
-
-      let zona = vizinhos2(obj.n);
-
-      if(zona.every(x=>!usados.has(x))){
-        zona.forEach(x=>usados.add(x));
-        finais.push(obj.n);
+    // ===== 5️⃣ Lacuna Física =====
+    let lacunaMaior = 0;
+    let centroLacuna = null;
+    for(let i=0;i<37;i++){
+      let vazio = true;
+      for(let n of ult){
+        if(track[i]===n){ vazio=false; break; }
       }
+      if(vazio){
+        let dist = offset(i,ultimo);
+        if(dist > lacunaMaior){
+          lacunaMaior = dist;
+          centroLacuna = track[i];
+        }
+      }
+    }
+    if(centroLacuna) candidatos.push(centroLacuna);
 
-      if(finais.length===5) break;
+    // ===== 6️⃣ Preenchimento Angular =====
+    let mediaPos = Math.round(idx.reduce((a,b)=>a+b)/idx.length) % 37;
+    candidatos.push(track[mediaPos]);
+
+    // Remover duplicados
+    candidatos = [...new Set(candidatos)];
+
+    // Garantir 5 centrais
+    let finais = [];
+    let usados = new Set();
+
+    for(let c of candidatos){
+      let zona = vizinhos2(c);
+      if(zona.every(n=>!usados.has(n))){
+        zona.forEach(n=>usados.add(n));
+        finais.push(c);
+      }
+      if(finais.length === 5) break;
     }
 
-    return finais;
+    return finais.slice(0,5);
   }
 
   function render(){
