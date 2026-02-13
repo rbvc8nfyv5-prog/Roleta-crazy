@@ -40,64 +40,63 @@
 
   function vizinhosRace(n){
     const i = track.indexOf(n);
-    return [
-      track[(i-2+37)%37],
-      track[(i-1+37)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
+    return [ track[(i+36)%37], n, track[(i+1)%37] ];
+  }
+
+  function pertenceGrupoVizinho(n, grupo){
+    return vizinhosRace(n).some(v => grupo.includes(terminal(v)));
   }
 
   // ================= LEITOR ESTRUTURAL =================
-
-  function gerarEstrutura(){
+  function gerarLeitorEstrutural(){
 
     if(timeline.length < 8) return [];
 
     const usados = new Set();
-    const escolhidos = [];
+    const centros = [];
+
+    function bloco5(n){
+      const i = track.indexOf(n);
+      return [
+        track[(i-2+37)%37],
+        track[(i-1+37)%37],
+        n,
+        track[(i+1)%37],
+        track[(i+2)%37]
+      ];
+    }
 
     function podeUsar(n){
-      const bloco = vizinhosRace(n);
-      return bloco.every(x => !usados.has(x));
+      return bloco5(n).every(x => !usados.has(x));
     }
 
-    function registrarBloco(n){
-      vizinhosRace(n).forEach(x=>usados.add(x));
-      escolhidos.push(n);
+    function registrarCentro(n){
+      bloco5(n).forEach(x => usados.add(x));
+      centros.push(n);
     }
 
-    // Permanência
     const freq = {};
-    timeline.forEach(n=>{
-      freq[n] = (freq[n]||0)+1;
-    });
+    timeline.forEach(n => freq[n]=(freq[n]||0)+1);
 
     const permanencia = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>podeUsar(n));
 
-    if(permanencia!==undefined) registrarBloco(permanencia);
+    if(permanencia!==undefined) registrarCentro(permanencia);
 
-    // Compensação (oposto no cilindro)
     if(permanencia!==undefined){
-      const idx = track.indexOf(permanencia);
-      const compensacao = track[(idx+18)%37];
-      if(podeUsar(compensacao)) registrarBloco(compensacao);
+      const oposto = track[(track.indexOf(permanencia)+18)%37];
+      if(podeUsar(oposto)) registrarCentro(oposto);
     }
 
-    // Lacuna
-    const naoSaiu = track.filter(n=>!timeline.includes(n));
-    const lacuna = naoSaiu.find(n=>podeUsar(n));
-    if(lacuna!==undefined) registrarBloco(lacuna);
+    const lacuna = track.find(n=>!timeline.includes(n) && podeUsar(n));
+    if(lacuna!==undefined) registrarCentro(lacuna);
 
-    // Permanência estrutural
     const freqViz = {};
     timeline.forEach(n=>{
-      vizinhosRace(n).forEach(v=>{
-        freqViz[v] = (freqViz[v]||0)+1;
+      bloco5(n).forEach(v=>{
+        freqViz[v]=(freqViz[v]||0)+1;
       });
     });
 
@@ -106,24 +105,120 @@
       .map(x=>+x[0])
       .find(n=>podeUsar(n));
 
-    if(estrutural!==undefined) registrarBloco(estrutural);
+    if(estrutural!==undefined) registrarCentro(estrutural);
 
-    // Ruptura
     const saltos = [];
     for(let i=0;i<timeline.length-1;i++){
-      const a = track.indexOf(timeline[i]);
-      const b = track.indexOf(timeline[i+1]);
-      saltos.push({n:timeline[i], salto:Math.abs(a-b)});
+      const a=track.indexOf(timeline[i]);
+      const b=track.indexOf(timeline[i+1]);
+      saltos.push({n:timeline[i],d:Math.abs(a-b)});
     }
 
     const ruptura = saltos
-      .sort((a,b)=>b.salto-a.salto)
+      .sort((a,b)=>b.d-a.d)
       .map(x=>x.n)
       .find(n=>podeUsar(n));
 
-    if(ruptura!==undefined) registrarBloco(ruptura);
+    if(ruptura!==undefined) registrarCentro(ruptura);
 
-    return escolhidos.slice(0,5);
+    return centros.slice(0,5);
+  }
+
+  // ===== MELHOR TRIO INTERNO DO GRUPO =====
+  function melhorTrioGrupo(grupo){
+
+    const trios = [];
+    for(let i=0;i<grupo.length;i++){
+      for(let j=i+1;j<grupo.length;j++){
+        for(let k=j+1;k<grupo.length;k++){
+          trios.push([grupo[i],grupo[j],grupo[k]]);
+        }
+      }
+    }
+
+    const cont = {};
+
+    trios.forEach(trio=>{
+      const chave = trio.join("-");
+      cont[chave]=0;
+
+      timeline.forEach(n=>{
+        if(vizinhosRace(n).some(v=> trio.includes(terminal(v)))){
+          cont[chave]++;
+        }
+      });
+    });
+
+    const ordenado = Object.entries(cont)
+      .sort((a,b)=>b[1]-a[1]);
+
+    return ordenado.length ? ordenado[0][0] : null;
+  }  function calcularAutoT(k){
+    const set = new Set();
+    for(const n of timeline.slice(0,janela)){
+      set.add(terminal(n));
+      if(set.size>=k) break;
+    }
+    analises.AUTO[k].filtros = set;
+  }
+
+  function melhorTrincaBase(){
+    const cont = {};
+    timeline.slice(0,janela).forEach(n=>{
+      const t = terminal(n);
+      cont[t] = (cont[t]||0)+1;
+    });
+    return Object.entries(cont)
+      .sort((a,b)=>b[1]-a[1])
+      .slice(0,3)
+      .map(x=>+x[0]);
+  }
+
+  function calcularVizinho(){
+    const base = melhorTrincaBase();
+    analises.VIZINHO.filtros = new Set(base);
+    analises.VIZINHO.motor.clear();
+    base.forEach(t=>{
+      track.filter(n=>terminal(n)===t)
+        .forEach(n=>vizinhosRace(n)
+          .forEach(v=>analises.VIZINHO.motor.add(v))
+        );
+    });
+  }
+
+  function calcularNunum(){
+    const set = new Set();
+    timeline.slice(0,2).forEach(n=>{
+      vizinhosRace(n).forEach(v=>set.add(terminal(v)));
+    });
+    analises.NUNUM.filtros = set;
+  }
+
+  function triosSelecionados(filtros){
+    let lista=[];
+    eixos.forEach(e=>{
+      e.trios.forEach(trio=>{
+        const inter = trio.map(terminal)
+          .filter(t=>!filtros.size||filtros.has(t)).length;
+        if(inter>0) lista.push({eixo:e.nome,trio});
+      });
+    });
+    return lista.slice(0,9);
+  }
+
+  function validar(n, filtros){
+    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
+  }
+
+  function registrar(n){
+    analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
+    analises.VIZINHO.res.unshift(analises.VIZINHO.motor.has(n)?"V":"X");
+    analises.NUNUM.res.unshift(validar(n,analises.NUNUM.filtros)?"V":"X");
+    [3,4,5,6,7].forEach(k=>{
+      analises.AUTO[k].res.unshift(
+        validar(n,analises.AUTO[k].filtros)?"V":"X"
+      );
+    });
   }
 
   document.body.style.background="#111";
@@ -152,12 +247,28 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <!-- NOVO QUADRO -->
       <div id="estruturaBox"
            style="border:1px solid #00e676;
                   padding:8px;
                   margin-bottom:10px;">
-      </div>      <div style="display:flex;gap:6px;margin-bottom:6px">
+      </div>
+
+      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+        <b>1479</b>
+        <div id="tl1479"></div>
+      </div>
+
+      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+        <b>2589</b>
+        <div id="tl2589"></div>
+      </div>
+
+      <div style="border:1px solid #555;padding:6px;margin-bottom:10px;cursor:pointer">
+        <b>0369</b>
+        <div id="tl0369"></div>
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:6px">
         ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
           <button class="modo" data-m="${m}"
             style="padding:6px;background:#444;color:#fff;border:1px solid #666">${m}</button>`).join("")}
@@ -184,12 +295,9 @@
       </div>
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
-
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
-
-  // ================= EVENTOS =================
 
   jan.onchange=e=>{ janela=+e.target.value; render(); };
 
@@ -216,7 +324,6 @@
     render();
   };
 
-  // ================= BOTÕES T =================
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
     b.textContent="T"+t;
@@ -235,7 +342,6 @@
     btnT.appendChild(b);
   }
 
-  // ================= GRID 0–36 =================
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
     b.textContent=n;
@@ -256,9 +362,7 @@
 
   col.onclick=()=>{
     inp.value.split(/[\s,]+/)
-      .map(Number)
-      .filter(n=>n>=0&&n<=36)
-      .forEach(add);
+      .map(Number).filter(n=>n>=0&&n<=36).forEach(add);
     inp.value="";
   };
 
@@ -277,8 +381,6 @@
     render();
   };
 
-  // ================= RENDER =================
-
   function render(){
 
     const res =
@@ -292,13 +394,11 @@
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    // ===== LEITOR ESTRUTURAL RENDER =====
-    const estrutura = gerarEstrutura();
-
+    const estrut = gerarLeitorEstrutural();
     estruturaBox.innerHTML = `
       <b>Leitor Estrutural</b><br><br>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${estrutura.map(n=>`
+        ${estrut.map(n=>`
           <div style="
             background:#222;
             padding:8px;
@@ -306,14 +406,56 @@
             min-width:50px;
             text-align:center;
             font-weight:bold;
-          ">
-            ${n}
-          </div>
+          ">${n}</div>
         `).join("")}
       </div>
     `;
 
-    // ===== EIXOS =====
+    const grupos = {
+      tl1479:[1,4,7,9],
+      tl2589:[2,5,8,9],
+      tl0369:[0,3,6,9]
+    };
+
+    Object.entries(grupos).forEach(([id,grupo])=>{
+      const melhor = melhorTrioGrupo(grupo);
+      const box = document.getElementById(id).parentElement;
+
+      document.getElementById(id).innerHTML = `
+        <div style="font-size:12px;margin-bottom:4px;color:#00e676">
+          Melhor Trio: ${melhor || "-"}
+        </div>
+        ${timeline.map(n=>`
+          <span style="
+            display:inline-block;
+            width:18px;
+            text-align:center;
+            background:${pertenceGrupoVizinho(n,grupo)?"#00e676":"transparent"};
+            border-radius:3px;
+            margin-right:2px;
+          ">${n}</span>
+        `).join("")}
+      `;
+
+      box.onclick=()=>{
+        if(!melhor) return;
+        analises.MANUAL.filtros.clear();
+        melhor.split("-").forEach(n=>{
+          analises.MANUAL.filtros.add(terminal(+n));
+        });
+        modoAtivo="MANUAL";
+        render();
+      };
+    });
+
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      const ativo =
+        analises.MANUAL.filtros.has(t) ||
+        filtrosConjuntos.has(t);
+      b.style.background = ativo ? "#00e676" : "#444";
+    });
+
     const filtros =
       modoAtivo==="AUTO"
         ? analises.AUTO[autoTAtivo].filtros
@@ -326,7 +468,6 @@
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
 
-    // ===== CONJUNTOS =====
     conjArea.style.display = modoConjuntos ? "block" : "none";
     if(modoConjuntos){
       const marcados=new Set();
@@ -356,7 +497,6 @@
         </div>
       `;
     }
-
   }
 
   render();
