@@ -10,14 +10,12 @@
 
   const terminal = n => n % 10;
 
-  // ================= EIXOS =================
   const eixos = [
     { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
     { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
     { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
 
-  // ================= ESTADO =================
   let timeline = [];
   let janela = 6;
   let modoAtivo = "MANUAL";
@@ -92,14 +90,42 @@
       if(podeUsar(oposto)) registrarCentro(oposto);
     }
 
-    const lacuna = track.find(n=>!timeline.includes(n) && podeUsar(n));
+    const lacuna = track
+      .filter(n=>!timeline.includes(n))
+      .find(n=>podeUsar(n));
+
     if(lacuna!==undefined) registrarCentro(lacuna);
 
-    return centros.slice(0,5);
-  }
+    const freqViz = {};
+    timeline.forEach(n=>{
+      bloco5(n).forEach(v=>{
+        freqViz[v]=(freqViz[v]||0)+1;
+      });
+    });
 
-  // ===== MELHOR TRIO INTERNO DO GRUPO =====
-  function melhorTrioGrupo(grupo){
+    const estrutural = Object.entries(freqViz)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x=>+x[0])
+      .find(n=>podeUsar(n));
+
+    if(estrutural!==undefined) registrarCentro(estrutural);
+
+    const saltos = [];
+    for(let i=0;i<timeline.length-1;i++){
+      const a=track.indexOf(timeline[i]);
+      const b=track.indexOf(timeline[i+1]);
+      saltos.push({n:timeline[i],d:Math.abs(a-b)});
+    }
+
+    const ruptura = saltos
+      .sort((a,b)=>b.d-a.d)
+      .map(x=>x.n)
+      .find(n=>podeUsar(n));
+
+    if(ruptura!==undefined) registrarCentro(ruptura);
+
+    return centros.slice(0,5);
+  }  function melhorTrioGrupo(grupo){
 
     const trios = [];
     for(let i=0;i<grupo.length;i++){
@@ -127,7 +153,9 @@
       .sort((a,b)=>b[1]-a[1]);
 
     return ordenado.length ? ordenado[0][0] : null;
-  }  function calcularAutoT(k){
+  }
+
+  function calcularAutoT(k){
     const set = new Set();
     for(const n of timeline.slice(0,janela)){
       set.add(terminal(n));
@@ -196,7 +224,6 @@
       );
     });
 
-    // 🔥 Validação Estrutural
     if(modoAtivo==="ESTRUTURAL"){
       const ok = analises.ESTRUTURAL.centros.some(c=>{
         const i = track.indexOf(c);
@@ -213,7 +240,6 @@
     }
   }
 
-  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
