@@ -74,64 +74,58 @@
     if(hist.length < 6) return [];
 
     let ult = hist.slice(-12);
-
-    // Contagem setor
-    let contSet = {TIER:0,ORPHANS:0,ZERO:0,VOISINS:0};
-    let contDuz = [0,0,0];
-    let contCol = [0,0,0];
-
-    ult.forEach(n=>{
-      let s = setorDoNumero(n);
-      if(s) contSet[s]++;
-      let d = duzia(n);
-      if(d) contDuz[d-1]++;
-      let c = coluna(n);
-      if(c) contCol[c-1]++;
-    });
-
-    // Dominância cilindro
-    let setorDominante = Object.keys(contSet).reduce((a,b)=>contSet[a]>contSet[b]?a:b);
-    let centralCil = {
-      TIER:30,
-      ORPHANS:6,
-      ZERO:0,
-      VOISINS:29
-    }[setorDominante];
-
-    // Compensação dúzia
-    let minD = contDuz.indexOf(Math.min(...contDuz));
-    let centralDuz = [6,17,30][minD];
-
-    // Compensação coluna
-    let minC = contCol.indexOf(Math.min(...contCol));
-    let centralCol = [1,2,3][minC]*10;
-
-    // Preenchimento neutro
-    let centralMid = 19;
-
-    // Ruptura oposta ao dominante
-    let ruptura = {
-      TIER:29,
-      VOISINS:30,
-      ORPHANS:29,
-      ZERO:30
-    }[setorDominante];
-
-    let candidatos = [centralCil,centralDuz,centralCol,centralMid,ruptura];
-
-    // Remover sobreposição
-    let finais = [];
     let usados = new Set();
+    let finais = [];
 
-    candidatos.forEach(c=>{
-      let zona = vizinhos2(c);
-      if(zona.every(n=>!usados.has(n))){
-        zona.forEach(n=>usados.add(n));
-        finais.push(c);
-      }
+    function pesoSetor(n){
+      let s = setorDoNumero(n);
+      return ult.filter(x => setorDoNumero(x) === s).length;
+    }
+
+    function penalidadeRecente(n){
+      return ult.slice(-6).includes(n) ? -2 : 0;
+    }
+
+    function ajustarNoDisco(n, tentativa=0){
+      let i = track.indexOf(n);
+      return track[(i + tentativa + 37) % 37];
+    }
+
+    function zonaLivre(n){
+      let zona = vizinhos2(n);
+      return zona.every(x => !usados.has(x));
+    }
+
+    let candidatosBase = [30,29,6,0,19];
+
+    candidatosBase.sort((a,b)=>{
+      let pa = pesoSetor(a) + penalidadeRecente(a);
+      let pb = pesoSetor(b) + penalidadeRecente(b);
+      return pb - pa;
     });
 
-    return finais.slice(0,5);
+    for(let base of candidatosBase){
+
+      let escolhido = null;
+
+      for(let t=0; t<6; t++){
+        let candidato = ajustarNoDisco(base, t);
+        if(zonaLivre(candidato)){
+          escolhido = candidato;
+          break;
+        }
+      }
+
+      if(escolhido !== null){
+        let zona = vizinhos2(escolhido);
+        zona.forEach(x=>usados.add(x));
+        finais.push(escolhido);
+      }
+
+      if(finais.length === 5) break;
+    }
+
+    return finais;
   }
 
   // ================= RENDER =================
