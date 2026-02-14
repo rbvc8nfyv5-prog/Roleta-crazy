@@ -32,7 +32,8 @@
       5:{ filtros:new Set(), res:[] },
       6:{ filtros:new Set(), res:[] },
       7:{ filtros:new Set(), res:[] }
-    }
+    },
+    ESTRUTURAL:{ centros:[], res:[], ativo:false }
   };
 
   let modoConjuntos = false;
@@ -78,53 +79,33 @@
     const freq = {};
     timeline.forEach(n => freq[n]=(freq[n]||0)+1);
 
-    const permanencia = Object.entries(freq)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>podeUsar(n));
-
-    if(permanencia!==undefined) registrarCentro(permanencia);
-
-    if(permanencia!==undefined){
-      const oposto = track[(track.indexOf(permanencia)+18)%37];
-      if(podeUsar(oposto)) registrarCentro(oposto);
-    }
-
-    const lacuna = track.find(n=>!timeline.includes(n) && podeUsar(n));
-    if(lacuna!==undefined) registrarCentro(lacuna);
-
-    const freqViz = {};
+    // 🔥 Peso maior para borda externa quente
+    const peso = {};
     timeline.forEach(n=>{
-      bloco5(n).forEach(v=>{
-        freqViz[v]=(freqViz[v]||0)+1;
+      const i = track.indexOf(n);
+      const externos = [
+        track[(i-2+37)%37],
+        track[(i+2)%37]
+      ];
+      externos.forEach(v=>{
+        peso[v]=(peso[v]||0)+2;
       });
     });
 
-    const estrutural = Object.entries(freqViz)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>podeUsar(n));
+    const ordenados = track.slice().sort((a,b)=>{
+      const fa = (freq[a]||0)+(peso[a]||0);
+      const fb = (freq[b]||0)+(peso[b]||0);
+      return fb-fa;
+    });
 
-    if(estrutural!==undefined) registrarCentro(estrutural);
-
-    // 🔥 DISTÂNCIA CIRCULAR CORRETA
-    const saltos = [];
-    for(let i=0;i<timeline.length-1;i++){
-      const a=track.indexOf(timeline[i]);
-      const b=track.indexOf(timeline[i+1]);
-      const diff = Math.abs(a-b);
-      const d = Math.min(diff, 37-diff);
-      saltos.push({n:timeline[i],d});
+    for(const n of ordenados){
+      if(podeUsar(n)){
+        registrarCentro(n);
+      }
+      if(centros.length===5) break;
     }
 
-    const ruptura = saltos
-      .sort((a,b)=>b.d-a.d)
-      .map(x=>x.n)
-      .find(n=>podeUsar(n));
-
-    if(ruptura!==undefined) registrarCentro(ruptura);
-
-    // 🔥 GARANTIR SEMPRE 5 CENTRAIS
+    // 🔥 Garantir sempre 5 centrais
     if(centros.length < 5){
       for(const n of track){
         if(centros.length >= 5) break;
@@ -133,6 +114,21 @@
     }
 
     return centros.slice(0,5);
+  }
+
+  function validarEstrutural(n){
+    for(const c of analises.ESTRUTURAL.centros){
+      const i = track.indexOf(c);
+      const bloco = [
+        track[(i-2+37)%37],
+        track[(i-1+37)%37],
+        c,
+        track[(i+1)%37],
+        track[(i+2)%37]
+      ];
+      if(bloco.includes(n)) return true;
+    }
+    return false;
   }  // ===== MELHOR TRIO INTERNO DO GRUPO =====
   function melhorTrioGrupo(grupo){
 
@@ -222,14 +218,27 @@
   }
 
   function registrar(n){
+
+    // ================= VALIDAÇÃO TRAVADA =================
+
     analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
     analises.VIZINHO.res.unshift(analises.VIZINHO.motor.has(n)?"V":"X");
     analises.NUNUM.res.unshift(validar(n,analises.NUNUM.filtros)?"V":"X");
+
     [3,4,5,6,7].forEach(k=>{
       analises.AUTO[k].res.unshift(
         validar(n,analises.AUTO[k].filtros)?"V":"X"
       );
     });
+
+    // 🔥 Estrutural valida só se ativo
+    if(analises.ESTRUTURAL.ativo){
+      analises.ESTRUTURAL.res.unshift(
+        validarEstrutural(n) ? "V" : "X"
+      );
+    } else {
+      analises.ESTRUTURAL.res.unshift(null);
+    }
   }
 
   document.body.style.background="#111";
@@ -259,12 +268,11 @@
       </div>
 
       <div id="estruturaBox"
-           style="border:1px solid #00e676;
+           style="border:1px solid #555;
                   padding:8px;
-                  margin-bottom:10px;">
-      </div>
-
-      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+                  margin-bottom:10px;
+                  cursor:pointer;">
+      </div>      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
         <b>1479</b>
         <div id="tl1479"></div>
       </div>
@@ -277,7 +285,9 @@
       <div style="border:1px solid #555;padding:6px;margin-bottom:10px;cursor:pointer">
         <b>0369</b>
         <div id="tl0369"></div>
-      </div>      <div style="display:flex;gap:6px;margin-bottom:6px">
+      </div>
+
+      <div style="display:flex;gap:6px;margin-bottom:6px">
         ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
           <button class="modo" data-m="${m}"
             style="padding:6px;background:#444;color:#fff;border:1px solid #666">${m}</button>`).join("")}
@@ -308,11 +318,14 @@
     </div>
   `;
 
+  // ================= EVENTOS =================
+
   jan.onchange=e=>{ janela=+e.target.value; render(); };
 
   document.querySelectorAll(".modo").forEach(b=>{
     b.onclick=()=>{
       modoAtivo=b.dataset.m;
+      analises.ESTRUTURAL.ativo=false;
       render();
     };
   });
@@ -320,6 +333,7 @@
   document.querySelectorAll(".auto").forEach(b=>{
     b.onclick=()=>{
       modoAtivo="AUTO";
+      analises.ESTRUTURAL.ativo=false;
       autoTAtivo=+b.dataset.a;
       calcularAutoT(autoTAtivo);
       render();
@@ -330,6 +344,7 @@
     modoConjuntos=!modoConjuntos;
     btnConj.style.background = modoConjuntos?"#00e676":"#444";
     modoAtivo="MANUAL";
+    analises.ESTRUTURAL.ativo=false;
     render();
   };
 
@@ -383,6 +398,9 @@
       if(a.filtros) a.filtros.clear();
       if(a.motor) a.motor.clear();
     });
+    analises.ESTRUTURAL.centros=[];
+    analises.ESTRUTURAL.res=[];
+    analises.ESTRUTURAL.ativo=false;
     modoAtivo="MANUAL";
     autoTAtivo=null;
     modoConjuntos=false;
@@ -390,10 +408,21 @@
     render();
   };
 
+  function ativarEstrutural(){
+    analises.ESTRUTURAL.centros = gerarLeitorEstrutural();
+    analises.ESTRUTURAL.res=[];
+    analises.ESTRUTURAL.ativo=true;
+    modoAtivo="ESTRUTURAL";
+    estruturaBox.style.boxShadow="0 0 15px #00e676";
+    render();
+  }
+
   function render(){
 
     const res =
-      modoAtivo==="AUTO"
+      modoAtivo==="ESTRUTURAL"
+        ? analises.ESTRUTURAL.res
+        : modoAtivo==="AUTO"
         ? analises.AUTO[autoTAtivo]?.res || []
         : analises[modoAtivo].res;
 
@@ -419,6 +448,8 @@
         `).join("")}
       </div>
     `;
+
+    estruturaBox.onclick=ativarEstrutural;
 
     const grupos = {
       tl1479:[1,4,7,9],
@@ -447,6 +478,8 @@
       `;
 
       box.onclick=()=>{
+        estruturaBox.style.boxShadow="none";
+        analises.ESTRUTURAL.ativo=false;
         if(!melhor) return;
         analises.MANUAL.filtros.clear();
         melhor.split("-").forEach(n=>{
@@ -456,56 +489,6 @@
         render();
       };
     });
-
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      const ativo =
-        analises.MANUAL.filtros.has(t) ||
-        filtrosConjuntos.has(t);
-      b.style.background = ativo ? "#00e676" : "#444";
-    });
-
-    const filtros =
-      modoAtivo==="AUTO"
-        ? analises.AUTO[autoTAtivo].filtros
-        : analises[modoAtivo].filtros;
-
-    const trios = triosSelecionados(filtros);
-    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
-    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
-    cZERO.innerHTML=por.ZERO.join("<div></div>");
-    cTIERS.innerHTML=por.TIERS.join("<div></div>");
-    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
-
-    conjArea.style.display = modoConjuntos ? "block" : "none";
-    if(modoConjuntos){
-      const marcados=new Set();
-      filtrosConjuntos.forEach(t=>{
-        track.forEach(n=>{
-          if(terminal(n)===t){
-            vizinhosRace(n).forEach(v=>marcados.add(v));
-          }
-        });
-      });
-
-      conjArea.innerHTML = `
-        <div style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
-          gap:4px;
-        ">
-          ${timeline.map(n=>`
-            <div style="
-              height:26px;
-              display:flex;align-items:center;justify-content:center;
-              background:${marcados.has(n)?"#00e676":"#222"};
-              color:#fff;font-size:10px;font-weight:700;
-              border-radius:4px;border:1px solid #333;
-            ">${n}</div>
-          `).join("")}
-        </div>
-      `;
-    }
   }
 
   render();
