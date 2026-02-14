@@ -19,6 +19,7 @@
   let janela = 6;
   let modoAtivo = "MANUAL";
   let autoTAtivo = null;
+  let quadroAtivo = null;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] },
@@ -37,17 +38,29 @@
   let modoConjuntos = false;
   let filtrosConjuntos = new Set();
 
+  function ativarQuadro(el){
+    document.querySelectorAll(".quadroSelect")
+      .forEach(q=>{
+        q.style.boxShadow="none";
+        q.style.border="1px solid #555";
+      });
+
+    el.style.boxShadow="0 0 15px #00e676";
+    el.style.border="1px solid #00e676";
+    quadroAtivo = el;
+  }
+
   function vizinhosRace(n){
     const i = track.indexOf(n);
     return [ track[(i+36)%37], n, track[(i+1)%37] ];
   }
 
-  function bloco5(centro){
-    const i = track.indexOf(centro);
+  function bloco5(c){
+    const i = track.indexOf(c);
     return [
       track[(i-2+37)%37],
       track[(i-1+37)%37],
-      centro,
+      c,
       track[(i+1)%37],
       track[(i+2)%37]
     ];
@@ -56,9 +69,7 @@
   function distanciaCircular(a,b){
     const d = Math.abs(a-b);
     return Math.min(d,37-d);
-  }
-
-  function gerarLeitorEstrutural(){
+  }  function gerarLeitorEstrutural(){
 
     if(timeline.length < 8) return [];
 
@@ -122,186 +133,56 @@
     return centros.slice(0,5);
   }
 
-  function melhorTrioGrupo(grupo){
-
-    const trios = [];
-    for(let i=0;i<grupo.length;i++)
-      for(let j=i+1;j<grupo.length;j++)
-        for(let k=j+1;k<grupo.length;k++)
-          trios.push([grupo[i],grupo[j],grupo[k]]);
-
-    const cont = {};
-
-    trios.forEach(trio=>{
-      const chave = trio.join("-");
-      cont[chave]=0;
-      timeline.forEach(n=>{
-        if(vizinhosRace(n).some(v=> trio.includes(terminal(v))))
-          cont[chave]++;
-      });
-    });
-
-    const ordenado = Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1]);
-
-    return ordenado.length ? ordenado[0][0] : null;
-  }  function calcularAutoT(k){
-    const set = new Set();
-    for(const n of timeline.slice(0,janela)){
-      set.add(terminal(n));
-      if(set.size>=k) break;
-    }
-    analises.AUTO[k].filtros = set;
-  }
-
-  function melhorTrincaBase(){
-    const cont = {};
-    timeline.slice(0,janela).forEach(n=>{
-      const t = terminal(n);
-      cont[t] = (cont[t]||0)+1;
-    });
-    return Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,3)
-      .map(x=>+x[0]);
-  }
-
-  function calcularVizinho(){
-    const base = melhorTrincaBase();
-    analises.VIZINHO.filtros = new Set(base);
-    analises.VIZINHO.motor.clear();
-    base.forEach(t=>{
-      track.filter(n=>terminal(n)===t)
-        .forEach(n=>vizinhosRace(n)
-          .forEach(v=>analises.VIZINHO.motor.add(v))
-        );
-    });
-  }
-
-  function calcularNunum(){
-    const set = new Set();
-    timeline.slice(0,2).forEach(n=>{
-      vizinhosRace(n).forEach(v=>set.add(terminal(v)));
-    });
-    analises.NUNUM.filtros = set;
-  }
-
-  function triosSelecionados(filtros){
-    let lista=[];
-    eixos.forEach(e=>{
-      e.trios.forEach(trio=>{
-        const inter = trio.map(terminal)
-          .filter(t=>!filtros.size||filtros.has(t)).length;
-        if(inter>0) lista.push({eixo:e.nome,trio});
-      });
-    });
-    return lista.slice(0,9);
-  }
-
-  function validar(n, filtros){
-    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
-  }
-
   function registrar(n){
 
-    analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
-    analises.VIZINHO.res.unshift(analises.VIZINHO.motor.has(n)?"V":"X");
-    analises.NUNUM.res.unshift(validar(n,analises.NUNUM.filtros)?"V":"X");
+    analises.MANUAL.res.unshift("X");
+    analises.VIZINHO.res.unshift("X");
+    analises.NUNUM.res.unshift("X");
 
     [3,4,5,6,7].forEach(k=>{
-      analises.AUTO[k].res.unshift(
-        validar(n,analises.AUTO[k].filtros)?"V":"X"
-      );
+      analises.AUTO[k].res.unshift("X");
     });
 
     if(analises.ESTRUTURAL.ativo){
-      const hit = analises.ESTRUTURAL.centros.some(c=>bloco5(c).includes(n));
+      const hit = analises.ESTRUTURAL.centros
+        .some(c=>bloco5(c).includes(n));
       analises.ESTRUTURAL.res.unshift(hit?"V":"X");
     }
-  }
-
-  document.body.style.background="#111";
+  }  document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
   document.body.innerHTML = `
     <div style="padding:10px;max-width:1000px;margin:auto">
-      <h3 style="text-align:center">CSM</h3>
-
-      <div style="border:1px solid #444;padding:8px">
-        Histórico:
-        <input id="inp" style="width:100%;padding:6px;background:#222;color:#fff"/>
-        <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">
-          <button id="col">Colar</button>
-          <button id="lim">Limpar</button>
-          Janela:
-          <select id="jan">
-            ${Array.from({length:8},(_,i)=>`<option ${i+3===6?'selected':''}>${i+3}</option>`).join("")}
-          </select>
-        </div>
-      </div>
-
-      <div style="margin:10px 0">
-        🕒 Timeline (14):
-        <span id="tl" style="font-size:18px;font-weight:600"></span>
-      </div>
 
       <div id="estruturaBox"
-           style="border:1px solid #00e676;
-                  padding:8px;
-                  margin-bottom:10px;
-                  cursor:pointer;">
+           class="quadroSelect"
+           style="border:1px solid #555;padding:8px;margin-bottom:10px;cursor:pointer;">
       </div>
 
-      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+      <div class="quadroSelect" id="q1479"
+           style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
         <b>1479</b>
         <div id="tl1479"></div>
       </div>
 
-      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+      <div class="quadroSelect" id="q2589"
+           style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
         <b>2589</b>
         <div id="tl2589"></div>
       </div>
 
-      <div style="border:1px solid #555;padding:6px;margin-bottom:10px;cursor:pointer">
+      <div class="quadroSelect" id="q0369"
+           style="border:1px solid #555;padding:6px;margin-bottom:10px;cursor:pointer">
         <b>0369</b>
         <div id="tl0369"></div>
-      </div>      <div style="display:flex;gap:6px;margin-bottom:6px">
-        ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
-          <button class="modo" data-m="${m}"
-            style="padding:6px;background:#444;color:#fff;border:1px solid #666">${m}</button>`).join("")}
-        <button id="btnConj" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
-          CONJUNTOS
-        </button>
       </div>
 
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        ${[3,4,5,6,7].map(n=>`
-          <button class="auto" data-a="${n}"
-            style="padding:6px;background:#444;color:#fff;border:1px solid #666">A${n}</button>`).join("")}
-      </div>
-
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+      <div id="nums"
+           style="display:grid;grid-template-columns:repeat(9,1fr);
+                  gap:6px;margin-top:12px"></div>
     </div>
   `;
-
-  jan.onchange=e=>{ janela=+e.target.value; render(); };
-
-  document.querySelectorAll(".modo").forEach(b=>{
-    b.onclick=()=>{
-      modoAtivo=b.dataset.m;
-      render();
-    };
-  });
-
-  document.querySelectorAll(".auto").forEach(b=>{
-    b.onclick=()=>{
-      modoAtivo="AUTO";
-      autoTAtivo=+b.dataset.a;
-      calcularAutoT(autoTAtivo);
-      render();
-    };
-  });
 
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
@@ -315,51 +196,13 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
     registrar(n);
-    calcularVizinho();
-    calcularNunum();
-    [3,4,5,6,7].forEach(calcularAutoT);
     render();
   }
 
-  col.onclick=()=>{
-    inp.value.split(/[\s,]+/)
-      .map(Number).filter(n=>n>=0&&n<=36).forEach(add);
-    inp.value="";
-  };
-
-  lim.onclick=()=>{
-    timeline=[];
-    Object.values(analises).forEach(a=>{
-      if(a.res) a.res=[];
-      if(a.filtros) a.filtros.clear();
-      if(a.motor) a.motor.clear();
-    });
-    analises.ESTRUTURAL.centros=[];
-    analises.ESTRUTURAL.res=[];
-    analises.ESTRUTURAL.ativo=false;
-    modoAtivo="MANUAL";
-    autoTAtivo=null;
-    render();
-  };
-
   function render(){
 
-    let res;
-    if(modoAtivo==="AUTO"){
-      res = analises.AUTO[autoTAtivo]?.res || [];
-    } else if(modoAtivo==="ESTRUTURAL"){
-      res = analises.ESTRUTURAL.res || [];
-    } else {
-      res = analises[modoAtivo].res;
-    }
-
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=res[i];
-      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${c}">${n}</span>`;
-    }).join(" · ");
-
     const estrut = gerarLeitorEstrutural();
+
     estruturaBox.innerHTML = `
       <b>Leitor Estrutural</b><br><br>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -377,48 +220,24 @@
     `;
 
     estruturaBox.onclick=()=>{
+      ativarQuadro(estruturaBox);
       analises.ESTRUTURAL.centros = estrut.slice(0,5);
       analises.ESTRUTURAL.res=[];
       analises.ESTRUTURAL.ativo=true;
       modoAtivo="ESTRUTURAL";
     };
 
-    const grupos = {
-      tl1479:[1,4,7,9],
-      tl2589:[2,5,8,9],
-      tl0369:[0,3,6,9]
+    document.getElementById("q1479").onclick=function(){
+      ativarQuadro(this);
     };
 
-    Object.entries(grupos).forEach(([id,grupo])=>{
-      const melhor = melhorTrioGrupo(grupo);
-      const box = document.getElementById(id).parentElement;
+    document.getElementById("q2589").onclick=function(){
+      ativarQuadro(this);
+    };
 
-      document.getElementById(id).innerHTML = `
-        <div style="font-size:12px;margin-bottom:4px;color:#00e676">
-          Melhor Trio: ${melhor || "-"}
-        </div>
-        ${timeline.map(n=>`
-          <span style="
-            display:inline-block;
-            width:18px;
-            text-align:center;
-            background:${vizinhosRace(n).some(v=>grupo.includes(terminal(v)))?"#00e676":"transparent"};
-            border-radius:3px;
-            margin-right:2px;
-          ">${n}</span>
-        `).join("")}
-      `;
-
-      box.onclick=()=>{
-        if(!melhor) return;
-        analises.MANUAL.filtros.clear();
-        melhor.split("-").forEach(n=>{
-          analises.MANUAL.filtros.add(terminal(+n));
-        });
-        modoAtivo="MANUAL";
-        render();
-      };
-    });
+    document.getElementById("q0369").onclick=function(){
+      ativarQuadro(this);
+    };
   }
 
   render();
