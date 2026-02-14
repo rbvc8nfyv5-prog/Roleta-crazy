@@ -16,6 +16,9 @@
   let quadroAtivo = null;
   let trioPreferido = null;
 
+  let faseAtual = "NEUTRA";
+  let segundoVizinhoDominante = false;
+
   function vizinhos1(n){
     const i = track.indexOf(n);
     return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
@@ -36,27 +39,42 @@
     return estruturalCentros.some(c => vizinhos2(c).includes(n));
   }
 
-  function blocoPertenceGrupo(n, grupo){
-    if(!grupo) return true;
-    return vizinhos2(n).some(v => grupo.includes(terminal(v)));
-  }
+  function analisarFase(){
 
-  function gerarEstrutural(){
+    if(timeline.length < 6){
+      faseAtual = "NEUTRA";
+      return;
+    }
+
+    let saltos = [];
+    let segundoCount = 0;
+    let primeiroCount = 0;
+
+    for(let i=0;i<timeline.length-1;i++){
+      const a = track.indexOf(timeline[i]);
+      const b = track.indexOf(timeline[i+1]);
+      const d = Math.abs(a-b);
+      saltos.push(d);
+
+      if(d === 1) primeiroCount++;
+      if(d === 2) segundoCount++;
+    }
+
+    const media = saltos.reduce((a,b)=>a+b,0)/saltos.length;
+
+    segundoVizinhoDominante = segundoCount > primeiroCount;
+
+    if(media <= 3) faseAtual = "COMPRESSÃO";
+    else if(media >= 8) faseAtual = "INSTÁVEL";
+    else faseAtual = "  function gerarEstrutural(){
+
+    analisarFase();
 
     const usados = new Set();
     const centros = [];
 
-    const grupo = quadroAtivo
-      ? {
-          q1479:[1,4,7,9],
-          q2589:[2,5,8,9],
-          q0369:[0,3,6,9]
-        }[quadroAtivo]
-      : null;
-
     function pode(n){
-      return vizinhos2(n).every(x=>!usados.has(x))
-        && blocoPertenceGrupo(n, grupo);
+      return vizinhos2(n).every(x=>!usados.has(x));
     }
 
     function registrar(n){
@@ -67,20 +85,20 @@
     const freq = {};
     timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const perm = Object.entries(freq)
+    const permanencia = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
 
-    if(perm!==undefined) registrar(perm);
+    if(permanencia!==undefined) registrar(permanencia);
 
-    if(perm!==undefined){
-      const op = track[(track.indexOf(perm)+18)%37];
+    if(permanencia!==undefined){
+      const op = track[(track.indexOf(permanencia)+18)%37];
       if(pode(op)) registrar(op);
     }
 
-    const lac = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lac!==undefined) registrar(lac);
+    const lacuna = track.find(n=>!timeline.includes(n) && pode(n));
+    if(lacuna!==undefined) registrar(lacuna);
 
     const freqViz={};
     timeline.forEach(n=>{
@@ -89,7 +107,7 @@
       });
     });
 
-    const quente = Object.entries(freqViz)
+    let quente = Object.entries(freqViz)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
@@ -102,12 +120,18 @@
       registrar(extra);
     }
 
-    if(centros.length<5){
-      while(centros.length<5){
-        const extra = track.find(n=>!usados.has(n));
-        if(extra===undefined) break;
-        registrar(extra);
-      }
+    if(trioPreferido){
+      const trioTerminais = trioPreferido.split("-").map(x=>+x);
+
+      centros.sort((a,b)=>{
+        const aPeso = trioTerminais.includes(terminal(a)) ? 2 : 0;
+        const bPeso = trioTerminais.includes(terminal(b)) ? 2 : 0;
+
+        const aFase = segundoVizinhoDominante && vizinhos2(a).length ? 1 : 0;
+        const bFase = segundoVizinhoDominante && vizinhos2(b).length ? 1 : 0;
+
+        return (bPeso + bFase) - (aPeso + aFase);
+      });
     }
 
     return centros.slice(0,5);
@@ -137,18 +161,22 @@
       .sort((a,b)=>b[1]-a[1]);
 
     return ord.length?ord[0][0]:null;
-  }
-
-  document.body.style.background="#111";
+  }  document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
   document.body.innerHTML=`
   <div style="max-width:1000px;margin:auto;padding:10px">
 
-    <h3>CSM</h3>
+    <h3>CSM ADAPTATIVO</h3>
 
-    <div>🕒 Timeline:<div id="tl"></div></div>
+    <div style="margin-bottom:8px">
+      🕒 Timeline:<div id="tl"></div>
+    </div>
+
+    <div id="painelFase"
+         style="border:1px solid #00e676;padding:6px;margin-bottom:10px">
+    </div>
 
     <div id="estruturaBox" class="box"
          style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer">
@@ -166,7 +194,9 @@
       <b>0369</b><div id="tl0369"></div>
     </div>
 
-    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+    <div id="nums"
+         style="display:grid;grid-template-columns:repeat(9,1fr);
+                gap:6px;margin-top:12px"></div>
   </div>
   `;
 
@@ -182,8 +212,9 @@
     }
 
     if(quadroAtivo){
-      document.getElementById(quadroAtivo).style.border="2px solid #00e676";
-      document.getElementById(quadroAtivo).style.boxShadow="0 0 8px #00e676";
+      const q = document.getElementById(quadroAtivo);
+      q.style.border="2px solid #00e676";
+      q.style.boxShadow="0 0 8px #00e676";
     }
   }
 
@@ -192,13 +223,16 @@
     atualizarBordas();
   };
 
-  function cliqueQuadro(id){
+  function cliqueQuadro(id,grupo){
+
     if(!estruturalAtivo) return;
 
     if(quadroAtivo===id){
       quadroAtivo=null;
+      trioPreferido=null;
     } else {
       quadroAtivo=id;
+      trioPreferido=melhorTrio(grupo);
     }
 
     estruturalCentros = gerarEstrutural();
@@ -206,9 +240,9 @@
     render();
   }
 
-  q1479.onclick=()=>cliqueQuadro("q1479");
-  q2589.onclick=()=>cliqueQuadro("q2589");
-  q0369.onclick=()=>cliqueQuadro("q0369");
+  q1479.onclick=()=>cliqueQuadro("q1479",[1,4,7,9]);
+  q2589.onclick=()=>cliqueQuadro("q2589",[2,5,8,9]);
+  q0369.onclick=()=>cliqueQuadro("q0369",[0,3,6,9]);
 
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
@@ -239,8 +273,15 @@
       return `<span style="color:${cor}">${n}</span>`;
     }).join(" · ");
 
+    painelFase.innerHTML = `
+      <b>Fase:</b> ${faseAtual}
+      <br>
+      Segundo Vizinho Dominante: ${segundoVizinhoDominante ? "SIM" : "NÃO"}
+    `;
+
     estruturaBox.innerHTML=`
       <b>Leitor Estrutural</b><br><br>
+      ${trioPreferido?`<div style="color:#00e676">Viés Grupo: ${trioPreferido}</div><br>`:""}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estruturalCentros.map(n=>`
           <div style="border:1px solid #00e676;padding:6px">${n}</div>
