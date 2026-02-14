@@ -31,7 +31,7 @@
       6:{ filtros:new Set(), res:[] },
       7:{ filtros:new Set(), res:[] }
     },
-    ESTRUTURAL: { centros:[], res:[] }
+    ESTRUTURAL:{ centros:[], res:[], ativo:false }
   };
 
   let modoConjuntos = false;
@@ -42,29 +42,20 @@
     return [ track[(i+36)%37], n, track[(i+1)%37] ];
   }
 
-  function distanciaCircularIdx(a,b){
-    const d = Math.abs(a-b);
-    return Math.min(d, 37-d);
-  }
-
-  function bloco5PorCentro(c){
-    const i = track.indexOf(c);
+  function bloco5(centro){
+    const i = track.indexOf(centro);
     return [
       track[(i-2+37)%37],
       track[(i-1+37)%37],
-      c,
+      centro,
       track[(i+1)%37],
       track[(i+2)%37]
     ];
   }
 
-  function estruturalHit(n){
-    if(!analises.ESTRUTURAL.centros.length) return false;
-    return analises.ESTRUTURAL.centros.some(c => bloco5PorCentro(c).includes(n));
-  }
-
-  function recomputarEstruturalResParaTimeline(){
-    analises.ESTRUTURAL.res = timeline.map(n => estruturalHit(n) ? "V" : "X");
+  function distanciaCircular(a,b){
+    const d = Math.abs(a-b);
+    return Math.min(d,37-d);
   }
 
   function gerarLeitorEstrutural(){
@@ -74,44 +65,33 @@
     const usados = new Set();
     const centros = [];
 
-    function bloco5(n){
-      const i = track.indexOf(n);
-      return [
-        track[(i-2+37)%37],
-        track[(i-1+37)%37],
-        n,
-        track[(i+1)%37],
-        track[(i+2)%37]
-      ];
-    }
-
     function podeUsar(n){
       return bloco5(n).every(x => !usados.has(x));
     }
 
-    function registrarCentro(n){
+    function registrar(n){
       bloco5(n).forEach(x => usados.add(x));
       centros.push(n);
     }
 
     const freq = {};
-    timeline.forEach(n => freq[n]=(freq[n]||0)+1);
+    timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
     const permanencia = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>podeUsar(n));
-    if(permanencia!==undefined) registrarCentro(permanencia);
+    if(permanencia!==undefined) registrar(permanencia);
 
     if(permanencia!==undefined){
       const oposto = track[(track.indexOf(permanencia)+18)%37];
-      if(podeUsar(oposto)) registrarCentro(oposto);
+      if(podeUsar(oposto)) registrar(oposto);
     }
 
     const lacuna = track
       .filter(n=>!timeline.includes(n))
       .find(n=>podeUsar(n));
-    if(lacuna!==undefined) registrarCentro(lacuna);
+    if(lacuna!==undefined) registrar(lacuna);
 
     const freqViz = {};
     timeline.forEach(n=>{
@@ -124,20 +104,20 @@
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>podeUsar(n));
-    if(estrutural!==undefined) registrarCentro(estrutural);
+    if(estrutural!==undefined) registrar(estrutural);
 
     const saltos = [];
     for(let i=0;i<timeline.length-1;i++){
       const a = track.indexOf(timeline[i]);
       const b = track.indexOf(timeline[i+1]);
-      saltos.push({n:timeline[i],d:distanciaCircularIdx(a,b)});
+      saltos.push({n:timeline[i],d:distanciaCircular(a,b)});
     }
 
     const ruptura = saltos
       .sort((a,b)=>b.d-a.d)
       .map(x=>x.n)
       .find(n=>podeUsar(n));
-    if(ruptura!==undefined) registrarCentro(ruptura);
+    if(ruptura!==undefined) registrar(ruptura);
 
     return centros.slice(0,5);
   }
@@ -155,7 +135,6 @@
     trios.forEach(trio=>{
       const chave = trio.join("-");
       cont[chave]=0;
-
       timeline.forEach(n=>{
         if(vizinhosRace(n).some(v=> trio.includes(terminal(v))))
           cont[chave]++;
@@ -224,6 +203,7 @@
   }
 
   function registrar(n){
+
     analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
     analises.VIZINHO.res.unshift(analises.VIZINHO.motor.has(n)?"V":"X");
     analises.NUNUM.res.unshift(validar(n,analises.NUNUM.filtros)?"V":"X");
@@ -234,8 +214,9 @@
       );
     });
 
-    if(analises.ESTRUTURAL.centros.length){
-      analises.ESTRUTURAL.res.unshift(estruturalHit(n)?"V":"X");
+    if(analises.ESTRUTURAL.ativo){
+      const hit = analises.ESTRUTURAL.centros.some(c=>bloco5(c).includes(n));
+      analises.ESTRUTURAL.res.unshift(hit?"V":"X");
     }
   }
 
@@ -272,7 +253,20 @@
                   cursor:pointer;">
       </div>
 
-      <div style="display:flex;gap:6px;margin-bottom:6px">
+      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+        <b>1479</b>
+        <div id="tl1479"></div>
+      </div>
+
+      <div style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+        <b>2589</b>
+        <div id="tl2589"></div>
+      </div>
+
+      <div style="border:1px solid #555;padding:6px;margin-bottom:10px;cursor:pointer">
+        <b>0369</b>
+        <div id="tl0369"></div>
+      </div>      <div style="display:flex;gap:6px;margin-bottom:6px">
         ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
           <button class="modo" data-m="${m}"
             style="padding:6px;background:#444;color:#fff;border:1px solid #666">${m}</button>`).join("")}
@@ -289,7 +283,9 @@
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
-  `;  jan.onchange=e=>{ janela=+e.target.value; render(); };
+  `;
+
+  jan.onchange=e=>{ janela=+e.target.value; render(); };
 
   document.querySelectorAll(".modo").forEach(b=>{
     b.onclick=()=>{
@@ -340,6 +336,7 @@
     });
     analises.ESTRUTURAL.centros=[];
     analises.ESTRUTURAL.res=[];
+    analises.ESTRUTURAL.ativo=false;
     modoAtivo="MANUAL";
     autoTAtivo=null;
     render();
@@ -348,7 +345,6 @@
   function render(){
 
     let res;
-
     if(modoAtivo==="AUTO"){
       res = analises.AUTO[autoTAtivo]?.res || [];
     } else if(modoAtivo==="ESTRUTURAL"){
@@ -382,10 +378,47 @@
 
     estruturaBox.onclick=()=>{
       analises.ESTRUTURAL.centros = estrut.slice(0,5);
-      recomputarEstruturalResParaTimeline();
+      analises.ESTRUTURAL.res=[];
+      analises.ESTRUTURAL.ativo=true;
       modoAtivo="ESTRUTURAL";
-      render();
     };
+
+    const grupos = {
+      tl1479:[1,4,7,9],
+      tl2589:[2,5,8,9],
+      tl0369:[0,3,6,9]
+    };
+
+    Object.entries(grupos).forEach(([id,grupo])=>{
+      const melhor = melhorTrioGrupo(grupo);
+      const box = document.getElementById(id).parentElement;
+
+      document.getElementById(id).innerHTML = `
+        <div style="font-size:12px;margin-bottom:4px;color:#00e676">
+          Melhor Trio: ${melhor || "-"}
+        </div>
+        ${timeline.map(n=>`
+          <span style="
+            display:inline-block;
+            width:18px;
+            text-align:center;
+            background:${vizinhosRace(n).some(v=>grupo.includes(terminal(v)))?"#00e676":"transparent"};
+            border-radius:3px;
+            margin-right:2px;
+          ">${n}</span>
+        `).join("")}
+      `;
+
+      box.onclick=()=>{
+        if(!melhor) return;
+        analises.MANUAL.filtros.clear();
+        melhor.split("-").forEach(n=>{
+          analises.MANUAL.filtros.add(terminal(+n));
+        });
+        modoAtivo="MANUAL";
+        render();
+      };
+    });
   }
 
   render();
