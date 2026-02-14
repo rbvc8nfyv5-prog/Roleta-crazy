@@ -57,20 +57,20 @@
     const freq = {};
     timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const perm = Object.entries(freq)
+    const permanencia = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
 
-    if(perm!==undefined) registrar(perm);
+    if(permanencia!==undefined) registrar(permanencia);
 
-    if(perm!==undefined){
-      const op = track[(track.indexOf(perm)+18)%37];
+    if(permanencia!==undefined){
+      const op = track[(track.indexOf(permanencia)+18)%37];
       if(pode(op)) registrar(op);
     }
 
-    const lac = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lac!==undefined) registrar(lac);
+    const lacuna = track.find(n=>!timeline.includes(n) && pode(n));
+    if(lacuna!==undefined) registrar(lacuna);
 
     const freqViz={};
     timeline.forEach(n=>{
@@ -86,19 +86,34 @@
 
     if(quente!==undefined) registrar(quente);
 
+    // garante 5 centrais
     while(centros.length<5){
       const extra = track.find(n=>pode(n));
       if(extra===undefined) break;
       registrar(extra);
     }
 
-    // APLICAR VIÉS DO TRIO SE EXISTIR
+    // ====== VIÉS DO TRIO (com peso maior) ======
     if(trioPreferido){
       const trioTerminais = trioPreferido.split("-").map(x=>+x);
+
       centros.sort((a,b)=>{
-        const aPeso = trioTerminais.includes(terminal(a)) ? 1 : 0;
-        const bPeso = trioTerminais.includes(terminal(b)) ? 1 : 0;
-        return bPeso - aPeso;
+        let pesoA = 0;
+        let pesoB = 0;
+
+        if(trioTerminais.includes(terminal(a))) pesoA += 2;
+        if(trioTerminais.includes(terminal(b))) pesoB += 2;
+
+        // segundo vizinho dominante ponderado
+        vizinhos2(a).forEach(v=>{
+          if(trioTerminais.includes(terminal(v))) pesoA += 1;
+        });
+
+        vizinhos2(b).forEach(v=>{
+          if(trioTerminais.includes(terminal(v))) pesoB += 1;
+        });
+
+        return pesoB - pesoA;
       });
     }
 
@@ -185,12 +200,10 @@
 
   estruturaBox.onclick=()=>{
     estruturalAtivo = !estruturalAtivo;
-
     if(!estruturalAtivo){
       trioPreferido=null;
       quadroAtivo=null;
     }
-
     atualizarBordas();
   };
 
@@ -225,6 +238,7 @@
 
   function add(n){
 
+    // valida usando centros anteriores
     if(estruturalAtivo){
       estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
     }
