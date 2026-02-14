@@ -39,12 +39,10 @@
   let filtrosConjuntos = new Set();
 
   function ativarQuadro(el){
-    document.querySelectorAll(".quadroSelect")
-      .forEach(q=>{
-        q.style.boxShadow="none";
-        q.style.border="1px solid #555";
-      });
-
+    document.querySelectorAll(".quadroSelect").forEach(q=>{
+      q.style.boxShadow="none";
+      q.style.border="1px solid #555";
+    });
     el.style.boxShadow="0 0 15px #00e676";
     el.style.border="1px solid #00e676";
     quadroAtivo = el;
@@ -129,6 +127,14 @@
       .map(x=>x.n)
       .find(n=>podeUsar(n));
     if(ruptura!==undefined) registrar(ruptura);
+
+    // GARANTIR SEMPRE 5
+    if(centros.length < 5){
+      for(const n of track){
+        if(centros.length >= 5) break;
+        if(podeUsar(n)) registrar(n);
+      }
+    }
 
     return centros.slice(0,5);
   }
