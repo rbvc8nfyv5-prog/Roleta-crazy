@@ -16,8 +16,6 @@
   let quadroAtivo = null;
   let trioPreferido = null;
 
-  // ================= VIZINHOS =================
-
   function vizinhos1(n){
     const i = track.indexOf(n);
     return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
@@ -38,15 +36,27 @@
     return estruturalCentros.some(c => vizinhos2(c).includes(n));
   }
 
-  // ================= GERADOR ESTRUTURAL =================
+  function blocoPertenceGrupo(n, grupo){
+    if(!grupo) return true;
+    return vizinhos2(n).some(v => grupo.includes(terminal(v)));
+  }
 
   function gerarEstrutural(){
 
     const usados = new Set();
     const centros = [];
 
+    const grupo = quadroAtivo
+      ? {
+          q1479:[1,4,7,9],
+          q2589:[2,5,8,9],
+          q0369:[0,3,6,9]
+        }[quadroAtivo]
+      : null;
+
     function pode(n){
-      return vizinhos2(n).every(x=>!usados.has(x));
+      return vizinhos2(n).every(x=>!usados.has(x))
+        && blocoPertenceGrupo(n, grupo);
     }
 
     function registrar(n){
@@ -57,20 +67,20 @@
     const freq = {};
     timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const permanencia = Object.entries(freq)
+    const perm = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
 
-    if(permanencia!==undefined) registrar(permanencia);
+    if(perm!==undefined) registrar(perm);
 
-    if(permanencia!==undefined){
-      const op = track[(track.indexOf(permanencia)+18)%37];
+    if(perm!==undefined){
+      const op = track[(track.indexOf(perm)+18)%37];
       if(pode(op)) registrar(op);
     }
 
-    const lacuna = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lacuna!==undefined) registrar(lacuna);
+    const lac = track.find(n=>!timeline.includes(n) && pode(n));
+    if(lac!==undefined) registrar(lac);
 
     const freqViz={};
     timeline.forEach(n=>{
@@ -86,41 +96,22 @@
 
     if(quente!==undefined) registrar(quente);
 
-    // garante 5 centrais
     while(centros.length<5){
       const extra = track.find(n=>pode(n));
       if(extra===undefined) break;
       registrar(extra);
     }
 
-    // ====== VIÉS DO TRIO (com peso maior) ======
-    if(trioPreferido){
-      const trioTerminais = trioPreferido.split("-").map(x=>+x);
-
-      centros.sort((a,b)=>{
-        let pesoA = 0;
-        let pesoB = 0;
-
-        if(trioTerminais.includes(terminal(a))) pesoA += 2;
-        if(trioTerminais.includes(terminal(b))) pesoB += 2;
-
-        // segundo vizinho dominante ponderado
-        vizinhos2(a).forEach(v=>{
-          if(trioTerminais.includes(terminal(v))) pesoA += 1;
-        });
-
-        vizinhos2(b).forEach(v=>{
-          if(trioTerminais.includes(terminal(v))) pesoB += 1;
-        });
-
-        return pesoB - pesoA;
-      });
+    if(centros.length<5){
+      while(centros.length<5){
+        const extra = track.find(n=>!usados.has(n));
+        if(extra===undefined) break;
+        registrar(extra);
+      }
     }
 
     return centros.slice(0,5);
   }
-
-  // ================= MELHOR TRIO =================
 
   function melhorTrio(grupo){
 
@@ -147,8 +138,6 @@
 
     return ord.length?ord[0][0]:null;
   }
-
-  // ================= UI =================
 
   document.body.style.background="#111";
   document.body.style.color="#fff";
@@ -200,23 +189,16 @@
 
   estruturaBox.onclick=()=>{
     estruturalAtivo = !estruturalAtivo;
-    if(!estruturalAtivo){
-      trioPreferido=null;
-      quadroAtivo=null;
-    }
     atualizarBordas();
   };
 
-  function cliqueQuadro(id,grupo){
-
+  function cliqueQuadro(id){
     if(!estruturalAtivo) return;
 
     if(quadroAtivo===id){
       quadroAtivo=null;
-      trioPreferido=null;
     } else {
       quadroAtivo=id;
-      trioPreferido=melhorTrio(grupo);
     }
 
     estruturalCentros = gerarEstrutural();
@@ -224,9 +206,9 @@
     render();
   }
 
-  q1479.onclick=()=>cliqueQuadro("q1479",[1,4,7,9]);
-  q2589.onclick=()=>cliqueQuadro("q2589",[2,5,8,9]);
-  q0369.onclick=()=>cliqueQuadro("q0369",[0,3,6,9]);
+  q1479.onclick=()=>cliqueQuadro("q1479");
+  q2589.onclick=()=>cliqueQuadro("q2589");
+  q0369.onclick=()=>cliqueQuadro("q0369");
 
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
@@ -238,7 +220,6 @@
 
   function add(n){
 
-    // valida usando centros anteriores
     if(estruturalAtivo){
       estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
     }
@@ -260,7 +241,6 @@
 
     estruturaBox.innerHTML=`
       <b>Leitor Estrutural</b><br><br>
-      ${trioPreferido?`<div style="color:#00e676">Viés: ${trioPreferido}</div><br>`:""}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estruturalCentros.map(n=>`
           <div style="border:1px solid #00e676;padding:6px">${n}</div>
