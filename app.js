@@ -66,7 +66,10 @@
 
     if(media <= 3) faseAtual = "COMPRESSÃO";
     else if(media >= 8) faseAtual = "INSTÁVEL";
-    else faseAtual = "  function gerarEstrutural(){
+    else faseAtual = "PROGRESSIVA";
+  }
+
+  function gerarEstrutural(){
 
     analisarFase();
 
@@ -107,7 +110,7 @@
       });
     });
 
-    let quente = Object.entries(freqViz)
+    const quente = Object.entries(freqViz)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
@@ -126,11 +129,7 @@
       centros.sort((a,b)=>{
         const aPeso = trioTerminais.includes(terminal(a)) ? 2 : 0;
         const bPeso = trioTerminais.includes(terminal(b)) ? 2 : 0;
-
-        const aFase = segundoVizinhoDominante && vizinhos2(a).length ? 1 : 0;
-        const bFase = segundoVizinhoDominante && vizinhos2(b).length ? 1 : 0;
-
-        return (bPeso + bFase) - (aPeso + aFase);
+        return bPeso - aPeso;
       });
     }
 
@@ -161,95 +160,61 @@
       .sort((a,b)=>b[1]-a[1]);
 
     return ord.length?ord[0][0]:null;
-  }  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
+  }
 
   document.body.innerHTML=`
-  <div style="max-width:1000px;margin:auto;padding:10px">
+  <div style="max-width:1000px;margin:auto;padding:10px;font-family:sans-serif;color:#fff;background:#111;min-height:100vh">
 
     <h3>CSM ADAPTATIVO</h3>
 
-    <div style="margin-bottom:8px">
-      🕒 Timeline:<div id="tl"></div>
-    </div>
+    <div>🕒 Timeline:<div id="tl"></div></div>
 
-    <div id="painelFase"
-         style="border:1px solid #00e676;padding:6px;margin-bottom:10px">
-    </div>
+    <div id="painelFase" style="border:1px solid #00e676;padding:6px;margin:10px 0"></div>
 
-    <div id="estruturaBox" class="box"
-         style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer">
-    </div>
+    <div id="estruturaBox" style="border:1px solid #555;padding:8px;margin-bottom:10px;cursor:pointer"></div>
 
-    <div id="q1479" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q1479" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>1479</b><div id="tl1479"></div>
     </div>
 
-    <div id="q2589" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q2589" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>2589</b><div id="tl2589"></div>
     </div>
 
-    <div id="q0369" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q0369" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>0369</b><div id="tl0369"></div>
     </div>
 
-    <div id="nums"
-         style="display:grid;grid-template-columns:repeat(9,1fr);
-                gap:6px;margin-top:12px"></div>
+    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
   </div>
   `;
 
-  function atualizarBordas(){
-    document.querySelectorAll(".box").forEach(b=>{
-      b.style.border="1px solid #555";
-      b.style.boxShadow="none";
-    });
-
-    if(estruturalAtivo){
-      estruturaBox.style.border="2px solid #00e676";
-      estruturaBox.style.boxShadow="0 0 8px #00e676";
-    }
-
-    if(quadroAtivo){
-      const q = document.getElementById(quadroAtivo);
-      q.style.border="2px solid #00e676";
-      q.style.boxShadow="0 0 8px #00e676";
-    }
-  }
-
-  estruturaBox.onclick=()=>{
-    estruturalAtivo = !estruturalAtivo;
-    atualizarBordas();
-  };
-
-  function cliqueQuadro(id,grupo){
-
-    if(!estruturalAtivo) return;
-
-    if(quadroAtivo===id){
-      quadroAtivo=null;
-      trioPreferido=null;
-    } else {
-      quadroAtivo=id;
-      trioPreferido=melhorTrio(grupo);
-    }
+  function render(){
 
     estruturalCentros = gerarEstrutural();
-    atualizarBordas();
-    render();
-  }
 
-  q1479.onclick=()=>cliqueQuadro("q1479",[1,4,7,9]);
-  q2589.onclick=()=>cliqueQuadro("q2589",[2,5,8,9]);
-  q0369.onclick=()=>cliqueQuadro("q0369",[0,3,6,9]);
+    document.getElementById("tl").innerHTML =
+      timeline.map((n,i)=>{
+        const r=estruturalRes[i];
+        const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+        return `<span style="color:${cor}">${n}</span>`;
+      }).join(" · ");
+
+    document.getElementById("painelFase").innerHTML =
+      `<b>Fase:</b> ${faseAtual} | Segundo Vizinho: ${segundoVizinhoDominante?"SIM":"NÃO"}`;
+
+    document.getElementById("estruturaBox").innerHTML =
+      `<b>Leitor Estrutural</b><br><br>`+
+      (trioPreferido?`<div style="color:#00e676">Viés Grupo: ${trioPreferido}</div><br>`:"")+
+      estruturalCentros.map(n=>`<div style="display:inline-block;border:1px solid #00e676;padding:6px;margin:4px">${n}</div>`).join("");
+  }
 
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
     b.textContent=n;
     b.style="padding:8px;background:#333;color:#fff";
     b.onclick=()=>add(n);
-    nums.appendChild(b);
+    document.getElementById("nums").appendChild(b);
   }
 
   function add(n){
@@ -261,57 +226,7 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
-    estruturalCentros = gerarEstrutural();
     render();
-  }
-
-  function render(){
-
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=estruturalRes[i];
-      const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${cor}">${n}</span>`;
-    }).join(" · ");
-
-    painelFase.innerHTML = `
-      <b>Fase:</b> ${faseAtual}
-      <br>
-      Segundo Vizinho Dominante: ${segundoVizinhoDominante ? "SIM" : "NÃO"}
-    `;
-
-    estruturaBox.innerHTML=`
-      <b>Leitor Estrutural</b><br><br>
-      ${trioPreferido?`<div style="color:#00e676">Viés Grupo: ${trioPreferido}</div><br>`:""}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${estruturalCentros.map(n=>`
-          <div style="border:1px solid #00e676;padding:6px">${n}</div>
-        `).join("")}
-      </div>
-    `;
-
-    const grupos={
-      tl1479:[1,4,7,9],
-      tl2589:[2,5,8,9],
-      tl0369:[0,3,6,9]
-    };
-
-    Object.entries(grupos).forEach(([id,grupo])=>{
-      const trio = melhorTrio(grupo);
-      document.getElementById(id).innerHTML=`
-        <div style="color:#00e676;font-size:12px">Melhor Trio: ${trio||"-"}</div>
-        ${timeline.map(n=>`
-          <span style="
-            display:inline-block;
-            width:18px;
-            text-align:center;
-            background:${vizinhos1(n).some(v=>grupo.includes(terminal(v)))?"#00e676":"transparent"};
-            margin-right:2px;
-          ">${n}</span>
-        `).join("")}
-      `;
-    });
-
-    atualizarBordas();
   }
 
   render();
