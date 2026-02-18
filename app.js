@@ -10,15 +10,25 @@
   const terminal = n => n % 10;
 
   let timeline = [];
+
+  // ================= ESTADO ESTRUTURAL =================
+
   let estruturalCentros = [];
   let estruturalRes = [];
   let estruturalAtivo = false;
+
   let quadroAtivo = null;
   let trioPreferido = null;
 
+  // ================= VIZINHOS =================
+
   function vizinhos1(n){
     const i = track.indexOf(n);
-    return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
+    return [
+      track[(i-1+37)%37],
+      n,
+      track[(i+1)%37]
+    ];
   }
 
   function vizinhos2(n){
@@ -34,83 +44,12 @@
 
   function dentroEstrutural(n){
     return estruturalCentros.some(c => vizinhos2(c).includes(n));
-  }
-
-  // ================= ESTRUTURAL COM DOMINÂNCIA =================
-
-  function gerarEstrutural(){
-
-    const usados = new Set();
-    const centros = [];
-
-    function pode(n){
-      return vizinhos2(n).every(x=>!usados.has(x));
-    }
-
-    function registrar(n){
-      vizinhos2(n).forEach(x=>usados.add(x));
-      centros.push(n);
-    }
-
-    const zonas = {
-      "1479":[1,4,7,9],
-      "2589":[2,5,8,9],
-      "0369":[0,3,6,9]
-    };
-
-    let pesoZona = null;
-    let maiorScore = 0;
-
-    Object.entries(zonas).forEach(([nome,grupo])=>{
-      let score = 0;
-
-      timeline.forEach(n=>{
-        if(vizinhos1(n).some(v=>grupo.includes(terminal(v))))
-          score++;
-      });
-
-      if(score > maiorScore){
-        maiorScore = score;
-        pesoZona = grupo;
-      }
-    });
-
-    const dominanciaAtiva = maiorScore >= Math.floor(timeline.length * 0.6);
-
-    const freq = {};
-    timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
-
-    const candidatos = track.slice().sort((a,b)=>{
-      let baseA = freq[a] || 0;
-      let baseB = freq[b] || 0;
-
-      if(dominanciaAtiva && pesoZona){
-        if(pesoZona.includes(terminal(a))) baseA += 3;
-        if(pesoZona.includes(terminal(b))) baseB += 3;
-      }
-
-      return baseB - baseA;
-    });
-
-    for(const n of candidatos){
-      if(pode(n)) registrar(n);
-      if(centros.length === 5) break;
-    }
-
-    while(centros.length < 5){
-      const extra = track.find(n=>pode(n));
-      if(!extra) break;
-      registrar(extra);
-    }
-
-    return centros.slice(0,5);
-  }
-
-  // ================= MELHOR TRIO =================
+  }  // ================= MELHOR TRIO POR GRUPO =================
 
   function melhorTrio(grupo){
 
     const trios=[];
+
     for(let i=0;i<grupo.length;i++)
       for(let j=i+1;j<grupo.length;j++)
         for(let k=j+1;k<grupo.length;k++)
@@ -134,7 +73,85 @@
     return ord.length?ord[0][0]:null;
   }
 
-  // ================= UI =================
+
+  // ================= GERADOR ESTRUTURAL BALANCEADO =================
+
+  function gerarEstrutural(){
+
+    const usados = new Set();
+    const centros = [];
+
+    function pode(n){
+      return vizinhos2(n).every(x=>!usados.has(x));
+    }
+
+    function registrar(n){
+      vizinhos2(n).forEach(x=>usados.add(x));
+      centros.push(n);
+    }
+
+    // --- PERMANÊNCIA ---
+    const freq = {};
+    timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
+
+    const perm = Object.entries(freq)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x=>+x[0])
+      .find(n=>pode(n));
+
+    if(perm!==undefined) registrar(perm);
+
+    // --- OPOSIÇÃO ---
+    if(perm!==undefined){
+      const op = track[(track.indexOf(perm)+18)%37];
+      if(pode(op)) registrar(op);
+    }
+
+    // --- LACUNA ---
+    const lac = track.find(n=>!timeline.includes(n) && pode(n));
+    if(lac!==undefined) registrar(lac);
+
+    // --- QUENTE 2ª VIZINHA DOMINANTE ---
+    const freqViz={};
+    timeline.forEach(n=>{
+      vizinhos2(n).forEach(v=>{
+        freqViz[v]=(freqViz[v]||0)+1;
+      });
+    });
+
+    const quente = Object.entries(freqViz)
+      .sort((a,b)=>b[1]-a[1])
+      .map(x=>+x[0])
+      .find(n=>pode(n));
+
+    if(quente!==undefined) registrar(quente);
+
+    // --- COMPLETAR 5 CENTRAIS SEMPRE ---
+    while(centros.length<5){
+      const extra = track.find(n=>pode(n));
+      if(extra===undefined) break;
+      registrar(extra);
+    }
+
+    // --- VIÉS POR TRIO (FORTE) ---
+    if(trioPreferido){
+
+      const trioTerminais = trioPreferido.split("-").map(x=>+x);
+
+      centros.sort((a,b)=>{
+
+        const pesoA = trioTerminais.includes(terminal(a)) ? 2 : 0;
+        const pesoB = trioTerminais.includes(terminal(b)) ? 2 : 0;
+
+        const vizA = vizinhos1(a).filter(v=>trioTerminais.includes(terminal(v))).length;
+        const vizB = vizinhos1(b).filter(v=>trioTerminais.includes(terminal(v))).length;
+
+        return (pesoB + vizB) - (pesoA + vizA);
+      });
+    }
+
+    return centros.slice(0,5);
+  }  // ================= UI =================
 
   document.body.style.background="#111";
   document.body.style.color="#fff";
@@ -151,23 +168,29 @@
          style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer">
     </div>
 
-    <div id="q1479" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q1479" class="box"
+         style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>1479</b><div id="tl1479"></div>
     </div>
 
-    <div id="q2589" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q2589" class="box"
+         style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>2589</b><div id="tl2589"></div>
     </div>
 
-    <div id="q0369" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+    <div id="q0369" class="box"
+         style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
       <b>0369</b><div id="tl0369"></div>
     </div>
 
-    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+    <div id="nums"
+         style="display:grid;grid-template-columns:repeat(9,1fr);
+                gap:6px;margin-top:12px"></div>
   </div>
   `;
 
   function atualizarBordas(){
+
     document.querySelectorAll(".box").forEach(b=>{
       b.style.border="1px solid #555";
       b.style.boxShadow="none";
@@ -180,13 +203,22 @@
 
     if(quadroAtivo){
       const el = document.getElementById(quadroAtivo);
-      el.style.border="2px solid #00e676";
-      el.style.boxShadow="0 0 8px #00e676";
+      if(el){
+        el.style.border="2px solid #00e676";
+        el.style.boxShadow="0 0 8px #00e676";
+      }
     }
   }
 
   estruturaBox.onclick=()=>{
+
     estruturalAtivo = !estruturalAtivo;
+
+    if(!estruturalAtivo){
+      trioPreferido=null;
+      quadroAtivo=null;
+    }
+
     atualizarBordas();
   };
 
@@ -196,11 +228,15 @@
 
     if(quadroAtivo===id){
       quadroAtivo=null;
+      trioPreferido=null;
     } else {
       quadroAtivo=id;
+      trioPreferido=melhorTrio(grupo);
     }
 
+    estruturalCentros = gerarEstrutural();
     atualizarBordas();
+    render();
   }
 
   q1479.onclick=()=>cliqueQuadro("q1479",[1,4,7,9]);
@@ -213,34 +249,49 @@
     b.style="padding:8px;background:#333;color:#fff";
     b.onclick=()=>add(n);
     nums.appendChild(b);
-  }
+  }  function add(n){
 
-  function add(n){
-
+    // VALIDA PELOS CENTRAIS ATUAIS
     if(estruturalAtivo){
-      estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
+      estruturalRes.unshift(dentroEstrutural(n) ? "V" : "X");
     }
 
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
+    // GERA NOVOS CENTRAIS PARA PRÓXIMA JOGADA
     estruturalCentros = gerarEstrutural();
+
     render();
   }
 
   function render(){
 
     tl.innerHTML = timeline.map((n,i)=>{
-      const r=estruturalRes[i];
-      const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+
+      const r = estruturalRes[i];
+      const cor =
+        r==="V" ? "#00e676" :
+        r==="X" ? "#ff5252" :
+        "#aaa";
+
       return `<span style="color:${cor}">${n}</span>`;
     }).join(" · ");
 
     estruturaBox.innerHTML=`
       <b>Leitor Estrutural</b><br><br>
+      ${trioPreferido
+        ? `<div style="color:#00e676">Viés: ${trioPreferido}</div><br>`
+        : ""}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estruturalCentros.map(n=>`
-          <div style="border:1px solid #00e676;padding:6px">${n}</div>
+          <div style="
+            border:1px solid #00e676;
+            padding:6px;
+            min-width:40px;
+            text-align:center;
+            font-weight:bold;
+          ">${n}</div>
         `).join("")}
       </div>
     `;
@@ -252,15 +303,23 @@
     };
 
     Object.entries(grupos).forEach(([id,grupo])=>{
+
       const trio = melhorTrio(grupo);
+
       document.getElementById(id).innerHTML=`
-        <div style="color:#00e676;font-size:12px">Melhor Trio: ${trio||"-"}</div>
+        <div style="color:#00e676;font-size:12px">
+          Melhor Trio: ${trio||"-"}
+        </div>
         ${timeline.map(n=>`
           <span style="
             display:inline-block;
             width:18px;
             text-align:center;
-            background:${vizinhos1(n).some(v=>grupo.includes(terminal(v)))?"#00e676":"transparent"};
+            background:${
+              vizinhos1(n).some(v=>grupo.includes(terminal(v)))
+              ? "#00e676"
+              : "transparent"
+            };
             margin-right:2px;
           ">${n}</span>
         `).join("")}
@@ -270,7 +329,6 @@
     atualizarBordas();
   }
 
-  estruturalCentros = gerarEstrutural();
   render();
 
 })();
