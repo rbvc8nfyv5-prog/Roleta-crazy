@@ -15,20 +15,7 @@
   let estruturalRes = [];
   let estruturalAtivo = false;
   let quadroAtivo = null;
-  let trioPreferido = null;
-
-  const cores = {
-    0:"#ff5252",
-    1:"#ff9800",
-    2:"#ffc107",
-    3:"#8bc34a",
-    4:"#00e676",
-    5:"#00bcd4",
-    6:"#2196f3",
-    7:"#3f51b5",
-    8:"#9c27b0",
-    9:"#e91e63"
-  };
+  let duplaPreferida = null;
 
   function vizinhos1(n){
     const i = track.indexOf(n);
@@ -65,20 +52,20 @@
     const freq = {};
     timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const perm = Object.entries(freq)
+    const permanencia = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
 
-    if(perm!==undefined) registrar(perm);
+    if(permanencia!==undefined) registrar(permanencia);
 
-    if(perm!==undefined){
-      const op = track[(track.indexOf(perm)+18)%37];
+    if(permanencia!==undefined){
+      const op = track[(track.indexOf(permanencia)+18)%37];
       if(pode(op)) registrar(op);
     }
 
-    const lac = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lac!==undefined) registrar(lac);
+    const lacuna = track.find(n=>!timeline.includes(n) && pode(n));
+    if(lacuna!==undefined) registrar(lacuna);
 
     const freqViz={};
     timeline.forEach(n=>{
@@ -100,34 +87,24 @@
       registrar(extra);
     }
 
-    if(trioPreferido){
-      const trioTerminais = trioPreferido.split("-").map(x=>+x);
-      centros.sort((a,b)=>{
-        const aPeso = trioTerminais.includes(terminal(a)) ? 2 : 0;
-        const bPeso = trioTerminais.includes(terminal(b)) ? 2 : 0;
-        return bPeso - aPeso;
-      });
-    }
-
     return centros.slice(0,5);
   }
 
-  function melhorTrio(grupo){
+  function melhorDupla(grupo){
 
-    const trios=[];
+    const duplas=[];
     for(let i=0;i<grupo.length;i++)
       for(let j=i+1;j<grupo.length;j++)
-        for(let k=j+1;k<grupo.length;k++)
-          trios.push([grupo[i],grupo[j],grupo[k]]);
+        duplas.push([grupo[i],grupo[j]]);
 
     const cont={};
 
-    trios.forEach(trio=>{
-      const key=trio.join("-");
+    duplas.forEach(dupla=>{
+      const key=dupla.join("-");
       cont[key]=0;
 
       timeline.forEach(n=>{
-        if(vizinhos1(n).some(v=>trio.includes(terminal(v))))
+        if(vizinhos1(n).some(v=>dupla.includes(terminal(v))))
           cont[key]++;
       });
     });
@@ -179,14 +156,16 @@
     }
 
     if(quadroAtivo){
-      const q = document.getElementById(quadroAtivo);
-      q.style.border="2px solid #00e676";
-      q.style.boxShadow="0 0 8px #00e676";
+      const el = document.getElementById(quadroAtivo);
+      if(el){
+        el.style.border="2px solid #00e676";
+        el.style.boxShadow="0 0 8px #00e676";
+      }
     }
   }
 
   estruturaBox.onclick=()=>{
-    estruturalAtivo = !estruturalAtivo;
+    estruturalAtivo=!estruturalAtivo;
     atualizarBordas();
   };
 
@@ -196,20 +175,22 @@
 
     if(quadroAtivo===id){
       quadroAtivo=null;
-      trioPreferido=null;
+      duplaPreferida=null;
     } else {
       quadroAtivo=id;
-      trioPreferido=melhorTrio(grupo);
+      duplaPreferida=melhorDupla(grupo);
     }
 
-    estruturalCentros = gerarEstrutural();
+    estruturalCentros=gerarEstrutural();
     atualizarBordas();
     render();
   }
 
   q047.onclick=()=>cliqueQuadro("q047",[0,4,7]);
   q269.onclick=()=>cliqueQuadro("q269",[2,6,9]);
-  q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);  for(let n=0;n<=36;n++){
+  q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);
+
+  for(let n=0;n<=36;n++){
     const b=document.createElement("button");
     b.textContent=n;
     b.style="padding:8px;background:#333;color:#fff";
@@ -220,18 +201,17 @@
   function add(n){
 
     if(estruturalAtivo){
-      estruturalSnapshot = [...estruturalCentros];
       estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
     }
 
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
+    estruturalSnapshot = [...estruturalCentros];
     estruturalCentros = gerarEstrutural();
-    render();
-  }
 
-  function render(){
+    render();
+  }  function render(){
 
     tl.innerHTML = timeline.map((n,i)=>{
       const r=estruturalRes[i];
@@ -241,7 +221,7 @@
 
     estruturaBox.innerHTML=`
       <b>Leitor Estrutural</b><br><br>
-      ${trioPreferido?`<div style="color:#00e676">Viés: ${trioPreferido}</div><br>`:""}
+      ${duplaPreferida?`<div style="color:#00e676">Viés Dupla: ${duplaPreferida}</div><br>`:""}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estruturalCentros.map(n=>`
           <div style="border:1px solid #00e676;padding:6px">${n}</div>
@@ -256,18 +236,38 @@
     };
 
     Object.entries(grupos).forEach(([id,grupo])=>{
-      const trio = melhorTrio(grupo);
+
+      const dupla=melhorDupla(grupo);
+
       document.getElementById(id).innerHTML=`
-        <div style="color:#00e676;font-size:12px">Melhor Trio: ${trio||"-"}</div>
-        ${timeline.map(n=>`
-          <span style="
-            display:inline-block;
-            width:18px;
-            text-align:center;
-            background:${vizinhos1(n).some(v=>grupo.includes(terminal(v)))?cores[terminal(n)]:"transparent"};
-            margin-right:2px;
-          ">${n}</span>
-        `).join("")}
+        <div style="color:#00e676;font-size:12px">
+          Melhor Dupla: ${dupla||"-"}
+        </div>
+        ${timeline.map(n=>{
+
+          let cor="transparent";
+
+          grupo.forEach((base,index)=>{
+            const numBase = track.find(x=>terminal(x)===base);
+            if(numBase!==undefined){
+              if(vizinhos1(numBase).includes(n)){
+                if(index===0) cor="#00e676";
+                if(index===1) cor="#ff9800";
+                if(index===2) cor="#2196f3";
+              }
+            }
+          });
+
+          return `
+            <span style="
+              display:inline-block;
+              width:18px;
+              text-align:center;
+              background:${cor};
+              margin-right:2px;
+            ">${n}</span>
+          `;
+        }).join("")}
       `;
     });
 
