@@ -11,22 +11,27 @@
 
   let timeline = [];
   let estruturalCentros = [];
-  let estruturalSnapshot = [];
   let estruturalRes = [];
   let estruturalAtivo = false;
   let quadroAtivo = null;
+  let duplaPreferida = null;
 
-  const coresBase = {
-    0:"#00e5ff",
-    4:"#ff9800",
-    7:"#e91e63",
-    2:"#8bc34a",
+  const CORES = {
+    4:"#2196f3",
+    0:"#4caf50",
+    7:"#f44336",
+    2:"#ff9800",
     6:"#9c27b0",
-    9:"#ffc107",
-    5:"#3f51b5",
-    8:"#f44336",
-    1:"#009688"
-  };  function vizinhos2(n){
+    9:"#00bcd4",
+    5:"#ffc107",
+    8:"#795548",
+    1:"#e91e63"
+  };  function vizinhos1(n){
+    const i = track.indexOf(n);
+    return [track[(i-1+37)%37], n, track[(i+1)%37]];
+  }
+
+  function vizinhos2(n){
     const i = track.indexOf(n);
     return [
       track[(i-2+37)%37],
@@ -38,13 +43,33 @@
   }
 
   function dentroEstrutural(n){
-    return estruturalSnapshot.some(c => vizinhos2(c).includes(n));
+    return estruturalCentros.some(c => vizinhos2(c).includes(n));
   }
 
-  function gerarEstrutural(){
+  function melhorDupla(grupo){
+
+    const duplas=[];
+    for(let i=0;i<grupo.length;i++)
+      for(let j=i+1;j<grupo.length;j++)
+        duplas.push([grupo[i],grupo[j]]);
+
+    const cont={};
+
+    duplas.forEach(d=>{
+      const key=d.join("-");
+      cont[key]=0;
+      timeline.forEach(n=>{
+        if(vizinhos1(n).some(v=>d.includes(terminal(v))))
+          cont[key]++;
+      });
+    });
+
+    const ord=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
+    return ord.length?ord[0][0]:null;
+  }  function gerarEstrutural(){
 
     const usados = new Set();
-    const centros = [];
+    const centros=[];
 
     function pode(n){
       return vizinhos2(n).every(x=>!usados.has(x));
@@ -55,18 +80,18 @@
       centros.push(n);
     }
 
-    const freq = {};
+    const freq={};
     timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const perm = Object.entries(freq)
+    const base = Object.entries(freq)
       .sort((a,b)=>b[1]-a[1])
       .map(x=>+x[0])
       .find(n=>pode(n));
 
-    if(perm!==undefined) registrar(perm);
+    if(base!==undefined) registrar(base);
 
-    const lac = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lac!==undefined) registrar(lac);
+    const op = track[(track.indexOf(base||0)+18)%37];
+    if(pode(op)) registrar(op);
 
     while(centros.length<5){
       const extra = track.find(n=>pode(n));
@@ -74,38 +99,16 @@
       registrar(extra);
     }
 
-    return centros.slice(0,5);
-  }  function melhorDupla(grupo){
-
-    const duplas=[];
-    for(let i=0;i<grupo.length;i++)
-      for(let j=i+1;j<grupo.length;j++)
-        duplas.push([grupo[i],grupo[j]]);
-
-    const cont={};
-
-    duplas.forEach(dupla=>{
-      const key=dupla.join("-");
-      cont[key]=0;
-
-      timeline.forEach(n=>{
-        if(dupla.includes(terminal(n)))
-          cont[key]++;
+    if(duplaPreferida){
+      const termos=duplaPreferida.split("-").map(Number);
+      centros.sort((a,b)=>{
+        const aPeso = termos.includes(terminal(a))?1:0;
+        const bPeso = termos.includes(terminal(b))?1:0;
+        return bPeso-aPeso;
       });
-    });
-
-    const ord = Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1]);
-
-    return ord.length?ord[0][0]:null;
-  }
-
-  function corQuadro(n,grupo){
-    const t = terminal(n);
-    if(grupo.includes(t)){
-      return coresBase[t];
     }
-    return "transparent";
+
+    return centros.slice(0,5);
   }  document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -137,24 +140,53 @@
   </div>
   `;
 
+  function atualizarBordas(){
+    document.querySelectorAll(".box").forEach(b=>{
+      b.style.border="1px solid #555";
+      b.style.boxShadow="none";
+    });
+
+    if(estruturalAtivo){
+      estruturaBox.style.border="2px solid #00e676";
+      estruturaBox.style.boxShadow="0 0 8px #00e676";
+    }
+
+    if(quadroAtivo){
+      const el=document.getElementById(quadroAtivo);
+      el.style.border="2px solid #00e676";
+      el.style.boxShadow="0 0 8px #00e676";
+    }
+  }
+
   estruturaBox.onclick=()=>{
     estruturalAtivo=!estruturalAtivo;
     if(!estruturalAtivo){
       quadroAtivo=null;
-      estruturalRes=[];
+      duplaPreferida=null;
     }
     atualizarBordas();
   };
 
-  function cliqueQuadro(id){
+  function cliqueQuadro(id,grupo){
+
     if(!estruturalAtivo) return;
-    quadroAtivo = quadroAtivo===id ? null : id;
+
+    if(quadroAtivo===id){
+      quadroAtivo=null;
+      duplaPreferida=null;
+    }else{
+      quadroAtivo=id;
+      duplaPreferida=melhorDupla(grupo);
+    }
+
+    estruturalCentros=gerarEstrutural();
     atualizarBordas();
+    render();
   }
 
-  q047.onclick=()=>cliqueQuadro("q047");
-  q269.onclick=()=>cliqueQuadro("q269");
-  q581.onclick=()=>cliqueQuadro("q581");
+  q047.onclick=()=>cliqueQuadro("q047",[0,4,7]);
+  q269.onclick=()=>cliqueQuadro("q269",[2,6,9]);
+  q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);
 
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
@@ -173,27 +205,8 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
-    estruturalSnapshot = estruturalCentros.slice();
-    estruturalCentros = gerarEstrutural();
-
+    estruturalCentros=gerarEstrutural();
     render();
-  }
-
-  function atualizarBordas(){
-    document.querySelectorAll(".box").forEach(b=>{
-      b.style.border="1px solid #555";
-      b.style.boxShadow="none";
-    });
-
-    if(estruturalAtivo){
-      estruturaBox.style.border="2px solid #00e676";
-      estruturaBox.style.boxShadow="0 0 8px #00e676";
-    }
-
-    if(quadroAtivo){
-      document.getElementById(quadroAtivo).style.border="2px solid #00e676";
-      document.getElementById(quadroAtivo).style.boxShadow="0 0 8px #00e676";
-    }
   }
 
   function render(){
@@ -206,6 +219,7 @@
 
     estruturaBox.innerHTML=`
       <b>Leitor Estrutural</b><br><br>
+      ${duplaPreferida?`<div style="color:#00e676">Viés: ${duplaPreferida}</div><br>`:""}
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${estruturalCentros.map(n=>`
           <div style="border:1px solid #00e676;padding:6px">${n}</div>
@@ -213,25 +227,29 @@
       </div>
     `;
 
-    const grupos={
+    const quadros={
       tl047:[0,4,7],
       tl269:[2,6,9],
       tl581:[5,8,1]
     };
 
-    Object.entries(grupos).forEach(([id,grupo])=>{
+    Object.entries(quadros).forEach(([id,grupo])=>{
       const dupla = melhorDupla(grupo);
       document.getElementById(id).innerHTML=`
         <div style="color:#00e676;font-size:12px">Melhor Dupla: ${dupla||"-"}</div>
-        ${timeline.map(n=>`
+        ${timeline.map(n=>{
+          const t=terminal(n);
+          const cor = grupo.includes(t)?CORES[t]:"transparent";
+          return `
           <span style="
             display:inline-block;
             width:18px;
             text-align:center;
-            background:${corQuadro(n,grupo)};
+            background:${cor};
             margin-right:2px;
           ">${n}</span>
-        `).join("")}
+          `;
+        }).join("")}
       `;
     });
 
