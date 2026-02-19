@@ -1,279 +1,312 @@
-(function () {
+(function(){
 
-  const track = [
-    32,15,19,4,21,2,25,17,34,6,
-    27,13,36,11,30,8,23,10,5,24,
-    16,33,1,20,14,31,9,22,18,29,
-    7,28,12,35,3,26,0
+const track=[
+32,15,19,4,21,2,25,17,34,6,
+27,13,36,11,30,8,23,10,5,24,
+16,33,1,20,14,31,9,22,18,29,
+7,28,12,35,3,26,0
+];
+
+let timeline=[];
+let estruturalCentros=[];
+let estruturalSnapshot=[];
+let estruturalRes=[];
+let estruturalAtivo=false;
+let quadroAtivo=null;
+let duplaPreferida=null;
+
+const coresBase={
+  0:"#ff5252",
+  4:"#00e676",
+  7:"#2196f3",
+  2:"#ffc107",
+  6:"#9c27b0",
+  9:"#ff9800",
+  5:"#00bcd4",
+  8:"#3f51b5",
+  1:"#8bc34a"
+};
+
+function idx(n){ return track.indexOf(n); }
+
+function viz1(n){
+  let i=idx(n);
+  return [track[(i-1+37)%37],n,track[(i+1)%37]];
+}
+
+function viz2(n){
+  let i=idx(n);
+  return [
+    track[(i-2+37)%37],
+    track[(i-1+37)%37],
+    n,
+    track[(i+1)%37],
+    track[(i+2)%37]
   ];
+}
 
-  const terminal = n => n % 10;
+function viz3(n){
+  let i=idx(n);
+  return [
+    track[(i-3+37)%37],
+    ...viz2(n),
+    track[(i+3)%37]
+  ];
+}
 
-  let timeline = [];
-  let estruturalCentros = [];
-  let estruturalSnapshot = [];
-  let estruturalRes = [];
-  let estruturalAtivo = false;
-  let quadroAtivo = null;
-  let duplaPreferida = null;
+function energiaMedia(){
+  if(timeline.length<3) return 0;
+  let soma=0;
+  for(let i=0;i<timeline.length-1;i++){
+    let a=idx(timeline[i]);
+    let b=idx(timeline[i+1]);
+    soma+=Math.abs(a-b);
+  }
+  return soma/(timeline.length-1);
+}
 
-  function vizinhos1(n){
-    const i = track.indexOf(n);
-    return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
+function direcaoMedia(){
+  if(timeline.length<3) return 0;
+  let soma=0;
+  for(let i=0;i<timeline.length-1;i++){
+    let a=idx(timeline[i]);
+    let b=idx(timeline[i+1]);
+    soma+=(b-a);
+  }
+  return soma/(timeline.length-1);
+}function gerarEstrutural(){
+
+  const usados=new Set();
+  const centros=[];
+  const energia=energiaMedia();
+
+  function pode(n){
+    return viz2(n).every(x=>!usados.has(x));
   }
 
-  function vizinhos2(n){
-    const i = track.indexOf(n);
-    return [
-      track[(i-2+37)%37],
-      track[(i-1+37)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
+  function registrar(n){
+    viz2(n).forEach(x=>usados.add(x));
+    centros.push(n);
   }
 
-  function dentroEstrutural(n){
-    return estruturalSnapshot.some(c => vizinhos2(c).includes(n));
-  }  function gerarEstrutural(){
+  const freq={};
+  timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-    const usados = new Set();
-    const centros = [];
+  const ordenados=Object.entries(freq)
+    .sort((a,b)=>b[1]-a[1])
+    .map(x=>+x[0]);
 
-    function pode(n){
-      return vizinhos2(n).every(x=>!usados.has(x));
+  for(let n of ordenados){
+    if(pode(n)){
+      registrar(n);
+      break;
     }
+  }
 
-    function registrar(n){
-      vizinhos2(n).forEach(x=>usados.add(x));
-      centros.push(n);
-    }
+  const freqViz={};
+  timeline.forEach(n=>{
+    let bloco = energia>9 ? viz3(n) : viz2(n);
+    bloco.forEach(v=>freqViz[v]=(freqViz[v]||0)+1);
+  });
 
-    const freq = {};
-    timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
+  const candidatos=Object.entries(freqViz)
+    .sort((a,b)=>b[1]-a[1])
+    .map(x=>+x[0]);
 
-    const permanencia = Object.entries(freq)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>pode(n));
+  for(let n of candidatos){
+    if(centros.length>=5) break;
+    if(pode(n)) registrar(n);
+  }
 
-    if(permanencia!==undefined) registrar(permanencia);
+  while(centros.length<5){
+    let extra=track.find(n=>pode(n));
+    if(extra===undefined) break;
+    registrar(extra);
+  }
 
-    if(permanencia!==undefined){
-      const op = track[(track.indexOf(permanencia)+18)%37];
-      if(pode(op)) registrar(op);
-    }
+  if(duplaPreferida){
+    const terminais=duplaPreferida.split("-").map(x=>+x);
+    centros.sort((a,b)=>{
+      let pa=terminais.includes(a%10)?1:0;
+      let pb=terminais.includes(b%10)?1:0;
+      return pb-pa;
+    });
+  }
 
-    const lacuna = track.find(n=>!timeline.includes(n) && pode(n));
-    if(lacuna!==undefined) registrar(lacuna);
+  return centros.slice(0,5);
+}
 
-    const freqViz={};
+function dentroEstrutural(n){
+  return estruturalSnapshot.some(c=>viz2(c).includes(n));
+}function melhorDupla(grupo){
+
+  const duplas=[];
+  for(let i=0;i<grupo.length;i++)
+    for(let j=i+1;j<grupo.length;j++)
+      duplas.push([grupo[i],grupo[j]]);
+
+  const cont={};
+
+  duplas.forEach(d=>{
+    const key=d.join("-");
+    cont[key]=0;
+
     timeline.forEach(n=>{
-      vizinhos2(n).forEach(v=>{
-        freqViz[v]=(freqViz[v]||0)+1;
-      });
+      if(viz1(n).some(v=>d.includes(v%10)))
+        cont[key]++;
     });
+  });
 
-    const quente = Object.entries(freqViz)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>pode(n));
+  const ord=Object.entries(cont)
+    .sort((a,b)=>b[1]-a[1]);
 
-    if(quente!==undefined) registrar(quente);
+  return ord.length?ord[0][0]:null;
+}
 
-    while(centros.length<5){
-      const extra = track.find(n=>pode(n));
-      if(extra===undefined) break;
-      registrar(extra);
-    }
+function atualizarBordas(){
+  document.querySelectorAll(".box").forEach(b=>{
+    b.style.border="1px solid #555";
+    b.style.boxShadow="none";
+  });
 
-    return centros.slice(0,5);
+  if(estruturalAtivo){
+    estruturaBox.style.border="2px solid #00e676";
+    estruturaBox.style.boxShadow="0 0 8px #00e676";
   }
 
-  function melhorDupla(grupo){
+  if(quadroAtivo){
+    const q=document.getElementById(quadroAtivo);
+    q.style.border="2px solid #00e676";
+    q.style.boxShadow="0 0 8px #00e676";
+  }
+}document.body.style.background="#111";
+document.body.style.color="#fff";
+document.body.style.fontFamily="sans-serif";
 
-    const duplas=[];
-    for(let i=0;i<grupo.length;i++)
-      for(let j=i+1;j<grupo.length;j++)
-        duplas.push([grupo[i],grupo[j]]);
+document.body.innerHTML=`
+<div style="max-width:1000px;margin:auto;padding:10px">
+<h3>CSM</h3>
 
-    const cont={};
+<div>🕒 Timeline:<div id="tl"></div></div>
 
-    duplas.forEach(dupla=>{
-      const key=dupla.join("-");
-      cont[key]=0;
+<div id="estruturaBox" class="box"
+style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer"></div>
 
-      timeline.forEach(n=>{
-        if(vizinhos1(n).some(v=>dupla.includes(terminal(v))))
-          cont[key]++;
-      });
-    });
+<div id="q047" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+<b>047</b><div id="tl047"></div></div>
 
-    const ord = Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1]);
+<div id="q269" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+<b>269</b><div id="tl269"></div></div>
 
-    return ord.length?ord[0][0]:null;
-  }  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
+<div id="q581" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
+<b>581</b><div id="tl581"></div></div>
 
-  document.body.innerHTML=`
-  <div style="max-width:1000px;margin:auto;padding:10px">
+<div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+</div>
+`;
 
-    <h3>CSM</h3>
+estruturaBox.onclick=()=>{
+  estruturalAtivo=!estruturalAtivo;
+  if(!estruturalAtivo){
+    quadroAtivo=null;
+    duplaPreferida=null;
+  }
+  atualizarBordas();
+};
 
-    <div>🕒 Timeline:<div id="tl"></div></div>
+function cliqueQuadro(id,grupo){
+  if(!estruturalAtivo) return;
 
-    <div id="estruturaBox" class="box"
-         style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer">
-    </div>
+  if(quadroAtivo===id){
+    quadroAtivo=null;
+    duplaPreferida=null;
+  } else {
+    quadroAtivo=id;
+    duplaPreferida=melhorDupla(grupo);
+  }
 
-    <div id="q047" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>047</b><div id="tl047"></div>
-    </div>
+  estruturalCentros=gerarEstrutural();
+  atualizarBordas();
+  render();
+}
 
-    <div id="q269" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>269</b><div id="tl269"></div>
-    </div>
+q047.onclick=()=>cliqueQuadro("q047",[0,4,7]);
+q269.onclick=()=>cliqueQuadro("q269",[2,6,9]);
+q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);
 
-    <div id="q581" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>581</b><div id="tl581"></div>
-    </div>
+for(let n=0;n<=36;n++){
+  const b=document.createElement("button");
+  b.textContent=n;
+  b.style="padding:8px;background:#333;color:#fff";
+  b.onclick=()=>add(n);
+  nums.appendChild(b);
+}
 
-    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+function add(n){
+
+  if(estruturalAtivo){
+    estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
+  }
+
+  timeline.unshift(n);
+  if(timeline.length>14) timeline.pop();
+
+  estruturalSnapshot=estruturalCentros.slice();
+  estruturalCentros=gerarEstrutural();
+
+  render();
+}
+
+function corQuadro(n,grupo){
+  for(let g of grupo){
+    if(viz1(g).includes(n)) return coresBase[g];
+  }
+  return "transparent";
+}
+
+function render(){
+
+  tl.innerHTML=timeline.map((n,i)=>{
+    const r=estruturalRes[i];
+    const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+    return `<span style="color:${c}">${n}</span>`;
+  }).join(" · ");
+
+  estruturaBox.innerHTML=`
+  <b>Leitor Estrutural</b><br><br>
+  ${duplaPreferida?`<div style="color:#00e676">Dupla: ${duplaPreferida}</div><br>`:""}
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+  ${estruturalCentros.map(n=>`
+  <div style="border:1px solid #00e676;padding:6px">${n}</div>
+  `).join("")}
   </div>
   `;
 
-  function atualizarBordas(){
-    document.querySelectorAll(".box").forEach(b=>{
-      b.style.border="1px solid #555";
-      b.style.boxShadow="none";
-    });
-
-    if(estruturalAtivo){
-      estruturaBox.style.border="2px solid #00e676";
-      estruturaBox.style.boxShadow="0 0 8px #00e676";
-    }
-
-    if(quadroAtivo){
-      const el = document.getElementById(quadroAtivo);
-      if(el){
-        el.style.border="2px solid #00e676";
-        el.style.boxShadow="0 0 8px #00e676";
-      }
-    }
-  }
-
-  estruturaBox.onclick=()=>{
-    estruturalAtivo=!estruturalAtivo;
-    atualizarBordas();
+  const grupos={
+    tl047:[0,4,7],
+    tl269:[2,6,9],
+    tl581:[5,8,1]
   };
 
-  function cliqueQuadro(id,grupo){
-
-    if(!estruturalAtivo) return;
-
-    if(quadroAtivo===id){
-      quadroAtivo=null;
-      duplaPreferida=null;
-    } else {
-      quadroAtivo=id;
-      duplaPreferida=melhorDupla(grupo);
-    }
-
-    estruturalCentros=gerarEstrutural();
-    atualizarBordas();
-    render();
-  }
-
-  q047.onclick=()=>cliqueQuadro("q047",[0,4,7]);
-  q269.onclick=()=>cliqueQuadro("q269",[2,6,9]);
-  q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);
-
-  for(let n=0;n<=36;n++){
-    const b=document.createElement("button");
-    b.textContent=n;
-    b.style="padding:8px;background:#333;color:#fff";
-    b.onclick=()=>add(n);
-    nums.appendChild(b);
-  }
-
-  function add(n){
-
-    if(estruturalAtivo){
-      estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
-    }
-
-    timeline.unshift(n);
-    if(timeline.length>14) timeline.pop();
-
-    estruturalSnapshot = [...estruturalCentros];
-    estruturalCentros = gerarEstrutural();
-
-    render();
-  }  function render(){
-
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=estruturalRes[i];
-      const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${cor}">${n}</span>`;
-    }).join(" · ");
-
-    estruturaBox.innerHTML=`
-      <b>Leitor Estrutural</b><br><br>
-      ${duplaPreferida?`<div style="color:#00e676">Viés Dupla: ${duplaPreferida}</div><br>`:""}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${estruturalCentros.map(n=>`
-          <div style="border:1px solid #00e676;padding:6px">${n}</div>
-        `).join("")}
-      </div>
+  Object.entries(grupos).forEach(([id,grupo])=>{
+    const dupla=melhorDupla(grupo);
+    document.getElementById(id).innerHTML=`
+    <div style="color:#00e676;font-size:12px">Melhor Dupla: ${dupla||"-"}</div>
+    ${timeline.map(n=>`
+    <span style="
+    display:inline-block;
+    width:18px;
+    text-align:center;
+    background:${corQuadro(n,grupo)};
+    margin-right:2px;
+    ">${n}</span>
+    `).join("")}
     `;
+  });
 
-    const grupos={
-      tl047:[0,4,7],
-      tl269:[2,6,9],
-      tl581:[5,8,1]
-    };
+  atualizarBordas();
+}
 
-    Object.entries(grupos).forEach(([id,grupo])=>{
-
-      const dupla=melhorDupla(grupo);
-
-      document.getElementById(id).innerHTML=`
-        <div style="color:#00e676;font-size:12px">
-          Melhor Dupla: ${dupla||"-"}
-        </div>
-        ${timeline.map(n=>{
-
-          let cor="transparent";
-
-          grupo.forEach((base,index)=>{
-            const numBase = track.find(x=>terminal(x)===base);
-            if(numBase!==undefined){
-              if(vizinhos1(numBase).includes(n)){
-                if(index===0) cor="#00e676";
-                if(index===1) cor="#ff9800";
-                if(index===2) cor="#2196f3";
-              }
-            }
-          });
-
-          return `
-            <span style="
-              display:inline-block;
-              width:18px;
-              text-align:center;
-              background:${cor};
-              margin-right:2px;
-            ">${n}</span>
-          `;
-        }).join("")}
-      `;
-    });
-
-    atualizarBordas();
-  }
-
-  render();
+render();
 
 })();
