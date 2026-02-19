@@ -1,261 +1,242 @@
 (function () {
 
-  const track = [
-    32,15,19,4,21,2,25,17,34,6,
-    27,13,36,11,30,8,23,10,5,24,
-    16,33,1,20,14,31,9,22,18,29,
-    7,28,12,35,3,26,0
+const track = [
+  32,15,19,4,21,2,25,17,34,6,
+  27,13,36,11,30,8,23,10,5,24,
+  16,33,1,20,14,31,9,22,18,29,
+  7,28,12,35,3,26,0
+];
+
+const terminal = n => n % 10;
+
+let timeline = [];
+let estruturalCentros = [];
+let estruturalRes = [];
+let estruturalAtivo = false;
+let quadroAtivo = null;
+let duplaPreferida = null;
+
+const CORES = {
+  0:"#00e676",
+  4:"#2196f3",
+  7:"#ff5252",
+  2:"#ff9800",
+  6:"#9c27b0",
+  9:"#00bcd4",
+  5:"#8bc34a",
+  8:"#e91e63",
+  1:"#ffc107"
+};function vizinhos1(n){
+  const i = track.indexOf(n);
+  return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
+}
+
+function vizinhos2(n){
+  const i = track.indexOf(n);
+  return [
+    track[(i-2+37)%37],
+    track[(i-1+37)%37],
+    n,
+    track[(i+1)%37],
+    track[(i+2)%37]
   ];
+}
 
-  const terminal = n => n % 10;
+function dentroEstrutural(n){
+  return estruturalCentros.some(c => vizinhos2(c).includes(n));
+}
 
-  let timeline = [];
-  let estruturalCentros = [];
-  let estruturalRes = [];
-  let estruturalAtivo = false;
-  let quadroAtivo = null;
-  let duplaPreferida = null;
+function gerarEstrutural(){
 
-  const CORES = {
-    4:"#2196f3",
-    0:"#4caf50",
-    7:"#f44336",
-    2:"#ff9800",
-    6:"#9c27b0",
-    9:"#00bcd4",
-    5:"#ffc107",
-    8:"#795548",
-    1:"#e91e63"
-  };  function vizinhos1(n){
-    const i = track.indexOf(n);
-    return [track[(i-1+37)%37], n, track[(i+1)%37]];
+  const usados = new Set();
+  const centros = [];
+
+  function pode(n){
+    return vizinhos2(n).every(x=>!usados.has(x));
   }
 
-  function vizinhos2(n){
-    const i = track.indexOf(n);
-    return [
-      track[(i-2+37)%37],
-      track[(i-1+37)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
+  function registrar(n){
+    vizinhos2(n).forEach(x=>usados.add(x));
+    centros.push(n);
   }
 
-  function dentroEstrutural(n){
-    return estruturalCentros.some(c => vizinhos2(c).includes(n));
+  const freq = {};
+  timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
+
+  const perm = Object.entries(freq)
+    .sort((a,b)=>b[1]-a[1])
+    .map(x=>+x[0])
+    .find(n=>pode(n));
+
+  if(perm!==undefined) registrar(perm);
+
+  const lac = track.find(n=>!timeline.includes(n) && pode(n));
+  if(lac!==undefined) registrar(lac);
+
+  while(centros.length<5){
+    const extra = track.find(n=>pode(n));
+    if(extra===undefined) break;
+    registrar(extra);
   }
 
-  function melhorDupla(grupo){
-
-    const duplas=[];
-    for(let i=0;i<grupo.length;i++)
-      for(let j=i+1;j<grupo.length;j++)
-        duplas.push([grupo[i],grupo[j]]);
-
-    const cont={};
-
-    duplas.forEach(d=>{
-      const key=d.join("-");
-      cont[key]=0;
-      timeline.forEach(n=>{
-        if(vizinhos1(n).some(v=>d.includes(terminal(v))))
-          cont[key]++;
-      });
+  if(duplaPreferida){
+    const termos = duplaPreferida.split("-").map(Number);
+    centros.sort((a,b)=>{
+      const pa = termos.includes(terminal(a))?1:0;
+      const pb = termos.includes(terminal(b))?1:0;
+      return pb-pa;
     });
+  }
 
-    const ord=Object.entries(cont).sort((a,b)=>b[1]-a[1]);
-    return ord.length?ord[0][0]:null;
-  }  function gerarEstrutural(){
+  return centros.slice(0,5);
+}
 
-    const usados = new Set();
-    const centros=[];
+function melhorDupla(grupo){
 
-    function pode(n){
-      return vizinhos2(n).every(x=>!usados.has(x));
-    }
+  const duplas=[];
+  for(let i=0;i<grupo.length;i++)
+    for(let j=i+1;j<grupo.length;j++)
+      duplas.push([grupo[i],grupo[j]]);
 
-    function registrar(n){
-      vizinhos2(n).forEach(x=>usados.add(x));
-      centros.push(n);
-    }
+  const cont={};
 
-    const freq={};
-    timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
+  duplas.forEach(d=>{
+    const key=d.join("-");
+    cont[key]=0;
+    timeline.forEach(n=>{
+      if(vizinhos1(n).some(v=>d.includes(terminal(v))))
+        cont[key]++;
+    });
+  });
 
-    const base = Object.entries(freq)
-      .sort((a,b)=>b[1]-a[1])
-      .map(x=>+x[0])
-      .find(n=>pode(n));
+  const ord = Object.entries(cont)
+    .sort((a,b)=>b[1]-a[1]);
 
-    if(base!==undefined) registrar(base);
+  return ord.length?ord[0][0]:null;
+}document.body.style.background="#111";
+document.body.style.color="#fff";
+document.body.style.fontFamily="sans-serif";
 
-    const op = track[(track.indexOf(base||0)+18)%37];
-    if(pode(op)) registrar(op);
+document.body.innerHTML=`
+<div style="max-width:1000px;margin:auto;padding:10px">
 
-    while(centros.length<5){
-      const extra = track.find(n=>pode(n));
-      if(extra===undefined) break;
-      registrar(extra);
-    }
+<h3>CSM</h3>
 
-    if(duplaPreferida){
-      const termos=duplaPreferida.split("-").map(Number);
-      centros.sort((a,b)=>{
-        const aPeso = termos.includes(terminal(a))?1:0;
-        const bPeso = termos.includes(terminal(b))?1:0;
-        return bPeso-aPeso;
-      });
-    }
+<div>🕒 Timeline:<div id="tl"></div></div>
 
-    return centros.slice(0,5);
-  }  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
+<div id="estruturaBox" style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer"></div>
 
-  document.body.innerHTML=`
-  <div style="max-width:1000px;margin:auto;padding:10px">
+<div id="tl047" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
+<div id="tl269" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
+<div id="tl581" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
 
-    <h3>CSM</h3>
+<div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
 
-    <div>🕒 Timeline:<div id="tl"></div></div>
+</div>
+`;
 
-    <div id="estruturaBox" class="box"
-         style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer">
+estruturaBox.onclick=()=>{
+  estruturalAtivo=!estruturalAtivo;
+  if(!estruturalAtivo){
+    duplaPreferida=null;
+    quadroAtivo=null;
+  }
+  render();
+};
+
+function cliqueQuadro(id,grupo){
+  if(!estruturalAtivo) return;
+  quadroAtivo=id;
+  duplaPreferida=melhorDupla(grupo);
+  estruturalCentros=gerarEstrutural();
+  render();
+}
+
+tl047.onclick=()=>cliqueQuadro("tl047",[0,4,7]);
+tl269.onclick=()=>cliqueQuadro("tl269",[2,6,9]);
+tl581.onclick=()=>cliqueQuadro("tl581",[5,8,1]);
+
+for(let n=0;n<=36;n++){
+  const b=document.createElement("button");
+  b.textContent=n;
+  b.style="padding:8px;background:#333;color:#fff";
+  b.onclick=()=>add(n);
+  nums.appendChild(b);
+}
+
+function add(n){
+
+  if(estruturalAtivo){
+    estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
+  }
+
+  timeline.unshift(n);
+  if(timeline.length>14) timeline.pop();
+
+  estruturalCentros=gerarEstrutural();
+  render();
+}function render(){
+
+  tl.innerHTML = timeline.map((n,i)=>{
+    const r=estruturalRes[i];
+    const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+    return `<span style="color:${cor}">${n}</span>`;
+  }).join(" · ");
+
+  estruturaBox.innerHTML=`
+    <b>Leitor Estrutural</b><br>
+    ${duplaPreferida?`<div style="color:#00e676">Dupla: ${duplaPreferida}</div>`:""}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      ${estruturalCentros.map(n=>`
+        <div style="border:1px solid #00e676;padding:6px">${n}</div>
+      `).join("")}
     </div>
-
-    <div id="q047" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>047</b><div id="tl047"></div>
-    </div>
-
-    <div id="q269" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>269</b><div id="tl269"></div>
-    </div>
-
-    <div id="q581" class="box" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer">
-      <b>581</b><div id="tl581"></div>
-    </div>
-
-    <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
-  </div>
   `;
 
-  function atualizarBordas(){
-    document.querySelectorAll(".box").forEach(b=>{
-      b.style.border="1px solid #555";
-      b.style.boxShadow="none";
-    });
-
-    if(estruturalAtivo){
-      estruturaBox.style.border="2px solid #00e676";
-      estruturaBox.style.boxShadow="0 0 8px #00e676";
-    }
-
-    if(quadroAtivo){
-      const el=document.getElementById(quadroAtivo);
-      el.style.border="2px solid #00e676";
-      el.style.boxShadow="0 0 8px #00e676";
-    }
-  }
-
-  estruturaBox.onclick=()=>{
-    estruturalAtivo=!estruturalAtivo;
-    if(!estruturalAtivo){
-      quadroAtivo=null;
-      duplaPreferida=null;
-    }
-    atualizarBordas();
+  const quadros={
+    tl047:[0,4,7],
+    tl269:[2,6,9],
+    tl581:[5,8,1]
   };
 
-  function cliqueQuadro(id,grupo){
+  Object.entries(quadros).forEach(([id,grupo])=>{
 
-    if(!estruturalAtivo) return;
+    const dupla=melhorDupla(grupo);
 
-    if(quadroAtivo===id){
-      quadroAtivo=null;
-      duplaPreferida=null;
-    }else{
-      quadroAtivo=id;
-      duplaPreferida=melhorDupla(grupo);
-    }
+    const mapa={};
 
-    estruturalCentros=gerarEstrutural();
-    atualizarBordas();
-    render();
-  }
-
-  q047.onclick=()=>cliqueQuadro("q047",[0,4,7]);
-  q269.onclick=()=>cliqueQuadro("q269",[2,6,9]);
-  q581.onclick=()=>cliqueQuadro("q581",[5,8,1]);
-
-  for(let n=0;n<=36;n++){
-    const b=document.createElement("button");
-    b.textContent=n;
-    b.style="padding:8px;background:#333;color:#fff";
-    b.onclick=()=>add(n);
-    nums.appendChild(b);
-  }
-
-  function add(n){
-
-    if(estruturalAtivo){
-      estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
-    }
-
-    timeline.unshift(n);
-    if(timeline.length>14) timeline.pop();
-
-    estruturalCentros=gerarEstrutural();
-    render();
-  }
-
-  function render(){
-
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=estruturalRes[i];
-      const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${cor}">${n}</span>`;
-    }).join(" · ");
-
-    estruturaBox.innerHTML=`
-      <b>Leitor Estrutural</b><br><br>
-      ${duplaPreferida?`<div style="color:#00e676">Viés: ${duplaPreferida}</div><br>`:""}
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${estruturalCentros.map(n=>`
-          <div style="border:1px solid #00e676;padding:6px">${n}</div>
-        `).join("")}
-      </div>
-    `;
-
-    const quadros={
-      tl047:[0,4,7],
-      tl269:[2,6,9],
-      tl581:[5,8,1]
-    };
-
-    Object.entries(quadros).forEach(([id,grupo])=>{
-      const dupla = melhorDupla(grupo);
-      document.getElementById(id).innerHTML=`
-        <div style="color:#00e676;font-size:12px">Melhor Dupla: ${dupla||"-"}</div>
-        ${timeline.map(n=>{
-          const t=terminal(n);
-          const cor = grupo.includes(t)?CORES[t]:"transparent";
-          return `
-          <span style="
-            display:inline-block;
-            width:18px;
-            text-align:center;
-            background:${cor};
-            margin-right:2px;
-          ">${n}</span>
-          `;
-        }).join("")}
-      `;
+    grupo.forEach(t=>{
+      track.forEach(num=>{
+        if(terminal(num)===t){
+          mapa[num]=CORES[t];
+          vizinhos1(num).forEach(v=>{
+            mapa[v]=CORES[t];
+          });
+        }
+      });
     });
 
-    atualizarBordas();
-  }
+    document.getElementById(id).innerHTML=`
+      <b>${id.replace("tl","")}</b>
+      <div style="color:#00e676;font-size:12px">
+        Melhor Dupla: ${dupla||"-"}
+      </div>
+      ${timeline.map(n=>{
+        const cor=mapa[n]||"transparent";
+        return `
+        <span style="
+          display:inline-block;
+          width:18px;
+          text-align:center;
+          background:${cor};
+          margin-right:2px;
+        ">${n}</span>
+        `;
+      }).join("")}
+    `;
+  });
+}
 
-  render();
+render();
 
 })();
