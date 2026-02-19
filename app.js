@@ -11,24 +11,27 @@ const terminal = n => n % 10;
 
 let timeline = [];
 let estruturalCentros = [];
+let estruturalC6 = null;
 let estruturalRes = [];
-let estruturalAtivo = false;
-let quadroAtivo = null;
-let duplaPreferida = null;
+let estruturalAtivo = true;
 
-const CORES = {
-  0:"#00e676",
-  4:"#2196f3",
-  7:"#ff5252",
-  2:"#ff9800",
-  6:"#9c27b0",
-  9:"#00bcd4",
-  5:"#8bc34a",
-  8:"#e91e63",
-  1:"#ffc107"
-};function vizinhos1(n){
-  const i = track.indexOf(n);
-  return [ track[(i-1+37)%37], n, track[(i+1)%37] ];
+const quadros = {
+  q047: [0,4,7],
+  q269: [2,6,9],
+  q581: [5,8,1]
+};
+
+const coresQuadro = {
+  q047: ["#00e676","#2196f3","#ff5252"],
+  q269: ["#ff9800","#9c27b0","#03a9f4"],
+  q581: ["#ffc107","#8bc34a","#e91e63"]
+};
+
+function dist(a,b){
+  const ia = track.indexOf(a);
+  const ib = track.indexOf(b);
+  const d = Math.abs(ia-ib);
+  return Math.min(d,37-d);
 }
 
 function vizinhos2(n){
@@ -40,13 +43,7 @@ function vizinhos2(n){
     track[(i+1)%37],
     track[(i+2)%37]
   ];
-}
-
-function dentroEstrutural(n){
-  return estruturalCentros.some(c => vizinhos2(c).includes(n));
-}
-
-function gerarEstrutural(){
+}function gerarEstrutural(){
 
   const usados = new Set();
   const centros = [];
@@ -63,15 +60,14 @@ function gerarEstrutural(){
   const freq = {};
   timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-  const perm = Object.entries(freq)
+  const candidatos = Object.entries(freq)
     .sort((a,b)=>b[1]-a[1])
-    .map(x=>+x[0])
-    .find(n=>pode(n));
+    .map(x=>+x[0]);
 
-  if(perm!==undefined) registrar(perm);
-
-  const lac = track.find(n=>!timeline.includes(n) && pode(n));
-  if(lac!==undefined) registrar(lac);
+  for(const n of candidatos){
+    if(pode(n)) registrar(n);
+    if(centros.length>=5) break;
+  }
 
   while(centros.length<5){
     const extra = track.find(n=>pode(n));
@@ -79,16 +75,27 @@ function gerarEstrutural(){
     registrar(extra);
   }
 
-  if(duplaPreferida){
-    const termos = duplaPreferida.split("-").map(Number);
-    centros.sort((a,b)=>{
-      const pa = termos.includes(terminal(a))?1:0;
-      const pb = termos.includes(terminal(b))?1:0;
-      return pb-pa;
-    });
-  }
+  // C6 ruptura inteligente
+  let melhorScore = -1;
+  let melhorC6 = null;
 
-  return centros.slice(0,5);
+  track.forEach(n=>{
+    if(centros.includes(n)) return;
+
+    const dMedia = centros.reduce((acc,c)=>acc+dist(c,n),0)/centros.length;
+
+    const saltoRecente = timeline.length>1 ? dist(timeline[0],timeline[1]) : 0;
+
+    const score = (dMedia*0.5) + (saltoRecente*0.5);
+
+    if(score > melhorScore){
+      melhorScore = score;
+      melhorC6 = n;
+    }
+  });
+
+  estruturalCentros = centros.slice(0,5);
+  estruturalC6 = melhorC6;
 }
 
 function melhorDupla(grupo){
@@ -103,8 +110,9 @@ function melhorDupla(grupo){
   duplas.forEach(d=>{
     const key=d.join("-");
     cont[key]=0;
+
     timeline.forEach(n=>{
-      if(vizinhos1(n).some(v=>d.includes(terminal(v))))
+      if(vizinhos2(n).some(v=>d.includes(terminal(v))))
         cont[key]++;
     });
   });
@@ -117,44 +125,23 @@ function melhorDupla(grupo){
 document.body.style.color="#fff";
 document.body.style.fontFamily="sans-serif";
 
-document.body.innerHTML=`
+document.body.innerHTML = `
 <div style="max-width:1000px;margin:auto;padding:10px">
 
-<h3>CSM</h3>
+<h3>CSM Estrutural</h3>
 
 <div>🕒 Timeline:<div id="tl"></div></div>
 
-<div id="estruturaBox" style="border:1px solid #555;padding:8px;margin:10px 0;cursor:pointer"></div>
+<div id="estruturaBox" style="border:1px solid #555;padding:10px;margin:10px 0"></div>
 
-<div id="tl047" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
-<div id="tl269" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
-<div id="tl581" style="border:1px solid #555;padding:6px;margin-bottom:6px;cursor:pointer"></div>
+<div id="q047" style="border:1px solid #555;padding:6px;margin-bottom:6px"></div>
+<div id="q269" style="border:1px solid #555;padding:6px;margin-bottom:6px"></div>
+<div id="q581" style="border:1px solid #555;padding:6px;margin-bottom:6px"></div>
 
 <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
 
 </div>
 `;
-
-estruturaBox.onclick=()=>{
-  estruturalAtivo=!estruturalAtivo;
-  if(!estruturalAtivo){
-    duplaPreferida=null;
-    quadroAtivo=null;
-  }
-  render();
-};
-
-function cliqueQuadro(id,grupo){
-  if(!estruturalAtivo) return;
-  quadroAtivo=id;
-  duplaPreferida=melhorDupla(grupo);
-  estruturalCentros=gerarEstrutural();
-  render();
-}
-
-tl047.onclick=()=>cliqueQuadro("tl047",[0,4,7]);
-tl269.onclick=()=>cliqueQuadro("tl269",[2,6,9]);
-tl581.onclick=()=>cliqueQuadro("tl581",[5,8,1]);
 
 for(let n=0;n<=36;n++){
   const b=document.createElement("button");
@@ -162,81 +149,77 @@ for(let n=0;n<=36;n++){
   b.style="padding:8px;background:#333;color:#fff";
   b.onclick=()=>add(n);
   nums.appendChild(b);
+}function dentroNucleo(n){
+  return estruturalCentros.some(c=>vizinhos2(c).includes(n));
+}
+
+function dentroC6(n){
+  return estruturalC6!==null && vizinhos2(estruturalC6).includes(n);
 }
 
 function add(n){
 
-  if(estruturalAtivo){
-    estruturalRes.unshift(dentroEstrutural(n)?"V":"X");
+  if(dentroNucleo(n)){
+    estruturalRes.unshift("V");
+  } else if(dentroC6(n)){
+    estruturalRes.unshift("R");
+  } else {
+    estruturalRes.unshift("X");
   }
 
   timeline.unshift(n);
   if(timeline.length>14) timeline.pop();
 
-  estruturalCentros=gerarEstrutural();
+  gerarEstrutural();
   render();
-}function render(){
+}
+
+function render(){
 
   tl.innerHTML = timeline.map((n,i)=>{
-    const r=estruturalRes[i];
-    const cor=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+    const r = estruturalRes[i];
+    let cor = "#aaa";
+    if(r==="V") cor="#00e676";
+    if(r==="R") cor="#9c27b0";
+    if(r==="X") cor="#ff5252";
     return `<span style="color:${cor}">${n}</span>`;
   }).join(" · ");
 
-  estruturaBox.innerHTML=`
-    <b>Leitor Estrutural</b><br>
-    ${duplaPreferida?`<div style="color:#00e676">Dupla: ${duplaPreferida}</div>`:""}
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
-      ${estruturalCentros.map(n=>`
-        <div style="border:1px solid #00e676;padding:6px">${n}</div>
-      `).join("")}
-    </div>
+  estruturaBox.innerHTML = `
+  <b>Núcleo (C1–C5)</b><br>
+  ${estruturalCentros.join(" , ")}
+  <br><br>
+  <b>C6 Ruptura</b><br>
+  <span style="color:#9c27b0">${estruturalC6}</span>
   `;
-
-  const quadros={
-    tl047:[0,4,7],
-    tl269:[2,6,9],
-    tl581:[5,8,1]
-  };
 
   Object.entries(quadros).forEach(([id,grupo])=>{
 
-    const dupla=melhorDupla(grupo);
-
-    const mapa={};
-
-    grupo.forEach(t=>{
-      track.forEach(num=>{
-        if(terminal(num)===t){
-          mapa[num]=CORES[t];
-          vizinhos1(num).forEach(v=>{
-            mapa[v]=CORES[t];
-          });
-        }
-      });
-    });
+    const dupla = melhorDupla(grupo);
 
     document.getElementById(id).innerHTML=`
-      <b>${id.replace("tl","")}</b>
-      <div style="color:#00e676;font-size:12px">
-        Melhor Dupla: ${dupla||"-"}
-      </div>
+      <b>${id.replace("q","")}</b><br>
+      Melhor Dupla: ${dupla || "-"}<br><br>
       ${timeline.map(n=>{
-        const cor=mapa[n]||"transparent";
-        return `
-        <span style="
+        let cor = "transparent";
+        grupo.forEach((t,i)=>{
+          if(vizinhos2(n).some(v=>terminal(v)===t)){
+            cor = coresQuadro[id][i];
+          }
+        });
+        return `<span style="
           display:inline-block;
           width:18px;
           text-align:center;
           background:${cor};
           margin-right:2px;
-        ">${n}</span>
-        `;
+        ">${n}</span>`;
       }).join("")}
     `;
   });
 }
 
+gerarEstrutural();
 render();
 
 })();
