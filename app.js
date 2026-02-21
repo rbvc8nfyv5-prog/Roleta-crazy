@@ -1,7 +1,5 @@
 (function(){
 
-/* ================= CONFIG BASE ================= */
-
 const track = [
   32,15,19,4,21,2,25,17,34,6,
   27,13,36,11,30,8,23,10,5,24,
@@ -13,8 +11,6 @@ let timeline = [];
 let estruturalCentros = [];
 let estruturalC6 = null;
 let estruturalRes = [];
-
-let mostrarSimulacao = false;
 
 /* ================= UTIL ================= */
 
@@ -36,6 +32,15 @@ function vizinhos2(n){
   ];
 }
 
+function vizinhos1(n){
+  const i = track.indexOf(n);
+  return [
+    track[(i-1+37)%37],
+    n,
+    track[(i+1)%37]
+  ];
+}
+
 function deslocDirecional(a,b,index){
   const size = 37;
   let ia = track.indexOf(a);
@@ -52,9 +57,9 @@ function deslocDirecional(a,b,index){
   return d;
 }
 
-/* ================= GERADOR BASE ================= */
+/* ================= MOTOR BASE ORIGINAL ================= */
 
-function gerarEstrutural(){
+function gerarEstruturalBase(lista){
 
   const usados = new Set();
   const centros = [];
@@ -69,26 +74,32 @@ function gerarEstrutural(){
   }
 
   const freq = {};
-  timeline.forEach(n=>freq[n]=(freq[n]||0)+1);
+  lista.forEach(n=>freq[n]=(freq[n]||0)+1);
 
   const freqViz = {};
-  timeline.forEach(n=>{
+  lista.forEach(n=>{
     vizinhos2(n).forEach(v=>{
       freqViz[v]=(freqViz[v]||0)+1;
     });
   });
 
+  let saltoMedio = 0;
+  for(let i=0;i<lista.length-1;i++){
+    saltoMedio += dist(lista[i],lista[i+1]);
+  }
+  saltoMedio = lista.length>1 ? saltoMedio/(lista.length-1) : 0;
+
   let somaDir = 0;
-  for(let i=0;i<timeline.length-1;i++){
+  for(let i=0;i<lista.length-1;i++){
     somaDir += deslocDirecional(
-      timeline[i+1],
-      timeline[i],
+      lista[i+1],
+      lista[i],
       i
     );
   }
 
-  const mediaDirecional = timeline.length>1
-    ? somaDir/(timeline.length-1)
+  const mediaDirecional = lista.length>1
+    ? somaDir/(lista.length-1)
     : 0;
 
   const candidatos = track.map(n=>{
@@ -97,10 +108,10 @@ function gerarEstrutural(){
     const calor = freqViz[n] || 0;
 
     const alinhamento =
-      timeline.length
+      lista.length
         ? Math.abs(
             deslocDirecional(
-              timeline[0],
+              lista[0],
               n,
               0
             ) - mediaDirecional
@@ -108,9 +119,9 @@ function gerarEstrutural(){
         : 0;
 
     const score =
-      (permanencia * 1.3)
+      (permanencia * 1.2)
     + (calor * 1.0)
-    + ((10 - alinhamento) * 0.9);
+    + ((10 - alinhamento) * 0.8);
 
     return {n,score};
   })
@@ -122,34 +133,22 @@ function gerarEstrutural(){
     if(centros.length>=5) break;
   }
 
-  /* ===== C6 POR MAIOR ESPALHAMENTO ===== */
-
   let melhorScore = -1;
   let melhorC6 = null;
 
   track.forEach(n=>{
     if(centros.includes(n)) return;
-
     const dMedia = centros.reduce((acc,c)=>acc+dist(c,n),0)/centros.length;
-
     if(dMedia > melhorScore){
       melhorScore = dMedia;
       melhorC6 = n;
     }
   });
 
-  estruturalCentros = centros;
-  estruturalC6 = melhorC6;
-}
-
-/* ================= VALIDAÇÃO ================= */
-
-function dentroNucleo(n){
-  return estruturalCentros.some(c=>vizinhos2(c).includes(n));
-}
-
-function dentroC6(n){
-  return estruturalC6!==null && vizinhos2(estruturalC6).includes(n);
+  return {
+    centros,
+    ruptura: melhorC6
+  };
 }
 
 /* ================= UI ================= */
@@ -161,7 +160,7 @@ document.body.style.fontFamily="sans-serif";
 document.body.innerHTML = `
 <div style="max-width:1000px;margin:auto;padding:10px">
 
-<h3>CSM Estrutural (Base)</h3>
+<h3>CSM Estrutural</h3>
 
 <div>
 Histórico:
@@ -175,14 +174,12 @@ Histórico:
 <div id="tl" style="font-weight:600;font-size:18px"></div>
 </div>
 
-<div style="margin:10px 0">
-<button id="toggleSim">Mostrar Simulação</button>
-</div>
-
-<div id="simArea" style="display:none;margin-bottom:10px"></div>
-
 <div id="estruturaBox"
      style="border:1px solid #555;padding:10px;margin:10px 0">
+</div>
+
+<div id="painelSim"
+     style="display:flex;gap:20px;margin-top:10px">
 </div>
 
 <div id="nums"
@@ -192,7 +189,7 @@ Histórico:
 </div>
 `;
 
-/* ===== BOTÕES NUMÉRICOS ===== */
+/* ===== Botões ===== */
 
 for(let n=0;n<=36;n++){
   const b=document.createElement("button");
@@ -206,19 +203,28 @@ for(let n=0;n<=36;n++){
 
 function add(n){
 
-  if(dentroNucleo(n)){
-    estruturalRes.unshift("V");
-  } else if(dentroC6(n)){
-    estruturalRes.unshift("R");
-  } else {
-    estruturalRes.unshift("X");
+  if(estruturalCentros.length){
+
+    if(estruturalCentros.some(c=>vizinhos2(c).includes(n))){
+      estruturalRes.unshift("V");
+    } else if(estruturalC6 && vizinhos2(estruturalC6).includes(n)){
+      estruturalRes.unshift("R");
+    } else {
+      estruturalRes.unshift("X");
+    }
+
   }
 
   timeline.unshift(n);
 
-  gerarEstrutural();
+  const base = gerarEstruturalBase(timeline);
+  estruturalCentros = base.centros;
+  estruturalC6 = base.ruptura;
+
   render();
 }
+
+/* ================= COLAR ================= */
 
 colar.onclick = ()=>{
   const lista = inp.value
@@ -232,15 +238,9 @@ colar.onclick = ()=>{
 
 limpar.onclick=()=>{
   timeline=[];
-  estruturalRes=[];
   estruturalCentros=[];
   estruturalC6=null;
-  render();
-};
-
-toggleSim.onclick=()=>{
-  mostrarSimulacao=!mostrarSimulacao;
-  simArea.style.display=mostrarSimulacao?"block":"none";
+  estruturalRes=[];
   render();
 };
 
@@ -268,20 +268,38 @@ function render(){
   <span style="color:#9c27b0">${estruturalC6}</span>
   `;
 
-  if(mostrarSimulacao){
-    const total = estruturalRes.length;
-    const v = estruturalRes.filter(x=>x==="V").length;
-    const r = estruturalRes.filter(x=>x==="R").length;
-    const taxa = total ? ((v+r)/total*100).toFixed(1) : 0;
+  /* ===== PAINEL HORÁRIO / ANTI ===== */
 
-    simArea.innerHTML = `
-      Total analisado: ${total}<br>
-      Assertividade: ${taxa}%
+  if(timeline.length){
+
+    const ultimo = timeline[0];
+    const v = vizinhos1(ultimo);
+
+    const horario = gerarEstruturalBase(v);
+    const anti = gerarEstruturalBase([v[2],v[1],v[0]]);
+
+    painelSim.innerHTML = `
+      <div style="flex:1;border:1px solid #00e676;padding:10px">
+        <b>Horário</b><br>
+        Base: ${v.join(" , ")}<br><br>
+        C1–C5: ${horario.centros.join(" , ")}<br>
+        C6: <span style="color:#9c27b0">${horario.ruptura}</span>
+      </div>
+
+      <div style="flex:1;border:1px solid #2196f3;padding:10px">
+        <b>Anti-Horário</b><br>
+        Base: ${[v[2],v[1],v[0]].join(" , ")}<br><br>
+        C1–C5: ${anti.centros.join(" , ")}<br>
+        C6: <span style="color:#9c27b0">${anti.ruptura}</span>
+      </div>
     `;
+
+  } else {
+    painelSim.innerHTML="";
   }
+
 }
 
-gerarEstrutural();
 render();
 
 })();
