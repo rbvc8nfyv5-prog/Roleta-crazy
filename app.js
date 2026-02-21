@@ -98,32 +98,27 @@ function validarNumero(n,centros,c6){
 
 function add(n){
 
-  // BASE
   const base = gerarBase(timeline);
   baseCentros = base.centros;
   baseC6 = base.ruptura;
   baseRes.unshift(validarNumero(n,baseCentros,baseC6));
 
-  // HORÁRIO
   if(timeline.length){
     const ultimo = timeline[0];
     const v = vizinhos1(ultimo);
-    const h = gerarBase(v);
 
+    const h = gerarBase(v);
     horarioCentros = h.centros.map(x=>rotacionar(x,rotHorario));
     horarioC6 = rotacionar(h.ruptura,rotHorario);
-
     horarioRes.unshift(validarNumero(n,horarioCentros,horarioC6));
 
     const a = gerarBase([v[2],v[1],v[0]]);
     antiCentros = a.centros.map(x=>rotacionar(x,rotAnti));
     antiC6 = rotacionar(a.ruptura,rotAnti);
-
     antiRes.unshift(validarNumero(n,antiCentros,antiC6));
   }
 
   timeline.unshift(n);
-
   render();
 }
 
@@ -143,24 +138,24 @@ document.body.innerHTML = `
 <div id="tlBase"></div>
 </div>
 
-<div>
-🕒 Horário:
+<div style="margin-top:15px;border:1px solid #00e676;padding:10px">
+<b>Horário</b>
+<br>
+Rotação: 
+<button onclick="rotHorario-- ; render()">-</button>
+<span id="rotHVal">0</span>
+<button onclick="rotHorario++ ; render()">+</button>
 <div id="tlHorario"></div>
 </div>
 
-<div>
-🕒 Anti:
-<div id="tlAnti"></div>
-</div>
-
-<div style="margin:10px 0">
-Horário Rot:
-<input type="range" min="-5" max="5" value="0" id="rotH">
-<span id="rotHVal">0</span>
-
-Anti Rot:
-<input type="range" min="-5" max="5" value="0" id="rotA">
+<div style="margin-top:15px;border:1px solid #2196f3;padding:10px">
+<b>Anti-Horário</b>
+<br>
+Rotação:
+<button onclick="rotAnti-- ; render()">-</button>
 <span id="rotAVal">0</span>
+<button onclick="rotAnti++ ; render()">+</button>
+<div id="tlAnti"></div>
 </div>
 
 <div id="nums"
@@ -178,18 +173,6 @@ for(let n=0;n<=36;n++){
   nums.appendChild(b);
 }
 
-/* ================= CONTROLES ================= */
-
-rotH.oninput=function(){
-  rotHorario=parseInt(this.value);
-  rotHVal.innerText=rotHorario;
-};
-
-rotA.oninput=function(){
-  rotAnti=parseInt(this.value);
-  rotAVal.innerText=rotAnti;
-};
-
 /* ================= RENDER ================= */
 
 function pintar(lista,res,el){
@@ -204,9 +187,15 @@ function pintar(lista,res,el){
 }
 
 function render(){
+
+  rotHVal.innerText = rotHorario;
+  rotAVal.innerText = rotAnti;
+
   pintar(timeline,baseRes,tlBase);
   pintar(timeline,horarioRes,tlHorario);
   pintar(timeline,antiRes,tlAnti);
 }
+
+render();
 
 })();
