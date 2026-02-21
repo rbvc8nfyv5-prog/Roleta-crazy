@@ -52,12 +52,12 @@ function deslocDirecional(a,b,index){
   return d;
 }
 
-/* ================= GERADOR ================= */
+/* ================= GERADOR BASE ================= */
 
 function gerarEstrutural(){
 
   const usados = new Set();
-  let centros = [];
+  const centros = [];
 
   function pode(n){
     return vizinhos2(n).every(x=>!usados.has(x));
@@ -77,12 +77,6 @@ function gerarEstrutural(){
       freqViz[v]=(freqViz[v]||0)+1;
     });
   });
-
-  let saltoMedio = 0;
-  for(let i=0;i<timeline.length-1;i++){
-    saltoMedio += dist(timeline[i],timeline[i+1]);
-  }
-  saltoMedio = timeline.length>1 ? saltoMedio/(timeline.length-1) : 0;
 
   let somaDir = 0;
   for(let i=0;i<timeline.length-1;i++){
@@ -114,9 +108,9 @@ function gerarEstrutural(){
         : 0;
 
     const score =
-      (permanencia * 1.2)
+      (permanencia * 1.3)
     + (calor * 1.0)
-    + ((10 - alinhamento) * 0.8);
+    + ((10 - alinhamento) * 0.9);
 
     return {n,score};
   })
@@ -128,43 +122,24 @@ function gerarEstrutural(){
     if(centros.length>=5) break;
   }
 
-  /* ===== CONECTAR CENTRAIS ===== */
+  /* ===== C6 POR MAIOR ESPALHAMENTO ===== */
 
-  centros.sort((a,b)=>track.indexOf(a)-track.indexOf(b));
-
-  estruturalCentros = centros;
-
-  /* ===== ENCONTRAR BLOCO LIVRE ===== */
-
-  const cobertos = new Set();
-  centros.forEach(c=>{
-    vizinhos2(c).forEach(n=>cobertos.add(n));
-  });
-
-  let blocoAtual = [];
-  let blocos = [];
+  let melhorScore = -1;
+  let melhorC6 = null;
 
   track.forEach(n=>{
-    if(!cobertos.has(n)){
-      blocoAtual.push(n);
-    } else {
-      if(blocoAtual.length>0){
-        blocos.push(blocoAtual);
-        blocoAtual=[];
-      }
+    if(centros.includes(n)) return;
+
+    const dMedia = centros.reduce((acc,c)=>acc+dist(c,n),0)/centros.length;
+
+    if(dMedia > melhorScore){
+      melhorScore = dMedia;
+      melhorC6 = n;
     }
   });
 
-  if(blocoAtual.length>0) blocos.push(blocoAtual);
-
-  blocos.sort((a,b)=>b.length-a.length);
-
-  if(blocos.length){
-    const maiorBloco = blocos[0];
-    estruturalC6 = maiorBloco[Math.floor(maiorBloco.length/2)];
-  } else {
-    estruturalC6 = null;
-  }
+  estruturalCentros = centros;
+  estruturalC6 = melhorC6;
 }
 
 /* ================= VALIDAÇÃO ================= */
@@ -186,7 +161,7 @@ document.body.style.fontFamily="sans-serif";
 document.body.innerHTML = `
 <div style="max-width:1000px;margin:auto;padding:10px">
 
-<h3>CSM Estrutural</h3>
+<h3>CSM Estrutural (Base)</h3>
 
 <div>
 Histórico:
@@ -216,6 +191,8 @@ Histórico:
 
 </div>
 `;
+
+/* ===== BOTÕES NUMÉRICOS ===== */
 
 for(let n=0;n<=36;n++){
   const b=document.createElement("button");
