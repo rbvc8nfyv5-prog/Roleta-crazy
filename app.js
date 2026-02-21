@@ -10,7 +10,13 @@ const track = [
 let timeline = [];
 let estruturalCentros = [];
 let estruturalC6 = null;
+
 let estruturalRes = [];
+let horarioRes = [];
+let antiRes = [];
+
+let rotHorario = 0;
+let rotAnti = 0;
 
 /* ================= UTIL ================= */
 
@@ -41,23 +47,12 @@ function vizinhos1(n){
   ];
 }
 
-function deslocDirecional(a,b,index){
-  const size = 37;
-  let ia = track.indexOf(a);
-  let ib = track.indexOf(b);
-  let d = ib - ia;
-
-  if(d > size/2) d -= size;
-  if(d < -size/2) d += size;
-
-  if(index % 2 === 1){
-    d = -d;
-  }
-
-  return d;
+function rotacionar(n,offset){
+  const i = track.indexOf(n);
+  return track[(i + offset + 37) % 37];
 }
 
-/* ================= MOTOR BASE ORIGINAL ================= */
+/* ================= MOTOR BASE ================= */
 
 function gerarEstruturalBase(lista){
 
@@ -83,46 +78,10 @@ function gerarEstruturalBase(lista){
     });
   });
 
-  let saltoMedio = 0;
-  for(let i=0;i<lista.length-1;i++){
-    saltoMedio += dist(lista[i],lista[i+1]);
-  }
-  saltoMedio = lista.length>1 ? saltoMedio/(lista.length-1) : 0;
-
-  let somaDir = 0;
-  for(let i=0;i<lista.length-1;i++){
-    somaDir += deslocDirecional(
-      lista[i+1],
-      lista[i],
-      i
-    );
-  }
-
-  const mediaDirecional = lista.length>1
-    ? somaDir/(lista.length-1)
-    : 0;
-
   const candidatos = track.map(n=>{
-
     const permanencia = freq[n] || 0;
     const calor = freqViz[n] || 0;
-
-    const alinhamento =
-      lista.length
-        ? Math.abs(
-            deslocDirecional(
-              lista[0],
-              n,
-              0
-            ) - mediaDirecional
-          )
-        : 0;
-
-    const score =
-      (permanencia * 1.2)
-    + (calor * 1.0)
-    + ((10 - alinhamento) * 0.8);
-
+    const score = (permanencia * 1.2) + (calor * 1.0);
     return {n,score};
   })
   .sort((a,b)=>b.score-a.score)
@@ -145,10 +104,7 @@ function gerarEstruturalBase(lista){
     }
   });
 
-  return {
-    centros,
-    ruptura: melhorC6
-  };
+  return { centros, ruptura: melhorC6 };
 }
 
 /* ================= UI ================= */
@@ -158,28 +114,37 @@ document.body.style.color="#fff";
 document.body.style.fontFamily="sans-serif";
 
 document.body.innerHTML = `
-<div style="max-width:1000px;margin:auto;padding:10px">
+<div style="max-width:1100px;margin:auto;padding:10px">
 
 <h3>CSM Estrutural</h3>
 
-<div>
-Histórico:
-<input id="inp" style="width:100%;padding:6px;background:#222;color:#fff"/>
-<button id="colar">Colar</button>
-<button id="limpar">Limpar</button>
-</div>
-
-<div style="margin-top:10px">
-🕒 Timeline (14):
-<div id="tl" style="font-weight:600;font-size:18px"></div>
+<div style="margin-bottom:10px">
+🕒 Timeline Base:
+<div id="tlBase" style="font-weight:600;font-size:18px"></div>
 </div>
 
 <div id="estruturaBox"
      style="border:1px solid #555;padding:10px;margin:10px 0">
 </div>
 
-<div id="painelSim"
-     style="display:flex;gap:20px;margin-top:10px">
+<div style="display:flex;gap:20px">
+
+  <div style="flex:1;border:1px solid #00e676;padding:10px">
+    <b>Horário</b><br>
+    Rotação:
+    <input type="range" min="-5" max="5" value="0" id="rotH">
+    <span id="rotHVal">0</span>
+    <div id="horarioBox"></div>
+  </div>
+
+  <div style="flex:1;border:1px solid #2196f3;padding:10px">
+    <b>Anti-Horário</b><br>
+    Rotação:
+    <input type="range" min="-5" max="5" value="0" id="rotA">
+    <span id="rotAVal">0</span>
+    <div id="antiBox"></div>
+  </div>
+
 </div>
 
 <div id="nums"
@@ -188,8 +153,6 @@ Histórico:
 
 </div>
 `;
-
-/* ===== Botões ===== */
 
 for(let n=0;n<=36;n++){
   const b=document.createElement("button");
@@ -203,18 +166,6 @@ for(let n=0;n<=36;n++){
 
 function add(n){
 
-  if(estruturalCentros.length){
-
-    if(estruturalCentros.some(c=>vizinhos2(c).includes(n))){
-      estruturalRes.unshift("V");
-    } else if(estruturalC6 && vizinhos2(estruturalC6).includes(n)){
-      estruturalRes.unshift("R");
-    } else {
-      estruturalRes.unshift("X");
-    }
-
-  }
-
   timeline.unshift(n);
 
   const base = gerarEstruturalBase(timeline);
@@ -224,81 +175,60 @@ function add(n){
   render();
 }
 
-/* ================= COLAR ================= */
-
-colar.onclick = ()=>{
-  const lista = inp.value
-    .split(/[\s,]+/)
-    .map(Number)
-    .filter(n=>n>=0 && n<=36);
-
-  lista.forEach(n=>add(n));
-  inp.value="";
-};
-
-limpar.onclick=()=>{
-  timeline=[];
-  estruturalCentros=[];
-  estruturalC6=null;
-  estruturalRes=[];
-  render();
-};
-
 /* ================= RENDER ================= */
 
 function render(){
 
-  const ultimos14 = timeline.slice(0,14);
-  const ultRes = estruturalRes.slice(0,14);
-
-  tl.innerHTML = ultimos14.map((n,i)=>{
-    const r = ultRes[i];
-    let cor = "#aaa";
-    if(r==="V") cor="#00e676";
-    if(r==="R") cor="#9c27b0";
-    if(r==="X") cor="#ff5252";
-    return `<span style="color:${cor}">${n}</span>`;
-  }).join(" · ");
+  tlBase.innerHTML = timeline.slice(0,14).join(" · ");
 
   estruturaBox.innerHTML = `
-  <b>Núcleo (C1–C5)</b><br>
+  <b>Núcleo Base</b><br>
   ${estruturalCentros.join(" , ")}
   <br><br>
-  <b>C6 Ruptura</b><br>
-  <span style="color:#9c27b0">${estruturalC6}</span>
+  <b>C6</b><br>
+  ${estruturalC6}
   `;
-
-  /* ===== PAINEL HORÁRIO / ANTI ===== */
 
   if(timeline.length){
 
     const ultimo = timeline[0];
     const v = vizinhos1(ultimo);
 
-    const horario = gerarEstruturalBase(v);
-    const anti = gerarEstruturalBase([v[2],v[1],v[0]]);
+    let horario = gerarEstruturalBase(v);
+    let anti = gerarEstruturalBase([v[2],v[1],v[0]]);
 
-    painelSim.innerHTML = `
-      <div style="flex:1;border:1px solid #00e676;padding:10px">
-        <b>Horário</b><br>
-        Base: ${v.join(" , ")}<br><br>
-        C1–C5: ${horario.centros.join(" , ")}<br>
-        C6: <span style="color:#9c27b0">${horario.ruptura}</span>
-      </div>
+    // Aplicar rotação
+    horario.centros = horario.centros.map(n=>rotacionar(n,rotHorario));
+    horario.ruptura = rotacionar(horario.ruptura,rotHorario);
 
-      <div style="flex:1;border:1px solid #2196f3;padding:10px">
-        <b>Anti-Horário</b><br>
-        Base: ${[v[2],v[1],v[0]].join(" , ")}<br><br>
-        C1–C5: ${anti.centros.join(" , ")}<br>
-        C6: <span style="color:#9c27b0">${anti.ruptura}</span>
-      </div>
+    anti.centros = anti.centros.map(n=>rotacionar(n,rotAnti));
+    anti.ruptura = rotacionar(anti.ruptura,rotAnti);
+
+    horarioBox.innerHTML = `
+      C1–C5: ${horario.centros.join(" , ")}<br>
+      C6: ${horario.ruptura}
     `;
 
-  } else {
-    painelSim.innerHTML="";
+    antiBox.innerHTML = `
+      C1–C5: ${anti.centros.join(" , ")}<br>
+      C6: ${anti.ruptura}
+    `;
   }
-
 }
+
+/* ================= CONTROLES ================= */
+
+rotH.oninput = function(){
+  rotHorario = parseInt(this.value);
+  rotHVal.innerText = rotHorario;
+  render();
+};
+
+rotA.oninput = function(){
+  rotAnti = parseInt(this.value);
+  rotAVal.innerText = rotAnti;
+  render();
+};
 
 render();
 
