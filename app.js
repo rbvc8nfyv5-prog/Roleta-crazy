@@ -12,17 +12,15 @@ let estruturalCentros = [];
 let estruturalC6 = null;
 let estruturalRes = [];
 
-/* ================= ROTAÇÃO ================= */
-
 let rotHorario = 0;
 let rotAnti = 0;
+
+/* ================= UTIL ================= */
 
 function rotacionar(n,offset){
   const i = track.indexOf(n);
   return track[(i + offset + 37) % 37];
 }
-
-/* ================= UTIL ================= */
 
 function dist(a,b){
   const ia = track.indexOf(a);
@@ -199,8 +197,6 @@ Histórico:
 </div>
 `;
 
-/* ===== Botões ===== */
-
 for(let n=0;n<=36;n++){
   const b=document.createElement("button");
   b.textContent=n;
@@ -233,8 +229,6 @@ function add(n){
 
   render();
 }
-
-/* ================= COLAR ================= */
 
 colar.onclick = ()=>{
   const lista = inp.value
@@ -291,12 +285,10 @@ function render(){
         <b>Horário</b><br>
         Base: ${v.join(" , ")}<br><br>
 
-        <div>
-          Rotação:
-          <button onclick="rotHorario-- ; render()">-</button>
-          <span style="margin:0 8px">${rotHorario}</span>
-          <button onclick="rotHorario++ ; render()">+</button>
-        </div><br>
+        Rotação:
+        <button onclick="rotHorario-- ; render()">-</button>
+        ${rotHorario}
+        <button onclick="rotHorario++ ; render()">+</button><br><br>
 
         C1–C5: ${horario.centros.map(n=>rotacionar(n,rotHorario)).join(" , ")}<br>
         C6: <span style="color:#9c27b0">
@@ -308,12 +300,10 @@ function render(){
         <b>Anti-Horário</b><br>
         Base: ${[v[2],v[1],v[0]].join(" , ")}<br><br>
 
-        <div>
-          Rotação:
-          <button onclick="rotAnti-- ; render()">-</button>
-          <span style="margin:0 8px">${rotAnti}</span>
-          <button onclick="rotAnti++ ; render()">+</button>
-        </div><br>
+        Rotação:
+        <button onclick="rotAnti-- ; render()">-</button>
+        ${rotAnti}
+        <button onclick="rotAnti++ ; render()">+</button><br><br>
 
         C1–C5: ${anti.centros.map(n=>rotacionar(n,rotAnti)).join(" , ")}<br>
         C6: <span style="color:#9c27b0">
