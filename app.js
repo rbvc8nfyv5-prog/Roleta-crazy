@@ -8,10 +8,17 @@ const track = [
 ];
 
 let timeline = [];
-let estruturalCentros = [];
-let estruturalC6 = null;
 
-let estruturalRes = [];
+let baseCentros = [];
+let baseC6 = null;
+
+let horarioCentros = [];
+let horarioC6 = null;
+
+let antiCentros = [];
+let antiC6 = null;
+
+let baseRes = [];
 let horarioRes = [];
 let antiRes = [];
 
@@ -20,11 +27,13 @@ let rotAnti = 0;
 
 /* ================= UTIL ================= */
 
-function dist(a,b){
-  const ia = track.indexOf(a);
-  const ib = track.indexOf(b);
-  const d = Math.abs(ia-ib);
-  return Math.min(d,37-d);
+function vizinhos1(n){
+  const i = track.indexOf(n);
+  return [
+    track[(i-1+37)%37],
+    n,
+    track[(i+1)%37]
+  ];
 }
 
 function vizinhos2(n){
@@ -38,15 +47,6 @@ function vizinhos2(n){
   ];
 }
 
-function vizinhos1(n){
-  const i = track.indexOf(n);
-  return [
-    track[(i-1+37)%37],
-    n,
-    track[(i+1)%37]
-  ];
-}
-
 function rotacionar(n,offset){
   const i = track.indexOf(n);
   return track[(i + offset + 37) % 37];
@@ -54,7 +54,7 @@ function rotacionar(n,offset){
 
 /* ================= MOTOR BASE ================= */
 
-function gerarEstruturalBase(lista){
+function gerarBase(lista){
 
   const usados = new Set();
   const centros = [];
@@ -71,40 +71,60 @@ function gerarEstruturalBase(lista){
   const freq = {};
   lista.forEach(n=>freq[n]=(freq[n]||0)+1);
 
-  const freqViz = {};
-  lista.forEach(n=>{
-    vizinhos2(n).forEach(v=>{
-      freqViz[v]=(freqViz[v]||0)+1;
-    });
-  });
-
-  const candidatos = track.map(n=>{
-    const permanencia = freq[n] || 0;
-    const calor = freqViz[n] || 0;
-    const score = (permanencia * 1.2) + (calor * 1.0);
-    return {n,score};
-  })
-  .sort((a,b)=>b.score-a.score)
-  .map(x=>x.n);
+  const candidatos = track
+    .map(n=>({n,score:freq[n]||0}))
+    .sort((a,b)=>b.score-a.score)
+    .map(x=>x.n);
 
   for(const n of candidatos){
     if(pode(n)) registrar(n);
     if(centros.length>=5) break;
   }
 
-  let melhorScore = -1;
-  let melhorC6 = null;
+  let ruptura = track.find(n=>!centros.includes(n));
 
-  track.forEach(n=>{
-    if(centros.includes(n)) return;
-    const dMedia = centros.reduce((acc,c)=>acc+dist(c,n),0)/centros.length;
-    if(dMedia > melhorScore){
-      melhorScore = dMedia;
-      melhorC6 = n;
-    }
-  });
+  return {centros,ruptura};
+}
 
-  return { centros, ruptura: melhorC6 };
+/* ================= VALIDAÇÃO ================= */
+
+function validarNumero(n,centros,c6){
+  if(centros.some(c=>vizinhos1(c).includes(n))) return "V";
+  if(c6 && vizinhos1(c6).includes(n)) return "R";
+  return "X";
+}
+
+/* ================= ADD ================= */
+
+function add(n){
+
+  // BASE
+  const base = gerarBase(timeline);
+  baseCentros = base.centros;
+  baseC6 = base.ruptura;
+  baseRes.unshift(validarNumero(n,baseCentros,baseC6));
+
+  // HORÁRIO
+  if(timeline.length){
+    const ultimo = timeline[0];
+    const v = vizinhos1(ultimo);
+    const h = gerarBase(v);
+
+    horarioCentros = h.centros.map(x=>rotacionar(x,rotHorario));
+    horarioC6 = rotacionar(h.ruptura,rotHorario);
+
+    horarioRes.unshift(validarNumero(n,horarioCentros,horarioC6));
+
+    const a = gerarBase([v[2],v[1],v[0]]);
+    antiCentros = a.centros.map(x=>rotacionar(x,rotAnti));
+    antiC6 = rotacionar(a.ruptura,rotAnti);
+
+    antiRes.unshift(validarNumero(n,antiCentros,antiC6));
+  }
+
+  timeline.unshift(n);
+
+  render();
 }
 
 /* ================= UI ================= */
@@ -118,33 +138,29 @@ document.body.innerHTML = `
 
 <h3>CSM Estrutural</h3>
 
-<div style="margin-bottom:10px">
-🕒 Timeline Base:
-<div id="tlBase" style="font-weight:600;font-size:18px"></div>
+<div>
+🕒 Base:
+<div id="tlBase"></div>
 </div>
 
-<div id="estruturaBox"
-     style="border:1px solid #555;padding:10px;margin:10px 0">
+<div>
+🕒 Horário:
+<div id="tlHorario"></div>
 </div>
 
-<div style="display:flex;gap:20px">
+<div>
+🕒 Anti:
+<div id="tlAnti"></div>
+</div>
 
-  <div style="flex:1;border:1px solid #00e676;padding:10px">
-    <b>Horário</b><br>
-    Rotação:
-    <input type="range" min="-5" max="5" value="0" id="rotH">
-    <span id="rotHVal">0</span>
-    <div id="horarioBox"></div>
-  </div>
+<div style="margin:10px 0">
+Horário Rot:
+<input type="range" min="-5" max="5" value="0" id="rotH">
+<span id="rotHVal">0</span>
 
-  <div style="flex:1;border:1px solid #2196f3;padding:10px">
-    <b>Anti-Horário</b><br>
-    Rotação:
-    <input type="range" min="-5" max="5" value="0" id="rotA">
-    <span id="rotAVal">0</span>
-    <div id="antiBox"></div>
-  </div>
-
+Anti Rot:
+<input type="range" min="-5" max="5" value="0" id="rotA">
+<span id="rotAVal">0</span>
 </div>
 
 <div id="nums"
@@ -162,74 +178,35 @@ for(let n=0;n<=36;n++){
   nums.appendChild(b);
 }
 
-/* ================= ADD ================= */
+/* ================= CONTROLES ================= */
 
-function add(n){
+rotH.oninput=function(){
+  rotHorario=parseInt(this.value);
+  rotHVal.innerText=rotHorario;
+};
 
-  timeline.unshift(n);
-
-  const base = gerarEstruturalBase(timeline);
-  estruturalCentros = base.centros;
-  estruturalC6 = base.ruptura;
-
-  render();
-}
+rotA.oninput=function(){
+  rotAnti=parseInt(this.value);
+  rotAVal.innerText=rotAnti;
+};
 
 /* ================= RENDER ================= */
 
-function render(){
-
-  tlBase.innerHTML = timeline.slice(0,14).join(" · ");
-
-  estruturaBox.innerHTML = `
-  <b>Núcleo Base</b><br>
-  ${estruturalCentros.join(" , ")}
-  <br><br>
-  <b>C6</b><br>
-  ${estruturalC6}
-  `;
-
-  if(timeline.length){
-
-    const ultimo = timeline[0];
-    const v = vizinhos1(ultimo);
-
-    let horario = gerarEstruturalBase(v);
-    let anti = gerarEstruturalBase([v[2],v[1],v[0]]);
-
-    // Aplicar rotação
-    horario.centros = horario.centros.map(n=>rotacionar(n,rotHorario));
-    horario.ruptura = rotacionar(horario.ruptura,rotHorario);
-
-    anti.centros = anti.centros.map(n=>rotacionar(n,rotAnti));
-    anti.ruptura = rotacionar(anti.ruptura,rotAnti);
-
-    horarioBox.innerHTML = `
-      C1–C5: ${horario.centros.join(" , ")}<br>
-      C6: ${horario.ruptura}
-    `;
-
-    antiBox.innerHTML = `
-      C1–C5: ${anti.centros.join(" , ")}<br>
-      C6: ${anti.ruptura}
-    `;
-  }
+function pintar(lista,res,el){
+  el.innerHTML = lista.slice(0,14).map((n,i)=>{
+    const r = res[i];
+    let cor="#aaa";
+    if(r==="V") cor="#00e676";
+    if(r==="R") cor="#9c27b0";
+    if(r==="X") cor="#ff5252";
+    return `<span style="color:${cor}">${n}</span>`;
+  }).join(" · ");
 }
 
-/* ================= CONTROLES ================= */
-
-rotH.oninput = function(){
-  rotHorario = parseInt(this.value);
-  rotHVal.innerText = rotHorario;
-  render();
-};
-
-rotA.oninput = function(){
-  rotAnti = parseInt(this.value);
-  rotAVal.innerText = rotAnti;
-  render();
-};
-
-render();
+function render(){
+  pintar(timeline,baseRes,tlBase);
+  pintar(timeline,horarioRes,tlHorario);
+  pintar(timeline,antiRes,tlAnti);
+}
 
 })();
