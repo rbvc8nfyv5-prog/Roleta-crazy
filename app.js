@@ -14,7 +14,8 @@ let estruturalC6 = null;
 let estruturalRes = [];
 
 let rotBase = 0;
-let modoVizinho = 2; // 🔥 1 ou 2 vizinhos
+let rotHorario = 0;
+let rotAnti = 0;
 
 /* ================= UTIL ================= */
 
@@ -46,12 +47,11 @@ function vizinhos2(n){
 }
 
 function rotacionar(n,offset){
-  if(n===null) return null;
   const i = track.indexOf(n);
   return track[(i + offset + 37) % 37];
 }
 
-/* ================= MOTOR BASE ================= */
+/* ================= MOTOR BASE ORIGINAL ================= */
 
 function gerarEstruturalBase(lista){
 
@@ -106,22 +106,6 @@ function gerarEstruturalBase(lista){
   return { centros, ruptura: melhorC6 };
 }
 
-/* ================= VALIDAÇÃO ================= */
-
-function dentroNucleo(n){
-
-  for(const c of estruturalCentros){
-
-    const zona = modoVizinho === 1
-      ? vizinhos1(c)
-      : vizinhos2(c);
-
-    if(zona.includes(n)) return true;
-  }
-
-  return false;
-}
-
 /* ================= UI ================= */
 
 document.body.style.background="#111";
@@ -134,24 +118,36 @@ document.body.innerHTML = `
 <h3>CSM Estrutural</h3>
 
 <div style="margin-bottom:10px">
-🕒 Timeline Base:
+🕒 Timeline:
 <div id="tlBase" style="font-weight:600;font-size:18px"></div>
 </div>
 
-<div style="margin-bottom:10px">
-Modo Validação:
-<select id="modoSel">
-  <option value="1">1 vizinho</option>
-  <option value="2" selected>2 vizinhos</option>
-</select>
+<div style="border:1px solid #555;padding:10px;margin-bottom:10px">
+<b>Núcleo Base</b><br>
+Rotação:
+<input type="range" min="-5" max="5" value="0" id="rotB">
+<span id="rotBVal">0</span>
+<div id="estruturaBox"></div>
 </div>
 
-<div style="border:1px solid #555;padding:10px;margin:10px 0">
-  <b>Núcleo Base</b><br>
-  Rotação:
-  <input type="range" min="-5" max="5" value="0" id="rotB">
-  <span id="rotBVal">0</span>
-  <div id="baseBox"></div>
+<div style="display:flex;gap:20px">
+
+  <div style="flex:1;border:1px solid #00e676;padding:10px">
+    <b>Horário</b><br>
+    Rotação:
+    <input type="range" min="-5" max="5" value="0" id="rotH">
+    <span id="rotHVal">0</span>
+    <div id="horarioBox"></div>
+  </div>
+
+  <div style="flex:1;border:1px solid #2196f3;padding:10px">
+    <b>Anti-Horário</b><br>
+    Rotação:
+    <input type="range" min="-5" max="5" value="0" id="rotA">
+    <span id="rotAVal">0</span>
+    <div id="antiBox"></div>
+  </div>
+
 </div>
 
 <div id="nums"
@@ -173,17 +169,22 @@ for(let n=0;n<=36;n++){
 
 function add(n){
 
-  if(estruturalCentros.length){
-    estruturalRes.unshift(
-      dentroNucleo(n) ? "V" : "X"
-    );
-  }
-
   timeline.unshift(n);
 
   const base = gerarEstruturalBase(timeline);
   estruturalCentros = base.centros;
   estruturalC6 = base.ruptura;
+
+  // ===== VALIDAÇÃO 1 VIZINHO =====
+  const rotacionados = estruturalCentros.map(c=>rotacionar(c,rotBase));
+
+  if(rotacionados.some(c=>vizinhos1(c).includes(n))){
+    estruturalRes.unshift("V");
+  } else if(estruturalC6 && vizinhos1(rotacionar(estruturalC6,rotBase)).includes(n)){
+    estruturalRes.unshift("R");
+  } else {
+    estruturalRes.unshift("X");
+  }
 
   render();
 }
@@ -199,16 +200,43 @@ function render(){
     const r = ultRes[i];
     let cor = "#aaa";
     if(r==="V") cor="#00e676";
+    if(r==="R") cor="#9c27b0";
     if(r==="X") cor="#ff5252";
     return `<span style="color:${cor}">${n}</span>`;
   }).join(" · ");
 
-  let centrosRot = estruturalCentros.map(n=>rotacionar(n,rotBase));
+  const baseRot = estruturalCentros.map(c=>rotacionar(c,rotBase));
+  const c6Rot = estruturalC6!==null ? rotacionar(estruturalC6,rotBase) : null;
 
-  baseBox.innerHTML = `
-    C1–C5: ${centrosRot.join(" , ")}<br>
-    C6: ${rotacionar(estruturalC6,rotBase)}
+  estruturaBox.innerHTML = `
+  C1–C5: ${baseRot.join(" , ")}<br>
+  C6: <span style="color:#9c27b0">${c6Rot}</span>
   `;
+
+  if(timeline.length){
+
+    const ultimo = timeline[0];
+    const v = vizinhos1(ultimo);
+
+    let horario = gerarEstruturalBase(v);
+    let anti = gerarEstruturalBase([v[2],v[1],v[0]]);
+
+    horario.centros = horario.centros.map(n=>rotacionar(n,rotHorario));
+    horario.ruptura = rotacionar(horario.ruptura,rotHorario);
+
+    anti.centros = anti.centros.map(n=>rotacionar(n,rotAnti));
+    anti.ruptura = rotacionar(anti.ruptura,rotAnti);
+
+    horarioBox.innerHTML = `
+      C1–C5: ${horario.centros.join(" , ")}<br>
+      C6: ${horario.ruptura}
+    `;
+
+    antiBox.innerHTML = `
+      C1–C5: ${anti.centros.join(" , ")}<br>
+      C6: ${anti.ruptura}
+    `;
+  }
 }
 
 /* ================= CONTROLES ================= */
@@ -219,8 +247,16 @@ rotB.oninput = function(){
   render();
 };
 
-modoSel.onchange = function(){
-  modoVizinho = parseInt(this.value);
+rotH.oninput = function(){
+  rotHorario = parseInt(this.value);
+  rotHVal.innerText = rotHorario;
+  render();
+};
+
+rotA.oninput = function(){
+  rotAnti = parseInt(this.value);
+  rotAVal.innerText = rotAnti;
+  render();
 };
 
 render();
