@@ -12,8 +12,10 @@ let estruturalCentros = [];
 let estruturalC6 = null;
 
 let estruturalRes = [];
+let horarioRes = [];
+let antiRes = [];
 
-let rotBase = 0;
+let rotBase = 0;   // 🔥 NOVO
 let rotHorario = 0;
 let rotAnti = 0;
 
@@ -24,15 +26,6 @@ function dist(a,b){
   const ib = track.indexOf(b);
   const d = Math.abs(ia-ib);
   return Math.min(d,37-d);
-}
-
-function vizinhos1(n){
-  const i = track.indexOf(n);
-  return [
-    track[(i-1+37)%37],
-    n,
-    track[(i+1)%37]
-  ];
 }
 
 function vizinhos2(n){
@@ -46,12 +39,22 @@ function vizinhos2(n){
   ];
 }
 
+function vizinhos1(n){
+  const i = track.indexOf(n);
+  return [
+    track[(i-1+37)%37],
+    n,
+    track[(i+1)%37]
+  ];
+}
+
 function rotacionar(n,offset){
+  if(n === null) return null;
   const i = track.indexOf(n);
   return track[(i + offset + 37) % 37];
 }
 
-/* ================= MOTOR BASE (NÃO MEXER) ================= */
+/* ================= MOTOR BASE ================= */
 
 function gerarEstruturalBase(lista){
 
@@ -118,16 +121,16 @@ document.body.innerHTML = `
 <h3>CSM Estrutural</h3>
 
 <div style="margin-bottom:10px">
-🕒 Timeline:
+🕒 Timeline Base:
 <div id="tlBase" style="font-weight:600;font-size:18px"></div>
 </div>
 
-<div style="border:1px solid #555;padding:10px;margin-bottom:10px">
-<b>Núcleo Base</b><br>
-Rotação:
-<input type="range" min="-5" max="5" value="0" id="rotB">
-<span id="rotBVal">0</span>
-<div id="estruturaBox"></div>
+<div style="border:1px solid #555;padding:10px;margin:10px 0">
+  <b>Núcleo Base</b><br>
+  Rotação:
+  <input type="range" min="-5" max="5" value="0" id="rotB">
+  <span id="rotBVal">0</span>
+  <div id="baseBox"></div>
 </div>
 
 <div style="display:flex;gap:20px">
@@ -165,34 +168,11 @@ for(let n=0;n<=36;n++){
   nums.appendChild(b);
 }
 
-/* ================= VALIDAÇÃO BASE (1 VIZINHO) ================= */
-/* IMPORTANTÍSSIMO: valida com o núcleo ATUAL (antes do recálculo) */
-function validarBaseAntesDoRecalculo(n){
-  // se ainda não existe núcleo calculado na tela, não valida (neutro)
-  if(!estruturalCentros || estruturalCentros.length < 5) return "N";
-
-  const centrosRot = estruturalCentros.map(c => rotacionar(c, rotBase));
-  const c6Rot = (estruturalC6 !== null && estruturalC6 !== undefined)
-    ? rotacionar(estruturalC6, rotBase)
-    : null;
-
-  if(centrosRot.some(c => vizinhos1(c).includes(n))) return "V";
-  if(c6Rot !== null && vizinhos1(c6Rot).includes(n)) return "R";
-  return "X";
-}
-
 /* ================= ADD ================= */
 
 function add(n){
-
-  // 1) VALIDAR COM O NÚCLEO QUE ESTAVA NA TELA
-  const res = validarBaseAntesDoRecalculo(n);
-  estruturalRes.unshift(res);
-
-  // 2) AGORA INSERE O NÚMERO
   timeline.unshift(n);
 
-  // 3) RECALCULA O NÚCLEO PARA O PRÓXIMO NÚMERO
   const base = gerarEstruturalBase(timeline);
   estruturalCentros = base.centros;
   estruturalC6 = base.ruptura;
@@ -204,30 +184,19 @@ function add(n){
 
 function render(){
 
-  const ultimos14 = timeline.slice(0,14);
-  const ultRes = estruturalRes.slice(0,14);
+  tlBase.innerHTML = timeline.slice(0,14).join(" · ");
 
-  tlBase.innerHTML = ultimos14.map((n,i)=>{
-    const r = ultRes[i];
+  /* ===== BASE COM ROTAÇÃO ===== */
 
-    let cor = "#aaa"; // neutro
-    if(r==="V") cor="#00e676";
-    if(r==="R") cor="#9c27b0";
-    if(r==="X") cor="#ff5252";
-    // "N" fica cinza mesmo
+  let centrosRot = estruturalCentros.map(n=>rotacionar(n,rotBase));
+  let rupturaRot = rotacionar(estruturalC6,rotBase);
 
-    return `<span style="color:${cor}">${n}</span>`;
-  }).join(" · ");
-
-  const baseRot = (estruturalCentros || []).map(c=>rotacionar(c,rotBase));
-  const c6Rot = (estruturalC6!==null && estruturalC6!==undefined)
-    ? rotacionar(estruturalC6,rotBase)
-    : null;
-
-  estruturaBox.innerHTML = `
-  C1–C5: ${baseRot.join(" , ")}<br>
-  C6: <span style="color:#9c27b0">${c6Rot}</span>
+  baseBox.innerHTML = `
+    C1–C5: ${centrosRot.join(" , ")}<br>
+    C6: ${rupturaRot}
   `;
+
+  /* ===== HORÁRIO / ANTI ===== */
 
   if(timeline.length){
 
@@ -275,7 +244,6 @@ rotA.oninput = function(){
   render();
 };
 
-// estado inicial: calcula núcleo quando tiver números (por enquanto vazio)
 render();
 
 })();
