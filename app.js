@@ -51,7 +51,7 @@ function rotacionar(n,offset){
   return track[(i + offset + 37) % 37];
 }
 
-/* ================= MOTOR BASE ORIGINAL ================= */
+/* ================= MOTOR BASE (NÃO MEXER) ================= */
 
 function gerarEstruturalBase(lista){
 
@@ -165,26 +165,37 @@ for(let n=0;n<=36;n++){
   nums.appendChild(b);
 }
 
+/* ================= VALIDAÇÃO BASE (1 VIZINHO) ================= */
+/* IMPORTANTÍSSIMO: valida com o núcleo ATUAL (antes do recálculo) */
+function validarBaseAntesDoRecalculo(n){
+  // se ainda não existe núcleo calculado na tela, não valida (neutro)
+  if(!estruturalCentros || estruturalCentros.length < 5) return "N";
+
+  const centrosRot = estruturalCentros.map(c => rotacionar(c, rotBase));
+  const c6Rot = (estruturalC6 !== null && estruturalC6 !== undefined)
+    ? rotacionar(estruturalC6, rotBase)
+    : null;
+
+  if(centrosRot.some(c => vizinhos1(c).includes(n))) return "V";
+  if(c6Rot !== null && vizinhos1(c6Rot).includes(n)) return "R";
+  return "X";
+}
+
 /* ================= ADD ================= */
 
 function add(n){
 
+  // 1) VALIDAR COM O NÚCLEO QUE ESTAVA NA TELA
+  const res = validarBaseAntesDoRecalculo(n);
+  estruturalRes.unshift(res);
+
+  // 2) AGORA INSERE O NÚMERO
   timeline.unshift(n);
 
+  // 3) RECALCULA O NÚCLEO PARA O PRÓXIMO NÚMERO
   const base = gerarEstruturalBase(timeline);
   estruturalCentros = base.centros;
   estruturalC6 = base.ruptura;
-
-  // ===== VALIDAÇÃO 1 VIZINHO =====
-  const rotacionados = estruturalCentros.map(c=>rotacionar(c,rotBase));
-
-  if(rotacionados.some(c=>vizinhos1(c).includes(n))){
-    estruturalRes.unshift("V");
-  } else if(estruturalC6 && vizinhos1(rotacionar(estruturalC6,rotBase)).includes(n)){
-    estruturalRes.unshift("R");
-  } else {
-    estruturalRes.unshift("X");
-  }
 
   render();
 }
@@ -198,15 +209,20 @@ function render(){
 
   tlBase.innerHTML = ultimos14.map((n,i)=>{
     const r = ultRes[i];
-    let cor = "#aaa";
+
+    let cor = "#aaa"; // neutro
     if(r==="V") cor="#00e676";
     if(r==="R") cor="#9c27b0";
     if(r==="X") cor="#ff5252";
+    // "N" fica cinza mesmo
+
     return `<span style="color:${cor}">${n}</span>`;
   }).join(" · ");
 
-  const baseRot = estruturalCentros.map(c=>rotacionar(c,rotBase));
-  const c6Rot = estruturalC6!==null ? rotacionar(estruturalC6,rotBase) : null;
+  const baseRot = (estruturalCentros || []).map(c=>rotacionar(c,rotBase));
+  const c6Rot = (estruturalC6!==null && estruturalC6!==undefined)
+    ? rotacionar(estruturalC6,rotBase)
+    : null;
 
   estruturaBox.innerHTML = `
   C1–C5: ${baseRot.join(" , ")}<br>
@@ -259,6 +275,7 @@ rotA.oninput = function(){
   render();
 };
 
+// estado inicial: calcula núcleo quando tiver números (por enquanto vazio)
 render();
 
 })();
