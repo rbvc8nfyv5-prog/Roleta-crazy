@@ -15,6 +15,7 @@ let estruturalRes = [];
 let horarioRes = [];
 let antiRes = [];
 
+let rotBase = 0;   // 🔥 NOVO
 let rotHorario = 0;
 let rotAnti = 0;
 
@@ -48,6 +49,7 @@ function vizinhos1(n){
 }
 
 function rotacionar(n,offset){
+  if(n === null) return null;
   const i = track.indexOf(n);
   return track[(i + offset + 37) % 37];
 }
@@ -123,8 +125,12 @@ document.body.innerHTML = `
 <div id="tlBase" style="font-weight:600;font-size:18px"></div>
 </div>
 
-<div id="estruturaBox"
-     style="border:1px solid #555;padding:10px;margin:10px 0">
+<div style="border:1px solid #555;padding:10px;margin:10px 0">
+  <b>Núcleo Base</b><br>
+  Rotação:
+  <input type="range" min="-5" max="5" value="0" id="rotB">
+  <span id="rotBVal">0</span>
+  <div id="baseBox"></div>
 </div>
 
 <div style="display:flex;gap:20px">
@@ -165,7 +171,6 @@ for(let n=0;n<=36;n++){
 /* ================= ADD ================= */
 
 function add(n){
-
   timeline.unshift(n);
 
   const base = gerarEstruturalBase(timeline);
@@ -181,13 +186,17 @@ function render(){
 
   tlBase.innerHTML = timeline.slice(0,14).join(" · ");
 
-  estruturaBox.innerHTML = `
-  <b>Núcleo Base</b><br>
-  ${estruturalCentros.join(" , ")}
-  <br><br>
-  <b>C6</b><br>
-  ${estruturalC6}
+  /* ===== BASE COM ROTAÇÃO ===== */
+
+  let centrosRot = estruturalCentros.map(n=>rotacionar(n,rotBase));
+  let rupturaRot = rotacionar(estruturalC6,rotBase);
+
+  baseBox.innerHTML = `
+    C1–C5: ${centrosRot.join(" , ")}<br>
+    C6: ${rupturaRot}
   `;
+
+  /* ===== HORÁRIO / ANTI ===== */
 
   if(timeline.length){
 
@@ -197,7 +206,6 @@ function render(){
     let horario = gerarEstruturalBase(v);
     let anti = gerarEstruturalBase([v[2],v[1],v[0]]);
 
-    // Aplicar rotação
     horario.centros = horario.centros.map(n=>rotacionar(n,rotHorario));
     horario.ruptura = rotacionar(horario.ruptura,rotHorario);
 
@@ -217,6 +225,12 @@ function render(){
 }
 
 /* ================= CONTROLES ================= */
+
+rotB.oninput = function(){
+  rotBase = parseInt(this.value);
+  rotBVal.innerText = rotBase;
+  render();
+};
 
 rotH.oninput = function(){
   rotHorario = parseInt(this.value);
