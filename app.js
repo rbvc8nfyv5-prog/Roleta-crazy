@@ -1,249 +1,192 @@
-(function(){
+(function () {
 
-const track = [
-  32,15,19,4,21,2,25,17,34,6,
-  27,13,36,11,30,8,23,10,5,24,
-  16,33,1,20,14,31,9,22,18,29,
-  7,28,12,35,3,26,0
-];
-
-let timeline = [];
-let estruturalCentros = [];
-let estruturalC6 = null;
-
-let estruturalRes = [];
-let horarioRes = [];
-let antiRes = [];
-
-let rotBase = 0;   // 🔥 NOVO
-let rotHorario = 0;
-let rotAnti = 0;
-
-/* ================= UTIL ================= */
-
-function dist(a,b){
-  const ia = track.indexOf(a);
-  const ib = track.indexOf(b);
-  const d = Math.abs(ia-ib);
-  return Math.min(d,37-d);
-}
-
-function vizinhos2(n){
-  const i = track.indexOf(n);
-  return [
-    track[(i-2+37)%37],
-    track[(i-1+37)%37],
-    n,
-    track[(i+1)%37],
-    track[(i+2)%37]
+  // ================= CONFIG BASE =================
+  const track = [
+    32,15,19,4,21,2,25,17,34,6,
+    27,13,36,11,30,8,23,10,5,24,
+    16,33,1,20,14,31,9,22,18,29,
+    7,28,12,35,3,26,0
   ];
-}
+  const terminal = n => n % 10;
 
-function vizinhos1(n){
-  const i = track.indexOf(n);
-  return [
-    track[(i-1+37)%37],
-    n,
-    track[(i+1)%37]
+  // ================= TABELA COMPLETA ATUALIZADA =================
+  const tabelaJogada = {
+    0:[2,3,7],1:[3,5,9],2:[3,5,9],3:[5,6,9],4:[0,4,8],
+    5:[0,5,7],6:[0,6,7],7:[0,7,9],8:[3,5,9],9:[3,5,9],
+    10:[0,5,7],11:[0,5,7],12:[3,5,7],13:[3,5,9],14:[0,2,7],
+    15:[3,5,9],16:[1,2,9],17:[1,5,7],18:[1,5,8],19:[0,4,8],
+    20:[2,3,7],21:[1,6,9],22:[2,3,7],23:[2,3,8],24:[4,5,7],
+    25:[1,2,5],26:[0,6,9],27:[2,3,9],28:[0,2,7],29:[2,3,9],
+    30:[0,1,5],31:[3,5,8],32:[2,3,9],33:[3,5,7],34:[5,6,9],
+    35:[0,5,7],36:[1,3,7]
+  };
+
+  // ================= EIXOS =================
+  const eixos = [
+    { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
+    { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
+    { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
-}
 
-function rotacionar(n,offset){
-  if(n === null) return null;
-  const i = track.indexOf(n);
-  return track[(i + offset + 37) % 37];
-}
+  // ================= ESTADO =================
+  let timeline = [];
+  let analises = {
+    MANUAL: { filtros:new Set(), res:[] }
+  };
 
-/* ================= MOTOR BASE ================= */
-
-function gerarEstruturalBase(lista){
-
-  const usados = new Set();
-  const centros = [];
-
-  function pode(n){
-    return vizinhos2(n).every(x=>!usados.has(x));
+  function vizinhosRace(n){
+    const i = track.indexOf(n);
+    return [ track[(i+36)%37], n, track[(i+1)%37] ];
   }
 
-  function registrar(n){
-    vizinhos2(n).forEach(x=>usados.add(x));
-    centros.push(n);
-  }
-
-  const freq = {};
-  lista.forEach(n=>freq[n]=(freq[n]||0)+1);
-
-  const freqViz = {};
-  lista.forEach(n=>{
-    vizinhos2(n).forEach(v=>{
-      freqViz[v]=(freqViz[v]||0)+1;
+  function triosSelecionados(filtros){
+    let lista=[];
+    eixos.forEach(e=>{
+      e.trios.forEach(trio=>{
+        const inter = trio.map(terminal)
+          .filter(t=>!filtros.size||filtros.has(t)).length;
+        if(inter>0) lista.push({eixo:e.nome,trio});
+      });
     });
-  });
-
-  const candidatos = track.map(n=>{
-    const permanencia = freq[n] || 0;
-    const calor = freqViz[n] || 0;
-    const score = (permanencia * 1.2) + (calor * 1.0);
-    return {n,score};
-  })
-  .sort((a,b)=>b.score-a.score)
-  .map(x=>x.n);
-
-  for(const n of candidatos){
-    if(pode(n)) registrar(n);
-    if(centros.length>=5) break;
+    return lista.slice(0,9);
   }
 
-  let melhorScore = -1;
-  let melhorC6 = null;
+  function validarNumero(n, filtros){
+    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
+  }
 
-  track.forEach(n=>{
-    if(centros.includes(n)) return;
-    const dMedia = centros.reduce((acc,c)=>acc+dist(c,n),0)/centros.length;
-    if(dMedia > melhorScore){
-      melhorScore = dMedia;
-      melhorC6 = n;
-    }
-  });
+  function registrar(n, filtrosAtivos){
+    analises.MANUAL.res.unshift(
+      validarNumero(n,filtrosAtivos)?"V":"X"
+    );
+  }
 
-  return { centros, ruptura: melhorC6 };
-}
+  // ================= UI =================
+  document.body.style.background="#111";
+  document.body.style.color="#fff";
+  document.body.style.fontFamily="sans-serif";
 
-/* ================= UI ================= */
+  document.body.innerHTML = `
+    <div style="padding:10px;max-width:1000px;margin:auto">
+      <h3 style="text-align:center">CSM</h3>
 
-document.body.style.background="#111";
-document.body.style.color="#fff";
-document.body.style.fontFamily="sans-serif";
+      <div style="border:1px solid #444;padding:8px">
+        Histórico:
+        <input id="inp" style="width:100%;padding:6px;background:#222;color:#fff"/>
+        <button id="col">Colar</button>
+      </div>
 
-document.body.innerHTML = `
-<div style="max-width:1100px;margin:auto;padding:10px">
+      <div style="margin:10px 0">
+        🕒 Timeline:
+        <span id="tl" style="font-size:18px;font-weight:600"></span>
+      </div>
 
-<h3>CSM Estrutural</h3>
+      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
+        Terminais:
+        <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+      </div>
 
-<div style="margin-bottom:10px">
-🕒 Timeline Base:
-<div id="tlBase" style="font-weight:600;font-size:18px"></div>
-</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div><b>ZERO</b><div id="cZERO"></div></div>
+        <div><b>TIERS</b><div id="cTIERS"></div></div>
+        <div><b>ORPHELINS</b><div id="cORPH"></div></div>
+      </div>
 
-<div style="border:1px solid #555;padding:10px;margin:10px 0">
-  <b>Núcleo Base</b><br>
-  Rotação:
-  <input type="range" min="-5" max="5" value="0" id="rotB">
-  <span id="rotBVal">0</span>
-  <div id="baseBox"></div>
-</div>
+      <!-- ===== LINHA SECUNDÁRIA CONJUNTOS ===== -->
+      <div style="margin-top:15px;border:1px solid #444;padding:6px">
+        <b>Timeline Conjuntos (Vizinhos Race)</b>
+        <div id="tlConj"></div>
+      </div>
 
-<div style="display:flex;gap:20px">
-
-  <div style="flex:1;border:1px solid #00e676;padding:10px">
-    <b>Horário</b><br>
-    Rotação:
-    <input type="range" min="-5" max="5" value="0" id="rotH">
-    <span id="rotHVal">0</span>
-    <div id="horarioBox"></div>
-  </div>
-
-  <div style="flex:1;border:1px solid #2196f3;padding:10px">
-    <b>Anti-Horário</b><br>
-    Rotação:
-    <input type="range" min="-5" max="5" value="0" id="rotA">
-    <span id="rotAVal">0</span>
-    <div id="antiBox"></div>
-  </div>
-
-</div>
-
-<div id="nums"
-     style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px">
-</div>
-
-</div>
-`;
-
-for(let n=0;n<=36;n++){
-  const b=document.createElement("button");
-  b.textContent=n;
-  b.style="padding:10px;background:#222;color:#fff;border:1px solid #444";
-  b.onclick=()=>add(n);
-  nums.appendChild(b);
-}
-
-/* ================= ADD ================= */
-
-function add(n){
-  timeline.unshift(n);
-
-  const base = gerarEstruturalBase(timeline);
-  estruturalCentros = base.centros;
-  estruturalC6 = base.ruptura;
-
-  render();
-}
-
-/* ================= RENDER ================= */
-
-function render(){
-
-  tlBase.innerHTML = timeline.slice(0,14).join(" · ");
-
-  /* ===== BASE COM ROTAÇÃO ===== */
-
-  let centrosRot = estruturalCentros.map(n=>rotacionar(n,rotBase));
-  let rupturaRot = rotacionar(estruturalC6,rotBase);
-
-  baseBox.innerHTML = `
-    C1–C5: ${centrosRot.join(" , ")}<br>
-    C6: ${rupturaRot}
+      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+    </div>
   `;
 
-  /* ===== HORÁRIO / ANTI ===== */
-
-  if(timeline.length){
-
-    const ultimo = timeline[0];
-    const v = vizinhos1(ultimo);
-
-    let horario = gerarEstruturalBase(v);
-    let anti = gerarEstruturalBase([v[2],v[1],v[0]]);
-
-    horario.centros = horario.centros.map(n=>rotacionar(n,rotHorario));
-    horario.ruptura = rotacionar(horario.ruptura,rotHorario);
-
-    anti.centros = anti.centros.map(n=>rotacionar(n,rotAnti));
-    anti.ruptura = rotacionar(anti.ruptura,rotAnti);
-
-    horarioBox.innerHTML = `
-      C1–C5: ${horario.centros.join(" , ")}<br>
-      C6: ${horario.ruptura}
-    `;
-
-    antiBox.innerHTML = `
-      C1–C5: ${anti.centros.join(" , ")}<br>
-      C6: ${anti.ruptura}
-    `;
+  for(let t=0;t<=9;t++){
+    const b=document.createElement("button");
+    b.textContent="T"+t;
+    b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
+    btnT.appendChild(b);
   }
-}
 
-/* ================= CONTROLES ================= */
+  for(let n=0;n<=36;n++){
+    const b=document.createElement("button");
+    b.textContent=n;
+    b.style="padding:8px;background:#333;color:#fff";
+    b.onclick=()=>add(n);
+    nums.appendChild(b);
+  }
 
-rotB.oninput = function(){
-  rotBase = parseInt(this.value);
-  rotBVal.innerText = rotBase;
+  function add(n){
+
+    const filtrosAntes = new Set(analises.MANUAL.filtros);
+    registrar(n,filtrosAntes);
+
+    timeline.unshift(n);
+    if(timeline.length>14) timeline.pop();
+
+    if(tabelaJogada[n]){
+      analises.MANUAL.filtros.clear();
+      tabelaJogada[n].forEach(t=>{
+        analises.MANUAL.filtros.add(t);
+      });
+    }
+
+    render();
+  }
+
+  col.onclick=()=>{
+    inp.value.split(/[\s,]+/)
+      .map(Number).filter(n=>n>=0&&n<=36).forEach(add);
+    inp.value="";
+  };
+
+  function render(){
+
+    // ===== Timeline Principal =====
+    tl.innerHTML = timeline.map((n,i)=>{
+      const r=analises.MANUAL.res[i];
+      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+      return `<span style="color:${c}">${n}</span>`;
+    }).join(" · ");
+
+    const filtros = analises.MANUAL.filtros;
+
+    const trios = triosSelecionados(filtros);
+    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
+    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
+    cZERO.innerHTML=por.ZERO.join("<div></div>");
+    cTIERS.innerHTML=por.TIERS.join("<div></div>");
+    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
+
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      b.style.background =
+        filtros.has(t) ? "#00e676" : "#444";
+    });
+
+    // ===== Timeline Secundária Conjuntos =====
+    const numerosMarcados = new Set();
+
+    filtros.forEach(t=>{
+      track.forEach(n=>{
+        if(terminal(n)===t){
+          vizinhosRace(n).forEach(v=>{
+            numerosMarcados.add(v);
+          });
+        }
+      });
+    });
+
+    tlConj.innerHTML = timeline.map(n=>{
+      const ativo = numerosMarcados.has(n);
+      return `<span style="
+        color:${ativo?"#00e676":"#555"};
+        font-weight:${ativo?"700":"400"};
+      ">${n}</span>`;
+    }).join(" · ");
+  }
+
   render();
-};
-
-rotH.oninput = function(){
-  rotHorario = parseInt(this.value);
-  rotHVal.innerText = rotHorario;
-  render();
-};
-
-rotA.oninput = function(){
-  rotAnti = parseInt(this.value);
-  rotAVal.innerText = rotAnti;
-  render();
-};
-
-render();
 
 })();
