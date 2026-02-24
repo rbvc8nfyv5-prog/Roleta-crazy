@@ -9,7 +9,21 @@
   ];
   const terminal = n => n % 10;
 
-  // ================= TABELA COMPLETA ATUALIZADA =================
+  // ================= CORES DOS TERMINAIS =================
+  const corTerminal = {
+    0:"#ff5252",
+    1:"#ff9800",
+    2:"#ffc107",
+    3:"#00e676",
+    4:"#00bcd4",
+    5:"#2196f3",
+    6:"#9c27b0",
+    7:"#e91e63",
+    8:"#8bc34a",
+    9:"#ffffff"
+  };
+
+  // ================= TABELA COMPLETA =================
   const tabelaJogada = {
     0:[2,3,7],1:[3,5,9],2:[3,5,9],3:[5,6,9],4:[0,4,8],
     5:[0,5,7],6:[0,6,7],7:[0,7,9],8:[3,5,9],9:[3,5,9],
@@ -21,18 +35,14 @@
     35:[0,5,7],36:[1,3,7]
   };
 
-  // ================= EIXOS =================
   const eixos = [
     { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
     { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
     { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
 
-  // ================= ESTADO =================
   let timeline = [];
-  let analises = {
-    MANUAL: { filtros:new Set(), res:[] }
-  };
+  let analises = { MANUAL: { filtros:new Set(), res:[] } };
 
   function vizinhosRace(n){
     const i = track.indexOf(n);
@@ -61,7 +71,6 @@
     );
   }
 
-  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -69,12 +78,6 @@
   document.body.innerHTML = `
     <div style="padding:10px;max-width:1000px;margin:auto">
       <h3 style="text-align:center">CSM</h3>
-
-      <div style="border:1px solid #444;padding:8px">
-        Histórico:
-        <input id="inp" style="width:100%;padding:6px;background:#222;color:#fff"/>
-        <button id="col">Colar</button>
-      </div>
 
       <div style="margin:10px 0">
         🕒 Timeline:
@@ -92,9 +95,8 @@
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
       </div>
 
-      <!-- ===== LINHA SECUNDÁRIA CONJUNTOS ===== -->
       <div style="margin-top:15px;border:1px solid #444;padding:6px">
-        <b>Timeline Conjuntos (Vizinhos Race)</b>
+        <b>Timeline Conjuntos (Colorido por Terminal)</b>
         <div id="tlConj"></div>
       </div>
 
@@ -135,15 +137,8 @@
     render();
   }
 
-  col.onclick=()=>{
-    inp.value.split(/[\s,]+/)
-      .map(Number).filter(n=>n>=0&&n<=36).forEach(add);
-    inp.value="";
-  };
-
   function render(){
 
-    // ===== Timeline Principal =====
     tl.innerHTML = timeline.map((n,i)=>{
       const r=analises.MANUAL.res[i];
       const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
@@ -162,27 +157,30 @@
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.slice(1);
       b.style.background =
-        filtros.has(t) ? "#00e676" : "#444";
+        filtros.has(t) ? corTerminal[t] : "#444";
     });
 
-    // ===== Timeline Secundária Conjuntos =====
-    const numerosMarcados = new Set();
+    // ===== LINHA SECUNDÁRIA COLORIDA =====
+
+    const mapaCores = {};
 
     filtros.forEach(t=>{
       track.forEach(n=>{
         if(terminal(n)===t){
           vizinhosRace(n).forEach(v=>{
-            numerosMarcados.add(v);
+            if(!mapaCores[v]) {
+              mapaCores[v] = corTerminal[t];
+            }
           });
         }
       });
     });
 
     tlConj.innerHTML = timeline.map(n=>{
-      const ativo = numerosMarcados.has(n);
+      const cor = mapaCores[n] || "#333";
       return `<span style="
-        color:${ativo?"#00e676":"#555"};
-        font-weight:${ativo?"700":"400"};
+        color:${cor};
+        font-weight:${mapaCores[n]?"700":"400"};
       ">${n}</span>`;
     }).join(" · ");
   }
