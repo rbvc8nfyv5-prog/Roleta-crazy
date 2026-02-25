@@ -9,14 +9,12 @@
   ];
   const terminal = n => n % 10;
 
-  // ================= EIXOS =================
   const eixos = [
     { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
     { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
     { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
 
-  // ================= ESTADO =================
   let timeline = [];
   let janela = 6;
   let modoAtivo = "MANUAL";
@@ -111,7 +109,6 @@
     });
   }
 
-  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -120,37 +117,9 @@
     <div style="padding:10px;max-width:1000px;margin:auto">
       <h3 style="text-align:center">CSM</h3>
 
-      <div style="border:1px solid #444;padding:8px">
-        Histórico:
-        <input id="inp" style="width:100%;padding:6px;background:#222;color:#fff"/>
-        <div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">
-          <button id="col">Colar</button>
-          <button id="lim">Limpar</button>
-          Janela:
-          <select id="jan">
-            ${Array.from({length:8},(_,i)=>`<option ${i+3===6?'selected':''}>${i+3}</option>`).join("")}
-          </select>
-        </div>
-      </div>
-
       <div style="margin:10px 0">
         🕒 Timeline (14):
         <span id="tl" style="font-size:18px;font-weight:600"></span>
-      </div>
-
-      <div style="display:flex;gap:6px;margin-bottom:6px">
-        ${["MANUAL","VIZINHO","NUNUM"].map(m=>`
-          <button class="modo" data-m="${m}"
-            style="padding:6px;background:#444;color:#fff;border:1px solid #666">${m}</button>`).join("")}
-        <button id="btnConj" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
-          CONJUNTOS
-        </button>
-      </div>
-
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        ${[3,4,5,6,7].map(n=>`
-          <button class="auto" data-a="${n}"
-            style="padding:6px;background:#444;color:#fff;border:1px solid #666">A${n}</button>`).join("")}
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -164,36 +133,9 @@
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
       </div>
 
-      <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
-
-  // ================= EVENTOS =================
-  jan.onchange=e=>{ janela=+e.target.value; render(); };
-
-  document.querySelectorAll(".modo").forEach(b=>{
-    b.onclick=()=>{
-      modoAtivo=b.dataset.m;
-      render();
-    };
-  });
-
-  document.querySelectorAll(".auto").forEach(b=>{
-    b.onclick=()=>{
-      modoAtivo="AUTO";
-      autoTAtivo=+b.dataset.a;
-      calcularAutoT(autoTAtivo);
-      render();
-    };
-  });
-
-  btnConj.onclick=()=>{
-    modoConjuntos=!modoConjuntos;
-    btnConj.style.background = modoConjuntos?"#00e676":"#444";
-    modoAtivo="MANUAL";
-    render();
-  };
 
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
@@ -203,11 +145,6 @@
       analises.MANUAL.filtros.has(t)
         ? analises.MANUAL.filtros.delete(t)
         : analises.MANUAL.filtros.add(t);
-
-      filtrosConjuntos.has(t)
-        ? filtrosConjuntos.delete(t)
-        : filtrosConjuntos.add(t);
-
       render();
     };
     btnT.appendChild(b);
@@ -231,52 +168,23 @@
     render();
   }
 
-  col.onclick=()=>{
-    inp.value.split(/[\s,]+/)
-      .map(Number).filter(n=>n>=0&&n<=36).forEach(add);
-    inp.value="";
-  };
-
-  lim.onclick=()=>{
-    timeline=[];
-    filtrosConjuntos.clear();
-    Object.values(analises).forEach(a=>{
-      if(a.res) a.res=[];
-      if(a.filtros) a.filtros.clear();
-      if(a.motor) a.motor.clear();
-    });
-    modoAtivo="MANUAL";
-    autoTAtivo=null;
-    modoConjuntos=false;
-    btnConj.style.background="#444";
-    render();
-  };
-
   function render(){
 
-    const res =
-      modoAtivo==="AUTO"
-        ? analises.AUTO[autoTAtivo]?.res || []
-        : analises[modoAtivo].res;
+    const res = analises.MANUAL.res;
 
     tl.innerHTML = timeline.map((n,i)=>{
-      const r=res[i];
-      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${c}">${n}</span>`;
+      let r=res[i];
+      let cor="#aaa";
+      if(r==="V") cor="#00e676";
+      if(r==="X") cor="#ff5252";
+
+      // 26 sempre verde
+      if(n===26) cor="#00e676";
+
+      return `<span style="color:${cor}">${n}</span>`;
     }).join(" · ");
 
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      const ativo =
-        analises.MANUAL.filtros.has(t) ||
-        filtrosConjuntos.has(t);
-      b.style.background = ativo ? "#00e676" : "#444";
-    });
-
-    const filtros =
-      modoAtivo==="AUTO"
-        ? analises.AUTO[autoTAtivo].filtros
-        : analises[modoAtivo].filtros;
+    const filtros = analises.MANUAL.filtros;
 
     const trios = triosSelecionados(filtros);
     const por={ZERO:[],TIERS:[],ORPHELINS:[]};
@@ -285,7 +193,11 @@
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
 
-    conjArea.style.display = modoConjuntos ? "block" : "none";
+    // Botões T acendem quando selecionados
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      b.style.background = filtros.has(t) ? "#00e676" : "#444";
+    });
   }
 
   render();
