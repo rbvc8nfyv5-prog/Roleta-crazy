@@ -33,53 +33,9 @@
     }
   };
 
-  let modoConjuntos = false;
-  let filtrosConjuntos = new Set();
-
   function vizinhosRace(n){
     const i = track.indexOf(n);
     return [ track[(i+36)%37], n, track[(i+1)%37] ];
-  }
-
-  function calcularAutoT(k){
-    const set = new Set();
-    for(const n of timeline.slice(0,janela)){
-      set.add(terminal(n));
-      if(set.size>=k) break;
-    }
-    analises.AUTO[k].filtros = set;
-  }
-
-  function melhorTrincaBase(){
-    const cont = {};
-    timeline.slice(0,janela).forEach(n=>{
-      const t = terminal(n);
-      cont[t] = (cont[t]||0)+1;
-    });
-    return Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1])
-      .slice(0,3)
-      .map(x=>+x[0]);
-  }
-
-  function calcularVizinho(){
-    const base = melhorTrincaBase();
-    analises.VIZINHO.filtros = new Set(base);
-    analises.VIZINHO.motor.clear();
-    base.forEach(t=>{
-      track.filter(n=>terminal(n)===t)
-        .forEach(n=>vizinhosRace(n)
-          .forEach(v=>analises.VIZINHO.motor.add(v))
-        );
-    });
-  }
-
-  function calcularNunum(){
-    const set = new Set();
-    timeline.slice(0,2).forEach(n=>{
-      vizinhosRace(n).forEach(v=>set.add(terminal(v)));
-    });
-    analises.NUNUM.filtros = set;
   }
 
   function triosSelecionados(filtros){
@@ -100,15 +56,9 @@
 
   function registrar(n){
     analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
-    analises.VIZINHO.res.unshift(analises.VIZINHO.motor.has(n)?"V":"X");
-    analises.NUNUM.res.unshift(validar(n,analises.NUNUM.filtros)?"V":"X");
-    [3,4,5,6,7].forEach(k=>{
-      analises.AUTO[k].res.unshift(
-        validar(n,analises.AUTO[k].filtros)?"V":"X"
-      );
-    });
   }
 
+  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -131,6 +81,12 @@
         <div><b>ZERO</b><div id="cZERO"></div></div>
         <div><b>TIERS</b><div id="cTIERS"></div></div>
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
+      </div>
+
+      <!-- LINHA SECUNDÁRIA RESTAURADA -->
+      <div style="margin-top:15px;border:1px solid #444;padding:6px">
+        <b>Timeline Conjuntos</b>
+        <div id="tlConj"></div>
       </div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
@@ -162,9 +118,6 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
     registrar(n);
-    calcularVizinho();
-    calcularNunum();
-    [3,4,5,6,7].forEach(calcularAutoT);
     render();
   }
 
@@ -172,6 +125,7 @@
 
     const res = analises.MANUAL.res;
 
+    // ===== Timeline principal =====
     tl.innerHTML = timeline.map((n,i)=>{
       let r=res[i];
       let cor="#aaa";
@@ -193,11 +147,32 @@
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
 
-    // Botões T acendem quando selecionados
+    // Botões T acendem
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.slice(1);
       b.style.background = filtros.has(t) ? "#00e676" : "#444";
     });
+
+    // ===== Linha secundária =====
+    const numerosMarcados = new Set();
+
+    filtros.forEach(t=>{
+      track.forEach(n=>{
+        if(terminal(n)===t){
+          vizinhosRace(n).forEach(v=>{
+            numerosMarcados.add(v);
+          });
+        }
+      });
+    });
+
+    tlConj.innerHTML = timeline.map(n=>{
+      const ativo = numerosMarcados.has(n);
+      return `<span style="
+        color:${ativo?"#00e676":"#555"};
+        font-weight:${ativo?"700":"400"};
+      ">${n}</span>`;
+    }).join(" · ");
   }
 
   render();
