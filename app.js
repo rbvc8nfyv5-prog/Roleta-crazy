@@ -9,6 +9,7 @@
   ];
   const terminal = n => n % 10;
 
+  // ===== CORES POR TERMINAL =====
   const corTerminal = {
     0:"#ff5252",
     1:"#ff9800",
@@ -29,9 +30,13 @@
   ];
 
   let timeline = [];
-  let analises = {
+  let janela = 6;
+
+  const analises = {
     MANUAL: { filtros:new Set(), res:[] }
   };
+
+  let filtrosConjuntos = new Set();
 
   function vizinhosRace(n){
     const i = track.indexOf(n);
@@ -60,7 +65,6 @@
     );
   }
 
-  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -74,16 +78,6 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <!-- QUADRO ÍMPAR / PAR -->
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        <b>Ímpares / Pares</b>
-        <div style="margin-top:6px">
-          🔵 Ímpares: <span id="countImpar">0</span>
-          &nbsp;&nbsp;&nbsp;
-          🔴 Pares: <span id="countPar">0</span>
-        </div>
-      </div>
-
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
         Terminais:
         <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
@@ -95,11 +89,13 @@
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
       </div>
 
-      <!-- LINHA DO TEMPO SECUNDÁRIA -->
-      <div style="margin-top:15px;border:1px solid #444;padding:6px">
-        <b>Timeline Conjuntos (Colorido por Terminal)</b>
-        <div id="tlConj"></div>
+      <!-- ===== QUADRO ÍMPARES / PARES (ADICIONADO) ===== -->
+      <div style="margin-top:15px;border:1px solid #444;padding:8px">
+        <b>Ímpares / Pares (Últimos 14)</b>
+        <div id="parImparBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
       </div>
+
+      <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
@@ -110,9 +106,13 @@
     b.textContent="T"+t;
     b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
     b.onclick=()=>{
-      analises.MANUAL.filtros.has(t)
-        ? analises.MANUAL.filtros.delete(t)
-        : analises.MANUAL.filtros.add(t);
+      if(analises.MANUAL.filtros.has(t)){
+        analises.MANUAL.filtros.delete(t);
+        filtrosConjuntos.delete(t);
+      } else {
+        analises.MANUAL.filtros.add(t);
+        filtrosConjuntos.add(t);
+      }
       render();
     };
     btnT.appendChild(b);
@@ -137,40 +137,20 @@
 
     const res = analises.MANUAL.res;
 
-    // Timeline principal
     tl.innerHTML = timeline.map((n,i)=>{
       const r=res[i];
       const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    // ===== ÍMPAR / PAR =====
-    let impar = 0;
-    let par = 0;
+    const filtros = analises.MANUAL.filtros;
 
-    timeline.forEach(n=>{
-      if(n !== 0){
-        if(n % 2 === 0) par++;
-        else impar++;
-      }
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      b.style.background =
+        filtros.has(t) ? corTerminal[t] : "#444";
     });
 
-    countImpar.innerText = impar;
-    countPar.innerText = par;
-
-    if(impar > par){
-      countImpar.style.color = "#ff6f00";
-      countPar.style.color = "#00e5ff";
-    } else if(par > impar){
-      countPar.style.color = "#ff6f00";
-      countImpar.style.color = "#00e5ff";
-    } else {
-      countImpar.style.color = "#fff";
-      countPar.style.color = "#fff";
-    }
-
-    // ===== TRIOS =====
-    const filtros = analises.MANUAL.filtros;
     const trios = triosSelecionados(filtros);
     const por={ZERO:[],TIERS:[],ORPHELINS:[]};
     trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
@@ -178,35 +158,77 @@
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
 
-    // ===== BOTÕES TERMINAIS COLORIDOS =====
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background =
-        filtros.has(t) ? corTerminal[t] : "#444";
+    // ===== CONTAGEM ÍMPARES / PARES =====
+
+    let pares = 0;
+    let impares = 0;
+
+    timeline.forEach(n=>{
+      if(n === 0) return;
+      if(n % 2 === 0) pares++;
+      else impares++;
     });
 
-    // ===== LINHA SECUNDÁRIA COLORIDA =====
-    const mapaCores = {};
+    const corMaior = "#ff6d00";     // Laranja fluorescente
+    const corMenor = "#00e5ff";     // Azul fluorescente
 
-    filtros.forEach(t=>{
-      track.forEach(n=>{
-        if(terminal(n)===t){
-          vizinhosRace(n).forEach(v=>{
-            if(!mapaCores[v]){
-              mapaCores[v] = corTerminal[t];
-            }
-          });
-        }
+    let corPar = "#fff";
+    let corImpar = "#fff";
+
+    if(pares > impares){
+      corPar = corMaior;
+      corImpar = corMenor;
+    } else if(impares > pares){
+      corImpar = corMaior;
+      corPar = corMenor;
+    }
+
+    parImparBox.innerHTML = `
+      <span style="color:${corImpar}">Ímpares: ${impares}</span>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span style="color:${corPar}">Pares: ${pares}</span>
+    `;
+
+    // ===== LINHA SECUNDÁRIA ORIGINAL =====
+
+    if(filtros.size > 0){
+
+      const mapaCores = {};
+
+      filtros.forEach(t=>{
+        track.forEach(n=>{
+          if(terminal(n)===t){
+            vizinhosRace(n).forEach(v=>{
+              if(!mapaCores[v]){
+                mapaCores[v] = corTerminal[t];
+              }
+            });
+          }
+        });
       });
-    });
 
-    tlConj.innerHTML = timeline.map(n=>{
-      const cor = mapaCores[n] || "#333";
-      return `<span style="
-        color:${cor};
-        font-weight:${mapaCores[n]?"700":"400"};
-      ">${n}</span>`;
-    }).join(" · ");
+      conjArea.style.display = "block";
+
+      conjArea.innerHTML = `
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
+          gap:4px;
+        ">
+          ${timeline.map(n=>`
+            <div style="
+              height:26px;
+              display:flex;align-items:center;justify-content:center;
+              background:${mapaCores[n] || "#222"};
+              color:#fff;font-size:10px;font-weight:700;
+              border-radius:4px;border:1px solid #333;
+            ">${n}</div>
+          `).join("")}
+        </div>
+      `;
+    } else {
+      conjArea.style.display = "none";
+    }
   }
 
   render();
