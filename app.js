@@ -60,6 +60,7 @@
     );
   }
 
+  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -92,6 +93,12 @@
         <div><b>ZERO</b><div id="cZERO"></div></div>
         <div><b>TIERS</b><div id="cTIERS"></div></div>
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
+      </div>
+
+      <!-- LINHA DO TEMPO SECUNDÁRIA -->
+      <div style="margin-top:15px;border:1px solid #444;padding:6px">
+        <b>Timeline Conjuntos (Colorido por Terminal)</b>
+        <div id="tlConj"></div>
       </div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
@@ -130,13 +137,14 @@
 
     const res = analises.MANUAL.res;
 
+    // Timeline principal
     tl.innerHTML = timeline.map((n,i)=>{
       const r=res[i];
       const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    // ===== CONTAGEM BAIXO / ALTO =====
+    // ===== BAIXO / ALTO =====
     let low = 0;
     let high = 0;
 
@@ -148,10 +156,9 @@
     countLow.innerText = low;
     countHigh.innerText = high;
 
-    // ===== FORÇA VISUAL =====
     if(low > high){
-      countLow.style.color = "#ff6f00";   // laranja fluorescente
-      countHigh.style.color = "#00e5ff";  // azul fluorescente
+      countLow.style.color = "#ff6f00";
+      countHigh.style.color = "#00e5ff";
     } else if(high > low){
       countHigh.style.color = "#ff6f00";
       countLow.style.color = "#00e5ff";
@@ -160,20 +167,44 @@
       countHigh.style.color = "#fff";
     }
 
+    // ===== TRIOS =====
     const filtros = analises.MANUAL.filtros;
-
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background =
-        filtros.has(t) ? corTerminal[t] : "#444";
-    });
-
     const trios = triosSelecionados(filtros);
     const por={ZERO:[],TIERS:[],ORPHELINS:[]};
     trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
     cZERO.innerHTML=por.ZERO.join("<div></div>");
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
+
+    // ===== BOTÕES TERMINAIS COLORIDOS =====
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      b.style.background =
+        filtros.has(t) ? corTerminal[t] : "#444";
+    });
+
+    // ===== LINHA SECUNDÁRIA COLORIDA =====
+    const mapaCores = {};
+
+    filtros.forEach(t=>{
+      track.forEach(n=>{
+        if(terminal(n)===t){
+          vizinhosRace(n).forEach(v=>{
+            if(!mapaCores[v]){
+              mapaCores[v] = corTerminal[t];
+            }
+          });
+        }
+      });
+    });
+
+    tlConj.innerHTML = timeline.map(n=>{
+      const cor = mapaCores[n] || "#333";
+      return `<span style="
+        color:${cor};
+        font-weight:${mapaCores[n]?"700":"400"};
+      ">${n}</span>`;
+    }).join(" · ");
   }
 
   render();
