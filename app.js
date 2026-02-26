@@ -74,13 +74,13 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <!-- QUADRO BAIXO / ALTO -->
+      <!-- QUADRO ÍMPAR / PAR -->
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        <b>Baixo / Alto (1–18 / 19–36)</b>
+        <b>Ímpares / Pares</b>
         <div style="margin-top:6px">
-          🔵 Baixos: <span id="countLow">0</span>
+          🔵 Ímpares: <span id="countImpar">0</span>
           &nbsp;&nbsp;&nbsp;
-          🔴 Altos: <span id="countHigh">0</span>
+          🔴 Pares: <span id="countPar">0</span>
         </div>
       </div>
 
@@ -144,27 +144,29 @@
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    // ===== BAIXO / ALTO =====
-    let low = 0;
-    let high = 0;
+    // ===== ÍMPAR / PAR =====
+    let impar = 0;
+    let par = 0;
 
     timeline.forEach(n=>{
-      if(n >= 1 && n <= 18) low++;
-      if(n >= 19 && n <= 36) high++;
+      if(n !== 0){
+        if(n % 2 === 0) par++;
+        else impar++;
+      }
     });
 
-    countLow.innerText = low;
-    countHigh.innerText = high;
+    countImpar.innerText = impar;
+    countPar.innerText = par;
 
-    if(low > high){
-      countLow.style.color = "#ff6f00";
-      countHigh.style.color = "#00e5ff";
-    } else if(high > low){
-      countHigh.style.color = "#ff6f00";
-      countLow.style.color = "#00e5ff";
+    if(impar > par){
+      countImpar.style.color = "#ff6f00";
+      countPar.style.color = "#00e5ff";
+    } else if(par > impar){
+      countPar.style.color = "#ff6f00";
+      countImpar.style.color = "#00e5ff";
     } else {
-      countLow.style.color = "#fff";
-      countHigh.style.color = "#fff";
+      countImpar.style.color = "#fff";
+      countPar.style.color = "#fff";
     }
 
     // ===== TRIOS =====
