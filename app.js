@@ -9,6 +9,19 @@
   ];
   const terminal = n => n % 10;
 
+  const corTerminal = {
+    0:"#ff5252",
+    1:"#ff9800",
+    2:"#ffc107",
+    3:"#00e676",
+    4:"#00bcd4",
+    5:"#2196f3",
+    6:"#9c27b0",
+    7:"#e91e63",
+    8:"#8bc34a",
+    9:"#ffffff"
+  };
+
   const eixos = [
     { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
     { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
@@ -16,21 +29,8 @@
   ];
 
   let timeline = [];
-  let janela = 6;
-  let modoAtivo = "MANUAL";
-  let autoTAtivo = null;
-
-  const analises = {
-    MANUAL: { filtros:new Set(), res:[] },
-    VIZINHO:{ filtros:new Set(), res:[], motor:new Set() },
-    NUNUM:  { filtros:new Set(), res:[] },
-    AUTO: {
-      3:{ filtros:new Set(), res:[] },
-      4:{ filtros:new Set(), res:[] },
-      5:{ filtros:new Set(), res:[] },
-      6:{ filtros:new Set(), res:[] },
-      7:{ filtros:new Set(), res:[] }
-    }
+  let analises = {
+    MANUAL: { filtros:new Set(), res:[] }
   };
 
   function vizinhosRace(n){
@@ -55,10 +55,11 @@
   }
 
   function registrar(n){
-    analises.MANUAL.res.unshift(validar(n,analises.MANUAL.filtros)?"V":"X");
+    analises.MANUAL.res.unshift(
+      validar(n,analises.MANUAL.filtros)?"V":"X"
+    );
   }
 
-  // ================= UI =================
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -68,8 +69,18 @@
       <h3 style="text-align:center">CSM</h3>
 
       <div style="margin:10px 0">
-        🕒 Timeline (14):
+        🕒 Timeline:
         <span id="tl" style="font-size:18px;font-weight:600"></span>
+      </div>
+
+      <!-- QUADRO BAIXO / ALTO -->
+      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
+        <b>Baixo / Alto (1–18 / 19–36)</b>
+        <div style="margin-top:6px">
+          🔵 Baixos: <span id="countLow">0</span>
+          &nbsp;&nbsp;&nbsp;
+          🔴 Altos: <span id="countHigh">0</span>
+        </div>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -81,12 +92,6 @@
         <div><b>ZERO</b><div id="cZERO"></div></div>
         <div><b>TIERS</b><div id="cTIERS"></div></div>
         <div><b>ORPHELINS</b><div id="cORPH"></div></div>
-      </div>
-
-      <!-- LINHA SECUNDÁRIA RESTAURADA -->
-      <div style="margin-top:15px;border:1px solid #444;padding:6px">
-        <b>Timeline Conjuntos</b>
-        <div id="tlConj"></div>
       </div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
@@ -125,20 +130,43 @@
 
     const res = analises.MANUAL.res;
 
-    // ===== Timeline principal =====
     tl.innerHTML = timeline.map((n,i)=>{
-      let r=res[i];
-      let cor="#aaa";
-      if(r==="V") cor="#00e676";
-      if(r==="X") cor="#ff5252";
-
-      // 26 sempre verde
-      if(n===26) cor="#00e676";
-
-      return `<span style="color:${cor}">${n}</span>`;
+      const r=res[i];
+      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
+      return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
+    // ===== CONTAGEM BAIXO / ALTO =====
+    let low = 0;
+    let high = 0;
+
+    timeline.forEach(n=>{
+      if(n >= 1 && n <= 18) low++;
+      if(n >= 19 && n <= 36) high++;
+    });
+
+    countLow.innerText = low;
+    countHigh.innerText = high;
+
+    // ===== FORÇA VISUAL =====
+    if(low > high){
+      countLow.style.color = "#ff6f00";   // laranja fluorescente
+      countHigh.style.color = "#00e5ff";  // azul fluorescente
+    } else if(high > low){
+      countHigh.style.color = "#ff6f00";
+      countLow.style.color = "#00e5ff";
+    } else {
+      countLow.style.color = "#fff";
+      countHigh.style.color = "#fff";
+    }
+
     const filtros = analises.MANUAL.filtros;
+
+    document.querySelectorAll("#btnT button").forEach(b=>{
+      const t=+b.textContent.slice(1);
+      b.style.background =
+        filtros.has(t) ? corTerminal[t] : "#444";
+    });
 
     const trios = triosSelecionados(filtros);
     const por={ZERO:[],TIERS:[],ORPHELINS:[]};
@@ -146,33 +174,6 @@
     cZERO.innerHTML=por.ZERO.join("<div></div>");
     cTIERS.innerHTML=por.TIERS.join("<div></div>");
     cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
-
-    // Botões T acendem
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background = filtros.has(t) ? "#00e676" : "#444";
-    });
-
-    // ===== Linha secundária =====
-    const numerosMarcados = new Set();
-
-    filtros.forEach(t=>{
-      track.forEach(n=>{
-        if(terminal(n)===t){
-          vizinhosRace(n).forEach(v=>{
-            numerosMarcados.add(v);
-          });
-        }
-      });
-    });
-
-    tlConj.innerHTML = timeline.map(n=>{
-      const ativo = numerosMarcados.has(n);
-      return `<span style="
-        color:${ativo?"#00e676":"#555"};
-        font-weight:${ativo?"700":"400"};
-      ">${n}</span>`;
-    }).join(" · ");
   }
 
   render();
