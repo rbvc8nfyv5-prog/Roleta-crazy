@@ -20,7 +20,7 @@
     6:"#9c27b0",
     7:"#e91e63",
     8:"#8bc34a",
-    9:"#ffffff"
+    9:"#ff00ff"
   };
 
   const eixos = [
