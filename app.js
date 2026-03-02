@@ -62,6 +62,8 @@
         </div>
       </div>
 
+      <div id="linhaSec" style="margin-top:12px"></div>
+
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
@@ -120,7 +122,7 @@
 
   function add(n){
     timeline.unshift(n);
-    if(timeline.length>50) timeline.pop();
+    if(timeline.length>14) timeline.pop();
     registrar(n);
     render();
   }
@@ -154,9 +156,9 @@
     let pares = 0;
     let impares = 0;
 
-    timeline.slice(0,14).forEach(n=>{
-      if(n === 0) return;
-      if(n % 2 === 0) pares++;
+    timeline.forEach(n=>{
+      if(n===0) return;
+      if(n%2===0) pares++;
       else impares++;
     });
 
@@ -180,8 +182,7 @@
       <span style="color:${corPar}">Pares: ${pares}</span>
     `;
 
-    // ================= IA AUTOMÁTICA =================
-
+    // ===== IA AUTOMÁTICA =====
     if(timeline.length >= 15){
 
       const pos = {};
@@ -193,7 +194,7 @@
         return Math.min(d,L-d);
       }
 
-      const ult = timeline.slice(0,20).reverse();
+      const ult = timeline.slice().reverse();
       let offsets=[];
 
       for(let i=1;i<ult.length;i++){
@@ -231,36 +232,59 @@
         return {n,score};
       }).sort((a,b)=>b.score-a.score);
 
-      const escolhidos=[];
-      const bloqueados=new Set();
-
-      function vizinhos2(n){
-        const i=pos[n];
-        return [
-          track[(i-2+L)%L],
-          track[(i-1+L)%L],
-          n,
-          track[(i+1)%L],
-          track[(i+2)%L]
-        ];
-      }
+      const terminaisEscolhidos = new Set();
 
       for(let item of ranking){
-        const zona=vizinhos2(item.n);
-        if(!zona.some(x=>bloqueados.has(x))){
-          escolhidos.push(item.n);
-          zona.forEach(x=>bloqueados.add(x));
+        const t = terminal(item.n);
+        if(!terminaisEscolhidos.has(t)){
+          terminaisEscolhidos.add(t);
         }
-        if(escolhidos.length===5) break;
+        if(terminaisEscolhidos.size === 2) break;
       }
 
       analises.MANUAL.filtros.clear();
-      escolhidos.forEach(n=>{
-        analises.MANUAL.filtros.add(terminal(n));
+      terminaisEscolhidos.forEach(t=>{
+        analises.MANUAL.filtros.add(t);
       });
 
     } else {
       iaInfo.innerHTML="Aguardando dados...";
+    }
+
+    // ===== LINHA SECUNDÁRIA =====
+    if(filtros.size > 0){
+
+      const mapaCores = {};
+
+      filtros.forEach(t=>{
+        track.forEach(n=>{
+          if(terminal(n)===t){
+            vizinhosRace(n).forEach(v=>{
+              mapaCores[v] = corTerminal[t];
+            });
+          }
+        });
+      });
+
+      linhaSec.innerHTML = `
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(14,1fr);
+          gap:4px;
+        ">
+          ${timeline.map(n=>`
+            <div style="
+              height:26px;
+              display:flex;align-items:center;justify-content:center;
+              background:${mapaCores[n] || "#222"};
+              color:#fff;font-size:12px;font-weight:700;
+              border-radius:4px;border:1px solid #333;
+            ">${n}</div>
+          `).join("")}
+        </div>
+      `;
+    } else {
+      linhaSec.innerHTML="";
     }
 
   }
