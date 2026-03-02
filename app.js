@@ -22,7 +22,10 @@
     { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
   ];
 
-  let timeline = [];
+  // ================= MEMÓRIA =================
+  let historico = [];   // memória longa IA
+  let timeline  = [];   // visual (14)
+
   const analises = { MANUAL: { filtros:new Set(), res:[] } };
 
   // ================= UI =================
@@ -120,15 +123,91 @@
     );
   }
 
+  // ================= ADD =================
   function add(n){
+
+    historico.unshift(n);
+
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
+
     registrar(n);
     render();
   }
 
+  // ================= RENDER =================
   function render(){
 
+    // ===== IA PRIMEIRO (usa histórico completo) =====
+    if(historico.length >= 8){
+
+      const pos = {};
+      track.forEach((n,i)=>pos[n]=i);
+      const L = track.length;
+
+      function dist(a,b){
+        const d=(pos[b]-pos[a]+L)%L;
+        return Math.min(d,L-d);
+      }
+
+      const ult = historico.slice(0,20).reverse();
+      let offsets=[];
+
+      for(let i=1;i<ult.length;i++){
+        offsets.push(dist(ult[i-1],ult[i]));
+      }
+
+      const media=offsets.reduce((a,b)=>a+b,0)/offsets.length;
+      const curtos=offsets.filter(o=>o<=2).length;
+      const medios=offsets.filter(o=>o>2&&o<=9).length;
+      const longos=offsets.filter(o=>o>9).length;
+      const total=offsets.length;
+
+      const pCurto=curtos/total;
+      const pMedio=medios/total;
+      const pLongo=longos/total;
+
+      iaInfo.innerHTML =
+        `Curto ${(pCurto*100).toFixed(1)}% |
+         Médio ${(pMedio*100).toFixed(1)}% |
+         Longo ${(pLongo*100).toFixed(1)}%`;
+
+      const ultimo=historico[0];
+
+      const ranking = track.map(n=>{
+        const d=dist(ultimo,n);
+        let score=0;
+
+        if(d<=2) score+=pCurto*6;
+        else if(d<=9) score+=pMedio*6;
+        else score+=pLongo*6;
+
+        score+=3-Math.abs(d-media);
+        if(n===ultimo) score-=10;
+
+        return {n,score};
+      }).sort((a,b)=>b.score-a.score);
+
+      const terminaisEscolhidos = new Set();
+
+      for(let item of ranking){
+        const t = terminal(item.n);
+        if(!terminaisEscolhidos.has(t)){
+          terminaisEscolhidos.add(t);
+        }
+        if(terminaisEscolhidos.size === 2) break;
+      }
+
+      analises.MANUAL.filtros.clear();
+      terminaisEscolhidos.forEach(t=>{
+        analises.MANUAL.filtros.add(t);
+      });
+
+    } else {
+      iaInfo.innerHTML="Aguardando dados...";
+    }
+
+    // ===== TIMELINE =====
     const res = analises.MANUAL.res;
 
     tl.innerHTML = timeline.map((n,i)=>{
@@ -137,6 +216,7 @@
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
+    // ===== BOTÕES TERMINAIS =====
     const filtros = analises.MANUAL.filtros;
 
     document.querySelectorAll("#btnT button").forEach(b=>{
@@ -145,6 +225,7 @@
         filtros.has(t) ? corTerminal[t] : "#444";
     });
 
+    // ===== TRIOS =====
     const trios = triosSelecionados(filtros);
     const por={ZERO:[],TIERS:[],ORPHELINS:[]};
     trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
@@ -181,75 +262,6 @@
       &nbsp;&nbsp;|&nbsp;&nbsp;
       <span style="color:${corPar}">Pares: ${pares}</span>
     `;
-
-    // ===== IA AUTOMÁTICA =====
-    if(timeline.length >= 15){
-
-      const pos = {};
-      track.forEach((n,i)=>pos[n]=i);
-      const L = track.length;
-
-      function dist(a,b){
-        const d=(pos[b]-pos[a]+L)%L;
-        return Math.min(d,L-d);
-      }
-
-      const ult = timeline.slice().reverse();
-      let offsets=[];
-
-      for(let i=1;i<ult.length;i++){
-        offsets.push(dist(ult[i-1],ult[i]));
-      }
-
-      const media=offsets.reduce((a,b)=>a+b,0)/offsets.length;
-      const curtos=offsets.filter(o=>o<=2).length;
-      const medios=offsets.filter(o=>o>2&&o<=9).length;
-      const longos=offsets.filter(o=>o>9).length;
-      const total=offsets.length;
-
-      const pCurto=curtos/total;
-      const pMedio=medios/total;
-      const pLongo=longos/total;
-
-      iaInfo.innerHTML =
-        `Curto ${(pCurto*100).toFixed(1)}% |
-         Médio ${(pMedio*100).toFixed(1)}% |
-         Longo ${(pLongo*100).toFixed(1)}%`;
-
-      const ultimo=timeline[0];
-
-      const ranking = track.map(n=>{
-        const d=dist(ultimo,n);
-        let score=0;
-
-        if(d<=2) score+=pCurto*6;
-        else if(d<=9) score+=pMedio*6;
-        else score+=pLongo*6;
-
-        score+=3-Math.abs(d-media);
-        if(n===ultimo) score-=10;
-
-        return {n,score};
-      }).sort((a,b)=>b.score-a.score);
-
-      const terminaisEscolhidos = new Set();
-
-      for(let item of ranking){
-        const t = terminal(item.n);
-        if(!terminaisEscolhidos.has(t)){
-          terminaisEscolhidos.add(t);
-        }
-        if(terminaisEscolhidos.size === 2) break;
-      }
-
-      analises.MANUAL.filtros.clear();
-      terminaisEscolhidos.forEach(t=>{
-        analises.MANUAL.filtros.add(t);
-      });
-
-    } else {
-      iaInfo.innerHTML="Aguardando dados...";
-    }
 
     // ===== LINHA SECUNDÁRIA =====
     if(filtros.size > 0){
