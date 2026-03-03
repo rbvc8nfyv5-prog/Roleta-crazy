@@ -70,10 +70,14 @@
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        <button id="toggleTrios"
-          style="padding:6px;background:#444;color:#fff;border:1px solid #666">
-          Mostrar Trios Pares / Ímpares
-        </button>
+        <div style="display:flex;gap:10px;margin-bottom:8px">
+          <button id="btnPares" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
+            Trios Pares
+          </button>
+          <button id="btnImpares" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
+            Trios Ímpares
+          </button>
+        </div>
         <div id="areaTrios"
              style="display:none;margin-top:10px;max-height:420px;overflow:auto">
         </div>
@@ -117,26 +121,36 @@
     render();
   }
 
-  const todosTrios=[];
   const pares=[0,2,4,6,8];
   const impares=[1,3,5,7,9];
 
   function gerarTrios(lista){
+    const arr=[];
     for(let i=0;i<lista.length;i++){
       for(let j=i+1;j<lista.length;j++){
         for(let k=j+1;k<lista.length;k++){
-          todosTrios.push([lista[i],lista[j],lista[k]]);
+          arr.push([lista[i],lista[j],lista[k]]);
         }
       }
     }
+    return arr;
   }
 
-  gerarTrios(pares);
-  gerarTrios(impares);
+  const triosPares=gerarTrios(pares);
+  const triosImpares=gerarTrios(impares);
 
-  toggleTrios.onclick=()=>{
-    areaTrios.style.display=
-      areaTrios.style.display==="none"?"block":"none";
+  let modoTrios=null;
+
+  btnPares.onclick=()=>{
+    modoTrios="pares";
+    areaTrios.style.display="block";
+    render();
+  };
+
+  btnImpares.onclick=()=>{
+    modoTrios="impares";
+    areaTrios.style.display="block";
+    render();
   };
 
   function calcularPerformance(trio){
@@ -225,8 +239,11 @@
     }).join(" · ");
 
     areaTrios.innerHTML="";
+    if(!modoTrios) return;
 
-    const ordenados=[...todosTrios]
+    const lista = modoTrios==="pares" ? triosPares : triosImpares;
+
+    const ordenados=[...lista]
       .map(t=>({trio:t,...calcularPerformance(t)}))
       .sort((a,b)=>b.score-a.score);
 
