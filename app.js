@@ -1,6 +1,5 @@
 (function () {
 
-  // ================= CONFIG BASE =================
   const track = [
     32,15,19,4,21,2,25,17,34,6,
     27,13,36,11,30,8,23,10,5,24,
@@ -47,8 +46,6 @@
     );
   }
 
-  // ================= UI =================
-
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -77,14 +74,13 @@
           style="padding:6px;background:#444;color:#fff;border:1px solid #666">
           Mostrar Trios Pares / Ímpares
         </button>
-
         <div id="areaTrios"
-             style="display:none;margin-top:10px;max-height:350px;overflow:auto">
+             style="display:none;margin-top:10px;max-height:420px;overflow:auto">
         </div>
       </div>
 
       <div style="margin-top:15px;border:1px solid #444;padding:6px">
-        <b>Timeline Conjuntos (Colorido por Terminal)</b>
+        <b>Timeline Conjuntos</b>
         <div id="tlConj"></div>
       </div>
 
@@ -93,7 +89,6 @@
     </div>
   `;
 
-  // ===== BOTÕES TERMINAIS =====
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
     b.textContent="T"+t;
@@ -107,7 +102,6 @@
     btnT.appendChild(b);
   }
 
-  // ===== BOTÕES NÚMEROS =====
   for(let n=0;n<=36;n++){
     const b=document.createElement("button");
     b.textContent=n;
@@ -123,10 +117,9 @@
     render();
   }
 
-  // ===== GERAR TRIOS =====
-  const todosTrios = [];
-  const pares = [0,2,4,6,8];
-  const impares = [1,3,5,7,9];
+  const todosTrios=[];
+  const pares=[0,2,4,6,8];
+  const impares=[1,3,5,7,9];
 
   function gerarTrios(lista){
     for(let i=0;i<lista.length;i++){
@@ -141,93 +134,152 @@
   gerarTrios(pares);
   gerarTrios(impares);
 
-  toggleTrios.onclick = ()=>{
-    areaTrios.style.display =
+  toggleTrios.onclick=()=>{
+    areaTrios.style.display=
       areaTrios.style.display==="none"?"block":"none";
   };
 
+  function calcularPerformance(trio){
+
+    let score=0;
+    timeline.forEach(n=>{
+      if(trio.some(t=>vizinhosRace(n).some(v=>terminal(v)===t))){
+        score++;
+      }
+    });
+
+    const duplas=[
+      [trio[0],trio[1]],
+      [trio[0],trio[2]],
+      [trio[1],trio[2]]
+    ];
+
+    let melhorDupla=null;
+    let melhorScore=-1;
+
+    duplas.forEach(d=>{
+      let s=0;
+      timeline.forEach(n=>{
+        if(d.some(t=>vizinhosRace(n).some(v=>terminal(v)===t))){
+          s++;
+        }
+      });
+      if(s>melhorScore){
+        melhorScore=s;
+        melhorDupla=d;
+      }
+    });
+
+    const complemento=trio.find(x=>!melhorDupla.includes(x));
+
+    return {score,melhorDupla,complemento};
+  }
+
   function render(){
 
-    // ===== TIMELINE PRINCIPAL =====
-    tl.innerHTML = timeline.map((n,i)=>{
+    tl.innerHTML=timeline.map((n,i)=>{
       const r=analises.MANUAL.res[i];
       const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    // ===== CONTADOR ÍMPAR / PAR =====
-    let paresC=0, imparesC=0;
-
+    let paresC=0,imparesC=0;
     timeline.forEach(n=>{
-      if(n===0) return;
-      n%2===0 ? paresC++ : imparesC++;
+      if(n===0)return;
+      n%2===0?paresC++:imparesC++;
     });
 
     const corMaior="#ff6d00";
     const corMenor="#00e5ff";
 
-    let corPar="#fff", corImpar="#fff";
-
-    if(paresC>imparesC){ corPar=corMaior; corImpar=corMenor; }
-    else if(imparesC>paresC){ corImpar=corMaior; corPar=corMenor; }
-
     parImparBox.innerHTML=`
-      <span style="color:${corImpar}">Ímpares: ${imparesC}</span>
-      &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span style="color:${corPar}">Pares: ${paresC}</span>
+      <span style="color:${imparesC>paresC?corMaior:corMenor}">
+        Ímpares: ${imparesC}
+      </span>
+      &nbsp;|&nbsp;
+      <span style="color:${paresC>imparesC?corMaior:corMenor}">
+        Pares: ${paresC}
+      </span>
     `;
 
-    // ===== BOTÕES TERMINAIS =====
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.slice(1);
       b.style.background=
         analises.MANUAL.filtros.has(t)?corTerminal[t]:"#444";
     });
 
-    // ===== LINHA SECUNDÁRIA =====
-    const mapaCores={};
-
+    const mapaGlobal={};
     analises.MANUAL.filtros.forEach(t=>{
       track.forEach(n=>{
         if(terminal(n)===t){
           vizinhosRace(n).forEach(v=>{
-            if(!mapaCores[v]) mapaCores[v]=corTerminal[t];
+            if(!mapaGlobal[v])mapaGlobal[v]=corTerminal[t];
           });
         }
       });
     });
 
     tlConj.innerHTML=timeline.map(n=>{
-      const cor=mapaCores[n]||"#333";
-      return `<span style="color:${cor};font-weight:${mapaCores[n]?"700":"400"}">${n}</span>`;
+      const cor=mapaGlobal[n]||"#333";
+      return `<span style="color:${cor};font-weight:${mapaGlobal[n]?"700":"400"}">${n}</span>`;
     }).join(" · ");
 
-    // ===== TRIOSS COM MINI TIMELINE COLORIDA =====
     areaTrios.innerHTML="";
 
-    todosTrios.forEach(trio=>{
+    const ordenados=[...todosTrios]
+      .map(t=>({trio:t,...calcularPerformance(t)}))
+      .sort((a,b)=>b.score-a.score);
+
+    ordenados.forEach(obj=>{
+
+      const {trio,melhorDupla,complemento}=obj;
 
       const mapa={};
-
       trio.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
             vizinhosRace(n).forEach(v=>{
-              if(!mapa[v]) mapa[v]=corTerminal[t];
+              if(!mapa[v])mapa[v]=corTerminal[t];
             });
           }
         });
       });
 
       const linha=document.createElement("div");
-      linha.style.marginBottom="10px";
+      linha.style.marginBottom="12px";
       linha.style.borderBottom="1px solid #333";
       linha.style.paddingBottom="6px";
+      linha.style.cursor="pointer";
+
+      linha.onclick=()=>{
+        analises.MANUAL.filtros.clear();
+        trio.forEach(t=>analises.MANUAL.filtros.add(t));
+        render();
+      };
 
       linha.innerHTML=`
-        <div style="cursor:pointer;color:#00e676;font-weight:700;margin-bottom:4px">
-          ${trio.join("-")}
+        <div style="font-weight:700;margin-bottom:4px">
+          ${trio.map(t=>{
+            if(melhorDupla.includes(t)){
+              return `<span style="
+                padding:2px 6px;
+                border-radius:4px;
+                background:${corTerminal[t]};
+                color:#000;
+                margin-right:4px;
+              ">${t}</span>`;
+            }
+            return `<span style="margin-right:4px">${t}</span>`;
+          }).join("")}
+          <span style="
+            margin-left:6px;
+            padding:2px 6px;
+            border-radius:4px;
+            background:${corTerminal[complemento]};
+            opacity:0.4;
+          ">${complemento}</span>
         </div>
+
         <div>
           ${timeline.map(n=>{
             const cor=mapa[n]||"#333";
@@ -243,12 +295,6 @@
           }).join("")}
         </div>
       `;
-
-      linha.onclick=()=>{
-        analises.MANUAL.filtros.clear();
-        trio.forEach(t=>analises.MANUAL.filtros.add(t));
-        render();
-      };
 
       areaTrios.appendChild(linha);
     });
