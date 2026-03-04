@@ -70,10 +70,11 @@
 
   document.body.innerHTML = `
     <div style="padding:10px;max-width:1000px;margin:auto">
+
       <h3 style="text-align:center">CSM</h3>
 
       <div style="display:flex;justify-content:center;margin:20px 0">
-        <canvas id="termometro" width="220" height="220"></canvas>
+        <canvas id="radar" width="340" height="340"></canvas>
       </div>
 
       <div style="margin:10px 0">
@@ -100,6 +101,7 @@
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+
     </div>
   `;
 
@@ -135,50 +137,80 @@
     render();
   }
 
-  function atualizarTermometro(){
+  function desenharRadar(){
 
-    const canvas = document.getElementById("termometro");
-    const ctx = canvas.getContext("2d");
+    const canvas=document.getElementById("radar");
+    const ctx=canvas.getContext("2d");
 
-    ctx.clearRect(0,0,220,220);
+    ctx.clearRect(0,0,340,340);
 
-    const cx=110;
-    const cy=110;
-    const r=100;
+    const cx=170;
+    const cy=170;
+    const r=150;
 
-    const setores=12;
-    const ang=(Math.PI*2)/setores;
+    const ang=(Math.PI*2)/track.length;
 
-    const contagem=new Array(setores).fill(0);
+    const cont=new Array(37).fill(0);
 
     timeline.forEach(n=>{
-      const pos=track.indexOf(n);
-      const setor=Math.floor(pos/(37/setores));
-      contagem[setor]++;
+      const i=track.indexOf(n);
+      if(i>=0) cont[i]++;
     });
 
-    const top=[...contagem]
+    const setores=[
+      track.slice(0,9),
+      track.slice(9,18),
+      track.slice(18,27),
+      track.slice(27,37)
+    ];
+
+    const score=setores.map(s=>{
+      let v=0;
+      s.forEach(n=>{
+        v+=cont[track.indexOf(n)];
+      });
+      return v;
+    });
+
+    const top=[...score]
       .map((v,i)=>({v,i}))
       .sort((a,b)=>b.v-a.v)
       .slice(0,3)
-      .map(x=>x.i);
+      .map(o=>o.i);
 
-    for(let i=0;i<setores;i++){
+    for(let i=0;i<track.length;i++){
 
-      const a1=i*ang;
+      const a1=i*ang-Math.PI/2;
       const a2=a1+ang;
+
+      let cor="#222";
+
+      setores.forEach((set,si)=>{
+        if(set.includes(track[i]) && top.includes(si)){
+          cor="#00e676";
+        }
+      });
 
       ctx.beginPath();
       ctx.moveTo(cx,cy);
       ctx.arc(cx,cy,r,a1,a2);
       ctx.closePath();
-
-      ctx.fillStyle = top.includes(i) ? "#00e676" : "#ff5252";
+      ctx.fillStyle=cor;
       ctx.fill();
+
+      const meio=(a1+a2)/2;
+      const tx=cx+Math.cos(meio)*(r-35);
+      const ty=cy+Math.sin(meio)*(r-35);
+
+      ctx.fillStyle="#fff";
+      ctx.font="11px Arial";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(track[i],tx,ty);
     }
 
     ctx.beginPath();
-    ctx.arc(cx,cy,40,0,Math.PI*2);
+    ctx.arc(cx,cy,60,0,Math.PI*2);
     ctx.fillStyle="#111";
     ctx.fill();
   }
@@ -276,7 +308,7 @@
       conjArea.style.display = "none";
     }
 
-    atualizarTermometro();
+    desenharRadar();
   }
 
   render();
