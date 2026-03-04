@@ -29,8 +29,6 @@
   ];
 
   let timeline = [];
-  let janela = 6;
-
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
   };
@@ -178,6 +176,18 @@
       .slice(0,3)
       .map(o=>o.i);
 
+    const numerosMarcados = new Map();
+
+    analises.MANUAL.filtros.forEach(t=>{
+      track.forEach(n=>{
+        if(terminal(n)===t){
+          vizinhosRace(n).forEach(v=>{
+            numerosMarcados.set(v,corTerminal[t]);
+          });
+        }
+      });
+    });
+
     for(let i=0;i<track.length;i++){
 
       const a1=i*ang+Math.PI/2;
@@ -197,6 +207,17 @@
       ctx.closePath();
       ctx.fillStyle=cor;
       ctx.fill();
+
+      if(numerosMarcados.has(track[i])){
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.arc(cx,cy,r,a1,a2);
+        ctx.closePath();
+        ctx.fillStyle=numerosMarcados.get(track[i]);
+        ctx.globalAlpha=0.45;
+        ctx.fill();
+        ctx.globalAlpha=1;
+      }
 
       const meio=(a1+a2)/2;
       const tx=cx+Math.cos(meio)*(r-25);
