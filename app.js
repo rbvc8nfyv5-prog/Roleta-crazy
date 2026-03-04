@@ -22,22 +22,40 @@
     9:"#ff00ff"
   };
 
+  const eixos = [
+    { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
+    { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
+    { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
+  ];
+
   let timeline = [];
+  let janela = 6;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
   };
+
+  let filtrosConjuntos = new Set();
 
   function vizinhosRace(n){
     const i = track.indexOf(n);
     return [ track[(i+36)%37], n, track[(i+1)%37] ];
   }
 
+  function triosSelecionados(filtros){
+    let lista=[];
+    eixos.forEach(e=>{
+      e.trios.forEach(trio=>{
+        const inter = trio.map(terminal)
+          .filter(t=>!filtros.size||filtros.has(t)).length;
+        if(inter>0) lista.push({eixo:e.nome,trio});
+      });
+    });
+    return lista.slice(0,9);
+  }
+
   function validar(n, filtros){
-    if(!filtros.size) return false;
-    return [...filtros].some(t =>
-      vizinhosRace(n).some(v => terminal(v) === t)
-    );
+    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
   }
 
   function registrar(n){
@@ -51,8 +69,12 @@
   document.body.style.fontFamily="sans-serif";
 
   document.body.innerHTML = `
-    <div style="padding:10px;max-width:1200px;margin:auto">
+    <div style="padding:10px;max-width:1000px;margin:auto">
       <h3 style="text-align:center">CSM</h3>
+
+      <div style="display:flex;justify-content:center;margin:20px 0">
+        <canvas id="termometro" width="220" height="220"></canvas>
+      </div>
 
       <div style="margin:10px 0">
         🕒 Timeline:
@@ -60,36 +82,24 @@
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
+        Terminais:
+        <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div><b>ZERO</b><div id="cZERO"></div></div>
+        <div><b>TIERS</b><div id="cTIERS"></div></div>
+        <div><b>ORPHELINS</b><div id="cORPH"></div></div>
+      </div>
+
+      <div style="margin-top:15px;border:1px solid #444;padding:8px">
         <b>Ímpares / Pares (Últimos 14)</b>
         <div id="parImparBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
       </div>
 
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        <b>Terminais</b>
-        <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
-      </div>
+      <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        <div style="display:flex;gap:10px;margin-bottom:8px">
-          <button id="btnPares" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
-            Trios Pares
-          </button>
-          <button id="btnImpares" style="padding:6px;background:#444;color:#fff;border:1px solid #666">
-            Trios Ímpares
-          </button>
-        </div>
-        <div id="areaTrios"
-             style="display:none;margin-top:10px;max-height:420px;overflow:auto">
-        </div>
-      </div>
-
-      <div style="margin-top:15px;border:1px solid #444;padding:6px">
-        <b>Timeline Conjuntos</b>
-        <div id="tlConj"></div>
-      </div>
-
-      <div id="nums"
-           style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
+      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
 
@@ -98,9 +108,13 @@
     b.textContent="T"+t;
     b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
     b.onclick=()=>{
-      analises.MANUAL.filtros.has(t)
-        ? analises.MANUAL.filtros.delete(t)
-        : analises.MANUAL.filtros.add(t);
+      if(analises.MANUAL.filtros.has(t)){
+        analises.MANUAL.filtros.delete(t);
+        filtrosConjuntos.delete(t);
+      } else {
+        analises.MANUAL.filtros.add(t);
+        filtrosConjuntos.add(t);
+      }
       render();
     };
     btnT.appendChild(b);
@@ -121,200 +135,148 @@
     render();
   }
 
-  const pares=[0,2,4,6,8];
-  const impares=[1,3,5,7,9];
+  function atualizarTermometro(){
 
-  function gerarTrios(lista){
-    const arr=[];
-    for(let i=0;i<lista.length;i++){
-      for(let j=i+1;j<lista.length;j++){
-        for(let k=j+1;k<lista.length;k++){
-          arr.push([lista[i],lista[j],lista[k]]);
-        }
-      }
-    }
-    return arr;
-  }
+    const canvas = document.getElementById("termometro");
+    const ctx = canvas.getContext("2d");
 
-  const triosPares=gerarTrios(pares);
-  const triosImpares=gerarTrios(impares);
+    ctx.clearRect(0,0,220,220);
 
-  let modoTrios=null;
+    const cx=110;
+    const cy=110;
+    const r=100;
 
-  btnPares.onclick=()=>{
-    modoTrios="pares";
-    areaTrios.style.display="block";
-    render();
-  };
+    const setores=12;
+    const ang=(Math.PI*2)/setores;
 
-  btnImpares.onclick=()=>{
-    modoTrios="impares";
-    areaTrios.style.display="block";
-    render();
-  };
+    const contagem=new Array(setores).fill(0);
 
-  function calcularPerformance(trio){
-
-    let score=0;
     timeline.forEach(n=>{
-      if(trio.some(t=>vizinhosRace(n).some(v=>terminal(v)===t))){
-        score++;
-      }
+      const pos=track.indexOf(n);
+      const setor=Math.floor(pos/(37/setores));
+      contagem[setor]++;
     });
 
-    const duplas=[
-      [trio[0],trio[1]],
-      [trio[0],trio[2]],
-      [trio[1],trio[2]]
-    ];
+    const top=[...contagem]
+      .map((v,i)=>({v,i}))
+      .sort((a,b)=>b.v-a.v)
+      .slice(0,3)
+      .map(x=>x.i);
 
-    let melhorDupla=null;
-    let melhorScore=-1;
+    for(let i=0;i<setores;i++){
 
-    duplas.forEach(d=>{
-      let s=0;
-      timeline.forEach(n=>{
-        if(d.some(t=>vizinhosRace(n).some(v=>terminal(v)===t))){
-          s++;
-        }
-      });
-      if(s>melhorScore){
-        melhorScore=s;
-        melhorDupla=d;
-      }
-    });
+      const a1=i*ang;
+      const a2=a1+ang;
 
-    const complemento=trio.find(x=>!melhorDupla.includes(x));
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,r,a1,a2);
+      ctx.closePath();
 
-    return {score,melhorDupla,complemento};
+      ctx.fillStyle = top.includes(i) ? "#00e676" : "#ff5252";
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx,cy,40,0,Math.PI*2);
+    ctx.fillStyle="#111";
+    ctx.fill();
   }
 
   function render(){
 
-    tl.innerHTML=timeline.map((n,i)=>{
-      const r=analises.MANUAL.res[i];
+    const res = analises.MANUAL.res;
+
+    tl.innerHTML = timeline.map((n,i)=>{
+      const r=res[i];
       const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
       return `<span style="color:${c}">${n}</span>`;
     }).join(" · ");
 
-    let paresC=0,imparesC=0;
-    timeline.forEach(n=>{
-      if(n===0)return;
-      n%2===0?paresC++:imparesC++;
-    });
-
-    const corMaior="#ff6d00";
-    const corMenor="#00e5ff";
-
-    parImparBox.innerHTML=`
-      <span style="color:${imparesC>paresC?corMaior:corMenor}">
-        Ímpares: ${imparesC}
-      </span>
-      &nbsp;|&nbsp;
-      <span style="color:${paresC>imparesC?corMaior:corMenor}">
-        Pares: ${paresC}
-      </span>
-    `;
+    const filtros = analises.MANUAL.filtros;
 
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.slice(1);
-      b.style.background=
-        analises.MANUAL.filtros.has(t)?corTerminal[t]:"#444";
+      b.style.background =
+        filtros.has(t) ? corTerminal[t] : "#444";
     });
 
-    const mapaGlobal={};
-    analises.MANUAL.filtros.forEach(t=>{
-      track.forEach(n=>{
-        if(terminal(n)===t){
-          vizinhosRace(n).forEach(v=>{
-            if(!mapaGlobal[v])mapaGlobal[v]=corTerminal[t];
-          });
-        }
-      });
+    const trios = triosSelecionados(filtros);
+    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
+    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
+    cZERO.innerHTML=por.ZERO.join("<div></div>");
+    cTIERS.innerHTML=por.TIERS.join("<div></div>");
+    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
+
+    let pares = 0;
+    let impares = 0;
+
+    timeline.forEach(n=>{
+      if(n === 0) return;
+      if(n % 2 === 0) pares++;
+      else impares++;
     });
 
-    tlConj.innerHTML=timeline.map(n=>{
-      const cor=mapaGlobal[n]||"#333";
-      return `<span style="color:${cor};font-weight:${mapaGlobal[n]?"700":"400"}">${n}</span>`;
-    }).join(" · ");
+    const corMaior = "#ff6d00";
+    const corMenor = "#00e5ff";
 
-    areaTrios.innerHTML="";
-    if(!modoTrios) return;
+    let corPar = "#fff";
+    let corImpar = "#fff";
 
-    const lista = modoTrios==="pares" ? triosPares : triosImpares;
+    if(pares > impares){
+      corPar = corMaior;
+      corImpar = corMenor;
+    } else if(impares > pares){
+      corImpar = corMaior;
+      corPar = corMenor;
+    }
 
-    const ordenados=[...lista]
-      .map(t=>({trio:t,...calcularPerformance(t)}))
-      .sort((a,b)=>b.score-a.score);
+    parImparBox.innerHTML = `
+      <span style="color:${corImpar}">Ímpares: ${impares}</span>
+      &nbsp;&nbsp;|&nbsp;&nbsp;
+      <span style="color:${corPar}">Pares: ${pares}</span>
+    `;
 
-    ordenados.forEach(obj=>{
+    if(filtros.size > 0){
 
-      const {trio,melhorDupla,complemento}=obj;
+      const mapaCores = {};
 
-      const mapa={};
-      trio.forEach(t=>{
+      filtros.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
             vizinhosRace(n).forEach(v=>{
-              if(!mapa[v])mapa[v]=corTerminal[t];
+              if(!mapaCores[v]){
+                mapaCores[v] = corTerminal[t];
+              }
             });
           }
         });
       });
 
-      const linha=document.createElement("div");
-      linha.style.marginBottom="12px";
-      linha.style.borderBottom="1px solid #333";
-      linha.style.paddingBottom="6px";
-      linha.style.cursor="pointer";
+      conjArea.style.display = "block";
 
-      linha.onclick=()=>{
-        analises.MANUAL.filtros.clear();
-        trio.forEach(t=>analises.MANUAL.filtros.add(t));
-        render();
-      };
-
-      linha.innerHTML=`
-        <div style="font-weight:700;margin-bottom:4px">
-          ${trio.map(t=>{
-            if(melhorDupla.includes(t)){
-              return `<span style="
-                padding:2px 6px;
-                border-radius:4px;
-                background:${corTerminal[t]};
-                color:#000;
-                margin-right:4px;
-              ">${t}</span>`;
-            }
-            return `<span style="margin-right:4px">${t}</span>`;
-          }).join("")}
-          <span style="
-            margin-left:6px;
-            padding:2px 6px;
-            border-radius:4px;
-            background:${corTerminal[complemento]};
-            opacity:0.4;
-          ">${complemento}</span>
-        </div>
-
-        <div>
-          ${timeline.map(n=>{
-            const cor=mapa[n]||"#333";
-            return `
-              <span style="
-                display:inline-block;
-                width:18px;
-                text-align:center;
-                color:${cor};
-                font-weight:${mapa[n]?"700":"400"};
-              ">${n}</span>
-            `;
-          }).join("")}
+      conjArea.innerHTML = `
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
+          gap:4px;
+        ">
+          ${timeline.map(n=>`
+            <div style="
+              height:26px;
+              display:flex;align-items:center;justify-content:center;
+              background:${mapaCores[n] || "#222"};
+              color:#fff;font-size:10px;font-weight:700;
+              border-radius:4px;border:1px solid #333;
+            ">${n}</div>
+          `).join("")}
         </div>
       `;
+    } else {
+      conjArea.style.display = "none";
+    }
 
-      areaTrios.appendChild(linha);
-    });
+    atualizarTermometro();
   }
 
   render();
