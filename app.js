@@ -29,6 +29,7 @@
   ];
 
   let timeline = [];
+
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
   };
@@ -208,22 +209,17 @@
       ctx.fillStyle=cor;
       ctx.fill();
 
-      if(numerosMarcados.has(track[i])){
-        ctx.beginPath();
-        ctx.moveTo(cx,cy);
-        ctx.arc(cx,cy,r,a1,a2);
-        ctx.closePath();
-        ctx.fillStyle=numerosMarcados.get(track[i]);
-        ctx.globalAlpha=0.45;
-        ctx.fill();
-        ctx.globalAlpha=1;
-      }
-
       const meio=(a1+a2)/2;
       const tx=cx+Math.cos(meio)*(r-25);
       const ty=cy+Math.sin(meio)*(r-25);
 
-      ctx.fillStyle="#fff";
+      let corNumero="#ffffff";
+
+      if(numerosMarcados.has(track[i])){
+        corNumero = numerosMarcados.get(track[i]);
+      }
+
+      ctx.fillStyle=corNumero;
       ctx.font="9px Arial";
       ctx.textAlign="center";
       ctx.textBaseline="middle";
