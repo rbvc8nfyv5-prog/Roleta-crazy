@@ -73,8 +73,8 @@
 
       <h3 style="text-align:center">CSM</h3>
 
-      <div style="display:flex;justify-content:center;margin:20px 0">
-        <canvas id="radar" width="340" height="340"></canvas>
+      <div style="display:flex;justify-content:center;margin:10px 0">
+        <canvas id="radar" width="260" height="260"></canvas>
       </div>
 
       <div style="margin:10px 0">
@@ -142,11 +142,11 @@
     const canvas=document.getElementById("radar");
     const ctx=canvas.getContext("2d");
 
-    ctx.clearRect(0,0,340,340);
+    ctx.clearRect(0,0,260,260);
 
-    const cx=170;
-    const cy=170;
-    const r=150;
+    const cx=130;
+    const cy=130;
+    const r=110;
 
     const ang=(Math.PI*2)/track.length;
 
@@ -180,7 +180,7 @@
 
     for(let i=0;i<track.length;i++){
 
-      const a1=i*ang-Math.PI/2;
+      const a1=i*ang+Math.PI/2;
       const a2=a1+ang;
 
       let cor="#222";
@@ -199,18 +199,18 @@
       ctx.fill();
 
       const meio=(a1+a2)/2;
-      const tx=cx+Math.cos(meio)*(r-35);
-      const ty=cy+Math.sin(meio)*(r-35);
+      const tx=cx+Math.cos(meio)*(r-25);
+      const ty=cy+Math.sin(meio)*(r-25);
 
       ctx.fillStyle="#fff";
-      ctx.font="11px Arial";
+      ctx.font="9px Arial";
       ctx.textAlign="center";
       ctx.textBaseline="middle";
       ctx.fillText(track[i],tx,ty);
     }
 
     ctx.beginPath();
-    ctx.arc(cx,cy,60,0,Math.PI*2);
+    ctx.arc(cx,cy,45,0,Math.PI*2);
     ctx.fillStyle="#111";
     ctx.fill();
   }
