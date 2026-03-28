@@ -1,220 +1,304 @@
-(function () {
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  const track = [
-    32,15,19,4,21,2,25,17,34,6,
-    27,13,36,11,30,8,23,10,5,24,
-    16,33,1,20,14,31,9,22,18,29,
-    7,28,12,35,3,26,0
-  ];
-  const terminal = n => n % 10;
+<title>MESA PRO</title>
 
-  const corTerminal = {
-    0:"#ff5252",1:"#ff9800",2:"#ffc107",3:"#00e676",4:"#00bcd4",
-    5:"#2196f3",6:"#9c27b0",7:"#e91e63",8:"#8bc34a",9:"#ff00ff"
-  };
+<style>
+body{background:#000;color:#0f0;font-family:monospace;text-align:center;margin:0;padding:10px;}
+#hist{font-size:20px;margin:10px 0;}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+.num{padding:14px;font-size:16px;border:none;border-radius:8px;color:white;font-weight:bold;}
+.red{background:#c62828;}
+.black{background:#111;}
+.green{background:#2e7d32;}
+.main{margin-top:10px;padding:14px;font-size:18px;width:100%;background:#0f0;color:#000;border:none;border-radius:10px;}
+.btn2{margin-top:5px;padding:10px;width:48%;background:#222;color:#0f0;border:none;border-radius:8px;}
+.area{margin-top:10px;}
+canvas{margin-top:10px;border:1px solid #0f0;}
+</style>
+</head>
 
-  let timeline = [];
-  const analises = { MANUAL: { filtros:new Set(), res:[] } };
+<body>
 
-  function vizinhosRace(n){
-    const i = track.indexOf(n);
-    return [ track[(i+36)%37], n, track[(i+1)%37] ];
-  }
+<h2>MESA PRO (MOTOR COMPLETO REAL)</h2>
 
-  function alvosPorNumero(n, filtros){
-    if(!filtros.size) return [];
-    return vizinhosRace(n)
-      .filter(v => v !== n && filtros.has(terminal(v)));
-  }
+<div id="hist">-</div>
 
-  function validar(n, filtros, anterior){
-    if(anterior == null) return false;
-    return alvosPorNumero(anterior, filtros).includes(n);
-  }
+<canvas id="radar" width="320" height="320"></canvas>
 
-  function registrar(n, anterior){
-    analises.MANUAL.res.unshift(
-      validar(n, analises.MANUAL.filtros, anterior) ? "V" : "X"
-    );
-  }
+<div style="display:flex; gap:4%;">
+<button class="btn2" id="limpar1">Último</button>
+<button class="btn2" id="limpar2">Limpar</button>
+</div>
 
-  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
+<div class="grid" id="teclado"></div>
 
-  document.body.innerHTML = `
-    <div style="padding:10px;max-width:1000px;margin:auto">
-      <h3 style="text-align:center">CSM</h3>
+<button class="main" id="btn">PROTOCOLO</button>
 
-      <div style="display:flex;justify-content:center;margin-bottom:10px">
-        <canvas id="radar" width="260" height="260"></canvas>
-      </div>
+<div class="area">STATUS: <span id="status">AGUARDANDO</span></div>
+<div class="area">TERMINAIS: <span id="terms"></span></div>
+<div class="area">AUX: <span id="aux"></span></div>
+<div class="area">ALVOS: <span id="alvos"></span></div>
+<div class="area">GL: <span id="gl"></span></div>
 
-      <div style="margin:10px 0">
-        🕒 Timeline:
-        <span id="tl" style="font-size:18px;font-weight:600"></span>
-      </div>
+<script>
+document.addEventListener("DOMContentLoaded", function(){
 
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <button id="del" style="flex:1;padding:8px;background:#333;color:#fff">Último</button>
-        <button id="clear" style="flex:1;padding:8px;background:#900;color:#fff">Limpar Tudo</button>
-      </div>
+const roda=[
+32,15,19,4,21,2,25,17,34,6,
+27,13,36,11,30,8,23,10,5,24,
+16,33,1,20,14,31,9,22,18,29,
+7,28,12,35,3,26,0
+];
 
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        Terminais:
-        <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
-      </div>
+const reds=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36];
 
-      <div style="margin-top:10px;border:1px solid #555;padding:8px">
-        <b>ALVOS</b>
-        <div id="cALVOS"></div>
-      </div>
+let nums=[];
+let lastAlvos=[];
+let glHist=[];
+let ultimaBase="";
+let liberado=false;
+let aguardandoResultado=false;
 
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
-    </div>
-  `;
+const hist=document.getElementById("hist");
+const teclado=document.getElementById("teclado");
+const alvosEl=document.getElementById("alvos");
+const statusEl=document.getElementById("status");
+const glEl=document.getElementById("gl");
+const termsEl=document.getElementById("terms");
+const auxEl=document.getElementById("aux");
 
-  const tl = document.getElementById("tl");
-  const btnT = document.getElementById("btnT");
-  const numsEl = document.getElementById("nums");
-  const cALVOS = document.getElementById("cALVOS");
+const canvas=document.getElementById("radar");
+const ctx=canvas.getContext("2d");
 
-  document.getElementById("del").onclick=()=>{
-    timeline.shift();
-    analises.MANUAL.res.shift();
-    render();
-  };
+function desenharRadar(){
 
-  document.getElementById("clear").onclick=()=>{
-    timeline=[];
-    analises.MANUAL.res=[];
-    render();
-  };
+  ctx.clearRect(0,0,320,320);
 
-  for(let t=0;t<=9;t++){
-    const b=document.createElement("button");
-    b.textContent="T"+t;
-    b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
-    b.onclick=()=>{
-      if(analises.MANUAL.filtros.has(t)){
-        analises.MANUAL.filtros.delete(t);
+  let cx=160, cy=160;
+
+  ctx.strokeStyle="#0f0";
+  ctx.beginPath();
+  ctx.arc(cx,cy,140,0,Math.PI*2);
+  ctx.stroke();
+
+  roda.forEach((n,i)=>{
+    let ang=(i/37)*2*Math.PI + Math.PI/2;
+    let x=cx + Math.cos(ang)*120;
+    let y=cy + Math.sin(ang)*120;
+
+    ctx.fillStyle = n===0 ? "#0f0" : (reds.includes(n)?"#f44":"#fff");
+    ctx.fillText(n,x-6,y+4);
+  });
+
+  nums.forEach(n=>{
+    let i=roda.indexOf(n);
+    let ang=(i/37)*2*Math.PI + Math.PI/2;
+    let x=cx + Math.cos(ang)*70;
+    let y=cy + Math.sin(ang)*70;
+
+    ctx.fillStyle="#0f0";
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillText(n,x+6,y+3);
+  });
+
+  lastAlvos.forEach(n=>{
+    let idx = roda.indexOf(n);
+
+    for(let k=-4;k<=4;k++){
+
+      let num = roda[(idx + k + 37) % 37];
+      let i=roda.indexOf(num);
+      let ang=(i/37)*2*Math.PI + Math.PI/2;
+
+      let x=cx + Math.cos(ang)*140;
+      let y=cy + Math.sin(ang)*140;
+
+      if(k===0){
+        ctx.fillStyle="#00ffff";
+        ctx.beginPath();
+        ctx.arc(x,y,8,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.font="bold 18px monospace";
+        ctx.fillText(num,x-10,y-14);
       } else {
-        analises.MANUAL.filtros.add(t);
+        ctx.fillStyle="#004444";
+        ctx.beginPath();
+        ctx.arc(x,y,4,0,Math.PI*2);
+        ctx.fill();
       }
-      render();
-    };
-    btnT.appendChild(b);
+    }
+  });
+}
+
+function atualizar(){
+  hist.innerText=[...nums].reverse().join(" - ");
+}
+
+function vizinhos(n){
+  let i=roda.indexOf(n);
+  return [roda[(i-1+37)%37], n, roda[(i+1)%37]];
+}
+
+function conflita(n, usados){
+  let zn=vizinhos(n);
+  return usados.some(u=>{
+    let zu=vizinhos(u);
+    return zn.some(x=>zu.includes(x));
+  });
+}
+
+function add(n){
+
+  if(aguardandoResultado){
+    let win=false;
+
+    lastAlvos.forEach(a=>{
+      if(vizinhos(a).includes(n)) win=true;
+    });
+
+    let bolinha=(win?"🟢":"🔴")+n;
+    glHist.unshift(bolinha);
+    if(glHist.length>30) glHist.pop();
+    glEl.innerText=glHist.join(" ");
   }
 
-  for(let n=0;n<=36;n++){
-    const b=document.createElement("button");
-    b.textContent=n;
-    b.style="padding:8px;background:#333;color:#fff";
-    b.onclick=()=>add(n);
-    numsEl.appendChild(b);
-  }
+  aguardandoResultado=false;
 
-  function add(n){
-    const anterior = timeline[0];
-    timeline.unshift(n);
-    if(timeline.length>14) timeline.pop();
-    registrar(n, anterior);
-    render();
-  }
+  nums.push(n);
+  if(nums.length>14) nums.shift();
 
-  function desenharRadar(){
-    const canvas = document.getElementById("radar");
-    const ctx = canvas.getContext("2d");
+  atualizar();
+  liberado=true;
 
-    ctx.clearRect(0,0,260,260);
+  desenharRadar();
+}
 
-    const cx = 130;
-    const cy = 130;
-    const r = 110;
-    const ang = (Math.PI*2)/track.length;
+for(let i=0;i<=36;i++){
+  let b=document.createElement("button");
 
-    const ativos = new Set(timeline);
+  b.className="num";
+  if(i===0)b.classList.add("green");
+  else if(reds.includes(i))b.classList.add("red");
+  else b.classList.add("black");
 
-    for(let i=0;i<track.length;i++){
-      const a1 = i*ang + Math.PI/2;
-      const a2 = a1 + ang;
+  b.innerText=i;
+  b.onclick=()=>add(i);
 
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r,a1,a2);
-      ctx.closePath();
-      ctx.fillStyle="#1c1c1c";
-      ctx.fill();
+  teclado.appendChild(b);
+}
 
-      const meio = (a1+a2)/2;
-      const tx = cx + Math.cos(meio)*(r-25);
-      const ty = cy + Math.sin(meio)*(r-25);
+limpar1.onclick=()=>{ nums.pop(); atualizar(); desenharRadar(); };
+limpar2.onclick=()=>{ nums=[]; glHist=[]; atualizar(); glEl.innerText=""; desenharRadar(); };
 
-      ctx.fillStyle = ativos.has(track[i]) ? "#00e676" : "#fff";
-      ctx.font="9px Arial";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.fillText(track[i],tx,ty);
+btn.onclick=()=>{
+
+  let baseAtual=nums.join("-");
+  if(!liberado || baseAtual===ultimaBase) return;
+
+  ultimaBase=baseAtual;
+  liberado=false;
+  aguardandoResultado=true;
+
+  if(nums.length<5) return;
+
+  let base=nums.slice(-14);
+  let micro=nums.slice(-7);
+
+  let termScore={};
+
+  base.forEach(n=>{
+    let t=n%10;
+    termScore[t]=(termScore[t]||0)+1;
+  });
+
+  micro.forEach(n=>{
+    let t=n%10;
+    termScore[t]=(termScore[t]||0)+3;
+  });
+
+  let termTop=Object.entries(termScore)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,3)
+    .map(x=>parseInt(x[0]));
+
+  termsEl.innerText=termTop.join(" - ");
+
+  let cont={rp:0,ri:0,bp:0,bi:0};
+  base.forEach(n=>{
+    if(n===0)return;
+    let cor=reds.includes(n)?"r":"b";
+    let par=n%2===0?"p":"i";
+    cont[cor+par]++;
+  });
+
+  let auxTop=Object.entries(cont).sort((a,b)=>b[1]-a[1])[0][0];
+
+  auxEl.innerText=
+    auxTop==="rp"?"VERMELHO PAR":
+    auxTop==="ri"?"VERMELHO ÍMPAR":
+    auxTop==="bp"?"PRETO PAR":
+    "PRETO ÍMPAR";
+
+  let seed=base.reduce((a,b)=>a+b,0);
+  let offset=seed%37;
+
+  let usados=[], final=[];
+
+  let ultimo = base[base.length-1];
+  let idxUlt = roda.indexOf(ultimo);
+  let inicio = (idxUlt + offset + 37) % 37;
+
+  for(let i=0;i<37;i++){
+
+    let n = roda[(inicio + i) % 37];
+
+    let cor=reds.includes(n)?"r":"b";
+    let par=n%2===0?"p":"i";
+
+    if(cor+par===auxTop){
+
+      let grupo=vizinhos(n);
+
+      for(let g of grupo){
+        if(final.length>=9) break;
+        if(!conflita(g,usados)){
+          final.push(g);
+          usados.push(g);
+        }
+      }
     }
 
-    ctx.beginPath();
-    ctx.arc(cx,cy,45,0,Math.PI*2);
-    ctx.fillStyle="#111";
-    ctx.fill();
+    if(final.length>=6) break;
   }
 
-  function render(){
-
-    const filtros = analises.MANUAL.filtros;
-
-    // 🔥 TIMELINE INTELIGENTE
-    tl.innerHTML = timeline.map(n=>{
-      if(!filtros.size){
-        return `<span style="color:#aaa">${n}</span>`;
-      }
-
-      let cor = "#aaa";
-
-      filtros.forEach(t=>{
-        track.forEach(x=>{
-          if(terminal(x)===t){
-            vizinhosRace(x).forEach(v=>{
-              if(v===n){
-                cor = corTerminal[t];
-              }
-            });
-          }
-        });
-      });
-
-      return `<span style="color:${cor}">${n}</span>`;
-    }).join(" · ");
-
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background =
-        filtros.has(t) ? corTerminal[t] : "#444";
-    });
-
-    // 🔥 ALVOS DINÂMICOS (CORRIGIDO)
-    let alvosSet = new Set();
-
-    timeline.forEach(n=>{
-      let alvos = alvosPorNumero(n, filtros);
-
-      // 🔥 se não gerar alvo → ele entra como base
-      if(alvos.length === 0 && filtros.has(n%10)){
-        alvosSet.add(n);
-      }
-
-      alvos.forEach(a=>alvosSet.add(a));
-    });
-
-    cALVOS.innerHTML = [...alvosSet].join(" - ");
-
-    desenharRadar();
+  for(let i=0;i<37;i++){
+    let n = roda[(inicio + i) % 37];
+    if(!conflita(n,usados)){
+      final.push(n);
+      usados.push(n);
+    }
+    if(final.length>=9) break;
   }
 
-  render();
+  lastAlvos=[...final];
+  alvosEl.innerText=final.join(" - ");
+  statusEl.innerText="DINÂMICO";
 
-})();
+  desenharRadar();
+};
+
+desenharRadar();
+
+});
+</script>
+
+</body>
+</html>
