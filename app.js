@@ -9,9 +9,16 @@
   const terminal = n => n % 10;
 
   const corTerminal = {
-    0:"#ff5252",1:"#ff9800",2:"#ffc107",3:"#00e676",
-    4:"#00bcd4",5:"#2196f3",6:"#9c27b0",7:"#e91e63",
-    8:"#8bc34a",9:"#ff00ff"
+    0:"#ff5252",
+    1:"#ff9800",
+    2:"#ffc107",
+    3:"#00e676",
+    4:"#00bcd4",
+    5:"#2196f3",
+    6:"#9c27b0",
+    7:"#e91e63",
+    8:"#8bc34a",
+    9:"#ff00ff"
   };
 
   const eixos = [
@@ -28,7 +35,19 @@
   };
 
   let filtrosConjuntos = new Set();
-  let terminalPrincipal = null; // 🔥 novo
+  const modosTerminais = {};
+  const ordemSelecionados = [];
+  for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
+
+  function atualizarModosPorOrdem(){
+    for(let t=0;t<=9;t++) modosTerminais[t] = 0;
+    if(ordemSelecionados.length > 0){
+      modosTerminais[ordemSelecionados[0]] = 2; // primeiro = 2 vizinhos
+    }
+    for(let i=1;i<ordemSelecionados.length;i++){
+      modosTerminais[ordemSelecionados[i]] = 1; // demais = 1 vizinho
+    }
+  }
 
   function vizinhos1(n){
     const i = track.indexOf(n);
@@ -85,20 +104,19 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button id="btnUndo" style="padding:6px 10px;background:#444;color:#fff;border:1px solid #666">Apagar último</button>
+        <button id="btnClear" style="padding:6px 10px;background:#444;color:#fff;border:1px solid #666">Apagar tudo</button>
+      </div>
+
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
         Terminais:
         <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
 
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        <div><b>ZERO</b><div id="cZERO"></div></div>
-        <div><b>TIERS</b><div id="cTIERS"></div></div>
-        <div><b>ORPHELINS</b><div id="cORPH"></div></div>
-      </div>
-
       <div style="margin-top:15px;border:1px solid #444;padding:8px">
-        <b>Ímpares / Pares (Últimos 14)</b>
-        <div id="parImparBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
+        <b>Seleção dos terminais</b>
+        <div id="modoBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
       </div>
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
@@ -115,12 +133,15 @@
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
         filtrosConjuntos.delete(t);
-        if(terminalPrincipal===t) terminalPrincipal=null;
+        const idx = ordemSelecionados.indexOf(t);
+        if(idx !== -1) ordemSelecionados.splice(idx,1);
       } else {
         analises.MANUAL.filtros.add(t);
         filtrosConjuntos.add(t);
-        if(terminalPrincipal===null) terminalPrincipal=t; // 🔥 primeiro vira principal
+        ordemSelecionados.push(t);
       }
+
+      atualizarModosPorOrdem();
       render();
     };
     btnT.appendChild(b);
@@ -133,6 +154,25 @@
     b.onclick=()=>add(n);
     nums.appendChild(b);
   }
+
+  btnUndo.onclick = ()=>{
+    if(!timeline.length) return;
+    timeline.shift();
+    analises.MANUAL.res.shift();
+    render();
+  };
+
+  btnClear.onclick = ()=>{
+    timeline = [];
+    analises.MANUAL.res = [];
+    ordemSelecionados.length = 0;
+    for(let t=0;t<=9;t++){
+      modosTerminais[t] = 0;
+    }
+    analises.MANUAL.filtros.clear();
+    filtrosConjuntos.clear();
+    render();
+  };
 
   function add(n){
     timeline.unshift(n);
@@ -156,24 +196,6 @@
 
     const ativos = new Set(timeline);
 
-    let mapaCores = {};
-
-    analises.MANUAL.filtros.forEach(t=>{
-      track.forEach(n=>{
-        if(terminal(n)===t){
-
-          if(t===terminalPrincipal){
-            vizinhos2(n).forEach(v=>mapaCores[v]="#00e676"); // verde
-          } else {
-            vizinhos1(n).forEach(v=>{
-              if(!mapaCores[v]) mapaCores[v]="#00b0ff"; // azul
-            });
-          }
-
-        }
-      });
-    });
-
     for(let i=0;i<track.length;i++){
 
       const a1 = i*ang + Math.PI/2;
@@ -192,7 +214,7 @@
       const tx = cx + Math.cos(meio)*(r-25);
       const ty = cy + Math.sin(meio)*(r-25);
 
-      let corNumero = mapaCores[track[i]] || "#fff";
+      let corNumero="#fff";
 
       if(ativos.has(track[i])){
         corNumero="#00e676";
@@ -224,46 +246,23 @@
     const filtros = analises.MANUAL.filtros;
 
     document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background =
-        filtros.has(t) ? corTerminal[t] : "#444";
+      const t=+b.textContent.match(/\d+/)[0];
+      const ativo = filtros.has(t);
+
+      b.style.background = ativo ? corTerminal[t] : "#444";
+      b.style.border = modosTerminais[t] === 2 ? "2px solid #00e676" : "1px solid #666";
+      b.textContent =
+        modosTerminais[t] === 2 ? `T${t} 2v` :
+        modosTerminais[t] === 1 ? `T${t} 1v` :
+        `T${t}`;
     });
 
-    const trios = triosSelecionados(filtros);
-    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
-    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
-    cZERO.innerHTML=por.ZERO.join("<div></div>");
-    cTIERS.innerHTML=por.TIERS.join("<div></div>");
-    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
-
-    let pares = 0;
-    let impares = 0;
-
-    timeline.forEach(n=>{
-      if(n === 0) return;
-      if(n % 2 === 0) pares++;
-      else impares++;
-    });
-
-    const corMaior = "#ff6d00";
-    const corMenor = "#00e5ff";
-
-    let corPar = "#fff";
-    let corImpar = "#fff";
-
-    if(pares > impares){
-      corPar = corMaior;
-      corImpar = corMenor;
-    } else if(impares > pares){
-      corImpar = corMaior;
-      corPar = corMenor;
+    const ativosTexto = [];
+    for(let t=0;t<=9;t++){
+      if(modosTerminais[t] === 1) ativosTexto.push(`<span style="color:${corTerminal[t]}">T${t} = 1 vizinho</span>`);
+      if(modosTerminais[t] === 2) ativosTexto.push(`<span style="color:${corTerminal[t]}">T${t} = 2 vizinhos</span>`);
     }
-
-    parImparBox.innerHTML = `
-      <span style="color:${corImpar}">Ímpares: ${impares}</span>
-      &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span style="color:${corPar}">Pares: ${pares}</span>
-    `;
+    modoBox.innerHTML = ativosTexto.length ? ativosTexto.join(" &nbsp;|&nbsp; ") : "Nenhum terminal selecionado";
 
     if(filtros.size > 0){
 
@@ -273,11 +272,13 @@
         track.forEach(n=>{
           if(terminal(n)===t){
 
-            if(t===terminalPrincipal){
-              vizinhos2(n).forEach(v=>mapaCores[v]="#00e676");
-            } else {
+            if(modosTerminais[t] === 2){
+              vizinhos2(n).forEach(v=>{
+                mapaCores[v] = corTerminal[t];
+              });
+            } else if(modosTerminais[t] === 1){
               vizinhos1(n).forEach(v=>{
-                if(!mapaCores[v]) mapaCores[v]="#00b0ff";
+                if(!mapaCores[v]) mapaCores[v] = corTerminal[t];
               });
             }
 
