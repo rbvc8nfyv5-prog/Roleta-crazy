@@ -21,14 +21,9 @@
     9:"#ff00ff"
   };
 
-  const eixos = [
-    { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
-    { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
-    { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
-  ];
-
   let timeline = [];
-  let janela = 6;
+  let historicoCompleto = []; // 🔥 NOVO
+  let expandido = false; // 🔥 NOVO
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -42,10 +37,10 @@
   function atualizarModosPorOrdem(){
     for(let t=0;t<=9;t++) modosTerminais[t] = 0;
     if(ordemSelecionados.length > 0){
-      modosTerminais[ordemSelecionados[0]] = 2; // primeiro = 2 vizinhos
+      modosTerminais[ordemSelecionados[0]] = 2;
     }
     for(let i=1;i<ordemSelecionados.length;i++){
-      modosTerminais[ordemSelecionados[i]] = 1; // demais = 1 vizinho
+      modosTerminais[ordemSelecionados[i]] = 1;
     }
   }
 
@@ -65,26 +60,8 @@
     ];
   }
 
-  function triosSelecionados(filtros){
-    let lista=[];
-    eixos.forEach(e=>{
-      e.trios.forEach(trio=>{
-        const inter = trio.map(terminal)
-          .filter(t=>!filtros.size||filtros.has(t)).length;
-        if(inter>0) lista.push({eixo:e.nome,trio});
-      });
-    });
-    return lista.slice(0,9);
-  }
-
-  function validar(n, filtros){
-    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
-  }
-
   function registrar(n){
-    analises.MANUAL.res.unshift(
-      validar(n,analises.MANUAL.filtros)?"V":"X"
-    );
+    analises.MANUAL.res.unshift("V");
   }
 
   document.body.style.background="#111";
@@ -93,6 +70,11 @@
 
   document.body.innerHTML = `
     <div style="padding:10px;max-width:1000px;margin:auto">
+
+      <!-- 🔥 CAMPO COLAR -->
+      <textarea id="inputHist" placeholder="Cole histórico aqui"
+      style="width:100%;margin-bottom:10px;background:#222;color:#fff;border:1px solid #555;padding:6px"></textarea>
+
       <h3 style="text-align:center">CSM</h3>
 
       <div style="display:flex;justify-content:center;margin-bottom:10px">
@@ -119,11 +101,28 @@
         <div id="modoBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
       </div>
 
+      <!-- 🔥 SUA LINHA SECUNDÁRIA -->
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
+
+  // 🔥 COLAR HISTÓRICO
+  inputHist.addEventListener("paste", ()=>{
+    setTimeout(()=>{
+      historicoCompleto = inputHist.value
+        .split(/[\s,;|]+/)
+        .map(Number)
+        .filter(n=>n>=0 && n<=36);
+
+      timeline = historicoCompleto.slice(-14).reverse();
+
+      inputHist.style.display="none";
+
+      render();
+    },0);
+  });
 
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
@@ -132,15 +131,12 @@
     b.onclick=()=>{
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
-        filtrosConjuntos.delete(t);
         const idx = ordemSelecionados.indexOf(t);
         if(idx !== -1) ordemSelecionados.splice(idx,1);
       } else {
         analises.MANUAL.filtros.add(t);
-        filtrosConjuntos.add(t);
         ordemSelecionados.push(t);
       }
-
       atualizarModosPorOrdem();
       render();
     };
@@ -164,19 +160,16 @@
 
   btnClear.onclick = ()=>{
     timeline = [];
-    analises.MANUAL.res = [];
+    historicoCompleto = [];
     ordemSelecionados.length = 0;
-    for(let t=0;t<=9;t++){
-      modosTerminais[t] = 0;
-    }
     analises.MANUAL.filtros.clear();
-    filtrosConjuntos.clear();
     render();
   };
 
   function add(n){
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
+    historicoCompleto.push(n);
     registrar(n);
     render();
   }
@@ -191,13 +184,11 @@
     const cx = 130;
     const cy = 130;
     const r = 110;
-
     const ang = (Math.PI*2)/track.length;
 
     const ativos = new Set(timeline);
 
     for(let i=0;i<track.length;i++){
-
       const a1 = i*ang + Math.PI/2;
       const a2 = a1 + ang;
 
@@ -215,15 +206,10 @@
       const ty = cy + Math.sin(meio)*(r-25);
 
       let corNumero="#fff";
-
-      if(ativos.has(track[i])){
-        corNumero="#00e676";
-      }
+      if(ativos.has(track[i])) corNumero="#00e676";
 
       ctx.fillStyle=corNumero;
       ctx.font="9px Arial";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
       ctx.fillText(track[i],tx,ty);
     }
 
@@ -235,13 +221,7 @@
 
   function render(){
 
-    const res = analises.MANUAL.res;
-
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=res[i];
-      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${c}">${n}</span>`;
-    }).join(" · ");
+    tl.innerHTML = timeline.join(" · ");
 
     const filtros = analises.MANUAL.filtros;
 
@@ -257,25 +237,17 @@
         `T${t}`;
     });
 
-    const ativosTexto = [];
-    for(let t=0;t<=9;t++){
-      if(modosTerminais[t] === 1) ativosTexto.push(`<span style="color:${corTerminal[t]}">T${t} = 1 vizinho</span>`);
-      if(modosTerminais[t] === 2) ativosTexto.push(`<span style="color:${corTerminal[t]}">T${t} = 2 vizinhos</span>`);
-    }
-    modoBox.innerHTML = ativosTexto.length ? ativosTexto.join(" &nbsp;|&nbsp; ") : "Nenhum terminal selecionado";
-
     if(filtros.size > 0){
 
       const mapaCores = {};
+      const base = expandido ? historicoCompleto.slice().reverse() : timeline;
 
       filtros.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
 
             if(modosTerminais[t] === 2){
-              vizinhos2(n).forEach(v=>{
-                mapaCores[v] = corTerminal[t];
-              });
+              vizinhos2(n).forEach(v=>mapaCores[v] = corTerminal[t]);
             } else if(modosTerminais[t] === 1){
               vizinhos1(n).forEach(v=>{
                 if(!mapaCores[v]) mapaCores[v] = corTerminal[t];
@@ -294,13 +266,15 @@
           grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
           gap:4px;
         ">
-          ${timeline.map(n=>`
+          ${base.map(n=>`
             <div style="
               height:26px;
               display:flex;align-items:center;justify-content:center;
               background:${mapaCores[n] || "#222"};
-              color:#fff;font-size:10px;font-weight:700;
-              border-radius:4px;border:1px solid #333;
+              color:#fff;
+              font-size:10px;
+              border-radius:4px;
+              border:1px solid #333;
             ">${n}</div>
           `).join("")}
         </div>
@@ -311,6 +285,12 @@
 
     desenharRadar();
   }
+
+  // 🔥 EXPANDIR / VOLTAR
+  conjArea.onclick = ()=>{
+    expandido = !expandido;
+    render();
+  };
 
   render();
 
