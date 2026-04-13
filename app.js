@@ -22,14 +22,13 @@
   };
 
   let timeline = [];
-  let historicoCompleto = []; // 🔥 NOVO
-  let expandido = false; // 🔥 NOVO
+  let historicoCompleto = [];
+  let expandido = false;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
   };
 
-  let filtrosConjuntos = new Set();
   const modosTerminais = {};
   const ordemSelecionados = [];
   for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
@@ -60,18 +59,21 @@
     ];
   }
 
-  function registrar(n){
-    analises.MANUAL.res.unshift("V");
-  }
-
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
   document.body.innerHTML = `
+    <style>
+      @keyframes piscaStrong {
+        0% { transform:scale(1); }
+        50% { transform:scale(1.2); }
+        100% { transform:scale(1); }
+      }
+    </style>
+
     <div style="padding:10px;max-width:1000px;margin:auto">
 
-      <!-- 🔥 CAMPO COLAR -->
       <textarea id="inputHist" placeholder="Cole histórico aqui"
       style="width:100%;margin-bottom:10px;background:#222;color:#fff;border:1px solid #555;padding:6px"></textarea>
 
@@ -87,8 +89,8 @@
       </div>
 
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <button id="btnUndo" style="padding:6px 10px;background:#444;color:#fff;border:1px solid #666">Apagar último</button>
-        <button id="btnClear" style="padding:6px 10px;background:#444;color:#fff;border:1px solid #666">Apagar tudo</button>
+        <button id="btnUndo">Apagar último</button>
+        <button id="btnClear">Apagar tudo</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -96,19 +98,12 @@
         <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
 
-      <div style="margin-top:15px;border:1px solid #444;padding:8px">
-        <b>Seleção dos terminais</b>
-        <div id="modoBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
-      </div>
-
-      <!-- 🔥 SUA LINHA SECUNDÁRIA -->
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
   `;
 
-  // 🔥 COLAR HISTÓRICO
   inputHist.addEventListener("paste", ()=>{
     setTimeout(()=>{
       historicoCompleto = inputHist.value
@@ -117,9 +112,7 @@
         .filter(n=>n>=0 && n<=36);
 
       timeline = historicoCompleto.slice(-14).reverse();
-
       inputHist.style.display="none";
-
       render();
     },0);
   });
@@ -154,7 +147,7 @@
   btnUndo.onclick = ()=>{
     if(!timeline.length) return;
     timeline.shift();
-    analises.MANUAL.res.shift();
+    historicoCompleto.pop();
     render();
   };
 
@@ -170,7 +163,6 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
     historicoCompleto.push(n);
-    registrar(n);
     render();
   }
 
@@ -209,40 +201,44 @@
       if(ativos.has(track[i])) corNumero="#00e676";
 
       ctx.fillStyle=corNumero;
-      ctx.font="9px Arial";
       ctx.fillText(track[i],tx,ty);
     }
-
-    ctx.beginPath();
-    ctx.arc(cx,cy,45,0,Math.PI*2);
-    ctx.fillStyle="#111";
-    ctx.fill();
   }
 
   function render(){
 
     tl.innerHTML = timeline.join(" · ");
 
-    const filtros = analises.MANUAL.filtros;
-
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
-      const ativo = filtros.has(t);
+      const ativo = analises.MANUAL.filtros.has(t);
 
       b.style.background = ativo ? corTerminal[t] : "#444";
-      b.style.border = modosTerminais[t] === 2 ? "2px solid #00e676" : "1px solid #666";
-      b.textContent =
-        modosTerminais[t] === 2 ? `T${t} 2v` :
-        modosTerminais[t] === 1 ? `T${t} 1v` :
-        `T${t}`;
+
+      if(modosTerminais[t] === 2){
+        b.style.border = "3px solid #fff";
+        b.style.boxShadow = `0 0 10px ${corTerminal[t]}`;
+        b.textContent = `T${t} 2v`;
+      }
+      else if(modosTerminais[t] === 1){
+        b.style.border = "2px solid #999";
+        b.style.boxShadow = "none";
+        b.textContent = `T${t} 1v`;
+      }
+      else{
+        b.style.border = "1px solid #666";
+        b.style.boxShadow = "none";
+        b.textContent = `T${t}`;
+      }
     });
 
-    if(filtros.size > 0){
+    if(analises.MANUAL.filtros.size > 0){
 
       const mapaCores = {};
       const base = expandido ? historicoCompleto.slice().reverse() : timeline;
+      const ultimoNumero = timeline[0];
 
-      filtros.forEach(t=>{
+      analises.MANUAL.filtros.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
 
@@ -261,20 +257,20 @@
       conjArea.style.display = "block";
 
       conjArea.innerHTML = `
-        <div style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
-          gap:4px;
-        ">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:4px">
           ${base.map(n=>`
             <div style="
               height:26px;
-              display:flex;align-items:center;justify-content:center;
+              display:flex;
+              align-items:center;
+              justify-content:center;
               background:${mapaCores[n] || "#222"};
               color:#fff;
               font-size:10px;
               border-radius:4px;
-              border:1px solid #333;
+              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333'};
+              box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || '#fff'}` : 'none'};
+              animation:${n===ultimoNumero ? 'piscaStrong 0.8s infinite' : 'none'};
             ">${n}</div>
           `).join("")}
         </div>
@@ -286,7 +282,6 @@
     desenharRadar();
   }
 
-  // 🔥 EXPANDIR / VOLTAR
   conjArea.onclick = ()=>{
     expandido = !expandido;
     render();
