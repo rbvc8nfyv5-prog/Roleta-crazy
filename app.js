@@ -24,6 +24,7 @@
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
+  let faixa10Ativa = false;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -32,6 +33,19 @@
   const modosTerminais = {};
   const ordemSelecionados = [];
   for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
+
+  function clarearCor(hex){
+    hex = hex.replace("#","");
+    let r = parseInt(hex.substring(0,2),16);
+    let g = parseInt(hex.substring(2,4),16);
+    let b = parseInt(hex.substring(4,6),16);
+
+    r = Math.min(255, Math.floor(r + (255-r)*0.45));
+    g = Math.min(255, Math.floor(g + (255-g)*0.45));
+    b = Math.min(255, Math.floor(b + (255-b)*0.45));
+
+    return "#" + [r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
+  }
 
   function atualizarModosPorOrdem(){
     for(let t=0;t<=9;t++) modosTerminais[t] = 0;
@@ -55,6 +69,14 @@
       track[(i+36)%37],
       n,
       track[(i+1)%37],
+      track[(i+2)%37]
+    ];
+  }
+
+  function segundoVizinho(n){
+    const i = track.indexOf(n);
+    return [
+      track[(i+35)%37],
       track[(i+2)%37]
     ];
   }
@@ -91,6 +113,7 @@
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <button id="btnUndo">Apagar último</button>
         <button id="btnClear">Apagar tudo</button>
+        <button id="btn10">10</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -116,6 +139,11 @@
       render();
     },0);
   });
+
+  btn10.onclick = ()=>{
+    faixa10Ativa = !faixa10Ativa;
+    render();
+  };
 
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
@@ -156,6 +184,7 @@
     historicoCompleto = [];
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
+    faixa10Ativa = false;
     render();
   };
 
@@ -209,6 +238,9 @@
 
     tl.innerHTML = timeline.join(" · ");
 
+    btn10.style.background = faixa10Ativa ? "#ffc107" : "";
+    btn10.style.color = faixa10Ativa ? "#000" : "";
+
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
       const ativo = analises.MANUAL.filtros.has(t);
@@ -244,6 +276,11 @@
 
             if(modosTerminais[t] === 2){
               vizinhos2(n).forEach(v=>mapaCores[v] = corTerminal[t]);
+
+              segundoVizinho(n).forEach(v=>{
+                mapaCores[v] = clarearCor(corTerminal[t]);
+              });
+
             } else if(modosTerminais[t] === 1){
               vizinhos1(n).forEach(v=>{
                 if(!mapaCores[v]) mapaCores[v] = corTerminal[t];
@@ -268,7 +305,7 @@
               color:#fff;
               font-size:10px;
               border-radius:4px;
-              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333'};
+              border:${faixa10Ativa && n>=10 && n<=19 ? "3px solid #ffc107" : (n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333')};
               box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || '#fff'}` : 'none'};
               animation:${n===ultimoNumero ? 'piscaStrong 0.8s infinite' : 'none'};
             ">${n}</div>
