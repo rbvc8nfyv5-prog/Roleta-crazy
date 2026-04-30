@@ -25,6 +25,7 @@
   let historicoCompleto = [];
   let expandido = false;
   let faixa10Ativa = false;
+  let analise100Ativa = false;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -81,6 +82,88 @@
     ];
   }
 
+  function coberturaTerminal(t, qtd){
+    const set = new Set();
+
+    track.forEach(n=>{
+      if(terminal(n) === t){
+        if(qtd === 2){
+          vizinhos2(n).forEach(v=>set.add(v));
+        } else {
+          vizinhos1(n).forEach(v=>set.add(v));
+        }
+      }
+    });
+
+    return set;
+  }
+
+  function aplicarAnalise100(){
+    if(historicoCompleto.length < 3) return;
+
+    let melhor = null;
+
+    for(let t2=0;t2<=9;t2++){
+      for(let t1=0;t1<=9;t1++){
+
+        if(t1 === t2) continue;
+
+        const cov2 = coberturaTerminal(t2,2);
+        const cov1 = coberturaTerminal(t1,1);
+
+        const cobertura = new Set([...cov2, ...cov1]);
+
+        let green = 0;
+        let red = 0;
+
+        const base = historicoCompleto.slice(-100);
+
+        for(let i=0;i<base.length-1;i++){
+          const prox = base[i+1];
+
+          if(cobertura.has(prox)){
+            green++;
+          } else {
+            red++;
+          }
+        }
+
+        const total = green + red;
+        const taxa = total ? green / total : 0;
+
+        const teste = {
+          t2,
+          t1,
+          green,
+          red,
+          taxa
+        };
+
+        if(
+          !melhor ||
+          teste.red < melhor.red ||
+          (teste.red === melhor.red && teste.green > melhor.green) ||
+          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
+        ){
+          melhor = teste;
+        }
+      }
+    }
+
+    if(!melhor) return;
+
+    analises.MANUAL.filtros.clear();
+    ordemSelecionados.length = 0;
+
+    analises.MANUAL.filtros.add(melhor.t2);
+    ordemSelecionados.push(melhor.t2);
+
+    analises.MANUAL.filtros.add(melhor.t1);
+    ordemSelecionados.push(melhor.t1);
+
+    atualizarModosPorOrdem();
+  }
+
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -114,6 +197,7 @@
         <button id="btnUndo">Apagar último</button>
         <button id="btnClear">Apagar tudo</button>
         <button id="btn10">10</button>
+        <button id="btnAnalise100">Análise 100</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -136,6 +220,9 @@
 
       timeline = historicoCompleto.slice(-14).reverse();
       inputHist.style.display="none";
+
+      if(analise100Ativa) aplicarAnalise100();
+
       render();
     },0);
   });
@@ -145,11 +232,23 @@
     render();
   };
 
+  btnAnalise100.onclick = ()=>{
+    analise100Ativa = !analise100Ativa;
+
+    if(analise100Ativa){
+      aplicarAnalise100();
+    }
+
+    render();
+  };
+
   for(let t=0;t<=9;t++){
     const b=document.createElement("button");
     b.textContent="T"+t;
     b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
     b.onclick=()=>{
+      analise100Ativa = false;
+
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
         const idx = ordemSelecionados.indexOf(t);
@@ -176,6 +275,9 @@
     if(!timeline.length) return;
     timeline.shift();
     historicoCompleto.pop();
+
+    if(analise100Ativa) aplicarAnalise100();
+
     render();
   };
 
@@ -185,6 +287,7 @@
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
     faixa10Ativa = false;
+    analise100Ativa = false;
     render();
   };
 
@@ -192,6 +295,9 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
     historicoCompleto.push(n);
+
+    if(analise100Ativa) aplicarAnalise100();
+
     render();
   }
 
@@ -240,6 +346,9 @@
 
     btn10.style.background = faixa10Ativa ? "#ffc107" : "";
     btn10.style.color = faixa10Ativa ? "#000" : "";
+
+    btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
+    btnAnalise100.style.color = analise100Ativa ? "#000" : "";
 
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
