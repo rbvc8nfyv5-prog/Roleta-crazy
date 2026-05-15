@@ -26,6 +26,8 @@
   let expandido = false;
   let faixa10Ativa = false;
   let analise100Ativa = false;
+  let analiseColunasAtiva = false;
+  let colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -164,6 +166,52 @@
     atualizarModosPorOrdem();
   }
 
+  function analisarColunas(){
+    const base = historicoCompleto.slice().reverse();
+    let html = "";
+
+    colunasTopo.forEach(cId=>{
+      const cont = {};
+      for(let t=0;t<=9;t++) cont[t]=0;
+
+      for(let t=0;t<=9;t++){
+        const cobertura = coberturaTerminal(t,1);
+
+        for(let i=0;i<base.length;i++){
+          const colunaDoNumero = colunasTopo[i % 12];
+
+          if(colunaDoNumero === cId && cobertura.has(base[i])){
+            cont[t]++;
+          }
+        }
+      }
+
+      const top = Object.entries(cont)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,2)
+        .map(x=>Number(x[0]));
+
+      html += `
+        <span style="
+          display:inline-block;
+          margin:2px;
+          padding:4px 6px;
+          background:#222;
+          border:1px solid #555;
+          border-radius:4px;
+          font-size:12px;
+          color:#fff;
+        ">
+          C${cId}: 
+          <b style="color:${corTerminal[top[0]]}">T${top[0]}</b> /
+          <b style="color:${corTerminal[top[1]]}">T${top[1]}</b>
+        </span>
+      `;
+    });
+
+    return html;
+  }
+
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -193,11 +241,12 @@
         <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button id="btnUndo">Apagar último</button>
         <button id="btnClear">Apagar tudo</button>
         <button id="btn10">10</button>
         <button id="btnAnalise100">Análise 100</button>
+        <button id="btnAnaliseColunas">Análise Colunas</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -206,6 +255,8 @@
       </div>
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
+
+      <div id="analiseColunasBox" style="display:none;margin-top:10px"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
@@ -219,6 +270,8 @@
         .filter(n=>n>=0 && n<=36);
 
       timeline = historicoCompleto.slice(-14).reverse();
+      colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
+
       inputHist.style.display="none";
 
       if(analise100Ativa) aplicarAnalise100();
@@ -239,6 +292,11 @@
       aplicarAnalise100();
     }
 
+    render();
+  };
+
+  btnAnaliseColunas.onclick = ()=>{
+    analiseColunasAtiva = !analiseColunasAtiva;
     render();
   };
 
@@ -276,6 +334,11 @@
     timeline.shift();
     historicoCompleto.pop();
 
+    if(analiseColunasAtiva){
+      const primeiro = colunasTopo.shift();
+      colunasTopo.push(primeiro);
+    }
+
     if(analise100Ativa) aplicarAnalise100();
 
     render();
@@ -288,12 +351,20 @@
     analises.MANUAL.filtros.clear();
     faixa10Ativa = false;
     analise100Ativa = false;
+    analiseColunasAtiva = false;
+    colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
     render();
   };
 
   function add(n){
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
+
+    if(analiseColunasAtiva){
+      const ultimo = colunasTopo.pop();
+      colunasTopo.unshift(ultimo);
+    }
+
     historicoCompleto.push(n);
 
     if(analise100Ativa) aplicarAnalise100();
@@ -350,6 +421,9 @@
     btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
     btnAnalise100.style.color = analise100Ativa ? "#000" : "";
 
+    btnAnaliseColunas.style.background = analiseColunasAtiva ? "#00bcd4" : "";
+    btnAnaliseColunas.style.color = analiseColunasAtiva ? "#000" : "";
+
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
       const ativo = analises.MANUAL.filtros.has(t);
@@ -403,7 +477,26 @@
       conjArea.style.display = "block";
 
       conjArea.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:4px">
+        ${analiseColunasAtiva ? `
+          <div style="
+            display:grid;
+            grid-template-columns:repeat(12,minmax(26px,1fr));
+            gap:4px;
+            margin-bottom:4px;
+            font-size:10px;
+            font-weight:700;
+            color:#ffc107;
+            text-align:center;
+          ">
+            ${colunasTopo.map(c=>`
+              <div style="border:1px solid #555;background:#111;border-radius:4px;padding:2px">
+                C${c}
+              </div>
+            `).join("")}
+          </div>
+        ` : ``}
+
+        <div style="display:grid;grid-template-columns:${analiseColunasAtiva ? 'repeat(12,minmax(26px,1fr))' : 'repeat(auto-fit,minmax(26px,1fr))'};gap:4px">
           ${base.map(n=>`
             <div style="
               height:26px;
@@ -423,6 +516,14 @@
       `;
     } else {
       conjArea.style.display = "none";
+    }
+
+    if(analiseColunasAtiva && historicoCompleto.length){
+      analiseColunasBox.style.display = "block";
+      analiseColunasBox.innerHTML = analisarColunas();
+    } else {
+      analiseColunasBox.style.display = "none";
+      analiseColunasBox.innerHTML = "";
     }
 
     desenharRadar();
