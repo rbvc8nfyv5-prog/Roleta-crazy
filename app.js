@@ -26,9 +26,7 @@
   let expandido = false;
   let faixa10Ativa = false;
   let analise100Ativa = false;
-  let analiseColunasAtiva = false;
-  let colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
-  let validacoesColuna = [];
+  let analiseCasasAtiva = false;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -101,6 +99,68 @@
     return set;
   }
 
+  function casasEntre(a,b,dir){
+    const ia = track.indexOf(a);
+    const ib = track.indexOf(b);
+    const lista = [];
+    let i = ia;
+
+    while(true){
+      i = dir === "H" ? (i+1)%37 : (i+36)%37;
+      if(i === ib) break;
+      lista.push(track[i]);
+      if(lista.length > 36) break;
+    }
+
+    return lista;
+  }
+
+  function numeroDepois(n,qtd,dir){
+    let i = track.indexOf(n);
+
+    for(let c=0;c<qtd;c++){
+      i = dir === "H" ? (i+1)%37 : (i+36)%37;
+    }
+
+    return track[i];
+  }
+
+  function analisarCasas(){
+    if(timeline.length < 2){
+      return "Insira pelo menos 2 números";
+    }
+
+    const atual = timeline[0];
+    const anterior = timeline[1];
+
+    const horario = casasEntre(anterior, atual, "H");
+    const anti = casasEntre(anterior, atual, "A");
+
+    const qtdH = horario.length;
+    const qtdA = anti.length;
+
+    const alvoHAnterior = numeroDepois(anterior, qtdH, "H");
+    const alvoAAnterior = numeroDepois(anterior, qtdH, "A");
+
+    const alvoHAtual = numeroDepois(atual, qtdH, "H");
+    const alvoAAtual = numeroDepois(atual, qtdH, "A");
+
+    return `
+      <div style="color:#fff;font-size:13px;line-height:1.5">
+        <b style="color:#ffc107">Análise Casas:</b>
+        ${anterior} → ${atual}
+        <br>
+        Horário: <b>${qtdH}</b> casas | Dentro: ${horario.length ? horario.join(" - ") : "nenhum"}
+        <br>
+        Anti-horário: <b>${qtdA}</b> casas | Dentro: ${anti.length ? anti.join(" - ") : "nenhum"}
+        <br>
+        ${qtdH} casas do ${anterior}: H ${alvoHAnterior} / A ${alvoAAnterior}
+        <br>
+        ${qtdH} casas do ${atual}: H ${alvoHAtual} / A ${alvoAAtual}
+      </div>
+    `;
+  }
+
   function aplicarAnalise100(){
     if(historicoCompleto.length < 3) return;
 
@@ -167,136 +227,6 @@
     atualizarModosPorOrdem();
   }
 
-  function calcularJogadasColunas(){
-    const base = historicoCompleto.slice().reverse();
-    const mapa = {};
-
-    colunasTopo.forEach(cId=>{
-      let melhor1 = null;
-
-      for(let t1=0;t1<=9;t1++){
-        const cov1 = coberturaTerminal(t1,1);
-
-        let green = 0;
-        let red = 0;
-
-        for(let i=0;i<base.length;i++){
-          const colunaDoNumero = colunasTopo[i % 12];
-
-          if(colunaDoNumero === cId){
-            if(cov1.has(base[i])){
-              green++;
-            } else {
-              red++;
-            }
-          }
-        }
-
-        const total = green + red;
-        const taxa = total ? green / total : 0;
-
-        const teste = { cId, t1, green, red, taxa };
-
-        if(
-          !melhor1 ||
-          teste.green > melhor1.green ||
-          (teste.green === melhor1.green && teste.red < melhor1.red) ||
-          (teste.green === melhor1.green && teste.red === melhor1.red && teste.taxa > melhor1.taxa)
-        ){
-          melhor1 = teste;
-        }
-      }
-
-      if(!melhor1) return;
-
-      let melhor2 = null;
-
-      for(let t2=0;t2<=9;t2++){
-        if(t2 === melhor1.t1) continue;
-
-        const cov1 = coberturaTerminal(melhor1.t1,1);
-        const cov2 = coberturaTerminal(t2,2);
-        const cobertura = new Set([...cov1, ...cov2]);
-
-        let green = 0;
-        let red = 0;
-
-        for(let i=0;i<base.length;i++){
-          const colunaDoNumero = colunasTopo[i % 12];
-
-          if(colunaDoNumero === cId){
-            if(cobertura.has(base[i])){
-              green++;
-            } else {
-              red++;
-            }
-          }
-        }
-
-        const total = green + red;
-        const taxa = total ? green / total : 0;
-
-        const teste = { cId, t1:melhor1.t1, t2, green, red, taxa };
-
-        if(
-          !melhor2 ||
-          teste.green > melhor2.green ||
-          (teste.green === melhor2.green && teste.red < melhor2.red) ||
-          (teste.green === melhor2.green && teste.red === melhor2.red && teste.taxa > melhor2.taxa)
-        ){
-          melhor2 = teste;
-        }
-      }
-
-      mapa[cId] = melhor2;
-    });
-
-    return mapa;
-  }
-
-  function analisarColunas(){
-    const jogadas = calcularJogadasColunas();
-    let html = "";
-
-    colunasTopo.forEach(cId=>{
-      const j = jogadas[cId];
-
-      if(!j) return;
-
-      html += `
-        <span style="
-          display:inline-block;
-          margin:2px;
-          padding:4px 6px;
-          background:#222;
-          border:1px solid #555;
-          border-radius:4px;
-          font-size:12px;
-          color:#fff;
-        ">
-          C${cId}: 
-          <b style="color:${corTerminal[j.t1]}">T${j.t1} 1v</b> /
-          <b style="color:${corTerminal[j.t2]}">T${j.t2} 2v</b>
-        </span>
-      `;
-    });
-
-    return html;
-  }
-
-  function validarEntradaColuna(n, colunaId){
-    const jogadas = calcularJogadasColunas();
-    const j = jogadas[colunaId];
-
-    if(!j) return null;
-
-    const cov1 = coberturaTerminal(j.t1,1);
-    const cov2 = coberturaTerminal(j.t2,2);
-    const cobertura = new Set([...cov1, ...cov2]);
-
-    return cobertura.has(n) ? "V" : "X";
-  }
-
   document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
@@ -331,7 +261,7 @@
         <button id="btnClear">Apagar tudo</button>
         <button id="btn10">10</button>
         <button id="btnAnalise100">Análise 100</button>
-        <button id="btnAnaliseColunas">Análise Colunas</button>
+        <button id="btnAnaliseCasas">Análise Casas</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -341,7 +271,7 @@
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
 
-      <div id="analiseColunasBox" style="display:none;margin-top:10px"></div>
+      <div id="analiseCasasBox" style="display:none;margin-top:10px"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
@@ -355,9 +285,6 @@
         .filter(n=>n>=0 && n<=36);
 
       timeline = historicoCompleto.slice(-14).reverse();
-      validacoesColuna = timeline.map(()=>null);
-      colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
-
       inputHist.style.display="none";
 
       if(analise100Ativa) aplicarAnalise100();
@@ -381,8 +308,8 @@
     render();
   };
 
-  btnAnaliseColunas.onclick = ()=>{
-    analiseColunasAtiva = !analiseColunasAtiva;
+  btnAnaliseCasas.onclick = ()=>{
+    analiseCasasAtiva = !analiseCasasAtiva;
     render();
   };
 
@@ -418,13 +345,7 @@
   btnUndo.onclick = ()=>{
     if(!timeline.length) return;
     timeline.shift();
-    validacoesColuna.shift();
     historicoCompleto.pop();
-
-    if(analiseColunasAtiva){
-      const primeiro = colunasTopo.shift();
-      colunasTopo.push(primeiro);
-    }
 
     if(analise100Ativa) aplicarAnalise100();
 
@@ -434,36 +355,17 @@
   btnClear.onclick = ()=>{
     timeline = [];
     historicoCompleto = [];
-    validacoesColuna = [];
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
     faixa10Ativa = false;
     analise100Ativa = false;
-    analiseColunasAtiva = false;
-    colunasTopo = [1,2,3,4,5,6,7,8,9,10,11,12];
+    analiseCasasAtiva = false;
     render();
   };
 
   function add(n){
-    let resultadoColuna = null;
-    let colunaEntrada = null;
-
-    if(analiseColunasAtiva){
-      colunaEntrada = colunasTopo[colunasTopo.length - 1];
-      resultadoColuna = validarEntradaColuna(n, colunaEntrada);
-    }
-
     timeline.unshift(n);
-    validacoesColuna.unshift(resultadoColuna);
-
     if(timeline.length>14) timeline.pop();
-    if(validacoesColuna.length>14) validacoesColuna.pop();
-
-    if(analiseColunasAtiva){
-      const ultimo = colunasTopo.pop();
-      colunasTopo.unshift(ultimo);
-    }
-
     historicoCompleto.push(n);
 
     if(analise100Ativa) aplicarAnalise100();
@@ -512,15 +414,7 @@
 
   function render(){
 
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r = validacoesColuna[i];
-      const cor =
-        r === "V" ? "#00e676" :
-        r === "X" ? "#ff5252" :
-        "#fff";
-
-      return `<span style="color:${cor}">${n}</span>`;
-    }).join(" · ");
+    tl.innerHTML = timeline.join(" · ");
 
     btn10.style.background = faixa10Ativa ? "#ffc107" : "";
     btn10.style.color = faixa10Ativa ? "#000" : "";
@@ -528,8 +422,8 @@
     btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
     btnAnalise100.style.color = analise100Ativa ? "#000" : "";
 
-    btnAnaliseColunas.style.background = analiseColunasAtiva ? "#00bcd4" : "";
-    btnAnaliseColunas.style.color = analiseColunasAtiva ? "#000" : "";
+    btnAnaliseCasas.style.background = analiseCasasAtiva ? "#00bcd4" : "";
+    btnAnaliseCasas.style.color = analiseCasasAtiva ? "#000" : "";
 
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
@@ -584,26 +478,7 @@
       conjArea.style.display = "block";
 
       conjArea.innerHTML = `
-        ${analiseColunasAtiva ? `
-          <div style="
-            display:grid;
-            grid-template-columns:repeat(12,minmax(26px,1fr));
-            gap:4px;
-            margin-bottom:4px;
-            font-size:10px;
-            font-weight:700;
-            color:#ffc107;
-            text-align:center;
-          ">
-            ${colunasTopo.map(c=>`
-              <div style="border:1px solid #555;background:#111;border-radius:4px;padding:2px">
-                C${c}
-              </div>
-            `).join("")}
-          </div>
-        ` : ``}
-
-        <div style="display:grid;grid-template-columns:${analiseColunasAtiva ? 'repeat(12,minmax(26px,1fr))' : 'repeat(auto-fit,minmax(26px,1fr))'};gap:4px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:4px">
           ${base.map(n=>`
             <div style="
               height:26px;
@@ -625,12 +500,12 @@
       conjArea.style.display = "none";
     }
 
-    if(analiseColunasAtiva && historicoCompleto.length){
-      analiseColunasBox.style.display = "block";
-      analiseColunasBox.innerHTML = analisarColunas();
+    if(analiseCasasAtiva){
+      analiseCasasBox.style.display = "block";
+      analiseCasasBox.innerHTML = analisarCasas();
     } else {
-      analiseColunasBox.style.display = "none";
-      analiseColunasBox.innerHTML = "";
+      analiseCasasBox.style.display = "none";
+      analiseCasasBox.innerHTML = "";
     }
 
     desenharRadar();
