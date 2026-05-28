@@ -21,6 +21,13 @@
     9:"#ff00ff"
   };
 
+  function corDuzia(n){
+    if(n >= 1 && n <= 12) return "#00e676";
+    if(n >= 13 && n <= 24) return "#ffc107";
+    if(n >= 25 && n <= 36) return "#ff5252";
+    return "#ffffff";
+  }
+
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
@@ -414,7 +421,9 @@
 
   function render(){
 
-    tl.innerHTML = timeline.join(" · ");
+    tl.innerHTML = timeline.map(n=>{
+      return `<span style="color:${corDuzia(n)}">${n}</span>`;
+    }).join(" · ");
 
     btn10.style.background = faixa10Ativa ? "#ffc107" : "";
     btn10.style.color = faixa10Ativa ? "#000" : "";
