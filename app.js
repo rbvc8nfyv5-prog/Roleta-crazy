@@ -31,9 +31,12 @@
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
-  let faixa10Ativa = false;
   let analise100Ativa = false;
-  let analiseCasasAtiva = false;
+
+  let crupierAtivo = false;
+  let crupierNome = "";
+  let crupierNumeros = [];
+  let historicoCrupiers = [];
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -106,70 +109,8 @@
     return set;
   }
 
-  function casasEntre(a,b,dir){
-    const ia = track.indexOf(a);
-    const ib = track.indexOf(b);
-    const lista = [];
-    let i = ia;
-
-    while(true){
-      i = dir === "H" ? (i+1)%37 : (i+36)%37;
-      if(i === ib) break;
-      lista.push(track[i]);
-      if(lista.length > 36) break;
-    }
-
-    return lista;
-  }
-
-  function numeroDepois(n,qtd,dir){
-    let i = track.indexOf(n);
-
-    for(let c=0;c<qtd;c++){
-      i = dir === "H" ? (i+1)%37 : (i+36)%37;
-    }
-
-    return track[i];
-  }
-
-  function analisarCasas(){
-    if(timeline.length < 2){
-      return "Insira pelo menos 2 números";
-    }
-
-    const atual = timeline[0];
-    const anterior = timeline[1];
-
-    const horario = casasEntre(anterior, atual, "H");
-    const anti = casasEntre(anterior, atual, "A");
-
-    const qtdH = horario.length;
-    const qtdA = anti.length;
-
-    const alvoHAnterior = numeroDepois(anterior, qtdH, "H");
-    const alvoAAnterior = numeroDepois(anterior, qtdH, "A");
-
-    const alvoHAtual = numeroDepois(atual, qtdH, "H");
-    const alvoAAtual = numeroDepois(atual, qtdH, "A");
-
-    return `
-      <div style="color:#fff;font-size:13px;line-height:1.5">
-        <b style="color:#ffc107">Análise Casas:</b>
-        ${anterior} → ${atual}
-        <br>
-        Horário: <b>${qtdH}</b> casas | Dentro: ${horario.length ? horario.join(" - ") : "nenhum"}
-        <br>
-        Anti-horário: <b>${qtdA}</b> casas | Dentro: ${anti.length ? anti.join(" - ") : "nenhum"}
-        <br>
-        ${qtdH} casas do ${anterior}: H ${alvoHAnterior} / A ${alvoAAnterior}
-        <br>
-        ${qtdH} casas do ${atual}: H ${alvoHAtual} / A ${alvoAAtual}
-      </div>
-    `;
-  }
-
-  function aplicarAnalise100(){
-    if(historicoCompleto.length < 3) return;
+  function melhorAnalise100(base){
+    if(base.length < 3) return null;
 
     let melhor = null;
 
@@ -186,10 +127,10 @@
         let green = 0;
         let red = 0;
 
-        const base = historicoCompleto.slice(-100);
+        const lista = base.slice(-100);
 
-        for(let i=0;i<base.length-1;i++){
-          const prox = base[i+1];
+        for(let i=0;i<lista.length-1;i++){
+          const prox = lista[i+1];
 
           if(cobertura.has(prox)){
             green++;
@@ -220,6 +161,12 @@
       }
     }
 
+    return melhor;
+  }
+
+  function aplicarAnalise100(){
+    const melhor = melhorAnalise100(historicoCompleto);
+
     if(!melhor) return;
 
     analises.MANUAL.filtros.clear();
@@ -232,6 +179,108 @@
     ordemSelecionados.push(melhor.t1);
 
     atualizarModosPorOrdem();
+  }
+
+  function salvarCrupierAtual(){
+    if(!crupierAtivo) return;
+
+    const melhor = melhorAnalise100(crupierNumeros);
+
+    historicoCrupiers.push({
+      nome: crupierNome,
+      total: crupierNumeros.length,
+      numeros: crupierNumeros.slice(),
+      melhor
+    });
+
+    crupierAtivo = false;
+    crupierNome = "";
+    crupierNumeros = [];
+  }
+
+  function resumoUltimoCrupier(nome){
+    const sessoes = historicoCrupiers.filter(c => c.nome.toLowerCase() === nome.toLowerCase());
+    if(!sessoes.length) return "";
+
+    const c = sessoes[sessoes.length - 1];
+
+    if(!c.melhor){
+      return `${nome}\nÚltima sessão: sem dados suficientes\nGiros: ${c.total}`;
+    }
+
+    return `${nome}
+Última sessão:
+T${c.melhor.t2} 2v / T${c.melhor.t1} 1v
+Green: ${c.melhor.green}
+Red: ${c.melhor.red}
+Taxa: ${(c.melhor.taxa*100).toFixed(1)}%
+Giros: ${c.total}`;
+  }
+
+  function iniciarNovoCrupier(){
+    const nome = prompt("Nome do crupiê:");
+    if(!nome) return;
+
+    const resumo = resumoUltimoCrupier(nome);
+    if(resumo){
+      const ok = confirm(resumo + "\n\nIniciar nova sessão para esse crupiê?");
+      if(!ok) return;
+    }
+
+    crupierAtivo = true;
+    crupierNome = nome;
+    crupierNumeros = [];
+  }
+
+  function renderCrupierBox(){
+    if(!historicoCrupiers.length && !crupierAtivo){
+      return "";
+    }
+
+    let html = "";
+
+    if(crupierAtivo){
+      html += `
+        <div style="
+          margin-top:8px;
+          padding:6px;
+          border:1px solid #00e676;
+          background:#102015;
+          color:#fff;
+          font-size:12px;
+          border-radius:4px;
+        ">
+          Crupiê ativo: <b style="color:#00e676">${crupierNome}</b>
+          | Giros: <b>${crupierNumeros.length}</b>
+        </div>
+      `;
+    }
+
+    historicoCrupiers.slice().reverse().forEach((c,i)=>{
+      html += `
+        <div style="
+          margin-top:6px;
+          padding:6px;
+          border:1px solid #555;
+          background:#222;
+          color:#fff;
+          font-size:12px;
+          border-radius:4px;
+        ">
+          <b>${c.nome}</b> — Sessão ${historicoCrupiers.length - i}
+          ${c.melhor 
+            ? `<br><span style="color:${corTerminal[c.melhor.t2]}">T${c.melhor.t2} 2v</span> /
+               <span style="color:${corTerminal[c.melhor.t1]}">T${c.melhor.t1} 1v</span>
+               | Green: ${c.melhor.green}
+               | Red: ${c.melhor.red}
+               | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
+            : `<br>Sem dados suficientes`}
+          | Giros: ${c.total}
+        </div>
+      `;
+    });
+
+    return html;
   }
 
   document.body.style.background="#111";
@@ -266,19 +315,18 @@
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button id="btnUndo">Apagar último</button>
         <button id="btnClear">Apagar tudo</button>
-        <button id="btn10">10</button>
         <button id="btnAnalise100">Análise 100</button>
-        <button id="btnAnaliseCasas">Análise Casas</button>
+        <button id="btnCrupier">Análise Crupiê</button>
       </div>
 
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
+      <div id="crupierBox"></div>
+
+      <div style="border:1px solid #555;padding:8px;margin-bottom:10px;margin-top:10px">
         Terminais:
         <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
       </div>
 
       <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
-
-      <div id="analiseCasasBox" style="display:none;margin-top:10px"></div>
 
       <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
     </div>
@@ -300,11 +348,6 @@
     },0);
   });
 
-  btn10.onclick = ()=>{
-    faixa10Ativa = !faixa10Ativa;
-    render();
-  };
-
   btnAnalise100.onclick = ()=>{
     analise100Ativa = !analise100Ativa;
 
@@ -315,8 +358,14 @@
     render();
   };
 
-  btnAnaliseCasas.onclick = ()=>{
-    analiseCasasAtiva = !analiseCasasAtiva;
+  btnCrupier.onclick = ()=>{
+    if(crupierAtivo){
+      salvarCrupierAtual();
+      iniciarNovoCrupier();
+    } else {
+      iniciarNovoCrupier();
+    }
+
     render();
   };
 
@@ -354,6 +403,10 @@
     timeline.shift();
     historicoCompleto.pop();
 
+    if(crupierAtivo && crupierNumeros.length){
+      crupierNumeros.pop();
+    }
+
     if(analise100Ativa) aplicarAnalise100();
 
     render();
@@ -364,9 +417,11 @@
     historicoCompleto = [];
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
-    faixa10Ativa = false;
     analise100Ativa = false;
-    analiseCasasAtiva = false;
+    crupierAtivo = false;
+    crupierNome = "";
+    crupierNumeros = [];
+    historicoCrupiers = [];
     render();
   };
 
@@ -374,6 +429,10 @@
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
     historicoCompleto.push(n);
+
+    if(crupierAtivo){
+      crupierNumeros.push(n);
+    }
 
     if(analise100Ativa) aplicarAnalise100();
 
@@ -425,14 +484,14 @@
       return `<span style="color:${corDuzia(n)}">${n}</span>`;
     }).join(" · ");
 
-    btn10.style.background = faixa10Ativa ? "#ffc107" : "";
-    btn10.style.color = faixa10Ativa ? "#000" : "";
-
     btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
     btnAnalise100.style.color = analise100Ativa ? "#000" : "";
 
-    btnAnaliseCasas.style.background = analiseCasasAtiva ? "#00bcd4" : "";
-    btnAnaliseCasas.style.color = analiseCasasAtiva ? "#000" : "";
+    btnCrupier.style.background = crupierAtivo ? "#ffc107" : "";
+    btnCrupier.style.color = crupierAtivo ? "#000" : "";
+    btnCrupier.textContent = crupierAtivo ? "Novo Crupiê" : "Análise Crupiê";
+
+    crupierBox.innerHTML = renderCrupierBox();
 
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
@@ -498,7 +557,7 @@
               color:#fff;
               font-size:10px;
               border-radius:4px;
-              border:${faixa10Ativa && n>=10 && n<=19 ? "3px solid #ffc107" : (n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333')};
+              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333'};
               box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || '#fff'}` : 'none'};
               animation:${n===ultimoNumero ? 'piscaStrong 0.8s infinite' : 'none'};
             ">${n}</div>
@@ -507,14 +566,6 @@
       `;
     } else {
       conjArea.style.display = "none";
-    }
-
-    if(analiseCasasAtiva){
-      analiseCasasBox.style.display = "block";
-      analiseCasasBox.innerHTML = analisarCasas();
-    } else {
-      analiseCasasBox.style.display = "none";
-      analiseCasasBox.innerHTML = "";
     }
 
     desenharRadar();
