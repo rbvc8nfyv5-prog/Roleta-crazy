@@ -254,8 +254,21 @@ Giros: ${c.total}`;
     inputHist.style.display = "block";
   }
 
-  function renderHistoricoNumeros(numeros){
+  function corNumeroAnalise(n, melhor){
+    if(!melhor) return "#777";
+
+    const cov2 = coberturaTerminal(melhor.t2,2);
+    const cov1 = coberturaTerminal(melhor.t1,1);
+
+    if(cov2.has(n)) return corTerminal[melhor.t2];
+    if(cov1.has(n)) return corTerminal[melhor.t1];
+
+    return "#777";
+  }
+
+  function renderHistoricoNumeros(numeros, melhor){
     if(!numeros || !numeros.length) return "";
+
     return `
       <div style="
         margin-top:6px;
@@ -265,14 +278,35 @@ Giros: ${c.total}`;
         border-radius:4px;
         color:#ccc;
         font-size:11px;
-        line-height:1.4;
+        line-height:1.6;
         max-height:90px;
         overflow:auto;
       ">
         <b style="color:#ffc107">Histórico:</b><br>
-        ${numeros.join(" - ")}
+        ${numeros.map(n=>`
+          <span style="
+            color:${corNumeroAnalise(n, melhor)};
+            font-weight:700;
+            display:inline-block;
+            margin:1px 3px;
+          ">${n}</span>
+        `).join("")}
       </div>
     `;
+  }
+
+  function apagarCrupier(id){
+    const ok = confirm("Apagar este crupiê e todo o histórico dele?");
+    if(!ok) return;
+
+    historicoCrupiers = historicoCrupiers.filter(c=>c.id !== id);
+
+    if(crupierAberto === id){
+      crupierAberto = null;
+    }
+
+    salvarLocal();
+    render();
   }
 
   function renderCrupierBox(){
@@ -281,6 +315,8 @@ Giros: ${c.total}`;
     let html = "";
 
     if(crupierAtivo){
+      const melhorAtual = melhorAnalise100(crupierNumeros);
+
       html += `
         <div style="
           margin-top:8px;
@@ -295,6 +331,7 @@ Giros: ${c.total}`;
           | Giros: <b>${crupierNumeros.length}</b>
           | Início: <b>${crupierInicio}</b>
           ${renderTop6(crupierNumeros)}
+          ${renderHistoricoNumeros(crupierNumeros, melhorAtual)}
         </div>
       `;
     }
@@ -316,17 +353,32 @@ Giros: ${c.total}`;
             cursor:pointer;
           "
         >
-          <b>${aberto ? "▼" : "▶"} ${c.nome}</b> — ${c.dataFim || ""}
-          ${c.melhor 
-            ? `<br><span style="color:${corTerminal[c.melhor.t2]}">T${c.melhor.t2} 2v</span> /
-               <span style="color:${corTerminal[c.melhor.t1]}">T${c.melhor.t1} 1v</span>
-               | Green: ${c.melhor.green}
-               | Red: ${c.melhor.red}
-               | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
-            : `<br>Sem dados suficientes`}
-          | Giros: ${c.total}
-          ${renderTop6(c.numeros || [])}
-          ${aberto ? renderHistoricoNumeros(c.numeros || []) : ""}
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <b>${aberto ? "▼" : "▶"} ${c.nome}</b>
+            <button data-delete-crupier="${c.id}" style="
+              background:#ff5252;
+              color:#fff;
+              border:0;
+              border-radius:4px;
+              padding:2px 6px;
+              font-size:11px;
+              font-weight:700;
+            ">Apagar</button>
+          </div>
+
+          <div style="margin-top:3px">
+            ${c.dataFim || ""}
+            ${c.melhor 
+              ? `<br><span style="color:${corTerminal[c.melhor.t2]}">T${c.melhor.t2} 2v</span> /
+                 <span style="color:${corTerminal[c.melhor.t1]}">T${c.melhor.t1} 1v</span>
+                 | Green: ${c.melhor.green}
+                 | Red: ${c.melhor.red}
+                 | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
+              : `<br>Sem dados suficientes`}
+            | Giros: ${c.total}
+            ${renderTop6(c.numeros || [])}
+            ${aberto ? renderHistoricoNumeros(c.numeros || [], c.melhor) : ""}
+          </div>
         </div>
       `;
     });
@@ -427,6 +479,13 @@ Giros: ${c.total}`;
   };
 
   crupierBox.onclick = (e)=>{
+    const del = e.target.closest("[data-delete-crupier]");
+    if(del){
+      e.stopPropagation();
+      apagarCrupier(Number(del.getAttribute("data-delete-crupier")));
+      return;
+    }
+
     const card = e.target.closest("[data-crupier-id]");
     if(!card) return;
 
