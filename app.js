@@ -89,6 +89,17 @@
     return [ track[(i+35)%37], track[(i+2)%37] ];
   }
 
+  function distanciaFisica(a,b){
+    const ia = track.indexOf(a);
+    const ib = track.indexOf(b);
+    let d = Math.abs(ia - ib);
+    return Math.min(d, 37 - d);
+  }
+
+  function conflita2V(n, usados){
+    return usados.some(u => distanciaFisica(n,u) <= 4);
+  }
+
   function coberturaTerminal(t, qtd){
     const set = new Set();
     track.forEach(n=>{
@@ -100,30 +111,66 @@
     return set;
   }
 
-  function top6Quentes(base){
+  function top5Quentes2V(base){
     const cont = {};
     track.forEach(n=>cont[n]=0);
     base.forEach(n=>{
       if(cont[n] !== undefined) cont[n]++;
     });
 
-    return Object.entries(cont)
+    const ordenados = Object.entries(cont)
       .sort((a,b)=>b[1]-a[1])
       .filter(x=>x[1] > 0)
-      .slice(0,6)
       .map(x=>Number(x[0]));
+
+    const final = [];
+
+    ordenados.forEach(n=>{
+      if(final.length < 5 && !conflita2V(n, final)){
+        final.push(n);
+      }
+    });
+
+    track.forEach(n=>{
+      if(final.length < 5 && !conflita2V(n, final)){
+        final.push(n);
+      }
+    });
+
+    return final;
   }
 
-  function renderTop6(base){
-    const tops = top6Quentes(base);
+  function percentualTop2V(base, tops){
+    if(!base.length || !tops.length) return 0;
+
+    const cobertura = new Set();
+    tops.forEach(n=>{
+      vizinhos2(n).forEach(v=>cobertura.add(v));
+    });
+
+    let acertos = 0;
+    base.forEach(n=>{
+      if(cobertura.has(n)) acertos++;
+    });
+
+    return (acertos / base.length) * 100;
+  }
+
+  function renderTop2V(base){
+    const tops = top5Quentes2V(base);
     if(!tops.length) return "";
+
+    const pct = percentualTop2V(base, tops);
 
     return `
       <div style="margin-top:6px;font-size:12px;color:#fff">
-        <b style="color:#ffc107">Top quente 1v:</b>
+        <b style="color:#ffc107">Top quente 2v:</b>
         <span style="font-weight:700;color:#fff">
           ${tops.join(" - ")}
         </span>
+        <br>
+        <b style="color:#00e676">Acerto:</b>
+        <span style="font-weight:700;color:#00e676">${pct.toFixed(1)}%</span>
       </div>
     `;
   }
@@ -186,6 +233,7 @@
     if(!crupierAtivo) return;
 
     const melhor = melhorAnalise100(crupierNumeros);
+    const top2v = top5Quentes2V(crupierNumeros);
 
     historicoCrupiers.push({
       id: Date.now(),
@@ -194,7 +242,8 @@
       dataFim: dataAgora(),
       total: crupierNumeros.length,
       numeros: crupierNumeros.slice(),
-      top6: top6Quentes(crupierNumeros),
+      top2v: top2v,
+      taxaTop2v: percentualTop2V(crupierNumeros, top2v),
       melhor
     });
 
@@ -222,7 +271,8 @@ T${c.melhor.t2} 2v / T${c.melhor.t1} 1v
 Green: ${c.melhor.green}
 Red: ${c.melhor.red}
 Taxa: ${(c.melhor.taxa*100).toFixed(1)}%
-Top quente: ${(c.top6 || []).join(" - ")}
+Top quente 2v: ${(c.top2v || []).join(" - ")}
+Acerto Top 2v: ${((c.taxaTop2v || 0)).toFixed(1)}%
 Data: ${c.dataFim || ""}
 Giros: ${c.total}`;
   }
@@ -330,7 +380,7 @@ Giros: ${c.total}`;
           Crupiê ativo: <b style="color:#00e676">${crupierNome}</b>
           | Giros: <b>${crupierNumeros.length}</b>
           | Início: <b>${crupierInicio}</b>
-          ${renderTop6(crupierNumeros)}
+          ${renderTop2V(crupierNumeros)}
           ${renderHistoricoNumeros(crupierNumeros, melhorAtual)}
         </div>
       `;
@@ -376,7 +426,7 @@ Giros: ${c.total}`;
                  | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
               : `<br>Sem dados suficientes`}
             | Giros: ${c.total}
-            ${renderTop6(c.numeros || [])}
+            ${renderTop2V(c.numeros || [])}
             ${aberto ? renderHistoricoNumeros(c.numeros || [], c.melhor) : ""}
           </div>
         </div>
