@@ -25,6 +25,10 @@
   let expandido = false;
   let analise100Ativa = false;
 
+  let analiseTravada = false;
+  let complexoTravado = null;
+  let top5Travado = [];
+
   let crupierAtivo = false;
   let crupierNome = "";
   let crupierNumeros = [];
@@ -151,6 +155,10 @@
   function melhorComplexo(base){
     if(!base || !base.length) return null;
 
+    if(analiseTravada && complexoTravado){
+      return analisarComplexo(base, complexoTravado);
+    }
+
     let melhor = null;
 
     complexosFixos.forEach(c=>{
@@ -190,9 +198,14 @@
     return (acertos / base.length) * 100;
   }
 
-  function top5Quentes2VMelhorado(base){
+  function top5Quentes2VMelhorado(base, complexoRef){
+    if(analiseTravada && top5Travado.length){
+      return top5Travado.slice();
+    }
+
     const final = [];
     const usados = new Set();
+    const coberturaRef = complexoRef ? coberturaComplexo(complexoRef) : null;
 
     while(final.length < 5){
       let melhor = null;
@@ -201,6 +214,14 @@
         if(conflita2V(c, final)) return;
 
         const bloco = vizinhos2(c);
+
+        let toqueComplexo = 0;
+        if(coberturaRef){
+          bloco.forEach(n=>{
+            if(coberturaRef.has(n)) toqueComplexo++;
+          });
+        }
+
         let ganho = 0;
         let totalBloco = 0;
 
@@ -211,15 +232,15 @@
           }
         });
 
-        const score = (ganho * 10) + totalBloco;
+        const score = (ganho * 10) + totalBloco + (toqueComplexo * 4);
 
-        const teste = { c, ganho, totalBloco, score };
+        const teste = { c, ganho, totalBloco, toqueComplexo, score };
 
         if(
           !melhor ||
           teste.score > melhor.score ||
           (teste.score === melhor.score && teste.ganho > melhor.ganho) ||
-          (teste.score === melhor.score && teste.ganho === melhor.ganho && teste.totalBloco > melhor.totalBloco)
+          (teste.score === melhor.score && teste.ganho === melhor.ganho && teste.toqueComplexo > melhor.toqueComplexo)
         ){
           melhor = teste;
         }
@@ -240,10 +261,15 @@
     return final;
   }
 
+  function top5Atual(base){
+    const comp = melhorComplexo(base);
+    return top5Quentes2VMelhorado(base, comp);
+  }
+
   function renderTop5(base){
     if(!base || !base.length) return "";
 
-    const tops = top5Quentes2VMelhorado(base);
+    const tops = top5Atual(base);
     const pct = percentualTop5(base, tops);
 
     return `
@@ -253,6 +279,7 @@
         <br>
         <b style="color:#00e676">Acerto Top 5:</b>
         <span style="font-weight:700;color:#00e676">${pct.toFixed(1)}%</span>
+        ${analiseTravada ? `<br><b style="color:#ffc107">🔒 Análise travada</b>` : `<br><b style="color:#00bcd4">🟢 Automático</b>`}
       </div>
     `;
   }
@@ -278,11 +305,40 @@
     aplicarComplexoNoManual(melhor);
   }
 
+  function travarAnalise(){
+    const base = crupierAtivo ? crupierNumeros : historicoCompleto;
+    if(!base || !base.length) return;
+
+    if(!analiseTravada){
+      const melhor = melhorComplexo(base);
+      if(!melhor) return;
+
+      complexoTravado = {
+        nome: melhor.nome,
+        t2: melhor.t2,
+        t1: melhor.t1
+      };
+
+      top5Travado = top5Quentes2VMelhorado(base, complexoTravado);
+      analiseTravada = true;
+
+      aplicarComplexoNoManual(complexoTravado);
+    } else {
+      analiseTravada = false;
+      complexoTravado = null;
+      top5Travado = [];
+
+      if(analise100Ativa) aplicarAnalise100();
+    }
+
+    render();
+  }
+
   function salvarCrupierAtual(){
     if(!crupierAtivo) return;
 
     const melhor = melhorComplexo(crupierNumeros);
-    const top5 = top5Quentes2VMelhorado(crupierNumeros);
+    const top5 = top5Atual(crupierNumeros);
 
     historicoCrupiers.push({
       id: Date.now(),
@@ -293,7 +349,8 @@
       numeros: crupierNumeros.slice(),
       top5,
       taxaTop5: percentualTop5(crupierNumeros, top5),
-      melhor
+      melhor,
+      travado: analiseTravada
     });
 
     salvarLocal();
@@ -343,6 +400,10 @@ Giros: ${c.total}`;
     ordemSelecionados.length = 0;
     for(let t=0;t<=9;t++) modosTerminais[t] = 0;
 
+    analiseTravada = false;
+    complexoTravado = null;
+    top5Travado = [];
+
     crupierAtivo = true;
     crupierNome = nome;
     crupierNumeros = [];
@@ -365,14 +426,9 @@ Giros: ${c.total}`;
     return "#777";
   }
 
-  function estaDentroComplexo(n, melhor){
-    if(!melhor) return false;
-    return coberturaComplexo(melhor).has(n);
-  }
-
   function dadosTop5(base){
     if(!base || !base.length) return { tops:[], cobertura:new Set() };
-    const tops = top5Quentes2VMelhorado(base);
+    const tops = top5Atual(base);
     return {
       tops,
       cobertura: coberturaCentrais2V(tops)
@@ -540,6 +596,7 @@ Giros: ${c.total}`;
                  | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
               : `<br>Sem dados suficientes`}
             | Giros: ${c.total}
+            ${c.travado ? `<br><b style="color:#ffc107">🔒 Sessão salva travada</b>` : ""}
             ${renderComplexos(c.numeros || [])}
             ${renderTop5(c.numeros || [])}
             ${aberto ? renderHistoricoNumeros(c.numeros || [], c.melhor) : ""}
@@ -584,6 +641,7 @@ Giros: ${c.total}`;
         <button id="btnUndo">Apagar último</button>
         <button id="btnClear">Apagar tudo</button>
         <button id="btnAnalise100">Análise 100</button>
+        <button id="btnTravarAnalise">Travar Análise</button>
         <button id="btnCrupier">Análise Crupiê</button>
       </div>
 
@@ -629,6 +687,10 @@ Giros: ${c.total}`;
     analise100Ativa = !analise100Ativa;
     if(analise100Ativa) aplicarAnalise100();
     render();
+  };
+
+  btnTravarAnalise.onclick = ()=>{
+    travarAnalise();
   };
 
   btnCrupier.onclick = ()=>{
@@ -707,6 +769,11 @@ Giros: ${c.total}`;
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
     analise100Ativa = false;
+
+    analiseTravada = false;
+    complexoTravado = null;
+    top5Travado = [];
+
     crupierAtivo = false;
     crupierNome = "";
     crupierNumeros = [];
@@ -768,6 +835,10 @@ Giros: ${c.total}`;
 
     btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
     btnAnalise100.style.color = analise100Ativa ? "#000" : "";
+
+    btnTravarAnalise.style.background = analiseTravada ? "#ffc107" : "";
+    btnTravarAnalise.style.color = analiseTravada ? "#000" : "";
+    btnTravarAnalise.textContent = analiseTravada ? "Análise Travada" : "Travar Análise";
 
     btnCrupier.style.background = crupierAtivo ? "#ffc107" : "";
     btnCrupier.style.color = crupierAtivo ? "#000" : "";
