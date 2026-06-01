@@ -57,6 +57,12 @@
   const ordemSelecionados = [];
   for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
 
+  const complexosFixos = [
+    { nome:"C3/9", t2:3, t1:9 },
+    { nome:"C2/3", t2:2, t1:3 },
+    { nome:"C4/8", t2:4, t1:8 }
+  ];
+
   function clarearCor(hex){
     hex = hex.replace("#","");
     let r = parseInt(hex.substring(0,2),16);
@@ -89,17 +95,6 @@
     return [ track[(i+35)%37], track[(i+2)%37] ];
   }
 
-  function distanciaFisica(a,b){
-    const ia = track.indexOf(a);
-    const ib = track.indexOf(b);
-    let d = Math.abs(ia - ib);
-    return Math.min(d, 37 - d);
-  }
-
-  function conflita2V(n, usados){
-    return usados.some(u => distanciaFisica(n,u) <= 4);
-  }
-
   function coberturaTerminal(t, qtd){
     const set = new Set();
     track.forEach(n=>{
@@ -111,129 +106,82 @@
     return set;
   }
 
-  function top5Quentes2V(base){
-    const cont = {};
-    track.forEach(n=>cont[n]=0);
+  function coberturaComplexo(c){
+    const cov2 = coberturaTerminal(c.t2,2);
+    const cov1 = coberturaTerminal(c.t1,1);
+    return new Set([...cov2, ...cov1]);
+  }
+
+  function analisarComplexo(base,c){
+    const cobertura = coberturaComplexo(c);
+
+    let green = 0;
+    let red = 0;
+
     base.forEach(n=>{
-      if(cont[n] !== undefined) cont[n]++;
+      if(cobertura.has(n)) green++;
+      else red++;
     });
 
-    const ordenados = Object.entries(cont)
-      .sort((a,b)=>b[1]-a[1])
-      .filter(x=>x[1] > 0)
-      .map(x=>Number(x[0]));
+    const total = green + red;
+    const taxa = total ? green / total : 0;
 
-    const final = [];
-
-    ordenados.forEach(n=>{
-      if(final.length < 5 && !conflita2V(n, final)){
-        final.push(n);
-      }
-    });
-
-    track.forEach(n=>{
-      if(final.length < 5 && !conflita2V(n, final)){
-        final.push(n);
-      }
-    });
-
-    return final;
+    return {
+      nome:c.nome,
+      t2:c.t2,
+      t1:c.t1,
+      green,
+      red,
+      taxa
+    };
   }
 
-  function percentualTop2V(base, tops){
-    if(!base.length || !tops.length) return 0;
+  function melhorComplexo(base){
+    if(!base || !base.length) return null;
 
-    const cobertura = new Set();
-    tops.forEach(n=>{
-      vizinhos2(n).forEach(v=>cobertura.add(v));
-    });
-
-    let acertos = 0;
-    base.forEach(n=>{
-      if(cobertura.has(n)) acertos++;
-    });
-
-    return (acertos / base.length) * 100;
-  }
-
-  function renderTop2V(base){
-    const tops = top5Quentes2V(base);
-    if(!tops.length) return "";
-
-    const pct = percentualTop2V(base, tops);
-
-    return `
-      <div style="margin-top:6px;font-size:12px;color:#fff">
-        <b style="color:#ffc107">Top quente 2v:</b>
-        <span style="font-weight:700;color:#fff">
-          ${tops.join(" - ")}
-        </span>
-        <br>
-        <b style="color:#00e676">Acerto:</b>
-        <span style="font-weight:700;color:#00e676">${pct.toFixed(1)}%</span>
-      </div>
-    `;
-  }
-
-  function melhorAnalise100(base){
-    if(base.length < 3) return null;
     let melhor = null;
 
-    for(let t2=0;t2<=9;t2++){
-      for(let t1=0;t1<=9;t1++){
-        if(t1 === t2) continue;
+    complexosFixos.forEach(c=>{
+      const teste = analisarComplexo(base,c);
 
-        const cov2 = coberturaTerminal(t2,2);
-        const cov1 = coberturaTerminal(t1,1);
-        const cobertura = new Set([...cov2, ...cov1]);
-
-        let green = 0, red = 0;
-        const lista = base.slice(-100);
-
-        for(let i=0;i<lista.length-1;i++){
-          const prox = lista[i+1];
-          if(cobertura.has(prox)) green++;
-          else red++;
-        }
-
-        const total = green + red;
-        const taxa = total ? green / total : 0;
-        const teste = { t2, t1, green, red, taxa };
-
-        if(
-          !melhor ||
-          teste.red < melhor.red ||
-          (teste.red === melhor.red && teste.green > melhor.green) ||
-          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
-        ){
-          melhor = teste;
-        }
+      if(
+        !melhor ||
+        teste.taxa > melhor.taxa ||
+        (teste.taxa === melhor.taxa && teste.green > melhor.green) ||
+        (teste.taxa === melhor.taxa && teste.green === melhor.green && teste.red < melhor.red)
+      ){
+        melhor = teste;
       }
-    }
+    });
+
     return melhor;
   }
 
-  function aplicarAnalise100(){
-    const melhor = melhorAnalise100(historicoCompleto);
-    if(!melhor) return;
+  function aplicarComplexoNoManual(c){
+    if(!c) return;
 
     analises.MANUAL.filtros.clear();
     ordemSelecionados.length = 0;
 
-    analises.MANUAL.filtros.add(melhor.t2);
-    ordemSelecionados.push(melhor.t2);
+    analises.MANUAL.filtros.add(c.t2);
+    ordemSelecionados.push(c.t2);
 
-    analises.MANUAL.filtros.add(melhor.t1);
-    ordemSelecionados.push(melhor.t1);
+    analises.MANUAL.filtros.add(c.t1);
+    ordemSelecionados.push(c.t1);
 
     atualizarModosPorOrdem();
+  }
+
+  function aplicarAnalise100(){
+    const melhor = melhorComplexo(historicoCompleto);
+    if(!melhor) return;
+    aplicarComplexoNoManual(melhor);
   }
 
   function salvarCrupierAtual(){
     if(!crupierAtivo) return;
 
-    const melhor = melhorAnalise100(crupierNumeros);
-    const top2v = top5Quentes2V(crupierNumeros);
+    const melhor = melhorComplexo(crupierNumeros);
 
     historicoCrupiers.push({
       id: Date.now(),
@@ -242,8 +190,6 @@
       dataFim: dataAgora(),
       total: crupierNumeros.length,
       numeros: crupierNumeros.slice(),
-      top2v: top2v,
-      taxaTop2v: percentualTop2V(crupierNumeros, top2v),
       melhor
     });
 
@@ -267,12 +213,10 @@
 
     return `${nome}
 Última sessão:
-T${c.melhor.t2} 2v / T${c.melhor.t1} 1v
+${c.melhor.nome}: T${c.melhor.t2} 2v / T${c.melhor.t1} 1v
 Green: ${c.melhor.green}
 Red: ${c.melhor.red}
 Taxa: ${(c.melhor.taxa*100).toFixed(1)}%
-Top quente 2v: ${(c.top2v || []).join(" - ")}
-Acerto Top 2v: ${((c.taxaTop2v || 0)).toFixed(1)}%
 Data: ${c.dataFim || ""}
 Giros: ${c.total}`;
   }
@@ -316,6 +260,11 @@ Giros: ${c.total}`;
     return "#777";
   }
 
+  function estaDentroComplexo(n, melhor){
+    if(!melhor) return false;
+    return coberturaComplexo(melhor).has(n);
+  }
+
   function renderHistoricoNumeros(numeros, melhor){
     if(!numeros || !numeros.length) return "";
 
@@ -328,19 +277,29 @@ Giros: ${c.total}`;
         border-radius:4px;
         color:#ccc;
         font-size:11px;
-        line-height:1.6;
+        line-height:1.8;
         max-height:90px;
         overflow:auto;
       ">
         <b style="color:#ffc107">Histórico:</b><br>
-        ${numeros.map(n=>`
-          <span style="
-            color:${corNumeroAnalise(n, melhor)};
-            font-weight:700;
-            display:inline-block;
-            margin:1px 3px;
-          ">${n}</span>
-        `).join("")}
+        ${numeros.map(n=>{
+          const dentro = estaDentroComplexo(n, melhor);
+          return `
+            <span style="
+              color:${corNumeroAnalise(n, melhor)};
+              font-weight:700;
+              display:inline-flex;
+              align-items:center;
+              justify-content:center;
+              width:${dentro ? "24px" : "auto"};
+              height:${dentro ? "24px" : "auto"};
+              border-radius:${dentro ? "50%" : "0"};
+              border:${dentro ? `2px solid ${corNumeroAnalise(n, melhor)}` : "0"};
+              background:${dentro ? "#000" : "transparent"};
+              margin:2px 3px;
+            ">${n}</span>
+          `;
+        }).join("")}
       </div>
     `;
   }
@@ -359,13 +318,48 @@ Giros: ${c.total}`;
     render();
   }
 
+  function renderComplexos(base){
+    if(!base || !base.length) return "";
+
+    const melhor = melhorComplexo(base);
+
+    const linhas = complexosFixos.map(c=>{
+      const r = analisarComplexo(base,c);
+      const ativo = melhor && melhor.nome === r.nome;
+
+      return `
+        <div style="
+          margin-top:4px;
+          padding:4px;
+          border:${ativo ? "2px solid #00e676" : "1px solid #444"};
+          background:${ativo ? "#102015" : "#111"};
+          border-radius:4px;
+        ">
+          <b style="color:${ativo ? "#00e676" : "#ffc107"}">${r.nome}</b>:
+          <span style="color:${corTerminal[r.t2]}">T${r.t2} 2v</span> /
+          <span style="color:${corTerminal[r.t1]}">T${r.t1} 1v</span>
+          | G: ${r.green}
+          | R: ${r.red}
+          | ${(r.taxa*100).toFixed(1)}%
+        </div>
+      `;
+    }).join("");
+
+    return `
+      <div style="margin-top:6px;font-size:12px;color:#fff">
+        <b style="color:#ffc107">Complexos fixos:</b>
+        ${linhas}
+      </div>
+    `;
+  }
+
   function renderCrupierBox(){
     if(!historicoCrupiers.length && !crupierAtivo) return "";
 
     let html = "";
 
     if(crupierAtivo){
-      const melhorAtual = melhorAnalise100(crupierNumeros);
+      const melhorAtual = melhorComplexo(crupierNumeros);
 
       html += `
         <div style="
@@ -380,7 +374,7 @@ Giros: ${c.total}`;
           Crupiê ativo: <b style="color:#00e676">${crupierNome}</b>
           | Giros: <b>${crupierNumeros.length}</b>
           | Início: <b>${crupierInicio}</b>
-          ${renderTop2V(crupierNumeros)}
+          ${renderComplexos(crupierNumeros)}
           ${renderHistoricoNumeros(crupierNumeros, melhorAtual)}
         </div>
       `;
@@ -419,14 +413,15 @@ Giros: ${c.total}`;
           <div style="margin-top:3px">
             ${c.dataFim || ""}
             ${c.melhor 
-              ? `<br><span style="color:${corTerminal[c.melhor.t2]}">T${c.melhor.t2} 2v</span> /
+              ? `<br><b style="color:#00e676">${c.melhor.nome}</b>:
+                 <span style="color:${corTerminal[c.melhor.t2]}">T${c.melhor.t2} 2v</span> /
                  <span style="color:${corTerminal[c.melhor.t1]}">T${c.melhor.t1} 1v</span>
                  | Green: ${c.melhor.green}
                  | Red: ${c.melhor.red}
                  | Taxa: ${(c.melhor.taxa*100).toFixed(1)}%`
               : `<br>Sem dados suficientes`}
             | Giros: ${c.total}
-            ${renderTop2V(c.numeros || [])}
+            ${renderComplexos(c.numeros || [])}
             ${aberto ? renderHistoricoNumeros(c.numeros || [], c.melhor) : ""}
           </div>
         </div>
