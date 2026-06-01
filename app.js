@@ -95,6 +95,17 @@
     return [ track[(i+35)%37], track[(i+2)%37] ];
   }
 
+  function distanciaFisica(a,b){
+    const ia = track.indexOf(a);
+    const ib = track.indexOf(b);
+    let d = Math.abs(ia - ib);
+    return Math.min(d, 37 - d);
+  }
+
+  function conflita2V(n, usados){
+    return usados.some(u => distanciaFisica(n,u) <= 4);
+  }
+
   function coberturaTerminal(t, qtd){
     const set = new Set();
     track.forEach(n=>{
@@ -114,7 +125,6 @@
 
   function analisarComplexo(base,c){
     const cobertura = coberturaComplexo(c);
-
     let green = 0;
     let red = 0;
 
@@ -157,6 +167,94 @@
     return melhor;
   }
 
+  function coberturaCentrais2V(centrais){
+    const set = new Set();
+    centrais.forEach(c=>{
+      vizinhos2(c).forEach(v=>set.add(v));
+    });
+    return set;
+  }
+
+  function percentualTop5(base, tops){
+    if(!base.length || !tops.length) return 0;
+
+    const cobertura = coberturaCentrais2V(tops);
+    let acertos = 0;
+
+    base.forEach(n=>{
+      if(cobertura.has(n)) acertos++;
+    });
+
+    return (acertos / base.length) * 100;
+  }
+
+  function top5Quentes2VMelhorado(base){
+    const final = [];
+    const usados = new Set();
+
+    while(final.length < 5){
+      let melhor = null;
+
+      track.forEach(c=>{
+        if(conflita2V(c, final)) return;
+
+        const bloco = vizinhos2(c);
+        let ganho = 0;
+        let totalBloco = 0;
+
+        base.forEach(n=>{
+          if(bloco.includes(n)){
+            totalBloco++;
+            if(!usados.has(n)) ganho++;
+          }
+        });
+
+        const score = (ganho * 10) + totalBloco;
+
+        const teste = { c, ganho, totalBloco, score };
+
+        if(
+          !melhor ||
+          teste.score > melhor.score ||
+          (teste.score === melhor.score && teste.ganho > melhor.ganho) ||
+          (teste.score === melhor.score && teste.ganho === melhor.ganho && teste.totalBloco > melhor.totalBloco)
+        ){
+          melhor = teste;
+        }
+      });
+
+      if(!melhor) break;
+
+      final.push(melhor.c);
+      vizinhos2(melhor.c).forEach(v=>usados.add(v));
+    }
+
+    track.forEach(n=>{
+      if(final.length < 5 && !conflita2V(n, final)){
+        final.push(n);
+      }
+    });
+
+    return final;
+  }
+
+  function renderTop5(base){
+    if(!base || !base.length) return "";
+
+    const tops = top5Quentes2VMelhorado(base);
+    const pct = percentualTop5(base, tops);
+
+    return `
+      <div style="margin-top:6px;font-size:12px;color:#fff">
+        <b style="color:#ffc107">Top 5 quente 2v:</b>
+        <span style="font-weight:700;color:#fff">${tops.join(" - ")}</span>
+        <br>
+        <b style="color:#00e676">Acerto Top 5:</b>
+        <span style="font-weight:700;color:#00e676">${pct.toFixed(1)}%</span>
+      </div>
+    `;
+  }
+
   function aplicarComplexoNoManual(c){
     if(!c) return;
 
@@ -182,6 +280,7 @@
     if(!crupierAtivo) return;
 
     const melhor = melhorComplexo(crupierNumeros);
+    const top5 = top5Quentes2VMelhorado(crupierNumeros);
 
     historicoCrupiers.push({
       id: Date.now(),
@@ -190,6 +289,8 @@
       dataFim: dataAgora(),
       total: crupierNumeros.length,
       numeros: crupierNumeros.slice(),
+      top5,
+      taxaTop5: percentualTop5(crupierNumeros, top5),
       melhor
     });
 
@@ -217,6 +318,8 @@ ${c.melhor.nome}: T${c.melhor.t2} 2v / T${c.melhor.t1} 1v
 Green: ${c.melhor.green}
 Red: ${c.melhor.red}
 Taxa: ${(c.melhor.taxa*100).toFixed(1)}%
+Top 5: ${(c.top5 || []).join(" - ")}
+Acerto Top 5: ${((c.taxaTop5 || 0)).toFixed(1)}%
 Data: ${c.dataFim || ""}
 Giros: ${c.total}`;
   }
@@ -265,6 +368,12 @@ Giros: ${c.total}`;
     return coberturaComplexo(melhor).has(n);
   }
 
+  function estaDentroTop5(n, base){
+    if(!base || !base.length) return false;
+    const tops = top5Quentes2VMelhorado(base);
+    return coberturaCentrais2V(tops).has(n);
+  }
+
   function renderHistoricoNumeros(numeros, melhor){
     if(!numeros || !numeros.length) return "";
 
@@ -283,19 +392,22 @@ Giros: ${c.total}`;
       ">
         <b style="color:#ffc107">Histórico:</b><br>
         ${numeros.map(n=>{
-          const dentro = estaDentroComplexo(n, melhor);
+          const dentroComplexo = estaDentroComplexo(n, melhor);
+          const dentroTop5 = estaDentroTop5(n, numeros);
+          const cor = corNumeroAnalise(n, melhor);
+
           return `
             <span style="
-              color:${corNumeroAnalise(n, melhor)};
+              color:${cor};
               font-weight:700;
               display:inline-flex;
               align-items:center;
               justify-content:center;
-              width:${dentro ? "24px" : "auto"};
-              height:${dentro ? "24px" : "auto"};
-              border-radius:${dentro ? "50%" : "0"};
-              border:${dentro ? `2px solid ${corNumeroAnalise(n, melhor)}` : "0"};
-              background:${dentro ? "#000" : "transparent"};
+              width:${dentroTop5 ? "24px" : (dentroComplexo ? "22px" : "auto")};
+              height:${dentroTop5 ? "24px" : (dentroComplexo ? "22px" : "auto")};
+              border-radius:${(dentroTop5 || dentroComplexo) ? "50%" : "0"};
+              border:${dentroTop5 ? "2px solid #00e676" : (dentroComplexo ? `2px solid ${cor}` : "0")};
+              background:${dentroTop5 ? "#062d16" : (dentroComplexo ? "#000" : "transparent")};
               margin:2px 3px;
             ">${n}</span>
           `;
@@ -375,6 +487,7 @@ Giros: ${c.total}`;
           | Giros: <b>${crupierNumeros.length}</b>
           | Início: <b>${crupierInicio}</b>
           ${renderComplexos(crupierNumeros)}
+          ${renderTop5(crupierNumeros)}
           ${renderHistoricoNumeros(crupierNumeros, melhorAtual)}
         </div>
       `;
@@ -422,6 +535,7 @@ Giros: ${c.total}`;
               : `<br>Sem dados suficientes`}
             | Giros: ${c.total}
             ${renderComplexos(c.numeros || [])}
+            ${renderTop5(c.numeros || [])}
             ${aberto ? renderHistoricoNumeros(c.numeros || [], c.melhor) : ""}
           </div>
         </div>
