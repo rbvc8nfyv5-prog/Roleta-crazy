@@ -106,6 +106,8 @@
     const cobertura = new Set([...cov2, ...cov1]);
 
     let green = 0, red = 0, ocorrencias = 0;
+    let greenPrimeira = 0;
+    let greenSegunda = 0;
 
     for(let i=0;i<base.length-1;i++){
       const atual = base[i];
@@ -113,16 +115,82 @@
 
       if(terminal(atual) === gatilho){
         ocorrencias++;
-        if(cobertura.has(prox)) green++;
-        else red++;
+
+        if(cov2.has(prox)){
+          green++;
+          greenPrimeira++;
+        } else if(cov1.has(prox)){
+          green++;
+          greenSegunda++;
+        } else {
+          red++;
+        }
       }
     }
 
     const total = green + red;
     return {
       gatilho, t2, t1, green, red, ocorrencias,
-      taxa: total ? green / total : 0
+      greenPrimeira,
+      greenSegunda,
+      taxa: total ? green / total : 0,
+      score: green * 3 - red * 2
     };
+  }
+
+  function avaliarJogadaTerminalViva(gatilho, t2, t1){
+    const r = avaliarJogadaPorGatilho(gatilho,t2,t1);
+
+    const cov2 = coberturaTerminal(t2,2);
+    const cov1 = coberturaTerminal(t1,1);
+    const cobertura = new Set([...cov2, ...cov1]);
+
+    const ultimos14 = historicoCompleto.slice(-14);
+    const ultimos7 = historicoCompleto.slice(-7);
+    const ultimos5 = historicoCompleto.slice(-5);
+
+    let presenca14 = 0;
+    let presenca7 = 0;
+    let presenca5 = 0;
+
+    ultimos14.forEach(n=>{
+      if(cobertura.has(n)) presenca14++;
+    });
+
+    ultimos7.forEach(n=>{
+      if(cobertura.has(n)) presenca7++;
+    });
+
+    ultimos5.forEach(n=>{
+      if(cobertura.has(n)) presenca5++;
+    });
+
+    let perdasRecentes = 0;
+    let greensRecentes = 0;
+
+    for(let i=Math.max(0,historicoCompleto.length-15); i<historicoCompleto.length-1; i++){
+      const atual = historicoCompleto[i];
+      const prox = historicoCompleto[i+1];
+
+      if(terminal(atual) === gatilho){
+        if(cobertura.has(prox)) greensRecentes++;
+        else perdasRecentes++;
+      }
+    }
+
+    const forcaHistorica = (r.green * 3) - (r.red * 2);
+    const forcaAtual = (presenca14 * 2) + (presenca7 * 3) + (presenca5 * 2);
+    const ajusteRecente = (greensRecentes * 4) - (perdasRecentes * 6);
+    const bonusTaxa = r.taxa * 10;
+
+    r.presenca14 = presenca14;
+    r.presenca7 = presenca7;
+    r.presenca5 = presenca5;
+    r.greensRecentes = greensRecentes;
+    r.perdasRecentes = perdasRecentes;
+    r.score = forcaHistorica + forcaAtual + ajusteRecente + bonusTaxa;
+
+    return r;
   }
 
   function aplicarResultado(r){
@@ -181,13 +249,18 @@
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
         if(t1 === t2) continue;
-        const teste = avaliarJogadaPorGatilho(gatilho,t2,t1);
+
+        const teste = avaliarJogadaTerminalViva(gatilho,t2,t1);
 
         if(teste.ocorrencias > 0 && (
-          !melhor || teste.red < melhor.red ||
-          (teste.red === melhor.red && teste.green > melhor.green) ||
-          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
-        )) melhor = teste;
+          !melhor ||
+          teste.score > melhor.score ||
+          (teste.score === melhor.score && teste.green > melhor.green) ||
+          (teste.score === melhor.score && teste.green === melhor.green && teste.red < melhor.red) ||
+          (teste.score === melhor.score && teste.green === melhor.green && teste.red === melhor.red && teste.taxa > melhor.taxa)
+        )){
+          melhor = teste;
+        }
       }
     }
 
@@ -437,23 +510,45 @@
     analiseTerminalBox.style.display = "block";
 
     if(!resultadoAnaliseTerminal){
-      analiseTerminalBox.innerHTML = `<div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
+      analiseTerminalBox.innerHTML = `<div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL VIVA</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
       return;
     }
 
     const r = resultadoAnaliseTerminal;
 
     analiseTerminalBox.innerHTML = `
-      <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div>
-      <div style="font-size:13px;text-align:center;margin-top:5px">Gatilho atual: <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b></div>
+      <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL VIVA</div>
+
       <div style="font-size:13px;text-align:center;margin-top:5px">
-        Melhor jogada:
+        Gatilho atual:
+        <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
+      </div>
+
+      <div style="font-size:13px;text-align:center;margin-top:5px">
+        Melhor oportunidade:
         <b style="color:${corTerminal[r.t2]}">T${r.t2} com 2 vizinhos</b>
         +
         <b style="color:${corTerminal[r.t1]}">T${r.t1} com 1 vizinho</b>
       </div>
+
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
-        Ocorrências: ${r.ocorrencias} · Green: ${r.green} · Red: ${r.red} · Taxa: ${(r.taxa*100).toFixed(1)}%
+        Histórico: ${r.green}G / ${r.red}L · Taxa: ${(r.taxa*100).toFixed(1)}%
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Green 1ª: <b style="color:#00e676">${r.greenPrimeira}</b>
+        · Green 2ª: <b style="color:#00bcd4">${r.greenSegunda}</b>
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Atual: últimos 14 = ${r.presenca14}
+        · últimos 7 = ${r.presenca7}
+        · últimos 5 = ${r.presenca5}
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Gatilho recente: ${r.greensRecentes}G / ${r.perdasRecentes}L
+        · Score: <b style="color:#ffc107">${r.score.toFixed(1)}</b>
       </div>
     `;
   }
