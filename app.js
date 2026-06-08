@@ -28,6 +28,7 @@
   let analise100Ativa = false;
   let analiseTerminalAtiva = false;
   let resultadoAnaliseTerminal = null;
+  let resultadoAnalise100 = null;
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -117,12 +118,61 @@
     return qtd;
   }
 
+  function distanciaTerminal(a,b){
+    const d = Math.abs(a-b);
+    return Math.min(d, 10-d);
+  }
+
+  function coberturaDupla(t2,t1){
+    const cov2 = coberturaTerminal(t2,2);
+    const cov1 = coberturaTerminal(t1,1);
+    return new Set([...cov2, ...cov1]);
+  }
+
+  function contarIntersecao(a,b){
+    let qtd = 0;
+    a.forEach(v=>{
+      if(b.has(v)) qtd++;
+    });
+    return qtd;
+  }
+
+  function proximidadeZonaMae(t2,t1,zona){
+    if(!zona) return { perto:true, score:0, intersecao:0, distMin:0 };
+
+    const zonaCobertura = coberturaDupla(zona.t2,zona.t1);
+    const testeCobertura = coberturaDupla(t2,t1);
+
+    const intersecao = contarIntersecao(zonaCobertura, testeCobertura);
+
+    const distMin = Math.min(
+      distanciaTerminal(t2,zona.t2),
+      distanciaTerminal(t2,zona.t1),
+      distanciaTerminal(t1,zona.t2),
+      distanciaTerminal(t1,zona.t1)
+    );
+
+    const perto =
+      t2 === zona.t2 ||
+      t2 === zona.t1 ||
+      t1 === zona.t2 ||
+      t1 === zona.t1 ||
+      distMin <= 1 ||
+      intersecao >= 8;
+
+    const score =
+      (intersecao * 2) +
+      (distMin === 0 ? 30 : 0) +
+      (distMin === 1 ? 18 : 0) +
+      (distMin === 2 ? 6 : 0);
+
+    return { perto, score, intersecao, distMin };
+  }
+
   function validarNumeroNaJogada(n, r){
     if(!r) return null;
 
-    const cov2 = coberturaTerminal(r.t2,2);
-    const cov1 = coberturaTerminal(r.t1,1);
-    const cobertura = new Set([...cov2, ...cov1]);
+    const cobertura = coberturaDupla(r.t2,r.t1);
 
     if(cobertura.has(n)){
       return {
@@ -139,8 +189,8 @@
     };
   }
 
-  function aplicarAnalise100(){
-    if(historicoCompleto.length < 3) return;
+  function calcularAnalise100(){
+    if(historicoCompleto.length < 3) return null;
 
     let melhor = null;
 
@@ -149,9 +199,7 @@
 
         if(t1 === t2) continue;
 
-        const cov2 = coberturaTerminal(t2,2);
-        const cov1 = coberturaTerminal(t1,1);
-        const cobertura = new Set([...cov2, ...cov1]);
+        const cobertura = coberturaDupla(t2,t1);
 
         let green = 0;
         let red = 0;
@@ -180,16 +228,21 @@
       }
     }
 
-    if(!melhor) return;
+    return melhor;
+  }
+
+  function aplicarAnalise100(){
+    resultadoAnalise100 = calcularAnalise100();
+    if(!resultadoAnalise100) return;
 
     analises.MANUAL.filtros.clear();
     ordemSelecionados.length = 0;
 
-    analises.MANUAL.filtros.add(melhor.t2);
-    ordemSelecionados.push(melhor.t2);
+    analises.MANUAL.filtros.add(resultadoAnalise100.t2);
+    ordemSelecionados.push(resultadoAnalise100.t2);
 
-    analises.MANUAL.filtros.add(melhor.t1);
-    ordemSelecionados.push(melhor.t1);
+    analises.MANUAL.filtros.add(resultadoAnalise100.t1);
+    ordemSelecionados.push(resultadoAnalise100.t1);
 
     atualizarModosPorOrdem();
   }
@@ -197,21 +250,25 @@
   function calcularAnaliseTerminal(hist){
     if(hist.length < 3) return null;
 
+    const histOriginal = historicoCompleto;
+    historicoCompleto = hist.slice();
+
+    const zonaMae = calcularAnalise100();
+
     const gatilho = terminal(hist[hist.length - 1]);
     const base = hist.slice(-100);
     const ultimos14 = hist.slice(-14);
     const ultimos6 = hist.slice(-6);
 
     let melhor = null;
+    let melhorFora = null;
 
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
 
         if(t1 === t2) continue;
 
-        const cov2 = coberturaTerminal(t2,2);
-        const cov1 = coberturaTerminal(t1,1);
-        const cobertura = new Set([...cov2, ...cov1]);
+        const cobertura = coberturaDupla(t2,t1);
 
         let green = 0;
         let red = 0;
@@ -247,6 +304,8 @@
         const forcaT2Crua6 = contarTerminalNaLista(t2, ultimos6);
         const forcaT1Crua6 = contarTerminalNaLista(t1, ultimos6);
 
+        const zona = proximidadeZonaMae(t2,t1,zonaMae);
+
         const scoreHistorico = (green * 4) - (red * 3) + (taxa * 10);
         const scoreTimeline = (forcaT2Timeline * 4) + (forcaT1Timeline * 2);
         const scoreUltimos6 =
@@ -257,7 +316,11 @@
           (forcaT2Crua6 * 3) +
           (forcaT1Crua6 * 2);
 
-        const score = scoreHistorico + scoreTimeline + scoreUltimos6;
+        let score = scoreHistorico + scoreTimeline + scoreUltimos6 + zona.score;
+
+        if(!zona.perto){
+          score -= 999;
+        }
 
         const teste = {
           gatilho,
@@ -267,6 +330,10 @@
           red,
           taxa,
           ocorrencias,
+          zonaMae,
+          zonaPerto:zona.perto,
+          zonaIntersecao:zona.intersecao,
+          zonaDistancia:zona.distMin,
           forcaT2Timeline,
           forcaT1Timeline,
           forcaT2Vizinho1_6,
@@ -278,22 +345,35 @@
           score
         };
 
-        if(
-          ocorrencias > 0 &&
-          (
-            !melhor ||
-            teste.score > melhor.score ||
-            (teste.score === melhor.score && teste.green > melhor.green) ||
-            (teste.score === melhor.score && teste.green === melhor.green && teste.red < melhor.red) ||
-            (teste.score === melhor.score && teste.green === melhor.green && teste.red === melhor.red && teste.taxa > melhor.taxa)
-          )
-        ){
-          melhor = teste;
+        if(ocorrencias > 0){
+          if(
+            !melhorFora ||
+            teste.score > melhorFora.score ||
+            (teste.score === melhorFora.score && teste.green > melhorFora.green) ||
+            (teste.score === melhorFora.score && teste.green === melhorFora.green && teste.red < melhorFora.red)
+          ){
+            melhorFora = teste;
+          }
+
+          if(
+            teste.zonaPerto &&
+            (
+              !melhor ||
+              teste.score > melhor.score ||
+              (teste.score === melhor.score && teste.green > melhor.green) ||
+              (teste.score === melhor.score && teste.green === melhor.green && teste.red < melhor.red) ||
+              (teste.score === melhor.score && teste.green === melhor.green && teste.red === melhor.red && teste.taxa > melhor.taxa)
+            )
+          ){
+            melhor = teste;
+          }
         }
       }
     }
 
-    return melhor;
+    historicoCompleto = histOriginal;
+
+    return melhor || melhorFora;
   }
 
   function aplicarAnaliseTerminal(){
@@ -477,6 +557,7 @@
     analise100Ativa = false;
     analiseTerminalAtiva = false;
     resultadoAnaliseTerminal = null;
+    resultadoAnalise100 = null;
     render();
   };
 
@@ -519,6 +600,7 @@
     }
 
     const r = resultadoAnaliseTerminal;
+    const zona = r.zonaMae;
 
     analiseTerminalBox.innerHTML = `
       <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div>
@@ -528,8 +610,19 @@
         <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
       </div>
 
+      ${zona ? `
+        <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+          Zona-mãe Análise 100:
+          <b style="color:${corTerminal[zona.t2]}">T${zona.t2}</b>
+          +
+          <b style="color:${corTerminal[zona.t1]}">T${zona.t1}</b>
+          · ${zona.green}G/${zona.red}L
+          · ${(zona.taxa*100).toFixed(1)}%
+        </div>
+      ` : ``}
+
       <div style="font-size:13px;text-align:center;margin-top:5px">
-        Melhor jogada:
+        Melhor jogada próxima:
         <b style="color:${corTerminal[r.t2]}">T${r.t2} com 2 vizinhos</b>
         +
         <b style="color:${corTerminal[r.t1]}">T${r.t1} com 1 vizinho</b>
@@ -558,6 +651,12 @@
         Últimos 6 com 2 vizinhos:
         T${r.t2}=<b style="color:${corTerminal[r.t2]}">${r.forcaT2Vizinho2_6}</b>
         · T${r.t1}=<b style="color:${corTerminal[r.t1]}">${r.forcaT1Vizinho2_6}</b>
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Conexão com zona-mãe:
+        Interseção: <b style="color:#fff">${r.zonaIntersecao}</b>
+        · Distância: <b style="color:#fff">${r.zonaDistancia}</b>
         · Score: <b style="color:#fff">${r.score.toFixed(1)}</b>
       </div>
     `;
