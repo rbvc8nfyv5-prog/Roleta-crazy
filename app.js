@@ -109,27 +109,18 @@
     const cov2 = coberturaTerminal(r.t2,2);
     const cov1 = coberturaTerminal(r.t1,1);
 
-    if(cov2.has(n)){
+    if(cov2.has(n) || cov1.has(n)){
       return {
-        tipo:"G1",
-        texto:"G1",
+        tipo:"GREEN",
+        texto:"",
         cor:"#00e676",
-        detalhe:`Green 1ª | T${r.t2} 2v + T${r.t1} 1v`
-      };
-    }
-
-    if(cov1.has(n)){
-      return {
-        tipo:"G2",
-        texto:"G2",
-        cor:"#00bcd4",
-        detalhe:`Green 2ª | T${r.t2} 2v + T${r.t1} 1v`
+        detalhe:`Green | T${r.t2} 2v + T${r.t1} 1v`
       };
     }
 
     return {
-      tipo:"L",
-      texto:"L",
+      tipo:"LOSS",
+      texto:"",
       cor:"#ff5252",
       detalhe:`Loss | T${r.t2} 2v + T${r.t1} 1v`
     };
@@ -141,13 +132,12 @@
     const cov1=coberturaTerminal(t1,1);
 
     let green=0,red=0,ocorrencias=0;
-    let greenPrimeira=0,greenSegunda=0,greenTerceira=0;
+    let greenPrimeira=0,greenSegunda=0;
 
     for(let i=0;i<base.length-1;i++){
       const atual=base[i];
       const p1=base[i+1];
       const p2=base[i+2];
-      const p3=base[i+3];
 
       if(terminal(atual)===gatilho){
         ocorrencias++;
@@ -160,10 +150,6 @@
           green++;
           greenSegunda++;
         }
-        else if(p3!==undefined && (cov2.has(p3) || cov1.has(p3))){
-          green++;
-          greenTerceira++;
-        }
         else {
           red++;
         }
@@ -174,7 +160,7 @@
 
     return {
       gatilho,t2,t1,green,red,ocorrencias,
-      greenPrimeira,greenSegunda,greenTerceira,
+      greenPrimeira,greenSegunda,
       taxa:total?green/total:0,
       score:green*3-red*2
     };
@@ -332,10 +318,7 @@
     }
 
     resultadoAnaliseMeio=melhor;
-    aplicarResultado(melhor);
-  }
-
-  document.body.style.background="#111";
+    aplicarResultado(melhor);  document.body.style.background="#111";
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
@@ -586,7 +569,7 @@
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
         G1: <b style="color:#00e676">${r.greenPrimeira}</b>
         · G2: <b style="color:#00bcd4">${r.greenSegunda}</b>
-        · G3: <b style="color:#ffc107">${r.greenTerceira}</b>
+        · LOSS: <b style="color:#ff5252">${r.red}</b>
       </div>
 
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
@@ -645,7 +628,7 @@
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
         G1: <b style="color:#00e676">${r.greenPrimeira}</b>
         · G2: <b style="color:#00bcd4">${r.greenSegunda}</b>
-        · G3: <b style="color:#ffc107">${r.greenTerceira}</b>
+        · LOSS: <b style="color:#ff5252">${r.red}</b>
       </div>
     `;
   }
@@ -676,7 +659,7 @@
           color:#000;
           font-weight:800;
         ">
-          ${n}<small style="margin-left:3px;font-size:9px">${res.texto}</small>
+          ${n}
         </span>
       `;
     }).join("");
@@ -768,3 +751,6 @@
   render();
 
 })();
+    
+    
+  }
