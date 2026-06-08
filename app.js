@@ -16,54 +16,58 @@
 
   let timeline = [];
   let historicoCompleto = [];
+  let resultadosTimeline = [];
+
   let expandido = false;
   let analise100Ativa = false;
   let analiseTerminalAtiva = false;
   let analiseMeioAtiva = false;
+
   let resultadoAnaliseTerminal = null;
   let resultadoAnaliseMeio = null;
 
-  const analises = { MANUAL: { filtros:new Set(), res:[] } };
+  const analises = { MANUAL:{ filtros:new Set(), res:[] } };
   const modosTerminais = {};
   const ordemSelecionados = [];
-  for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
+
+  for(let t=0;t<=9;t++) modosTerminais[t]=0;
 
   function clarearCor(hex){
     hex = hex.replace("#","");
-    let r = parseInt(hex.substring(0,2),16);
-    let g = parseInt(hex.substring(2,4),16);
-    let b = parseInt(hex.substring(4,6),16);
-    r = Math.min(255, Math.floor(r + (255-r)*0.45));
-    g = Math.min(255, Math.floor(g + (255-g)*0.45));
-    b = Math.min(255, Math.floor(b + (255-b)*0.45));
-    return "#" + [r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
+    let r=parseInt(hex.substring(0,2),16);
+    let g=parseInt(hex.substring(2,4),16);
+    let b=parseInt(hex.substring(4,6),16);
+    r=Math.min(255,Math.floor(r+(255-r)*0.45));
+    g=Math.min(255,Math.floor(g+(255-g)*0.45));
+    b=Math.min(255,Math.floor(b+(255-b)*0.45));
+    return "#"+[r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
   }
 
   function atualizarModosPorOrdem(){
-    for(let t=0;t<=9;t++) modosTerminais[t] = 0;
-    if(ordemSelecionados.length > 0) modosTerminais[ordemSelecionados[0]] = 2;
-    for(let i=1;i<ordemSelecionados.length;i++) modosTerminais[ordemSelecionados[i]] = 1;
+    for(let t=0;t<=9;t++) modosTerminais[t]=0;
+    if(ordemSelecionados.length>0) modosTerminais[ordemSelecionados[0]]=2;
+    for(let i=1;i<ordemSelecionados.length;i++) modosTerminais[ordemSelecionados[i]]=1;
   }
 
   function vizinhos1(n){
-    const i = track.indexOf(n);
-    return [track[(i+36)%37], n, track[(i+1)%37]];
+    const i=track.indexOf(n);
+    return [track[(i+36)%37],n,track[(i+1)%37]];
   }
 
   function vizinhos2(n){
-    const i = track.indexOf(n);
-    return [track[(i+35)%37], track[(i+36)%37], n, track[(i+1)%37], track[(i+2)%37]];
+    const i=track.indexOf(n);
+    return [track[(i+35)%37],track[(i+36)%37],n,track[(i+1)%37],track[(i+2)%37]];
   }
 
   function segundoVizinho(n){
-    const i = track.indexOf(n);
-    return [track[(i+35)%37], track[(i+2)%37]];
+    const i=track.indexOf(n);
+    return [track[(i+35)%37],track[(i+2)%37]];
   }
 
   function vizinhos9(n){
-    const i = track.indexOf(n);
-    const arr = [];
-    for(let d=-9; d<=9; d++) arr.push(track[(i+d+37)%37]);
+    const i=track.indexOf(n);
+    const arr=[];
+    for(let d=-9;d<=9;d++) arr.push(track[(i+d+37)%37]);
     return arr;
   }
 
@@ -71,7 +75,7 @@
   const lado10 = new Set(vizinhos9(10));
 
   function sequenciaAtual(setor){
-    let seq = 0;
+    let seq=0;
     for(let i=historicoCompleto.length-1;i>=0;i--){
       if(setor.has(historicoCompleto[i])) seq++;
       else break;
@@ -80,122 +84,148 @@
   }
 
   function sequenciaMaxima(setor){
-    let atual = 0, max = 0;
+    let atual=0,max=0;
     historicoCompleto.forEach(n=>{
-      if(setor.has(n)){ atual++; if(atual > max) max = atual; }
-      else atual = 0;
+      if(setor.has(n)){ atual++; if(atual>max) max=atual; }
+      else atual=0;
     });
     return max;
   }
 
-  function coberturaTerminal(t, qtd){
-    const set = new Set();
+  function coberturaTerminal(t,qtd){
+    const set=new Set();
     track.forEach(n=>{
-      if(terminal(n) === t){
-        if(qtd === 2) vizinhos2(n).forEach(v=>set.add(v));
+      if(terminal(n)===t){
+        if(qtd===2) vizinhos2(n).forEach(v=>set.add(v));
         else vizinhos1(n).forEach(v=>set.add(v));
       }
     });
     return set;
   }
 
-  function avaliarJogadaPorGatilho(gatilho, t2, t1){
-    const base = historicoCompleto.slice(-100);
-    const cov2 = coberturaTerminal(t2,2);
-    const cov1 = coberturaTerminal(t1,1);
-    const cobertura = new Set([...cov2, ...cov1]);
+  function validarNumeroNaJogada(n,r){
+    if(!r) return null;
 
-    let green = 0, red = 0, ocorrencias = 0;
-    let greenPrimeira = 0;
-    let greenSegunda = 0;
+    const cov2 = coberturaTerminal(r.t2,2);
+    const cov1 = coberturaTerminal(r.t1,1);
+
+    if(cov2.has(n)){
+      return {
+        tipo:"G1",
+        texto:"G1",
+        cor:"#00e676",
+        detalhe:`Green 1ª | T${r.t2} 2v + T${r.t1} 1v`
+      };
+    }
+
+    if(cov1.has(n)){
+      return {
+        tipo:"G2",
+        texto:"G2",
+        cor:"#00bcd4",
+        detalhe:`Green 2ª | T${r.t2} 2v + T${r.t1} 1v`
+      };
+    }
+
+    return {
+      tipo:"L",
+      texto:"L",
+      cor:"#ff5252",
+      detalhe:`Loss | T${r.t2} 2v + T${r.t1} 1v`
+    };
+  }
+
+  function avaliarJogadaPorGatilho(gatilho,t2,t1){
+    const base=historicoCompleto.slice(-100);
+    const cov2=coberturaTerminal(t2,2);
+    const cov1=coberturaTerminal(t1,1);
+
+    let green=0,red=0,ocorrencias=0;
+    let greenPrimeira=0,greenSegunda=0,greenTerceira=0;
 
     for(let i=0;i<base.length-1;i++){
-      const atual = base[i];
-      const prox = base[i+1];
+      const atual=base[i];
+      const p1=base[i+1];
+      const p2=base[i+2];
+      const p3=base[i+3];
 
-      if(terminal(atual) === gatilho){
+      if(terminal(atual)===gatilho){
         ocorrencias++;
 
-        if(cov2.has(prox)){
+        if(p1!==undefined && (cov2.has(p1) || cov1.has(p1))){
           green++;
           greenPrimeira++;
-        } else if(cov1.has(prox)){
+        }
+        else if(p2!==undefined && (cov2.has(p2) || cov1.has(p2))){
           green++;
           greenSegunda++;
-        } else {
+        }
+        else if(p3!==undefined && (cov2.has(p3) || cov1.has(p3))){
+          green++;
+          greenTerceira++;
+        }
+        else {
           red++;
         }
       }
     }
 
-    const total = green + red;
+    const total=green+red;
+
     return {
-      gatilho, t2, t1, green, red, ocorrencias,
-      greenPrimeira,
-      greenSegunda,
-      taxa: total ? green / total : 0,
-      score: green * 3 - red * 2
+      gatilho,t2,t1,green,red,ocorrencias,
+      greenPrimeira,greenSegunda,greenTerceira,
+      taxa:total?green/total:0,
+      score:green*3-red*2
     };
   }
 
-  function avaliarJogadaTerminalViva(gatilho, t2, t1){
-    const r = avaliarJogadaPorGatilho(gatilho,t2,t1);
+  function avaliarJogadaTerminalViva(gatilho,t2,t1){
+    const r=avaliarJogadaPorGatilho(gatilho,t2,t1);
 
-    const cov2 = coberturaTerminal(t2,2);
-    const cov1 = coberturaTerminal(t1,1);
-    const cobertura = new Set([...cov2, ...cov1]);
+    const cov2=coberturaTerminal(t2,2);
+    const cov1=coberturaTerminal(t1,1);
+    const cobertura=new Set([...cov2,...cov1]);
 
-    const ultimos14 = historicoCompleto.slice(-14);
-    const ultimos7 = historicoCompleto.slice(-7);
-    const ultimos5 = historicoCompleto.slice(-5);
+    const ultimos14=historicoCompleto.slice(-14);
+    const ultimos7=historicoCompleto.slice(-7);
+    const ultimos5=historicoCompleto.slice(-5);
 
-    let presenca14 = 0;
-    let presenca7 = 0;
-    let presenca5 = 0;
+    let presenca14=0,presenca7=0,presenca5=0;
+    ultimos14.forEach(n=>{if(cobertura.has(n)) presenca14++;});
+    ultimos7.forEach(n=>{if(cobertura.has(n)) presenca7++;});
+    ultimos5.forEach(n=>{if(cobertura.has(n)) presenca5++;});
 
-    ultimos14.forEach(n=>{
-      if(cobertura.has(n)) presenca14++;
-    });
+    let greensRecentes=0,perdasRecentes=0;
 
-    ultimos7.forEach(n=>{
-      if(cobertura.has(n)) presenca7++;
-    });
+    for(let i=Math.max(0,historicoCompleto.length-15);i<historicoCompleto.length-1;i++){
+      const atual=historicoCompleto[i];
+      const prox=historicoCompleto[i+1];
 
-    ultimos5.forEach(n=>{
-      if(cobertura.has(n)) presenca5++;
-    });
-
-    let perdasRecentes = 0;
-    let greensRecentes = 0;
-
-    for(let i=Math.max(0,historicoCompleto.length-15); i<historicoCompleto.length-1; i++){
-      const atual = historicoCompleto[i];
-      const prox = historicoCompleto[i+1];
-
-      if(terminal(atual) === gatilho){
+      if(terminal(atual)===gatilho){
         if(cobertura.has(prox)) greensRecentes++;
         else perdasRecentes++;
       }
     }
 
-    const forcaHistorica = (r.green * 3) - (r.red * 2);
-    const forcaAtual = (presenca14 * 2) + (presenca7 * 3) + (presenca5 * 2);
-    const ajusteRecente = (greensRecentes * 4) - (perdasRecentes * 6);
-    const bonusTaxa = r.taxa * 10;
+    const forcaHistorica=(r.green*3)-(r.red*2);
+    const forcaAtual=(presenca14*2)+(presenca7*3)+(presenca5*2);
+    const ajusteRecente=(greensRecentes*4)-(perdasRecentes*6);
+    const bonusTaxa=r.taxa*10;
 
-    r.presenca14 = presenca14;
-    r.presenca7 = presenca7;
-    r.presenca5 = presenca5;
-    r.greensRecentes = greensRecentes;
-    r.perdasRecentes = perdasRecentes;
-    r.score = forcaHistorica + forcaAtual + ajusteRecente + bonusTaxa;
+    r.presenca14=presenca14;
+    r.presenca7=presenca7;
+    r.presenca5=presenca5;
+    r.greensRecentes=greensRecentes;
+    r.perdasRecentes=perdasRecentes;
+    r.score=forcaHistorica+forcaAtual+ajusteRecente+bonusTaxa;
 
     return r;
   }
 
   function aplicarResultado(r){
     analises.MANUAL.filtros.clear();
-    ordemSelecionados.length = 0;
+    ordemSelecionados.length=0;
 
     analises.MANUAL.filtros.add(r.t2);
     ordemSelecionados.push(r.t2);
@@ -207,31 +237,34 @@
   }
 
   function aplicarAnalise100(){
-    if(historicoCompleto.length < 3) return;
-    let melhor = null;
+    if(historicoCompleto.length<3) return;
+    let melhor=null;
 
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
-        if(t1 === t2) continue;
+        if(t1===t2) continue;
 
-        const cov2 = coberturaTerminal(t2,2);
-        const cov1 = coberturaTerminal(t1,1);
-        const cobertura = new Set([...cov2, ...cov1]);
-        let green = 0, red = 0;
-        const base = historicoCompleto.slice(-100);
+        const cov2=coberturaTerminal(t2,2);
+        const cov1=coberturaTerminal(t1,1);
+        const cobertura=new Set([...cov2,...cov1]);
+
+        let green=0,red=0;
+        const base=historicoCompleto.slice(-100);
 
         for(let i=0;i<base.length-1;i++){
           if(cobertura.has(base[i+1])) green++;
           else red++;
         }
 
-        const total = green + red;
-        const teste = { t2, t1, green, red, taxa: total ? green / total : 0 };
+        const total=green+red;
+        const teste={t2,t1,green,red,taxa:total?green/total:0};
 
-        if(!melhor || teste.red < melhor.red ||
-          (teste.red === melhor.red && teste.green > melhor.green) ||
-          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)){
-          melhor = teste;
+        if(!melhor ||
+          teste.red<melhor.red ||
+          (teste.red===melhor.red && teste.green>melhor.green) ||
+          (teste.red===melhor.red && teste.green===melhor.green && teste.taxa>melhor.taxa)
+        ){
+          melhor=teste;
         }
       }
     }
@@ -240,65 +273,65 @@
   }
 
   function aplicarAnaliseTerminal(){
-    resultadoAnaliseTerminal = null;
-    if(historicoCompleto.length < 3) return;
+    resultadoAnaliseTerminal=null;
+    if(historicoCompleto.length<3) return;
 
-    const gatilho = terminal(historicoCompleto[historicoCompleto.length - 1]);
-    let melhor = null;
+    const gatilho=terminal(historicoCompleto[historicoCompleto.length-1]);
+    let melhor=null;
 
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
-        if(t1 === t2) continue;
+        if(t1===t2) continue;
 
-        const teste = avaliarJogadaTerminalViva(gatilho,t2,t1);
+        const teste=avaliarJogadaTerminalViva(gatilho,t2,t1);
 
-        if(teste.ocorrencias > 0 && (
+        if(teste.ocorrencias>0 && (
           !melhor ||
-          teste.score > melhor.score ||
-          (teste.score === melhor.score && teste.green > melhor.green) ||
-          (teste.score === melhor.score && teste.green === melhor.green && teste.red < melhor.red) ||
-          (teste.score === melhor.score && teste.green === melhor.green && teste.red === melhor.red && teste.taxa > melhor.taxa)
+          teste.score>melhor.score ||
+          (teste.score===melhor.score && teste.green>melhor.green) ||
+          (teste.score===melhor.score && teste.green===melhor.green && teste.red<melhor.red) ||
+          (teste.score===melhor.score && teste.green===melhor.green && teste.red===melhor.red && teste.taxa>melhor.taxa)
         )){
-          melhor = teste;
+          melhor=teste;
         }
       }
     }
 
     if(!melhor) return;
-    resultadoAnaliseTerminal = melhor;
+    resultadoAnaliseTerminal=melhor;
     aplicarResultado(melhor);
   }
 
   function terminaisDoMeio(t){
-    const ciclo = t % 2 === 0 ? [0,2,4,6,8] : [1,3,5,7,9];
-    const i = ciclo.indexOf(t);
+    const ciclo=t%2===0?[0,2,4,6,8]:[1,3,5,7,9];
+    const i=ciclo.indexOf(t);
     return {
-      esq: ciclo[(i-1+ciclo.length)%ciclo.length],
-      dir: ciclo[(i+1)%ciclo.length]
+      esq:ciclo[(i-1+ciclo.length)%ciclo.length],
+      dir:ciclo[(i+1)%ciclo.length]
     };
   }
 
   function aplicarAnaliseMeio(){
-    resultadoAnaliseMeio = null;
-    if(historicoCompleto.length < 3) return;
+    resultadoAnaliseMeio=null;
+    if(historicoCompleto.length<3) return;
 
-    const gatilho = terminal(historicoCompleto[historicoCompleto.length - 1]);
-    const lados = terminaisDoMeio(gatilho);
+    const gatilho=terminal(historicoCompleto[historicoCompleto.length-1]);
+    const lados=terminaisDoMeio(gatilho);
 
-    const a = avaliarJogadaPorGatilho(gatilho, lados.esq, lados.dir);
-    const b = avaliarJogadaPorGatilho(gatilho, lados.dir, lados.esq);
+    const a=avaliarJogadaPorGatilho(gatilho,lados.esq,lados.dir);
+    const b=avaliarJogadaPorGatilho(gatilho,lados.dir,lados.esq);
 
-    let melhor = a;
+    let melhor=a;
 
     if(
-      b.red < a.red ||
-      (b.red === a.red && b.green > a.green) ||
-      (b.red === a.red && b.green === a.green && b.taxa > a.taxa)
+      b.red<a.red ||
+      (b.red===a.red && b.green>a.green) ||
+      (b.red===a.red && b.green===a.green && b.taxa>a.taxa)
     ){
-      melhor = b;
+      melhor=b;
     }
 
-    resultadoAnaliseMeio = melhor;
+    resultadoAnaliseMeio=melhor;
     aplicarResultado(melhor);
   }
 
@@ -306,7 +339,7 @@
   document.body.style.color="#fff";
   document.body.style.fontFamily="sans-serif";
 
-  document.body.innerHTML = `
+  document.body.innerHTML=`
     <style>
       @keyframes piscaStrong {
         0% { transform:scale(1); }
@@ -355,10 +388,11 @@
     </div>
   `;
 
-  inputHist.addEventListener("paste", ()=>{
+  inputHist.addEventListener("paste",()=>{
     setTimeout(()=>{
-      historicoCompleto = inputHist.value.split(/[\s,;|]+/).map(Number).filter(n=>n>=0 && n<=36);
-      timeline = historicoCompleto.slice(-14).reverse();
+      historicoCompleto=inputHist.value.split(/[\s,;|]+/).map(Number).filter(n=>n>=0&&n<=36);
+      timeline=historicoCompleto.slice(-14).reverse();
+      resultadosTimeline=historicoCompleto.map(()=>null);
       inputHist.style.display="none";
 
       if(analise100Ativa) aplicarAnalise100();
@@ -369,33 +403,33 @@
     },0);
   });
 
-  btnAnalise100.onclick = ()=>{
-    analise100Ativa = !analise100Ativa;
-    analiseTerminalAtiva = false;
-    analiseMeioAtiva = false;
-    resultadoAnaliseTerminal = null;
-    resultadoAnaliseMeio = null;
+  btnAnalise100.onclick=()=>{
+    analise100Ativa=!analise100Ativa;
+    analiseTerminalAtiva=false;
+    analiseMeioAtiva=false;
+    resultadoAnaliseTerminal=null;
+    resultadoAnaliseMeio=null;
     if(analise100Ativa) aplicarAnalise100();
     render();
   };
 
-  btnAnaliseTerminal.onclick = ()=>{
-    analiseTerminalAtiva = !analiseTerminalAtiva;
-    analise100Ativa = false;
-    analiseMeioAtiva = false;
-    resultadoAnaliseMeio = null;
+  btnAnaliseTerminal.onclick=()=>{
+    analiseTerminalAtiva=!analiseTerminalAtiva;
+    analise100Ativa=false;
+    analiseMeioAtiva=false;
+    resultadoAnaliseMeio=null;
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
-    else resultadoAnaliseTerminal = null;
+    else resultadoAnaliseTerminal=null;
     render();
   };
 
-  btnAnaliseMeio.onclick = ()=>{
-    analiseMeioAtiva = !analiseMeioAtiva;
-    analise100Ativa = false;
-    analiseTerminalAtiva = false;
-    resultadoAnaliseTerminal = null;
+  btnAnaliseMeio.onclick=()=>{
+    analiseMeioAtiva=!analiseMeioAtiva;
+    analise100Ativa=false;
+    analiseTerminalAtiva=false;
+    resultadoAnaliseTerminal=null;
     if(analiseMeioAtiva) aplicarAnaliseMeio();
-    else resultadoAnaliseMeio = null;
+    else resultadoAnaliseMeio=null;
     render();
   };
 
@@ -404,20 +438,21 @@
     b.textContent="T"+t;
     b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
     b.onclick=()=>{
-      analise100Ativa = false;
-      analiseTerminalAtiva = false;
-      analiseMeioAtiva = false;
-      resultadoAnaliseTerminal = null;
-      resultadoAnaliseMeio = null;
+      analise100Ativa=false;
+      analiseTerminalAtiva=false;
+      analiseMeioAtiva=false;
+      resultadoAnaliseTerminal=null;
+      resultadoAnaliseMeio=null;
 
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
-        const idx = ordemSelecionados.indexOf(t);
-        if(idx !== -1) ordemSelecionados.splice(idx,1);
+        const idx=ordemSelecionados.indexOf(t);
+        if(idx!==-1) ordemSelecionados.splice(idx,1);
       } else {
         analises.MANUAL.filtros.add(t);
         ordemSelecionados.push(t);
       }
+
       atualizarModosPorOrdem();
       render();
     };
@@ -432,10 +467,12 @@
     nums.appendChild(b);
   }
 
-  btnUndo.onclick = ()=>{
+  btnUndo.onclick=()=>{
     if(!timeline.length) return;
+
     timeline.shift();
     historicoCompleto.pop();
+    resultadosTimeline.pop();
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
@@ -444,24 +481,36 @@
     render();
   };
 
-  btnClear.onclick = ()=>{
-    timeline = [];
-    historicoCompleto = [];
-    ordemSelecionados.length = 0;
+  btnClear.onclick=()=>{
+    timeline=[];
+    historicoCompleto=[];
+    resultadosTimeline=[];
+    ordemSelecionados.length=0;
     analises.MANUAL.filtros.clear();
-    analise100Ativa = false;
-    analiseTerminalAtiva = false;
-    analiseMeioAtiva = false;
-    resultadoAnaliseTerminal = null;
-    resultadoAnaliseMeio = null;
+    analise100Ativa=false;
+    analiseTerminalAtiva=false;
+    analiseMeioAtiva=false;
+    resultadoAnaliseTerminal=null;
+    resultadoAnaliseMeio=null;
     render();
   };
 
   function add(n){
+    let validacao=null;
+
+    if(analiseTerminalAtiva && resultadoAnaliseTerminal){
+      validacao=validarNumeroNaJogada(n,resultadoAnaliseTerminal);
+    }
+
+    if(analiseMeioAtiva && resultadoAnaliseMeio){
+      validacao=validarNumeroNaJogada(n,resultadoAnaliseMeio);
+    }
+
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
     historicoCompleto.push(n);
+    resultadosTimeline.push(validacao);
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
@@ -471,16 +520,16 @@
   }
 
   function renderLados(){
-    const atual0 = sequenciaAtual(lado0);
-    const max0 = sequenciaMaxima(lado0);
-    const atual10 = sequenciaAtual(lado10);
-    const max10 = sequenciaMaxima(lado10);
+    const atual0=sequenciaAtual(lado0);
+    const max0=sequenciaMaxima(lado0);
+    const atual10=sequenciaAtual(lado10);
+    const max10=sequenciaMaxima(lado10);
 
-    const pisca0 = atual0 > 0 && atual0 === max0 && max0 > 0;
-    const pisca10 = atual10 > 0 && atual10 === max10 && max10 > 0;
+    const pisca0=atual0>0&&atual0===max0&&max0>0;
+    const pisca10=atual10>0&&atual10===max10&&max10>0;
 
-    ladoBox.innerHTML = `
-      <div style="border:2px solid ${pisca10 ? "#00e676" : "#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca10 ? "piscaQuadro 0.8s infinite" : "none"}">
+    ladoBox.innerHTML=`
+      <div style="border:2px solid ${pisca10?"#00e676":"#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca10?"piscaQuadro 0.8s infinite":"none"}">
         <div style="font-weight:700;text-align:center;color:#ffc107;margin-bottom:5px">LADO 10</div>
         <div style="font-size:11px;text-align:center;margin-bottom:5px">${vizinhos9(10).join(" · ")}</div>
         <div style="display:flex;justify-content:space-around;font-size:13px">
@@ -489,7 +538,7 @@
         </div>
       </div>
 
-      <div style="border:2px solid ${pisca0 ? "#00e676" : "#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca0 ? "piscaQuadro 0.8s infinite" : "none"}">
+      <div style="border:2px solid ${pisca0?"#00e676":"#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca0?"piscaQuadro 0.8s infinite":"none"}">
         <div style="font-weight:700;text-align:center;color:#00bcd4;margin-bottom:5px">LADO 0</div>
         <div style="font-size:11px;text-align:center;margin-bottom:5px">${vizinhos9(0).join(" · ")}</div>
         <div style="display:flex;justify-content:space-around;font-size:13px">
@@ -502,26 +551,25 @@
 
   function renderAnaliseTerminal(){
     if(!analiseTerminalAtiva){
-      analiseTerminalBox.style.display = "none";
-      analiseTerminalBox.innerHTML = "";
+      analiseTerminalBox.style.display="none";
+      analiseTerminalBox.innerHTML="";
       return;
     }
 
-    analiseTerminalBox.style.display = "block";
+    analiseTerminalBox.style.display="block";
 
     if(!resultadoAnaliseTerminal){
-      analiseTerminalBox.innerHTML = `<div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL VIVA</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
+      analiseTerminalBox.innerHTML=`<div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL VIVA</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
       return;
     }
 
-    const r = resultadoAnaliseTerminal;
+    const r=resultadoAnaliseTerminal;
 
-    analiseTerminalBox.innerHTML = `
+    analiseTerminalBox.innerHTML=`
       <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL VIVA</div>
 
       <div style="font-size:13px;text-align:center;margin-top:5px">
-        Gatilho atual:
-        <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
+        Gatilho atual: <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
       </div>
 
       <div style="font-size:13px;text-align:center;margin-top:5px">
@@ -536,8 +584,9 @@
       </div>
 
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
-        Green 1ª: <b style="color:#00e676">${r.greenPrimeira}</b>
-        · Green 2ª: <b style="color:#00bcd4">${r.greenSegunda}</b>
+        G1: <b style="color:#00e676">${r.greenPrimeira}</b>
+        · G2: <b style="color:#00bcd4">${r.greenSegunda}</b>
+        · G3: <b style="color:#ffc107">${r.greenTerceira}</b>
       </div>
 
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
@@ -555,23 +604,24 @@
 
   function renderAnaliseMeio(){
     if(!analiseMeioAtiva){
-      analiseMeioBox.style.display = "none";
-      analiseMeioBox.innerHTML = "";
+      analiseMeioBox.style.display="none";
+      analiseMeioBox.innerHTML="";
       return;
     }
 
-    analiseMeioBox.style.display = "block";
+    analiseMeioBox.style.display="block";
 
     if(!resultadoAnaliseMeio){
-      analiseMeioBox.innerHTML = `<div style="font-weight:700;color:#00e676;text-align:center">ANÁLISE MEIO</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
+      analiseMeioBox.innerHTML=`<div style="font-weight:700;color:#00e676;text-align:center">ANÁLISE MEIO</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
       return;
     }
 
-    const r = resultadoAnaliseMeio;
-    const lados = terminaisDoMeio(r.gatilho);
+    const r=resultadoAnaliseMeio;
+    const lados=terminaisDoMeio(r.gatilho);
 
-    analiseMeioBox.innerHTML = `
+    analiseMeioBox.innerHTML=`
       <div style="font-weight:700;color:#00e676;text-align:center">ANÁLISE MEIO</div>
+
       <div style="font-size:13px;text-align:center;margin-top:5px">
         Gatilho:
         <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
@@ -580,96 +630,138 @@
         /
         <b style="color:${corTerminal[lados.dir]}">T${lados.dir}</b>
       </div>
+
       <div style="font-size:13px;text-align:center;margin-top:5px">
         Melhor jogada:
         <b style="color:${corTerminal[r.t2]}">T${r.t2} com 2 vizinhos</b>
         +
         <b style="color:${corTerminal[r.t1]}">T${r.t1} com 1 vizinho</b>
       </div>
+
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
-        Ocorrências: ${r.ocorrencias} · Green: ${r.green} · Red: ${r.red} · Taxa: ${(r.taxa*100).toFixed(1)}%
+        Histórico: ${r.green}G / ${r.red}L · Taxa: ${(r.taxa*100).toFixed(1)}%
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        G1: <b style="color:#00e676">${r.greenPrimeira}</b>
+        · G2: <b style="color:#00bcd4">${r.greenSegunda}</b>
+        · G3: <b style="color:#ffc107">${r.greenTerceira}</b>
       </div>
     `;
   }
 
-  function render(){
-    tl.innerHTML = timeline.join(" · ");
+  function renderTimeline(){
+    const ultimos=historicoCompleto.slice(-14).reverse();
+    const indices=[];
 
+    for(let i=historicoCompleto.length-1;i>=Math.max(0,historicoCompleto.length-14);i--){
+      indices.push(i);
+    }
+
+    tl.innerHTML=ultimos.map((n,idx)=>{
+      const res=resultadosTimeline[indices[idx]];
+
+      if(!res){
+        return `<span style="display:inline-block;margin:2px;padding:3px 5px;border-radius:4px;background:#222;border:1px solid #444;color:#fff">${n}</span>`;
+      }
+
+      return `
+        <span title="${res.detalhe}" style="
+          display:inline-block;
+          margin:2px;
+          padding:3px 5px;
+          border-radius:4px;
+          background:${res.cor};
+          border:1px solid ${res.cor};
+          color:#000;
+          font-weight:800;
+        ">
+          ${n}<small style="margin-left:3px;font-size:9px">${res.texto}</small>
+        </span>
+      `;
+    }).join("");
+  }
+
+  function render(){
+    renderTimeline();
     renderLados();
     renderAnaliseTerminal();
     renderAnaliseMeio();
 
-    btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
-    btnAnalise100.style.color = analise100Ativa ? "#000" : "";
+    btnAnalise100.style.background=analise100Ativa?"#00e676":"";
+    btnAnalise100.style.color=analise100Ativa?"#000":"";
 
-    btnAnaliseTerminal.style.background = analiseTerminalAtiva ? "#ffc107" : "";
-    btnAnaliseTerminal.style.color = analiseTerminalAtiva ? "#000" : "";
+    btnAnaliseTerminal.style.background=analiseTerminalAtiva?"#ffc107":"";
+    btnAnaliseTerminal.style.color=analiseTerminalAtiva?"#000":"";
 
-    btnAnaliseMeio.style.background = analiseMeioAtiva ? "#00e676" : "";
-    btnAnaliseMeio.style.color = analiseMeioAtiva ? "#000" : "";
+    btnAnaliseMeio.style.background=analiseMeioAtiva?"#00e676":"";
+    btnAnaliseMeio.style.color=analiseMeioAtiva?"#000":"";
 
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
-      const ativo = analises.MANUAL.filtros.has(t);
-      b.style.background = ativo ? corTerminal[t] : "#444";
+      const ativo=analises.MANUAL.filtros.has(t);
 
-      if(modosTerminais[t] === 2){
-        b.style.border = "3px solid #fff";
-        b.style.boxShadow = `0 0 10px ${corTerminal[t]}`;
-        b.textContent = `T${t} 2v`;
+      b.style.background=ativo?corTerminal[t]:"#444";
+
+      if(modosTerminais[t]===2){
+        b.style.border="3px solid #fff";
+        b.style.boxShadow=`0 0 10px ${corTerminal[t]}`;
+        b.textContent=`T${t} 2v`;
       }
-      else if(modosTerminais[t] === 1){
-        b.style.border = "2px solid #999";
-        b.style.boxShadow = "none";
-        b.textContent = `T${t} 1v`;
+      else if(modosTerminais[t]===1){
+        b.style.border="2px solid #999";
+        b.style.boxShadow="none";
+        b.textContent=`T${t} 1v`;
       }
       else{
-        b.style.border = "1px solid #666";
-        b.style.boxShadow = "none";
-        b.textContent = `T${t}`;
+        b.style.border="1px solid #666";
+        b.style.boxShadow="none";
+        b.textContent=`T${t}`;
       }
     });
 
-    if(analises.MANUAL.filtros.size > 0){
-      const mapaCores = {};
-      const base = expandido ? historicoCompleto.slice().reverse() : timeline;
-      const ultimoNumero = timeline[0];
+    if(analises.MANUAL.filtros.size>0){
+      const mapaCores={};
+      const base=expandido?historicoCompleto.slice().reverse():timeline;
+      const ultimoNumero=timeline[0];
 
       analises.MANUAL.filtros.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
-            if(modosTerminais[t] === 2){
-              vizinhos2(n).forEach(v=>mapaCores[v] = corTerminal[t]);
-              segundoVizinho(n).forEach(v=>mapaCores[v] = clarearCor(corTerminal[t]));
-            } else if(modosTerminais[t] === 1){
-              vizinhos1(n).forEach(v=>{ if(!mapaCores[v]) mapaCores[v] = corTerminal[t]; });
+            if(modosTerminais[t]===2){
+              vizinhos2(n).forEach(v=>mapaCores[v]=corTerminal[t]);
+              segundoVizinho(n).forEach(v=>mapaCores[v]=clarearCor(corTerminal[t]));
+            } else if(modosTerminais[t]===1){
+              vizinhos1(n).forEach(v=>{
+                if(!mapaCores[v]) mapaCores[v]=corTerminal[t];
+              });
             }
           }
         });
       });
 
-      conjArea.style.display = "block";
-      conjArea.innerHTML = `
+      conjArea.style.display="block";
+      conjArea.innerHTML=`
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:4px">
           ${base.map(n=>`
             <div style="
               height:26px;display:flex;align-items:center;justify-content:center;
-              background:${mapaCores[n] || "#222"};color:#fff;font-size:10px;
+              background:${mapaCores[n]||"#222"};color:#fff;font-size:10px;
               border-radius:4px;
-              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333'};
-              box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || '#fff'}` : 'none'};
-              animation:${n===ultimoNumero ? 'piscaStrong 0.8s infinite' : 'none'};
+              border:${n===ultimoNumero?`3px solid ${mapaCores[n]||'#fff'}`:'1px solid #333'};
+              box-shadow:${n===ultimoNumero?`0 0 10px ${mapaCores[n]||'#fff'}`:'none'};
+              animation:${n===ultimoNumero?'piscaStrong 0.8s infinite':'none'};
             ">${n}</div>
           `).join("")}
         </div>
       `;
     } else {
-      conjArea.style.display = "none";
+      conjArea.style.display="none";
     }
   }
 
-  conjArea.onclick = ()=>{
-    expandido = !expandido;
+  conjArea.onclick=()=>{
+    expandido=!expandido;
     render();
   };
 
