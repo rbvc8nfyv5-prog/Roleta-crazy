@@ -6,19 +6,12 @@
     16,33,1,20,14,31,9,22,18,29,
     7,28,12,35,3,26,0
   ];
+
   const terminal = n => n % 10;
 
   const corTerminal = {
-    0:"#ff5252",
-    1:"#ff9800",
-    2:"#ffc107",
-    3:"#00e676",
-    4:"#00bcd4",
-    5:"#2196f3",
-    6:"#9c27b0",
-    7:"#e91e63",
-    8:"#8bc34a",
-    9:"#ff00ff"
+    0:"#ff5252",1:"#ff9800",2:"#ffc107",3:"#00e676",4:"#00bcd4",
+    5:"#2196f3",6:"#9c27b0",7:"#e91e63",8:"#8bc34a",9:"#ff00ff"
   };
 
   let timeline = [];
@@ -26,12 +19,11 @@
   let expandido = false;
   let analise100Ativa = false;
   let analiseTerminalAtiva = false;
+  let analiseMeioAtiva = false;
   let resultadoAnaliseTerminal = null;
+  let resultadoAnaliseMeio = null;
 
-  const analises = {
-    MANUAL: { filtros:new Set(), res:[] }
-  };
-
+  const analises = { MANUAL: { filtros:new Set(), res:[] } };
   const modosTerminais = {};
   const ordemSelecionados = [];
   for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
@@ -41,54 +33,37 @@
     let r = parseInt(hex.substring(0,2),16);
     let g = parseInt(hex.substring(2,4),16);
     let b = parseInt(hex.substring(4,6),16);
-
     r = Math.min(255, Math.floor(r + (255-r)*0.45));
     g = Math.min(255, Math.floor(g + (255-g)*0.45));
     b = Math.min(255, Math.floor(b + (255-b)*0.45));
-
     return "#" + [r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
   }
 
   function atualizarModosPorOrdem(){
     for(let t=0;t<=9;t++) modosTerminais[t] = 0;
-    if(ordemSelecionados.length > 0){
-      modosTerminais[ordemSelecionados[0]] = 2;
-    }
-    for(let i=1;i<ordemSelecionados.length;i++){
-      modosTerminais[ordemSelecionados[i]] = 1;
-    }
+    if(ordemSelecionados.length > 0) modosTerminais[ordemSelecionados[0]] = 2;
+    for(let i=1;i<ordemSelecionados.length;i++) modosTerminais[ordemSelecionados[i]] = 1;
   }
 
   function vizinhos1(n){
     const i = track.indexOf(n);
-    return [ track[(i+36)%37], n, track[(i+1)%37] ];
+    return [track[(i+36)%37], n, track[(i+1)%37]];
   }
 
   function vizinhos2(n){
     const i = track.indexOf(n);
-    return [
-      track[(i+35)%37],
-      track[(i+36)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
+    return [track[(i+35)%37], track[(i+36)%37], n, track[(i+1)%37], track[(i+2)%37]];
   }
 
   function segundoVizinho(n){
     const i = track.indexOf(n);
-    return [
-      track[(i+35)%37],
-      track[(i+2)%37]
-    ];
+    return [track[(i+35)%37], track[(i+2)%37]];
   }
 
   function vizinhos9(n){
     const i = track.indexOf(n);
     const arr = [];
-    for(let d=-9; d<=9; d++){
-      arr.push(track[(i+d+37)%37]);
-    }
+    for(let d=-9; d<=9; d++) arr.push(track[(i+d+37)%37]);
     return arr;
   }
 
@@ -105,171 +80,153 @@
   }
 
   function sequenciaMaxima(setor){
-    let atual = 0;
-    let max = 0;
-
+    let atual = 0, max = 0;
     historicoCompleto.forEach(n=>{
-      if(setor.has(n)){
-        atual++;
-        if(atual > max) max = atual;
-      } else {
-        atual = 0;
-      }
+      if(setor.has(n)){ atual++; if(atual > max) max = atual; }
+      else atual = 0;
     });
-
     return max;
   }
 
   function coberturaTerminal(t, qtd){
     const set = new Set();
-
     track.forEach(n=>{
       if(terminal(n) === t){
-        if(qtd === 2){
-          vizinhos2(n).forEach(v=>set.add(v));
-        } else {
-          vizinhos1(n).forEach(v=>set.add(v));
-        }
+        if(qtd === 2) vizinhos2(n).forEach(v=>set.add(v));
+        else vizinhos1(n).forEach(v=>set.add(v));
       }
     });
-
     return set;
+  }
+
+  function avaliarJogadaPorGatilho(gatilho, t2, t1){
+    const base = historicoCompleto.slice(-100);
+    const cov2 = coberturaTerminal(t2,2);
+    const cov1 = coberturaTerminal(t1,1);
+    const cobertura = new Set([...cov2, ...cov1]);
+
+    let green = 0, red = 0, ocorrencias = 0;
+
+    for(let i=0;i<base.length-1;i++){
+      const atual = base[i];
+      const prox = base[i+1];
+
+      if(terminal(atual) === gatilho){
+        ocorrencias++;
+        if(cobertura.has(prox)) green++;
+        else red++;
+      }
+    }
+
+    const total = green + red;
+    return {
+      gatilho, t2, t1, green, red, ocorrencias,
+      taxa: total ? green / total : 0
+    };
+  }
+
+  function aplicarResultado(r){
+    analises.MANUAL.filtros.clear();
+    ordemSelecionados.length = 0;
+
+    analises.MANUAL.filtros.add(r.t2);
+    ordemSelecionados.push(r.t2);
+
+    analises.MANUAL.filtros.add(r.t1);
+    ordemSelecionados.push(r.t1);
+
+    atualizarModosPorOrdem();
   }
 
   function aplicarAnalise100(){
     if(historicoCompleto.length < 3) return;
-
     let melhor = null;
 
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
-
         if(t1 === t2) continue;
 
         const cov2 = coberturaTerminal(t2,2);
         const cov1 = coberturaTerminal(t1,1);
         const cobertura = new Set([...cov2, ...cov1]);
-
-        let green = 0;
-        let red = 0;
-
+        let green = 0, red = 0;
         const base = historicoCompleto.slice(-100);
 
         for(let i=0;i<base.length-1;i++){
-          const prox = base[i+1];
-          if(cobertura.has(prox)) green++;
+          if(cobertura.has(base[i+1])) green++;
           else red++;
         }
 
         const total = green + red;
-        const taxa = total ? green / total : 0;
+        const teste = { t2, t1, green, red, taxa: total ? green / total : 0 };
 
-        const teste = { t2, t1, green, red, taxa };
-
-        if(
-          !melhor ||
-          teste.red < melhor.red ||
+        if(!melhor || teste.red < melhor.red ||
           (teste.red === melhor.red && teste.green > melhor.green) ||
-          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
-        ){
+          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)){
           melhor = teste;
         }
       }
     }
 
-    if(!melhor) return;
-
-    analises.MANUAL.filtros.clear();
-    ordemSelecionados.length = 0;
-
-    analises.MANUAL.filtros.add(melhor.t2);
-    ordemSelecionados.push(melhor.t2);
-
-    analises.MANUAL.filtros.add(melhor.t1);
-    ordemSelecionados.push(melhor.t1);
-
-    atualizarModosPorOrdem();
+    if(melhor) aplicarResultado(melhor);
   }
 
   function aplicarAnaliseTerminal(){
     resultadoAnaliseTerminal = null;
-
     if(historicoCompleto.length < 3) return;
 
     const gatilho = terminal(historicoCompleto[historicoCompleto.length - 1]);
-    const base = historicoCompleto.slice(-100);
-
     let melhor = null;
 
     for(let t2=0;t2<=9;t2++){
       for(let t1=0;t1<=9;t1++){
-
         if(t1 === t2) continue;
+        const teste = avaliarJogadaPorGatilho(gatilho,t2,t1);
 
-        const cov2 = coberturaTerminal(t2,2);
-        const cov1 = coberturaTerminal(t1,1);
-        const cobertura = new Set([...cov2, ...cov1]);
-
-        let green = 0;
-        let red = 0;
-        let ocorrencias = 0;
-
-        for(let i=0;i<base.length-1;i++){
-          const atual = base[i];
-          const prox = base[i+1];
-
-          if(terminal(atual) === gatilho){
-            ocorrencias++;
-
-            if(cobertura.has(prox)){
-              green++;
-            } else {
-              red++;
-            }
-          }
-        }
-
-        const total = green + red;
-        const taxa = total ? green / total : 0;
-
-        const teste = {
-          gatilho,
-          t2,
-          t1,
-          green,
-          red,
-          taxa,
-          ocorrencias
-        };
-
-        if(
-          ocorrencias > 0 &&
-          (
-            !melhor ||
-            teste.red < melhor.red ||
-            (teste.red === melhor.red && teste.green > melhor.green) ||
-            (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
-          )
-        ){
-          melhor = teste;
-        }
+        if(teste.ocorrencias > 0 && (
+          !melhor || teste.red < melhor.red ||
+          (teste.red === melhor.red && teste.green > melhor.green) ||
+          (teste.red === melhor.red && teste.green === melhor.green && teste.taxa > melhor.taxa)
+        )) melhor = teste;
       }
     }
 
     if(!melhor) return;
-
     resultadoAnaliseTerminal = melhor;
+    aplicarResultado(melhor);
+  }
 
-    analises.MANUAL.filtros.clear();
-    ordemSelecionados.length = 0;
+  function terminaisDoMeio(t){
+    const ciclo = t % 2 === 0 ? [0,2,4,6,8] : [1,3,5,7,9];
+    const i = ciclo.indexOf(t);
+    return {
+      esq: ciclo[(i-1+ciclo.length)%ciclo.length],
+      dir: ciclo[(i+1)%ciclo.length]
+    };
+  }
 
-    analises.MANUAL.filtros.add(melhor.t2);
-    ordemSelecionados.push(melhor.t2);
+  function aplicarAnaliseMeio(){
+    resultadoAnaliseMeio = null;
+    if(historicoCompleto.length < 3) return;
 
-    analises.MANUAL.filtros.add(melhor.t1);
-    ordemSelecionados.push(melhor.t1);
+    const gatilho = terminal(historicoCompleto[historicoCompleto.length - 1]);
+    const lados = terminaisDoMeio(gatilho);
 
-    atualizarModosPorOrdem();
+    const a = avaliarJogadaPorGatilho(gatilho, lados.esq, lados.dir);
+    const b = avaliarJogadaPorGatilho(gatilho, lados.dir, lados.esq);
+
+    let melhor = a;
+
+    if(
+      b.red < a.red ||
+      (b.red === a.red && b.green > a.green) ||
+      (b.red === a.red && b.green === a.green && b.taxa > a.taxa)
+    ){
+      melhor = b;
+    }
+
+    resultadoAnaliseMeio = melhor;
+    aplicarResultado(melhor);
   }
 
   document.body.style.background="#111";
@@ -283,7 +240,6 @@
         50% { transform:scale(1.2); }
         100% { transform:scale(1); }
       }
-
       @keyframes piscaQuadro {
         0% { box-shadow:0 0 4px #fff; transform:scale(1); }
         50% { box-shadow:0 0 22px #00e676; transform:scale(1.04); }
@@ -292,7 +248,6 @@
     </style>
 
     <div style="padding:10px;max-width:1000px;margin:auto">
-
       <textarea id="inputHist" placeholder="Cole histórico aqui"
       style="width:100%;margin-bottom:10px;background:#222;color:#fff;border:1px solid #555;padding:6px"></textarea>
 
@@ -301,6 +256,7 @@
       <div id="ladoBox" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0"></div>
 
       <div id="analiseTerminalBox" style="display:none;border:1px solid #555;background:#181818;padding:8px;border-radius:6px;margin:10px 0"></div>
+      <div id="analiseMeioBox" style="display:none;border:1px solid #555;background:#181818;padding:8px;border-radius:6px;margin:10px 0"></div>
 
       <div style="margin:10px 0">
         🕒 Timeline:
@@ -312,6 +268,7 @@
         <button id="btnClear">Apagar tudo</button>
         <button id="btnAnalise100">Análise 100</button>
         <button id="btnAnaliseTerminal">Análise Terminal</button>
+        <button id="btnAnaliseMeio">Análise Meio</button>
       </div>
 
       <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
@@ -327,17 +284,13 @@
 
   inputHist.addEventListener("paste", ()=>{
     setTimeout(()=>{
-      historicoCompleto = inputHist.value
-        .split(/[\s,;|]+/)
-        .map(Number)
-        .filter(n=>n>=0 && n<=36);
-
+      historicoCompleto = inputHist.value.split(/[\s,;|]+/).map(Number).filter(n=>n>=0 && n<=36);
       timeline = historicoCompleto.slice(-14).reverse();
-
       inputHist.style.display="none";
 
       if(analise100Ativa) aplicarAnalise100();
       if(analiseTerminalAtiva) aplicarAnaliseTerminal();
+      if(analiseMeioAtiva) aplicarAnaliseMeio();
 
       render();
     },0);
@@ -346,25 +299,30 @@
   btnAnalise100.onclick = ()=>{
     analise100Ativa = !analise100Ativa;
     analiseTerminalAtiva = false;
+    analiseMeioAtiva = false;
     resultadoAnaliseTerminal = null;
-
-    if(analise100Ativa){
-      aplicarAnalise100();
-    }
-
+    resultadoAnaliseMeio = null;
+    if(analise100Ativa) aplicarAnalise100();
     render();
   };
 
   btnAnaliseTerminal.onclick = ()=>{
     analiseTerminalAtiva = !analiseTerminalAtiva;
     analise100Ativa = false;
+    analiseMeioAtiva = false;
+    resultadoAnaliseMeio = null;
+    if(analiseTerminalAtiva) aplicarAnaliseTerminal();
+    else resultadoAnaliseTerminal = null;
+    render();
+  };
 
-    if(analiseTerminalAtiva){
-      aplicarAnaliseTerminal();
-    } else {
-      resultadoAnaliseTerminal = null;
-    }
-
+  btnAnaliseMeio.onclick = ()=>{
+    analiseMeioAtiva = !analiseMeioAtiva;
+    analise100Ativa = false;
+    analiseTerminalAtiva = false;
+    resultadoAnaliseTerminal = null;
+    if(analiseMeioAtiva) aplicarAnaliseMeio();
+    else resultadoAnaliseMeio = null;
     render();
   };
 
@@ -375,7 +333,9 @@
     b.onclick=()=>{
       analise100Ativa = false;
       analiseTerminalAtiva = false;
+      analiseMeioAtiva = false;
       resultadoAnaliseTerminal = null;
+      resultadoAnaliseMeio = null;
 
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
@@ -406,6 +366,7 @@
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
+    if(analiseMeioAtiva) aplicarAnaliseMeio();
 
     render();
   };
@@ -417,7 +378,9 @@
     analises.MANUAL.filtros.clear();
     analise100Ativa = false;
     analiseTerminalAtiva = false;
+    analiseMeioAtiva = false;
     resultadoAnaliseTerminal = null;
+    resultadoAnaliseMeio = null;
     render();
   };
 
@@ -429,6 +392,7 @@
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
+    if(analiseMeioAtiva) aplicarAnaliseMeio();
 
     render();
   }
@@ -436,7 +400,6 @@
   function renderLados(){
     const atual0 = sequenciaAtual(lado0);
     const max0 = sequenciaMaxima(lado0);
-
     const atual10 = sequenciaAtual(lado10);
     const max10 = sequenciaMaxima(lado10);
 
@@ -444,34 +407,18 @@
     const pisca10 = atual10 > 0 && atual10 === max10 && max10 > 0;
 
     ladoBox.innerHTML = `
-      <div style="
-        border:2px solid ${pisca10 ? "#00e676" : "#555"};
-        border-radius:6px;
-        padding:8px;
-        background:#181818;
-        animation:${pisca10 ? "piscaQuadro 0.8s infinite" : "none"};
-      ">
+      <div style="border:2px solid ${pisca10 ? "#00e676" : "#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca10 ? "piscaQuadro 0.8s infinite" : "none"}">
         <div style="font-weight:700;text-align:center;color:#ffc107;margin-bottom:5px">LADO 10</div>
-        <div style="font-size:11px;text-align:center;margin-bottom:5px">
-          ${vizinhos9(10).join(" · ")}
-        </div>
+        <div style="font-size:11px;text-align:center;margin-bottom:5px">${vizinhos9(10).join(" · ")}</div>
         <div style="display:flex;justify-content:space-around;font-size:13px">
           <span>Atual: <b style="color:#00e676">${atual10}</b></span>
           <span>Máxima: <b style="color:#ff5252">${max10}</b></span>
         </div>
       </div>
 
-      <div style="
-        border:2px solid ${pisca0 ? "#00e676" : "#555"};
-        border-radius:6px;
-        padding:8px;
-        background:#181818;
-        animation:${pisca0 ? "piscaQuadro 0.8s infinite" : "none"};
-      ">
+      <div style="border:2px solid ${pisca0 ? "#00e676" : "#555"};border-radius:6px;padding:8px;background:#181818;animation:${pisca0 ? "piscaQuadro 0.8s infinite" : "none"}">
         <div style="font-weight:700;text-align:center;color:#00bcd4;margin-bottom:5px">LADO 0</div>
-        <div style="font-size:11px;text-align:center;margin-bottom:5px">
-          ${vizinhos9(0).join(" · ")}
-        </div>
+        <div style="font-size:11px;text-align:center;margin-bottom:5px">${vizinhos9(0).join(" · ")}</div>
         <div style="display:flex;justify-content:space-around;font-size:13px">
           <span>Atual: <b style="color:#00e676">${atual0}</b></span>
           <span>Máxima: <b style="color:#ff5252">${max0}</b></span>
@@ -490,12 +437,7 @@
     analiseTerminalBox.style.display = "block";
 
     if(!resultadoAnaliseTerminal){
-      analiseTerminalBox.innerHTML = `
-        <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div>
-        <div style="font-size:12px;text-align:center;margin-top:4px">
-          Histórico insuficiente para calcular.
-        </div>
-      `;
+      analiseTerminalBox.innerHTML = `<div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
       return;
     }
 
@@ -503,34 +445,64 @@
 
     analiseTerminalBox.innerHTML = `
       <div style="font-weight:700;color:#ffc107;text-align:center">ANÁLISE TERMINAL</div>
-
-      <div style="font-size:13px;text-align:center;margin-top:5px">
-        Gatilho atual:
-        <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
-      </div>
-
+      <div style="font-size:13px;text-align:center;margin-top:5px">Gatilho atual: <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b></div>
       <div style="font-size:13px;text-align:center;margin-top:5px">
         Melhor jogada:
         <b style="color:${corTerminal[r.t2]}">T${r.t2} com 2 vizinhos</b>
         +
         <b style="color:${corTerminal[r.t1]}">T${r.t1} com 1 vizinho</b>
       </div>
-
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
-        Ocorrências do gatilho: ${r.ocorrencias}
-        · Green: ${r.green}
-        · Red: ${r.red}
-        · Taxa: ${(r.taxa*100).toFixed(1)}%
+        Ocorrências: ${r.ocorrencias} · Green: ${r.green} · Red: ${r.red} · Taxa: ${(r.taxa*100).toFixed(1)}%
+      </div>
+    `;
+  }
+
+  function renderAnaliseMeio(){
+    if(!analiseMeioAtiva){
+      analiseMeioBox.style.display = "none";
+      analiseMeioBox.innerHTML = "";
+      return;
+    }
+
+    analiseMeioBox.style.display = "block";
+
+    if(!resultadoAnaliseMeio){
+      analiseMeioBox.innerHTML = `<div style="font-weight:700;color:#00e676;text-align:center">ANÁLISE MEIO</div><div style="font-size:12px;text-align:center;margin-top:4px">Histórico insuficiente.</div>`;
+      return;
+    }
+
+    const r = resultadoAnaliseMeio;
+    const lados = terminaisDoMeio(r.gatilho);
+
+    analiseMeioBox.innerHTML = `
+      <div style="font-weight:700;color:#00e676;text-align:center">ANÁLISE MEIO</div>
+      <div style="font-size:13px;text-align:center;margin-top:5px">
+        Gatilho:
+        <b style="color:${corTerminal[r.gatilho]}">T${r.gatilho}</b>
+        no meio de
+        <b style="color:${corTerminal[lados.esq]}">T${lados.esq}</b>
+        /
+        <b style="color:${corTerminal[lados.dir]}">T${lados.dir}</b>
+      </div>
+      <div style="font-size:13px;text-align:center;margin-top:5px">
+        Melhor jogada:
+        <b style="color:${corTerminal[r.t2]}">T${r.t2} com 2 vizinhos</b>
+        +
+        <b style="color:${corTerminal[r.t1]}">T${r.t1} com 1 vizinho</b>
+      </div>
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Ocorrências: ${r.ocorrencias} · Green: ${r.green} · Red: ${r.red} · Taxa: ${(r.taxa*100).toFixed(1)}%
       </div>
     `;
   }
 
   function render(){
-
     tl.innerHTML = timeline.join(" · ");
 
     renderLados();
     renderAnaliseTerminal();
+    renderAnaliseMeio();
 
     btnAnalise100.style.background = analise100Ativa ? "#00e676" : "";
     btnAnalise100.style.color = analise100Ativa ? "#000" : "";
@@ -538,10 +510,12 @@
     btnAnaliseTerminal.style.background = analiseTerminalAtiva ? "#ffc107" : "";
     btnAnaliseTerminal.style.color = analiseTerminalAtiva ? "#000" : "";
 
+    btnAnaliseMeio.style.background = analiseMeioAtiva ? "#00e676" : "";
+    btnAnaliseMeio.style.color = analiseMeioAtiva ? "#000" : "";
+
     document.querySelectorAll("#btnT button").forEach(b=>{
       const t=+b.textContent.match(/\d+/)[0];
       const ativo = analises.MANUAL.filtros.has(t);
-
       b.style.background = ativo ? corTerminal[t] : "#444";
 
       if(modosTerminais[t] === 2){
@@ -562,7 +536,6 @@
     });
 
     if(analises.MANUAL.filtros.size > 0){
-
       const mapaCores = {};
       const base = expandido ? historicoCompleto.slice().reverse() : timeline;
       const ultimoNumero = timeline[0];
@@ -570,37 +543,23 @@
       analises.MANUAL.filtros.forEach(t=>{
         track.forEach(n=>{
           if(terminal(n)===t){
-
             if(modosTerminais[t] === 2){
               vizinhos2(n).forEach(v=>mapaCores[v] = corTerminal[t]);
-
-              segundoVizinho(n).forEach(v=>{
-                mapaCores[v] = clarearCor(corTerminal[t]);
-              });
-
+              segundoVizinho(n).forEach(v=>mapaCores[v] = clarearCor(corTerminal[t]));
             } else if(modosTerminais[t] === 1){
-              vizinhos1(n).forEach(v=>{
-                if(!mapaCores[v]) mapaCores[v] = corTerminal[t];
-              });
+              vizinhos1(n).forEach(v=>{ if(!mapaCores[v]) mapaCores[v] = corTerminal[t]; });
             }
-
           }
         });
       });
 
       conjArea.style.display = "block";
-
       conjArea.innerHTML = `
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(26px,1fr));gap:4px">
           ${base.map(n=>`
             <div style="
-              height:26px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              background:${mapaCores[n] || "#222"};
-              color:#fff;
-              font-size:10px;
+              height:26px;display:flex;align-items:center;justify-content:center;
+              background:${mapaCores[n] || "#222"};color:#fff;font-size:10px;
               border-radius:4px;
               border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || '#fff'}` : '1px solid #333'};
               box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || '#fff'}` : 'none'};
