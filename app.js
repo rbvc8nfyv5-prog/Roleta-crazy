@@ -23,6 +23,7 @@
 
   let timeline = [];
   let historicoCompleto = [];
+  let resultadosTimeline = [];
   let expandido = false;
   let analise100Ativa = false;
   let analiseTerminalAtiva = false;
@@ -116,6 +117,28 @@
     return qtd;
   }
 
+  function validarNumeroNaJogada(n, r){
+    if(!r) return null;
+
+    const cov2 = coberturaTerminal(r.t2,2);
+    const cov1 = coberturaTerminal(r.t1,1);
+    const cobertura = new Set([...cov2, ...cov1]);
+
+    if(cobertura.has(n)){
+      return {
+        tipo:"GREEN",
+        cor:"#00e676",
+        detalhe:`Green | T${r.t2} 2v + T${r.t1} 1v`
+      };
+    }
+
+    return {
+      tipo:"LOSS",
+      cor:"#ff5252",
+      detalhe:`Loss | T${r.t2} 2v + T${r.t1} 1v`
+    };
+  }
+
   function aplicarAnalise100(){
     if(historicoCompleto.length < 3) return;
 
@@ -171,15 +194,13 @@
     atualizarModosPorOrdem();
   }
 
-  function aplicarAnaliseTerminal(){
-    resultadoAnaliseTerminal = null;
+  function calcularAnaliseTerminal(hist){
+    if(hist.length < 3) return null;
 
-    if(historicoCompleto.length < 3) return;
-
-    const gatilho = terminal(historicoCompleto[historicoCompleto.length - 1]);
-    const base = historicoCompleto.slice(-100);
-    const ultimos14 = historicoCompleto.slice(-14);
-    const ultimos6 = historicoCompleto.slice(-6);
+    const gatilho = terminal(hist[hist.length - 1]);
+    const base = hist.slice(-100);
+    const ultimos14 = hist.slice(-14);
+    const ultimos6 = hist.slice(-6);
 
     let melhor = null;
 
@@ -217,15 +238,24 @@
         const forcaT2Timeline = contarTerminalNaLista(t2, ultimos14);
         const forcaT1Timeline = contarTerminalNaLista(t1, ultimos14);
 
-        const forcaT2Vizinho6 = contarCoberturaNaLista(t2, ultimos6, 1);
-        const forcaT1Vizinho6 = contarCoberturaNaLista(t1, ultimos6, 1);
+        const forcaT2Vizinho1_6 = contarCoberturaNaLista(t2, ultimos6, 1);
+        const forcaT1Vizinho1_6 = contarCoberturaNaLista(t1, ultimos6, 1);
+
+        const forcaT2Vizinho2_6 = contarCoberturaNaLista(t2, ultimos6, 2);
+        const forcaT1Vizinho2_6 = contarCoberturaNaLista(t1, ultimos6, 2);
 
         const forcaT2Crua6 = contarTerminalNaLista(t2, ultimos6);
         const forcaT1Crua6 = contarTerminalNaLista(t1, ultimos6);
 
         const scoreHistorico = (green * 4) - (red * 3) + (taxa * 10);
         const scoreTimeline = (forcaT2Timeline * 4) + (forcaT1Timeline * 2);
-        const scoreUltimos6 = (forcaT2Vizinho6 * 5) + (forcaT1Vizinho6 * 3) + (forcaT2Crua6 * 3) + (forcaT1Crua6 * 2);
+        const scoreUltimos6 =
+          (forcaT2Vizinho2_6 * 6) +
+          (forcaT1Vizinho2_6 * 4) +
+          (forcaT2Vizinho1_6 * 4) +
+          (forcaT1Vizinho1_6 * 2) +
+          (forcaT2Crua6 * 3) +
+          (forcaT1Crua6 * 2);
 
         const score = scoreHistorico + scoreTimeline + scoreUltimos6;
 
@@ -239,8 +269,10 @@
           ocorrencias,
           forcaT2Timeline,
           forcaT1Timeline,
-          forcaT2Vizinho6,
-          forcaT1Vizinho6,
+          forcaT2Vizinho1_6,
+          forcaT1Vizinho1_6,
+          forcaT2Vizinho2_6,
+          forcaT1Vizinho2_6,
           forcaT2Crua6,
           forcaT1Crua6,
           score
@@ -261,20 +293,40 @@
       }
     }
 
-    if(!melhor) return;
+    return melhor;
+  }
 
-    resultadoAnaliseTerminal = melhor;
+  function aplicarAnaliseTerminal(){
+    resultadoAnaliseTerminal = calcularAnaliseTerminal(historicoCompleto);
+
+    if(!resultadoAnaliseTerminal) return;
 
     analises.MANUAL.filtros.clear();
     ordemSelecionados.length = 0;
 
-    analises.MANUAL.filtros.add(melhor.t2);
-    ordemSelecionados.push(melhor.t2);
+    analises.MANUAL.filtros.add(resultadoAnaliseTerminal.t2);
+    ordemSelecionados.push(resultadoAnaliseTerminal.t2);
 
-    analises.MANUAL.filtros.add(melhor.t1);
-    ordemSelecionados.push(melhor.t1);
+    analises.MANUAL.filtros.add(resultadoAnaliseTerminal.t1);
+    ordemSelecionados.push(resultadoAnaliseTerminal.t1);
 
     atualizarModosPorOrdem();
+  }
+
+  function recalcularTimelineRetroativa(){
+    resultadosTimeline = historicoCompleto.map(()=>null);
+
+    if(!analiseTerminalAtiva) return;
+
+    for(let i=0;i<historicoCompleto.length-1;i++){
+      const histAteAqui = historicoCompleto.slice(0,i+1);
+      const analise = calcularAnaliseTerminal(histAteAqui);
+      const prox = historicoCompleto[i+1];
+
+      if(analise){
+        resultadosTimeline[i+1] = validarNumeroNaJogada(prox, analise);
+      }
+    }
   }
 
   document.body.style.background="#111";
@@ -336,6 +388,8 @@
       if(analise100Ativa) aplicarAnalise100();
       if(analiseTerminalAtiva) aplicarAnaliseTerminal();
 
+      recalcularTimelineRetroativa();
+
       render();
     },0);
   });
@@ -344,6 +398,7 @@
     analise100Ativa = !analise100Ativa;
     analiseTerminalAtiva = false;
     resultadoAnaliseTerminal = null;
+    resultadosTimeline = historicoCompleto.map(()=>null);
 
     if(analise100Ativa){
       aplicarAnalise100();
@@ -358,8 +413,10 @@
 
     if(analiseTerminalAtiva){
       aplicarAnaliseTerminal();
+      recalcularTimelineRetroativa();
     } else {
       resultadoAnaliseTerminal = null;
+      resultadosTimeline = historicoCompleto.map(()=>null);
     }
 
     render();
@@ -373,6 +430,7 @@
       analise100Ativa = false;
       analiseTerminalAtiva = false;
       resultadoAnaliseTerminal = null;
+      resultadosTimeline = historicoCompleto.map(()=>null);
 
       if(analises.MANUAL.filtros.has(t)){
         analises.MANUAL.filtros.delete(t);
@@ -398,11 +456,14 @@
 
   btnUndo.onclick = ()=>{
     if(!timeline.length) return;
+
     timeline.shift();
     historicoCompleto.pop();
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
+
+    recalcularTimelineRetroativa();
 
     render();
   };
@@ -410,6 +471,7 @@
   btnClear.onclick = ()=>{
     timeline = [];
     historicoCompleto = [];
+    resultadosTimeline = [];
     ordemSelecionados.length = 0;
     analises.MANUAL.filtros.clear();
     analise100Ativa = false;
@@ -419,10 +481,17 @@
   };
 
   function add(n){
+    let validacao = null;
+
+    if(analiseTerminalAtiva && resultadoAnaliseTerminal){
+      validacao = validarNumeroNaJogada(n, resultadoAnaliseTerminal);
+    }
+
     timeline.unshift(n);
     if(timeline.length>14) timeline.pop();
 
     historicoCompleto.push(n);
+    resultadosTimeline.push(validacao);
 
     if(analise100Ativa) aplicarAnalise100();
     if(analiseTerminalAtiva) aplicarAnaliseTerminal();
@@ -481,16 +550,52 @@
 
       <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
         Últimos 6 com 1 vizinho:
-        T${r.t2}=<b style="color:${corTerminal[r.t2]}">${r.forcaT2Vizinho6}</b>
-        · T${r.t1}=<b style="color:${corTerminal[r.t1]}">${r.forcaT1Vizinho6}</b>
+        T${r.t2}=<b style="color:${corTerminal[r.t2]}">${r.forcaT2Vizinho1_6}</b>
+        · T${r.t1}=<b style="color:${corTerminal[r.t1]}">${r.forcaT1Vizinho1_6}</b>
+      </div>
+
+      <div style="font-size:12px;text-align:center;margin-top:5px;color:#ccc">
+        Últimos 6 com 2 vizinhos:
+        T${r.t2}=<b style="color:${corTerminal[r.t2]}">${r.forcaT2Vizinho2_6}</b>
+        · T${r.t1}=<b style="color:${corTerminal[r.t1]}">${r.forcaT1Vizinho2_6}</b>
         · Score: <b style="color:#fff">${r.score.toFixed(1)}</b>
       </div>
     `;
   }
 
+  function renderTimeline(){
+    const ultimos = historicoCompleto.slice(-14).reverse();
+    const indices = [];
+
+    for(let i=historicoCompleto.length-1;i>=Math.max(0,historicoCompleto.length-14);i--){
+      indices.push(i);
+    }
+
+    tl.innerHTML = ultimos.map((n,idx)=>{
+      const res = resultadosTimeline[indices[idx]];
+
+      if(!res){
+        return `<span style="display:inline-block;margin:2px;padding:3px 5px;border-radius:4px;background:#222;border:1px solid #444;color:#fff">${n}</span>`;
+      }
+
+      return `
+        <span title="${res.detalhe}" style="
+          display:inline-block;
+          margin:2px;
+          padding:3px 5px;
+          border-radius:4px;
+          background:${res.cor};
+          border:1px solid ${res.cor};
+          color:#000;
+          font-weight:800;
+        ">${n}</span>
+      `;
+    }).join("");
+  }
+
   function render(){
 
-    tl.innerHTML = timeline.join(" · ");
+    renderTimeline();
 
     renderAnaliseTerminal();
 
