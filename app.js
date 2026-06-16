@@ -22,6 +22,15 @@
     9:"#ff00ff"
   };
 
+  // NOVO
+  const coresNumero = [
+    "#ff5252",
+    "#2196f3",
+    "#00e676",
+    "#ffc107",
+    "#e91e63"
+  ];
+
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
@@ -30,6 +39,9 @@
   let analiseNumeroAtiva = false;
 
   let resultadoAnalise100 = null;
+
+  // NOVO
+  let melhoresNumero = [];
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -40,6 +52,81 @@
 
   for(let t=0;t<=9;t++){
     modosTerminais[t] = 0;
+  }
+
+  function numerosBaseTerminal(t){
+
+    return track
+      .filter(n=>terminal(n)===t)
+      .sort((a,b)=>a-b);
+
+  }
+
+  function calcularMelhoresNumero(){
+
+    melhoresNumero = [];
+
+    if(
+      !analiseNumeroAtiva ||
+      analises.MANUAL.filtros.size===0
+    ){
+      return;
+    }
+
+    const bases = [];
+
+    analises.MANUAL.filtros.forEach(t=>{
+
+      numerosBaseTerminal(t)
+        .forEach(n=>bases.push(n));
+
+    });
+
+    for(const numeroTimeline of timeline){
+
+      for(const base of bases){
+
+        if(
+          melhoresNumero.some(
+            x=>x.numero===base
+          )
+        ){
+          continue;
+        }
+
+        const i = track.indexOf(base);
+
+        const cobertura = [
+          track[(i+35)%37],
+          track[(i+36)%37],
+          base,
+          track[(i+1)%37],
+          track[(i+2)%37]
+        ];
+
+        if(
+          cobertura.includes(numeroTimeline)
+        ){
+
+          melhoresNumero.push({
+
+            numero: base,
+
+            cor:
+              coresNumero[
+                melhoresNumero.length
+              ]
+
+          });
+
+          if(
+            melhoresNumero.length===5
+          ){
+            return;
+          }
+        }
+      }
+    }
   }
 
   function clarearCor(hex){
@@ -68,9 +155,7 @@
     return "#"+[r,g,b]
       .map(x=>x.toString(16).padStart(2,"0"))
       .join("");
-  }
-
-  function atualizarModosPorOrdem(){
+  }  function atualizarModosPorOrdem(){
 
     for(let t=0;t<=9;t++){
       modosTerminais[t] = 0;
@@ -183,6 +268,20 @@
 
     const set = new Set();
 
+    // ANÁLISE NÚMERO NOVA
+    if(analiseNumeroAtiva){
+
+      melhoresNumero.forEach(item=>{
+
+        vizinhos2(item.numero)
+          .forEach(v=>set.add(v));
+
+      });
+
+      return set;
+    }
+
+    // comportamento original
     ordemSelecionados.forEach(t=>{
 
       coberturaTerminal(t,2)
@@ -336,6 +435,35 @@
         ></span>
       </div>
 
+      <!-- NOVO -->
+      <div
+        id="melhoresNumeroArea"
+        style="
+          display:none;
+          margin:10px 0;
+          padding:8px;
+          border:1px solid #555;
+          border-radius:6px;
+          background:#1a1a1a;
+        "
+      >
+        <div style="
+          font-weight:700;
+          margin-bottom:6px;
+        ">
+          Melhores Agora
+        </div>
+
+        <div
+          id="melhoresNumero"
+          style="
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+          "
+        ></div>
+      </div>
+
       <div
         style="
           display:flex;
@@ -426,6 +554,10 @@
         aplicarAnalise100();
       }
 
+      if(analiseNumeroAtiva){
+        calcularMelhoresNumero();
+      }
+
       render();
 
     },0);
@@ -438,6 +570,8 @@
 
     analiseNumeroAtiva = false;
 
+    melhoresNumero = [];
+
     if(analise100Ativa){
 
       aplicarAnalise100();
@@ -445,6 +579,7 @@
     }else{
 
       analises.MANUAL.filtros.clear();
+
       ordemSelecionados.length = 0;
 
       atualizarModosPorOrdem();
@@ -463,12 +598,12 @@
 
     ordemSelecionados.length = 0;
 
+    melhoresNumero = [];
+
     atualizarModosPorOrdem();
 
     render();
-  };
-
-  for(let t=0;t<=9;t++){
+  }  for(let t=0;t<=9;t++){
 
     const b = document.createElement("button");
 
@@ -505,9 +640,13 @@
           analises.MANUAL.filtros.add(t);
 
           ordemSelecionados.push(t);
+
         }
 
         atualizarModosPorOrdem();
+
+        // NOVO
+        calcularMelhoresNumero();
 
         render();
 
@@ -541,7 +680,9 @@
     };
 
     btnT.appendChild(b);
-  }  for(let n=0;n<=36;n++){
+  }
+
+  for(let n=0;n<=36;n++){
 
     const b = document.createElement("button");
 
@@ -572,6 +713,10 @@
       aplicarAnalise100();
     }
 
+    if(analiseNumeroAtiva){
+      calcularMelhoresNumero();
+    }
+
     render();
   };
 
@@ -588,6 +733,8 @@
     analiseNumeroAtiva = false;
 
     resultadoAnalise100 = null;
+
+    melhoresNumero = [];
 
     atualizarModosPorOrdem();
 
@@ -606,6 +753,10 @@
 
     if(analise100Ativa){
       aplicarAnalise100();
+    }
+
+    if(analiseNumeroAtiva){
+      calcularMelhoresNumero();
     }
 
     render();
@@ -636,11 +787,43 @@
       `;
 
     }).join("");
-  }
-
-  function render(){
+  };  function render(){
 
     renderTimeline();
+
+    // Painel Melhores Agora
+    if(
+      analiseNumeroAtiva &&
+      melhoresNumero.length
+    ){
+
+      melhoresNumeroArea.style.display =
+        "block";
+
+      melhoresNumero.innerHTML =
+        melhoresNumero.map(item=>`
+
+          <div
+            style="
+              background:${item.cor};
+              color:#fff;
+              padding:6px 10px;
+              border-radius:6px;
+              font-weight:700;
+            "
+          >
+            ${item.numero}
+          </div>
+
+        `).join("");
+
+    }else{
+
+      melhoresNumeroArea.style.display =
+        "none";
+
+      melhoresNumero.innerHTML = "";
+    }
 
     btnAnalise100.style.background =
       analise100Ativa ? "#00e676" : "";
@@ -658,7 +841,8 @@
       .querySelectorAll("#btnT button")
       .forEach(b=>{
 
-        const t = +b.textContent.match(/\d+/)[0];
+        const t =
+          +b.textContent.match(/\d+/)[0];
 
         const ativo =
           analises.MANUAL.filtros.has(t);
@@ -666,7 +850,7 @@
         b.style.background =
           ativo ? corTerminal[t] : "#444";
 
-        if(modosTerminais[t] === 2){
+        if(modosTerminais[t]===2){
 
           b.style.border =
             "3px solid #fff";
@@ -678,7 +862,7 @@
             `T${t} 2v`;
 
         }
-        else if(modosTerminais[t] === 1){
+        else if(modosTerminais[t]===1){
 
           b.style.border =
             "2px solid #999";
@@ -704,72 +888,124 @@
 
       });
 
-    if(analises.MANUAL.filtros.size > 0){
+    if(
+      analises.MANUAL.filtros.size > 0
+    ){
 
       const mapaCores = {};
 
-      const base = expandido
-        ? historicoCompleto.slice().reverse()
-        : timeline;
+      const base =
+        expandido
+          ? historicoCompleto
+              .slice()
+              .reverse()
+          : timeline;
 
       const ultimoNumero =
         timeline[0];
 
-      analises.MANUAL.filtros.forEach(t=>{
+      // ANÁLISE NÚMERO NOVA
+      if(
+        analiseNumeroAtiva &&
+        melhoresNumero.length
+      ){
 
-        track.forEach(n=>{
+        melhoresNumero.forEach(item=>{
 
-          if(terminal(n)!==t){
-            return;
-          }
-
-          if(
-            analiseNumeroAtiva ||
-            modosTerminais[t] === 2
-          ){
-
-            vizinhos2(n).forEach(v=>{
+          vizinhos2(item.numero)
+            .forEach(v=>{
 
               mapaCores[v] =
-                corTerminal[t];
+                item.cor;
 
             });
 
-            segundoVizinho(n).forEach(v=>{
+          segundoVizinho(item.numero)
+            .forEach(v=>{
 
               mapaCores[v] =
                 clarearCor(
-                  corTerminal[t]
+                  item.cor
                 );
 
             });
 
-          }
-          else if(modosTerminais[t] === 1){
+        });
 
-            vizinhos1(n).forEach(v=>{
+      }else{
 
-              if(!mapaCores[v]){
+        // COMPORTAMENTO ORIGINAL
+        analises.MANUAL.filtros.forEach(t=>{
 
-                mapaCores[v] =
-                  corTerminal[t];
+          track.forEach(n=>{
 
-              }
+            if(
+              terminal(n)!==t
+            ){
+              return;
+            }
 
-            });
+            if(
+              modosTerminais[t]===2
+            ){
 
-          }
+              vizinhos2(n)
+                .forEach(v=>{
+
+                  mapaCores[v] =
+                    corTerminal[t];
+
+                });
+
+              segundoVizinho(n)
+                .forEach(v=>{
+
+                  mapaCores[v] =
+                    clarearCor(
+                      corTerminal[t]
+                    );
+
+                });
+
+            }
+            else if(
+              modosTerminais[t]===1
+            ){
+
+              vizinhos1(n)
+                .forEach(v=>{
+
+                  if(
+                    !mapaCores[v]
+                  ){
+
+                    mapaCores[v] =
+                      corTerminal[t];
+
+                  }
+
+                });
+
+            }
+
+          });
 
         });
 
-      });      conjArea.style.display = "block";
+      }
+
+      conjArea.style.display =
+        "block";
 
       conjArea.innerHTML = `
         <div
           style="
             display:grid;
             grid-template-columns:
-              repeat(auto-fit,minmax(26px,1fr));
+              repeat(
+                auto-fit,
+                minmax(26px,1fr)
+              );
             gap:4px
           "
         >
@@ -822,7 +1058,8 @@
 
     }else{
 
-      conjArea.style.display = "none";
+      conjArea.style.display =
+        "none";
 
     }
 
