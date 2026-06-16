@@ -22,26 +22,19 @@
     9:"#ff00ff"
   };
 
-  // NOVO
-  const coresNumero = [
-    "#ff5252",
-    "#2196f3",
+  const coresNumerosFortes = [
     "#00e676",
     "#ffc107",
-    "#e91e63"
+    "#2196f3",
+    "#e91e63",
+    "#ff9800"
   ];
 
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
-
-  let analise100Ativa = false;
   let analiseNumeroAtiva = false;
-
-  let resultadoAnalise100 = null;
-
-  // NOVO
-  let melhoresNumero = [];
+  let numerosFortes = [];
 
   const analises = {
     MANUAL: { filtros:new Set(), res:[] }
@@ -50,145 +43,41 @@
   const modosTerminais = {};
   const ordemSelecionados = [];
 
-  for(let t=0;t<=9;t++){
+  for(let t=0; t<=9; t++){
     modosTerminais[t] = 0;
   }
 
-  function numerosBaseTerminal(t){
-
-    return track
-      .filter(n=>terminal(n)===t)
-      .sort((a,b)=>a-b);
-
-  }
-
-  function calcularMelhoresNumero(){
-
-    melhoresNumero = [];
-
-    if(
-      !analiseNumeroAtiva ||
-      analises.MANUAL.filtros.size===0
-    ){
-      return;
-    }
-
-    const bases = [];
-
-    analises.MANUAL.filtros.forEach(t=>{
-
-      numerosBaseTerminal(t)
-        .forEach(n=>bases.push(n));
-
-    });
-
-    for(const numeroTimeline of timeline){
-
-      for(const base of bases){
-
-        if(
-          melhoresNumero.some(
-            x=>x.numero===base
-          )
-        ){
-          continue;
-        }
-
-        const i = track.indexOf(base);
-
-        const cobertura = [
-          track[(i+35)%37],
-          track[(i+36)%37],
-          base,
-          track[(i+1)%37],
-          track[(i+2)%37]
-        ];
-
-        if(
-          cobertura.includes(numeroTimeline)
-        ){
-
-          melhoresNumero.push({
-
-            numero: base,
-
-            cor:
-              coresNumero[
-                melhoresNumero.length
-              ]
-
-          });
-
-          if(
-            melhoresNumero.length===5
-          ){
-            return;
-          }
-        }
-      }
-    }
-  }
-
   function clarearCor(hex){
-
     hex = hex.replace("#","");
 
     let r = parseInt(hex.substring(0,2),16);
     let g = parseInt(hex.substring(2,4),16);
     let b = parseInt(hex.substring(4,6),16);
 
-    r = Math.min(
-      255,
-      Math.floor(r + (255-r)*0.45)
-    );
+    r = Math.min(255, Math.floor(r + (255-r)*0.45));
+    g = Math.min(255, Math.floor(g + (255-g)*0.45));
+    b = Math.min(255, Math.floor(b + (255-b)*0.45));
 
-    g = Math.min(
-      255,
-      Math.floor(g + (255-g)*0.45)
-    );
-
-    b = Math.min(
-      255,
-      Math.floor(b + (255-b)*0.45)
-    );
-
-    return "#"+[r,g,b]
-      .map(x=>x.toString(16).padStart(2,"0"))
+    return "#" + [r,g,b]
+      .map(x => x.toString(16).padStart(2,"0"))
       .join("");
-  }  function atualizarModosPorOrdem(){
+  }
 
-    for(let t=0;t<=9;t++){
+  function atualizarModosPorOrdem(){
+    for(let t=0; t<=9; t++){
       modosTerminais[t] = 0;
     }
 
-    if(ordemSelecionados.length===0){
-      return;
+    if(ordemSelecionados.length > 0){
+      modosTerminais[ordemSelecionados[0]] = 2;
     }
 
-    if(analiseNumeroAtiva){
-
-      ordemSelecionados.forEach(t=>{
-        modosTerminais[t] = 2;
-      });
-
-      return;
-    }
-
-    modosTerminais[
-      ordemSelecionados[0]
-    ] = 2;
-
-    for(let i=1;i<ordemSelecionados.length;i++){
-
-      modosTerminais[
-        ordemSelecionados[i]
-      ] = 1;
-
+    for(let i=1; i<ordemSelecionados.length; i++){
+      modosTerminais[ordemSelecionados[i]] = 1;
     }
   }
 
   function vizinhos1(n){
-
     const i = track.indexOf(n);
 
     return [
@@ -199,7 +88,6 @@
   }
 
   function vizinhos2(n){
-
     const i = track.indexOf(n);
 
     return [
@@ -212,7 +100,6 @@
   }
 
   function segundoVizinho(n){
-
     const i = track.indexOf(n);
 
     return [
@@ -221,181 +108,72 @@
     ];
   }
 
-  function coberturaTerminal(t,qtd){
+  function calcularAnaliseNumero(){
 
-    const set = new Set();
+    numerosFortes = [];
 
-    track.forEach(n=>{
+    const selecionados = ordemSelecionados.slice(0,2);
 
-      if(terminal(n)!==t){
-        return;
+    if(!analiseNumeroAtiva) return;
+    if(selecionados.length !== 2) return;
+    if(timeline.length === 0) return;
+
+    const candidatos = [];
+
+    selecionados.forEach(t=>{
+
+      for(let n=0; n<=36; n++){
+
+        if(terminal(n) === t){
+
+          const cobertura = new Set(vizinhos2(n));
+
+          let score = 0;
+
+          timeline.forEach(x=>{
+            if(cobertura.has(x)){
+              score++;
+            }
+          });
+
+          candidatos.push({
+            numero:n,
+            terminal:t,
+            score:score
+          });
+        }
       }
-
-      if(qtd===2){
-
-        vizinhos2(n).forEach(v=>{
-          set.add(v);
-        });
-
-      }else{
-
-        vizinhos1(n).forEach(v=>{
-          set.add(v);
-        });
-
-      }
-
     });
 
-    return set;
+    numerosFortes = candidatos
+      .sort((a,b)=>{
+        if(b.score !== a.score) return b.score - a.score;
+        return a.numero - b.numero;
+      })
+      .slice(0,5)
+      .map(x=>x.numero);
   }
 
-  function coberturaDupla(t2,t1){
+  function mapaAnaliseNumero(){
 
-    const cov2 =
-      coberturaTerminal(t2,2);
+    const mapa = {};
 
-    const cov1 =
-      coberturaTerminal(t1,1);
+    numerosFortes.forEach((n,i)=>{
 
-    return new Set([
-      ...cov2,
-      ...cov1
-    ]);
-  }
+      vizinhos2(n).forEach(v=>{
 
-  function coberturaNumero(){
-
-    const set = new Set();
-
-    // ANÁLISE NÚMERO NOVA
-    if(analiseNumeroAtiva){
-
-      melhoresNumero.forEach(item=>{
-
-        vizinhos2(item.numero)
-          .forEach(v=>set.add(v));
+        if(!mapa[v]){
+          mapa[v] = coresNumerosFortes[i];
+        }
 
       });
 
-      return set;
-    }
-
-    // comportamento original
-    ordemSelecionados.forEach(t=>{
-
-      coberturaTerminal(t,2)
-        .forEach(v=>set.add(v));
-
     });
 
-    return set;
+    return mapa;
   }
 
-  function calcularAnalise100(){
-
-    if(historicoCompleto.length<3){
-      return null;
-    }
-
-    let melhor = null;
-
-    for(let t2=0;t2<=9;t2++){
-
-      for(let t1=0;t1<=9;t1++){
-
-        if(t1===t2){
-          continue;
-        }
-
-        const cobertura =
-          coberturaDupla(t2,t1);
-
-        let green = 0;
-        let red = 0;
-
-        const base =
-          historicoCompleto.slice(-100);
-
-        for(let i=0;i<base.length-1;i++){
-
-          const prox = base[i+1];
-
-          if(cobertura.has(prox)){
-            green++;
-          }else{
-            red++;
-          }
-        }
-
-        const total =
-          green + red;
-
-        const taxa =
-          total ? green/total : 0;
-
-        const teste = {
-          t2,
-          t1,
-          green,
-          red,
-          taxa
-        };
-
-        if(
-          !melhor ||
-          teste.red < melhor.red ||
-          (
-            teste.red===melhor.red &&
-            teste.green>melhor.green
-          ) ||
-          (
-            teste.red===melhor.red &&
-            teste.green===melhor.green &&
-            teste.taxa>melhor.taxa
-          )
-        ){
-          melhor = teste;
-        }
-      }
-    }
-
-    return melhor;
-  }
-
-  function aplicarAnalise100(){
-
-    resultadoAnalise100 =
-      calcularAnalise100();
-
-    if(!resultadoAnalise100){
-      return;
-    }
-
-    analises.MANUAL
-      .filtros
-      .clear();
-
-    ordemSelecionados.length = 0;
-
-    analises.MANUAL.filtros.add(
-      resultadoAnalise100.t2
-    );
-
-    ordemSelecionados.push(
-      resultadoAnalise100.t2
-    );
-
-    analises.MANUAL.filtros.add(
-      resultadoAnalise100.t1
-    );
-
-    ordemSelecionados.push(
-      resultadoAnalise100.t1
-    );
-
-    atualizarModosPorOrdem();
-  }  document.body.style.background = "#111";
+  document.body.style.background = "#111";
   document.body.style.color = "#fff";
   document.body.style.fontFamily = "sans-serif";
 
@@ -420,194 +198,102 @@
           color:#fff;
           border:1px solid #555;
           padding:6px
-        "
-      ></textarea>
+        ">
+      </textarea>
 
       <h3 style="text-align:center">CSM</h3>
 
       <div style="margin:10px 0">
         🕒 Timeline:
-        <span id="tl"
-          style="
-            font-size:18px;
-            font-weight:600
-          "
-        ></span>
+        <span id="tl" style="font-size:18px;font-weight:600"></span>
       </div>
 
-      <!-- NOVO -->
-      <div
-        id="melhoresNumeroArea"
-        style="
-          display:none;
-          margin:10px 0;
-          padding:8px;
-          border:1px solid #555;
-          border-radius:6px;
-          background:#1a1a1a;
-        "
-      >
-        <div style="
-          font-weight:700;
-          margin-bottom:6px;
-        ">
-          Melhores Agora
-        </div>
+      <div id="analiseNumeroArea" style="display:none;margin:8px 0"></div>
 
-        <div
-          id="melhoresNumero"
-          style="
-            display:flex;
-            gap:8px;
-            flex-wrap:wrap;
-          "
-        ></div>
-      </div>
+      <div style="
+        display:flex;
+        gap:8px;
+        margin-bottom:10px;
+        flex-wrap:wrap">
 
-      <div
-        style="
-          display:flex;
-          gap:8px;
-          margin-bottom:10px;
-          flex-wrap:wrap
-        "
-      >
+        <button id="btnUndo">Apagar último</button>
 
-        <button id="btnUndo">
-          Apagar último
-        </button>
+        <button id="btnClear">Apagar tudo</button>
 
-        <button id="btnClear">
-          Apagar tudo
-        </button>
-
-        <button id="btnAnalise100">
-          Análise 100
-        </button>
-
-        <button id="btnAnaliseNumero">
-          Análise Número
-        </button>
+        <button id="btnAnaliseNumero">Análise Número</button>
 
       </div>
 
-      <div
-        style="
-          border:1px solid #555;
-          padding:8px;
-          margin-bottom:10px
-        "
-      >
+      <div style="
+        border:1px solid #555;
+        padding:8px;
+        margin-bottom:10px">
 
         Terminais:
 
-        <div
-          id="btnT"
+        <div id="btnT"
           style="
             display:flex;
             gap:6px;
             flex-wrap:wrap;
-            margin-top:6px
-          "
-        ></div>
+            margin-top:6px">
+        </div>
 
       </div>
 
-      <div
-        id="conjArea"
+      <div id="conjArea"
         style="
           display:none;
           margin-top:12px;
-          overflow-x:auto
-        "
-      ></div>
+          overflow-x:auto">
+      </div>
 
-      <div
-        id="nums"
+      <div id="nums"
         style="
           display:grid;
           grid-template-columns:repeat(9,1fr);
           gap:6px;
-          margin-top:12px
-        "
-      ></div>
+          margin-top:12px">
+      </div>
 
     </div>
   `;
 
   inputHist.addEventListener("paste", ()=>{
-
     setTimeout(()=>{
-
       historicoCompleto = inputHist.value
         .split(/[\s,;|]+/)
         .map(Number)
-        .filter(n=>n>=0 && n<=36);
+        .filter(n => n >= 0 && n <= 36);
 
-      timeline = historicoCompleto
-        .slice(-14)
-        .reverse();
+      timeline = historicoCompleto.slice(-14).reverse();
 
       inputHist.style.display = "none";
 
-      if(analise100Ativa){
-        aplicarAnalise100();
-      }
-
-      if(analiseNumeroAtiva){
-        calcularMelhoresNumero();
-      }
+      calcularAnaliseNumero();
 
       render();
-
     },0);
-
   });
-
-  btnAnalise100.onclick = ()=>{
-
-    analise100Ativa = !analise100Ativa;
-
-    analiseNumeroAtiva = false;
-
-    melhoresNumero = [];
-
-    if(analise100Ativa){
-
-      aplicarAnalise100();
-
-    }else{
-
-      analises.MANUAL.filtros.clear();
-
-      ordemSelecionados.length = 0;
-
-      atualizarModosPorOrdem();
-    }
-
-    render();
-  };
 
   btnAnaliseNumero.onclick = ()=>{
 
     analiseNumeroAtiva = !analiseNumeroAtiva;
 
-    analise100Ativa = false;
-
-    analises.MANUAL.filtros.clear();
-
-    ordemSelecionados.length = 0;
-
-    melhoresNumero = [];
-
-    atualizarModosPorOrdem();
+    if(!analiseNumeroAtiva){
+      numerosFortes = [];
+    } else {
+      calcularAnaliseNumero();
+    }
 
     render();
-  }  for(let t=0;t<=9;t++){
+  };
+
+  for(let t=0; t<=9; t++){
 
     const b = document.createElement("button");
 
-    b.textContent = "T"+t;
+    b.textContent = "T" + t;
 
     b.style = `
       padding:6px;
@@ -618,63 +304,26 @@
 
     b.onclick = ()=>{
 
-      if(analiseNumeroAtiva){
-
-        if(analises.MANUAL.filtros.has(t)){
-
-          analises.MANUAL.filtros.delete(t);
-
-          const idx =
-            ordemSelecionados.indexOf(t);
-
-          if(idx!==-1){
-            ordemSelecionados.splice(idx,1);
-          }
-
-        }else{
-
-          if(ordemSelecionados.length >= 2){
-            return;
-          }
-
-          analises.MANUAL.filtros.add(t);
-
-          ordemSelecionados.push(t);
-
-        }
-
-        atualizarModosPorOrdem();
-
-        // NOVO
-        calcularMelhoresNumero();
-
-        render();
-
-        return;
-      }
-
-      analise100Ativa = false;
-
       if(analises.MANUAL.filtros.has(t)){
 
         analises.MANUAL.filtros.delete(t);
 
-        const idx =
-          ordemSelecionados.indexOf(t);
+        const idx = ordemSelecionados.indexOf(t);
 
-        if(idx!==-1){
+        if(idx !== -1){
           ordemSelecionados.splice(idx,1);
         }
 
-      }else{
+      } else {
 
         analises.MANUAL.filtros.add(t);
-
         ordemSelecionados.push(t);
 
       }
 
       atualizarModosPorOrdem();
+
+      calcularAnaliseNumero();
 
       render();
     };
@@ -682,7 +331,7 @@
     btnT.appendChild(b);
   }
 
-  for(let n=0;n<=36;n++){
+  for(let n=0; n<=36; n++){
 
     const b = document.createElement("button");
 
@@ -701,21 +350,15 @@
 
   btnUndo.onclick = ()=>{
 
-    if(!timeline.length){
-      return;
-    }
-
-    timeline.shift();
+    if(!timeline.length) return;
 
     historicoCompleto.pop();
 
-    if(analise100Ativa){
-      aplicarAnalise100();
-    }
+    timeline = historicoCompleto
+      .slice(-14)
+      .reverse();
 
-    if(analiseNumeroAtiva){
-      calcularMelhoresNumero();
-    }
+    calcularAnaliseNumero();
 
     render();
   };
@@ -724,351 +367,214 @@
 
     timeline = [];
     historicoCompleto = [];
+    numerosFortes = [];
+    expandido = false;
+    analiseNumeroAtiva = false;
 
     ordemSelecionados.length = 0;
 
     analises.MANUAL.filtros.clear();
 
-    analise100Ativa = false;
-    analiseNumeroAtiva = false;
-
-    resultadoAnalise100 = null;
-
-    melhoresNumero = [];
-
-    atualizarModosPorOrdem();
+    for(let t=0; t<=9; t++){
+      modosTerminais[t] = 0;
+    }
 
     render();
   };
 
   function add(n){
 
-    timeline.unshift(n);
-
-    if(timeline.length > 14){
-      timeline.pop();
-    }
-
     historicoCompleto.push(n);
 
-    if(analise100Ativa){
-      aplicarAnalise100();
-    }
+    timeline = historicoCompleto
+      .slice(-14)
+      .reverse();
 
-    if(analiseNumeroAtiva){
-      calcularMelhoresNumero();
-    }
+    calcularAnaliseNumero();
 
     render();
   }
 
-  function renderTimeline(){
+  function renderTimelinePrincipal(){
 
-    const ultimos = historicoCompleto
-      .slice(-14)
-      .reverse();
+    tl.innerHTML = timeline.map(n=>`
+      <span style="
+        display:inline-block;
+        margin:2px;
+        padding:3px 5px;
+        border-radius:4px;
+        background:#222;
+        border:1px solid #444;
+        color:#fff;
+      ">${n}</span>
+    `).join("");
+  }
 
-    tl.innerHTML = ultimos.map(n=>{
+  function renderAnaliseNumero(){
 
-      return `
-        <span
-          style="
+    if(!analiseNumeroAtiva || numerosFortes.length === 0){
+
+      analiseNumeroArea.style.display = "none";
+      analiseNumeroArea.innerHTML = "";
+      return;
+    }
+
+    const mapa = mapaAnaliseNumero();
+    const ultimoNumero = timeline[0];
+
+    analiseNumeroArea.style.display = "block";
+
+    analiseNumeroArea.innerHTML = `
+      <div style="margin-bottom:6px">
+        ${numerosFortes.map((n,i)=>`
+          <span style="
+            display:inline-block;
+            margin:2px 6px 2px 0;
+            padding:4px 7px;
+            border-radius:4px;
+            background:${coresNumerosFortes[i]};
+            color:#000;
+            font-weight:800;
+            font-size:13px;
+          ">${n}</span>
+        `).join("")}
+      </div>
+
+      <div>
+        ${timeline.map(n=>`
+          <span style="
             display:inline-block;
             margin:2px;
             padding:3px 5px;
             border-radius:4px;
-            background:#222;
-            border:1px solid #444;
-            color:#fff
-          "
-        >
-          ${n}
-        </span>
-      `;
+            background:${mapa[n] || "#222"};
+            border:${n===ultimoNumero ? `3px solid ${mapa[n] || "#fff"}` : "1px solid #444"};
+            color:${mapa[n] ? "#000" : "#fff"};
+            font-weight:${mapa[n] ? "800" : "400"};
+            box-shadow:${n===ultimoNumero ? `0 0 10px ${mapa[n] || "#fff"}` : "none"};
+            animation:${n===ultimoNumero ? "piscaStrong 0.8s infinite" : "none"};
+          ">${n}</span>
+        `).join("")}
+      </div>
+    `;
+  }
 
-    }).join("");
-  };  function render(){
+  function render(){
 
-    renderTimeline();
+    renderTimelinePrincipal();
 
-    // Painel Melhores Agora
-    if(
-      analiseNumeroAtiva &&
-      melhoresNumero.length
-    ){
+    calcularAnaliseNumero();
 
-      melhoresNumeroArea.style.display =
-        "block";
+    renderAnaliseNumero();
 
-      melhoresNumero.innerHTML =
-        melhoresNumero.map(item=>`
+    btnAnaliseNumero.style.background = analiseNumeroAtiva ? "#00e676" : "";
+    btnAnaliseNumero.style.color = analiseNumeroAtiva ? "#000" : "";
 
-          <div
-            style="
-              background:${item.cor};
-              color:#fff;
-              padding:6px 10px;
-              border-radius:6px;
-              font-weight:700;
-            "
-          >
-            ${item.numero}
-          </div>
+    document.querySelectorAll("#btnT button").forEach(b=>{
 
-        `).join("");
+      const t = +b.textContent.match(/\d+/)[0];
+      const ativo = analises.MANUAL.filtros.has(t);
 
-    }else{
+      b.style.background = ativo ? corTerminal[t] : "#444";
 
-      melhoresNumeroArea.style.display =
-        "none";
+      if(modosTerminais[t] === 2){
 
-      melhoresNumero.innerHTML = "";
-    }
+        b.style.border = "3px solid #fff";
+        b.style.boxShadow = `0 0 10px ${corTerminal[t]}`;
+        b.textContent = `T${t} 2v`;
 
-    btnAnalise100.style.background =
-      analise100Ativa ? "#00e676" : "";
+      } else if(modosTerminais[t] === 1){
 
-    btnAnalise100.style.color =
-      analise100Ativa ? "#000" : "";
+        b.style.border = "2px solid #999";
+        b.style.boxShadow = "none";
+        b.textContent = `T${t} 1v`;
 
-    btnAnaliseNumero.style.background =
-      analiseNumeroAtiva ? "#00bcd4" : "";
+      } else {
 
-    btnAnaliseNumero.style.color =
-      analiseNumeroAtiva ? "#000" : "";
-
-    document
-      .querySelectorAll("#btnT button")
-      .forEach(b=>{
-
-        const t =
-          +b.textContent.match(/\d+/)[0];
-
-        const ativo =
-          analises.MANUAL.filtros.has(t);
-
-        b.style.background =
-          ativo ? corTerminal[t] : "#444";
-
-        if(modosTerminais[t]===2){
-
-          b.style.border =
-            "3px solid #fff";
-
-          b.style.boxShadow =
-            `0 0 10px ${corTerminal[t]}`;
-
-          b.textContent =
-            `T${t} 2v`;
-
-        }
-        else if(modosTerminais[t]===1){
-
-          b.style.border =
-            "2px solid #999";
-
-          b.style.boxShadow =
-            "none";
-
-          b.textContent =
-            `T${t} 1v`;
-
-        }
-        else{
-
-          b.style.border =
-            "1px solid #666";
-
-          b.style.boxShadow =
-            "none";
-
-          b.textContent =
-            `T${t}`;
-        }
-
-      });
-
-    if(
-      analises.MANUAL.filtros.size > 0
-    ){
-
-      const mapaCores = {};
-
-      const base =
-        expandido
-          ? historicoCompleto
-              .slice()
-              .reverse()
-          : timeline;
-
-      const ultimoNumero =
-        timeline[0];
-
-      // ANÁLISE NÚMERO NOVA
-      if(
-        analiseNumeroAtiva &&
-        melhoresNumero.length
-      ){
-
-        melhoresNumero.forEach(item=>{
-
-          vizinhos2(item.numero)
-            .forEach(v=>{
-
-              mapaCores[v] =
-                item.cor;
-
-            });
-
-          segundoVizinho(item.numero)
-            .forEach(v=>{
-
-              mapaCores[v] =
-                clarearCor(
-                  item.cor
-                );
-
-            });
-
-        });
-
-      }else{
-
-        // COMPORTAMENTO ORIGINAL
-        analises.MANUAL.filtros.forEach(t=>{
-
-          track.forEach(n=>{
-
-            if(
-              terminal(n)!==t
-            ){
-              return;
-            }
-
-            if(
-              modosTerminais[t]===2
-            ){
-
-              vizinhos2(n)
-                .forEach(v=>{
-
-                  mapaCores[v] =
-                    corTerminal[t];
-
-                });
-
-              segundoVizinho(n)
-                .forEach(v=>{
-
-                  mapaCores[v] =
-                    clarearCor(
-                      corTerminal[t]
-                    );
-
-                });
-
-            }
-            else if(
-              modosTerminais[t]===1
-            ){
-
-              vizinhos1(n)
-                .forEach(v=>{
-
-                  if(
-                    !mapaCores[v]
-                  ){
-
-                    mapaCores[v] =
-                      corTerminal[t];
-
-                  }
-
-                });
-
-            }
-
-          });
-
-        });
+        b.style.border = "1px solid #666";
+        b.style.boxShadow = "none";
+        b.textContent = `T${t}`;
 
       }
 
-      conjArea.style.display =
-        "block";
+    });
+
+    if(analises.MANUAL.filtros.size > 0){
+
+      const mapaCores = {};
+      const base = expandido ? historicoCompleto.slice().reverse() : timeline;
+      const ultimoNumero = timeline[0];
+
+      analises.MANUAL.filtros.forEach(t=>{
+
+        track.forEach(n=>{
+
+          if(terminal(n) === t){
+
+            if(modosTerminais[t] === 2){
+
+              vizinhos2(n).forEach(v=>{
+                mapaCores[v] = corTerminal[t];
+              });
+
+              segundoVizinho(n).forEach(v=>{
+                mapaCores[v] = clarearCor(corTerminal[t]);
+              });
+
+            } else if(modosTerminais[t] === 1){
+
+              vizinhos1(n).forEach(v=>{
+                if(!mapaCores[v]){
+                  mapaCores[v] = corTerminal[t];
+                }
+              });
+
+            }
+
+          }
+
+        });
+
+      });
+
+      conjArea.style.display = "block";
 
       conjArea.innerHTML = `
-        <div
-          style="
-            display:grid;
-            grid-template-columns:
-              repeat(
-                auto-fit,
-                minmax(26px,1fr)
-              );
-            gap:4px
-          "
-        >
+        <div style="
+          display:grid;
+          grid-template-columns:repeat(auto-fit,minmax(26px,1fr));
+          gap:4px">
 
           ${base.map(n=>`
-
-            <div
-              style="
-                height:26px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-
-                background:
-                  ${mapaCores[n] || "#222"};
-
-                color:#fff;
-                font-size:10px;
-                border-radius:4px;
-
-                border:
-                  ${
-                    n===ultimoNumero
-                      ? `3px solid ${mapaCores[n] || "#fff"}`
-                      : "1px solid #333"
-                  };
-
-                box-shadow:
-                  ${
-                    n===ultimoNumero
-                      ? `0 0 10px ${mapaCores[n] || "#fff"}`
-                      : "none"
-                  };
-
-                animation:
-                  ${
-                    n===ultimoNumero
-                      ? "piscaStrong 0.8s infinite"
-                      : "none"
-                  };
-              "
-            >
-              ${n}
-            </div>
-
+            <div style="
+              height:26px;
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              background:${mapaCores[n] || "#222"};
+              color:#fff;
+              font-size:10px;
+              border-radius:4px;
+              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || "#fff"}` : "1px solid #333"};
+              box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || "#fff"}` : "none"};
+              animation:${n===ultimoNumero ? "piscaStrong 0.8s infinite" : "none"};
+            ">${n}</div>
           `).join("")}
 
         </div>
       `;
 
-    }else{
+    } else {
 
-      conjArea.style.display =
-        "none";
+      conjArea.style.display = "none";
+      conjArea.innerHTML = "";
 
     }
 
   }
 
   conjArea.onclick = ()=>{
-
     expandido = !expandido;
-
     render();
   };
 
