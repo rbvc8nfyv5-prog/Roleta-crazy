@@ -25,7 +25,10 @@
   let timeline = [];
   let historicoCompleto = [];
   let expandido = false;
+
   let analise100Ativa = false;
+  let analiseNumeroAtiva = false;
+
   let resultadoAnalise100 = null;
 
   const analises = {
@@ -35,20 +38,34 @@
   const modosTerminais = {};
   const ordemSelecionados = [];
 
-  for (let t = 0; t <= 9; t++) modosTerminais[t] = 0;
+  for(let t=0;t<=9;t++){
+    modosTerminais[t] = 0;
+  }
 
   function clarearCor(hex){
+
     hex = hex.replace("#","");
 
     let r = parseInt(hex.substring(0,2),16);
     let g = parseInt(hex.substring(2,4),16);
     let b = parseInt(hex.substring(4,6),16);
 
-    r = Math.min(255, Math.floor(r + (255-r)*0.45));
-    g = Math.min(255, Math.floor(g + (255-g)*0.45));
-    b = Math.min(255, Math.floor(b + (255-b)*0.45));
+    r = Math.min(
+      255,
+      Math.floor(r + (255-r)*0.45)
+    );
 
-    return "#" + [r,g,b]
+    g = Math.min(
+      255,
+      Math.floor(g + (255-g)*0.45)
+    );
+
+    b = Math.min(
+      255,
+      Math.floor(b + (255-b)*0.45)
+    );
+
+    return "#"+[r,g,b]
       .map(x=>x.toString(16).padStart(2,"0"))
       .join("");
   }
@@ -59,12 +76,29 @@
       modosTerminais[t] = 0;
     }
 
-    if(ordemSelecionados.length > 0){
-      modosTerminais[ordemSelecionados[0]] = 2;
+    if(ordemSelecionados.length===0){
+      return;
     }
 
+    if(analiseNumeroAtiva){
+
+      ordemSelecionados.forEach(t=>{
+        modosTerminais[t] = 2;
+      });
+
+      return;
+    }
+
+    modosTerminais[
+      ordemSelecionados[0]
+    ] = 2;
+
     for(let i=1;i<ordemSelecionados.length;i++){
-      modosTerminais[ordemSelecionados[i]] = 1;
+
+      modosTerminais[
+        ordemSelecionados[i]
+      ] = 1;
+
     }
   }
 
@@ -108,13 +142,21 @@
 
     track.forEach(n=>{
 
-      if(terminal(n)===t){
+      if(terminal(n)!==t){
+        return;
+      }
 
-        if(qtd===2){
-          vizinhos2(n).forEach(v=>set.add(v));
-        }else{
-          vizinhos1(n).forEach(v=>set.add(v));
-        }
+      if(qtd===2){
+
+        vizinhos2(n).forEach(v=>{
+          set.add(v);
+        });
+
+      }else{
+
+        vizinhos1(n).forEach(v=>{
+          set.add(v);
+        });
 
       }
 
@@ -125,8 +167,11 @@
 
   function coberturaDupla(t2,t1){
 
-    const cov2 = coberturaTerminal(t2,2);
-    const cov1 = coberturaTerminal(t1,1);
+    const cov2 =
+      coberturaTerminal(t2,2);
+
+    const cov1 =
+      coberturaTerminal(t1,1);
 
     return new Set([
       ...cov2,
@@ -134,9 +179,23 @@
     ]);
   }
 
+  function coberturaNumero(){
+
+    const set = new Set();
+
+    ordemSelecionados.forEach(t=>{
+
+      coberturaTerminal(t,2)
+        .forEach(v=>set.add(v));
+
+    });
+
+    return set;
+  }
+
   function calcularAnalise100(){
 
-    if(historicoCompleto.length < 3){
+    if(historicoCompleto.length<3){
       return null;
     }
 
@@ -150,12 +209,14 @@
           continue;
         }
 
-        const cobertura = coberturaDupla(t2,t1);
+        const cobertura =
+          coberturaDupla(t2,t1);
 
         let green = 0;
         let red = 0;
 
-        const base = historicoCompleto.slice(-100);
+        const base =
+          historicoCompleto.slice(-100);
 
         for(let i=0;i<base.length-1;i++){
 
@@ -168,8 +229,11 @@
           }
         }
 
-        const total = green + red;
-        const taxa = total ? green/total : 0;
+        const total =
+          green + red;
+
+        const taxa =
+          total ? green/total : 0;
 
         const teste = {
           t2,
@@ -202,27 +266,39 @@
 
   function aplicarAnalise100(){
 
-    resultadoAnalise100 = calcularAnalise100();
+    resultadoAnalise100 =
+      calcularAnalise100();
 
     if(!resultadoAnalise100){
       return;
     }
 
-    analises.MANUAL.filtros.clear();
+    analises.MANUAL
+      .filtros
+      .clear();
+
     ordemSelecionados.length = 0;
 
-    analises.MANUAL.filtros.add(resultadoAnalise100.t2);
-    ordemSelecionados.push(resultadoAnalise100.t2);
+    analises.MANUAL.filtros.add(
+      resultadoAnalise100.t2
+    );
 
-    analises.MANUAL.filtros.add(resultadoAnalise100.t1);
-    ordemSelecionados.push(resultadoAnalise100.t1);
+    ordemSelecionados.push(
+      resultadoAnalise100.t2
+    );
+
+    analises.MANUAL.filtros.add(
+      resultadoAnalise100.t1
+    );
+
+    ordemSelecionados.push(
+      resultadoAnalise100.t1
+    );
 
     atualizarModosPorOrdem();
-  }
-
-  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
+  }  document.body.style.background = "#111";
+  document.body.style.color = "#fff";
+  document.body.style.fontFamily = "sans-serif";
 
   document.body.innerHTML = `
     <style>
@@ -268,6 +344,7 @@
           flex-wrap:wrap
         "
       >
+
         <button id="btnUndo">
           Apagar último
         </button>
@@ -279,6 +356,11 @@
         <button id="btnAnalise100">
           Análise 100
         </button>
+
+        <button id="btnAnaliseNumero">
+          Análise Número
+        </button>
+
       </div>
 
       <div
@@ -288,6 +370,7 @@
           margin-bottom:10px
         "
       >
+
         Terminais:
 
         <div
@@ -322,7 +405,9 @@
       ></div>
 
     </div>
-  `;  inputHist.addEventListener("paste", ()=>{
+  `;
+
+  inputHist.addEventListener("paste", ()=>{
 
     setTimeout(()=>{
 
@@ -351,9 +436,34 @@
 
     analise100Ativa = !analise100Ativa;
 
+    analiseNumeroAtiva = false;
+
     if(analise100Ativa){
+
       aplicarAnalise100();
+
+    }else{
+
+      analises.MANUAL.filtros.clear();
+      ordemSelecionados.length = 0;
+
+      atualizarModosPorOrdem();
     }
+
+    render();
+  };
+
+  btnAnaliseNumero.onclick = ()=>{
+
+    analiseNumeroAtiva = !analiseNumeroAtiva;
+
+    analise100Ativa = false;
+
+    analises.MANUAL.filtros.clear();
+
+    ordemSelecionados.length = 0;
+
+    atualizarModosPorOrdem();
 
     render();
   };
@@ -373,21 +483,54 @@
 
     b.onclick = ()=>{
 
+      if(analiseNumeroAtiva){
+
+        if(analises.MANUAL.filtros.has(t)){
+
+          analises.MANUAL.filtros.delete(t);
+
+          const idx =
+            ordemSelecionados.indexOf(t);
+
+          if(idx!==-1){
+            ordemSelecionados.splice(idx,1);
+          }
+
+        }else{
+
+          if(ordemSelecionados.length >= 2){
+            return;
+          }
+
+          analises.MANUAL.filtros.add(t);
+
+          ordemSelecionados.push(t);
+        }
+
+        atualizarModosPorOrdem();
+
+        render();
+
+        return;
+      }
+
       analise100Ativa = false;
 
       if(analises.MANUAL.filtros.has(t)){
 
         analises.MANUAL.filtros.delete(t);
 
-        const idx = ordemSelecionados.indexOf(t);
+        const idx =
+          ordemSelecionados.indexOf(t);
 
-        if(idx !== -1){
+        if(idx!==-1){
           ordemSelecionados.splice(idx,1);
         }
 
       }else{
 
         analises.MANUAL.filtros.add(t);
+
         ordemSelecionados.push(t);
 
       }
@@ -398,9 +541,7 @@
     };
 
     btnT.appendChild(b);
-  }
-
-  for(let n=0;n<=36;n++){
+  }  for(let n=0;n<=36;n++){
 
     const b = document.createElement("button");
 
@@ -444,8 +585,11 @@
     analises.MANUAL.filtros.clear();
 
     analise100Ativa = false;
+    analiseNumeroAtiva = false;
 
     resultadoAnalise100 = null;
+
+    atualizarModosPorOrdem();
 
     render();
   };
@@ -492,7 +636,9 @@
       `;
 
     }).join("");
-  }  function render(){
+  }
+
+  function render(){
 
     renderTimeline();
 
@@ -501,6 +647,12 @@
 
     btnAnalise100.style.color =
       analise100Ativa ? "#000" : "";
+
+    btnAnaliseNumero.style.background =
+      analiseNumeroAtiva ? "#00bcd4" : "";
+
+    btnAnaliseNumero.style.color =
+      analiseNumeroAtiva ? "#000" : "";
 
     document
       .querySelectorAll("#btnT button")
@@ -557,9 +709,7 @@
       const mapaCores = {};
 
       const base = expandido
-        ? historicoCompleto
-            .slice()
-            .reverse()
+        ? historicoCompleto.slice().reverse()
         : timeline;
 
       const ultimoNumero =
@@ -569,52 +719,50 @@
 
         track.forEach(n=>{
 
-          if(terminal(n) === t){
+          if(terminal(n)!==t){
+            return;
+          }
 
-            if(modosTerminais[t] === 2){
+          if(
+            analiseNumeroAtiva ||
+            modosTerminais[t] === 2
+          ){
 
-              vizinhos2(n).forEach(v=>{
+            vizinhos2(n).forEach(v=>{
+
+              mapaCores[v] =
+                corTerminal[t];
+
+            });
+
+            segundoVizinho(n).forEach(v=>{
+
+              mapaCores[v] =
+                clarearCor(
+                  corTerminal[t]
+                );
+
+            });
+
+          }
+          else if(modosTerminais[t] === 1){
+
+            vizinhos1(n).forEach(v=>{
+
+              if(!mapaCores[v]){
 
                 mapaCores[v] =
                   corTerminal[t];
 
-              });
+              }
 
-              segundoVizinho(n)
-                .forEach(v=>{
-
-                  mapaCores[v] =
-                    clarearCor(
-                      corTerminal[t]
-                    );
-
-                });
-
-            }
-            else if(modosTerminais[t] === 1){
-
-              vizinhos1(n)
-                .forEach(v=>{
-
-                  if(!mapaCores[v]){
-
-                    mapaCores[v] =
-                      corTerminal[t];
-
-                  }
-
-                });
-
-            }
+            });
 
           }
 
         });
 
-      });
-
-      conjArea.style.display =
-        "block";
+      });      conjArea.style.display = "block";
 
       conjArea.innerHTML = `
         <div
@@ -634,8 +782,10 @@
                 display:flex;
                 align-items:center;
                 justify-content:center;
+
                 background:
                   ${mapaCores[n] || "#222"};
+
                 color:#fff;
                 font-size:10px;
                 border-radius:4px;
@@ -670,14 +820,15 @@
         </div>
       `;
 
-    }
-    else{
+    }else{
 
-      conjArea.style.display =
-        "none";
+      conjArea.style.display = "none";
+
     }
 
-  }  conjArea.onclick = ()=>{
+  }
+
+  conjArea.onclick = ()=>{
 
     expandido = !expandido;
 
