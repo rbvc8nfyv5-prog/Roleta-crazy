@@ -1,5 +1,7 @@
 (function () {
 
+  // ================= CONFIGURAÇÃO =================
+
   const track = [
     32,15,19,4,21,2,25,17,34,6,
     27,13,36,11,30,8,23,10,5,24,
@@ -8,6 +10,8 @@
   ];
 
   const terminal = n => n % 10;
+
+  const STORAGE_KEY = "CSM_MELHOR_PAR_HISTORICO_V1";
 
   const corTerminal = {
     0:"#ff5252",
@@ -22,561 +26,921 @@
     9:"#ff00ff"
   };
 
-  const coresNumerosFortes = [
-    "#00e676",
-    "#ffc107",
-    "#2196f3",
-    "#e91e63",
-    "#ff9800"
-  ];
+  const numerosVermelhos = new Set([
+    1,3,5,7,9,12,14,16,18,
+    19,21,23,25,27,30,32,34,36
+  ]);
 
-  let timeline = [];
-  let historicoCompleto = [];
-  let expandido = false;
-  let analiseNumeroAtiva = false;
-  let numerosFortes = [];
+  // ================= ESTADO =================
 
-  const analises = {
-    MANUAL: { filtros:new Set(), res:[] }
-  };
+  let historico = carregarHistorico();
+  let proximoHorario = calcularProximoHorario();
 
-  const modosTerminais = {};
-  const ordemSelecionados = [];
+  // ================= FUNÇÕES DE HORÁRIO =================
 
-  for(let t=0; t<=9; t++){
-    modosTerminais[t] = 0;
+  function doisDigitos(valor){
+    return String(valor).padStart(2,"0");
   }
 
-  function clarearCor(hex){
-    hex = hex.replace("#","");
+  function horarioAtual(){
+    const agora = new Date();
 
-    let r = parseInt(hex.substring(0,2),16);
-    let g = parseInt(hex.substring(2,4),16);
-    let b = parseInt(hex.substring(4,6),16);
-
-    r = Math.min(255, Math.floor(r + (255-r)*0.45));
-    g = Math.min(255, Math.floor(g + (255-g)*0.45));
-    b = Math.min(255, Math.floor(b + (255-b)*0.45));
-
-    return "#" + [r,g,b]
-      .map(x => x.toString(16).padStart(2,"0"))
-      .join("");
+    return {
+      horas: agora.getHours(),
+      minutos: agora.getMinutes()
+    };
   }
 
-  function atualizarModosPorOrdem(){
-    for(let t=0; t<=9; t++){
-      modosTerminais[t] = 0;
+  function horarioParaMinutos(horario){
+    if(!horario || !/^\d{2}:\d{2}$/.test(horario)){
+      const atual = horarioAtual();
+      return atual.horas * 60 + atual.minutos;
     }
 
-    if(ordemSelecionados.length > 0){
-      modosTerminais[ordemSelecionados[0]] = 2;
+    const partes = horario.split(":").map(Number);
+
+    return partes[0] * 60 + partes[1];
+  }
+
+  function minutosParaHorario(total){
+    total = ((total % 1440) + 1440) % 1440;
+
+    const horas = Math.floor(total / 60);
+    const minutos = total % 60;
+
+    return `${doisDigitos(horas)}:${doisDigitos(minutos)}`;
+  }
+
+  function somarMinutos(horario, quantidade){
+    return minutosParaHorario(
+      horarioParaMinutos(horario) + quantidade
+    );
+  }
+
+  function calcularProximoHorario(){
+    if(historico.length > 0){
+      return somarMinutos(historico[0].horario,1);
     }
 
-    for(let i=1; i<ordemSelecionados.length; i++){
-      modosTerminais[ordemSelecionados[i]] = 1;
+    const atual = horarioAtual();
+
+    return `${doisDigitos(atual.horas)}:${doisDigitos(atual.minutos)}`;
+  }
+
+  // ================= ARMAZENAMENTO =================
+
+  function carregarHistorico(){
+    try{
+      const salvo = localStorage.getItem(STORAGE_KEY);
+
+      if(!salvo){
+        return [];
+      }
+
+      const dados = JSON.parse(salvo);
+
+      if(!Array.isArray(dados)){
+        return [];
+      }
+
+      return dados.filter(item =>
+        item &&
+        Number.isInteger(item.numero) &&
+        item.numero >= 0 &&
+        item.numero <= 36 &&
+        typeof item.horario === "string"
+      );
+    }catch(erro){
+      return [];
     }
   }
 
-  function vizinhos1(n){
-    const i = track.indexOf(n);
+  function salvarHistorico(){
+    try{
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(historico)
+      );
+    }catch(erro){
+      console.error("Não foi possível salvar o histórico.",erro);
+    }
+  }
+
+  // ================= VIZINHOS =================
+
+  function vizinhos1(numero){
+    const indice = track.indexOf(numero);
 
     return [
-      track[(i+36)%37],
-      n,
-      track[(i+1)%37]
+      track[(indice + 36) % 37],
+      numero,
+      track[(indice + 1) % 37]
     ];
   }
 
-  function vizinhos2(n){
-    const i = track.indexOf(n);
+  function coberturaDoPar(par){
+    const cobertura = new Set();
 
-    return [
-      track[(i+35)%37],
-      track[(i+36)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
-  }
-
-  function segundoVizinho(n){
-    const i = track.indexOf(n);
-
-    return [
-      track[(i+35)%37],
-      track[(i+2)%37]
-    ];
-  }
-
-  function calcularAnaliseNumero(){
-
-    numerosFortes = [];
-
-    const selecionados = ordemSelecionados.slice(0,2);
-
-    if(!analiseNumeroAtiva) return;
-    if(selecionados.length !== 2) return;
-    if(timeline.length === 0) return;
-
-    const candidatos = [];
-
-    selecionados.forEach(t=>{
-
-      for(let n=0; n<=36; n++){
-
-        if(terminal(n) === t){
-
-          const cobertura = new Set(vizinhos2(n));
-
-          let score = 0;
-
-          timeline.forEach(x=>{
-            if(cobertura.has(x)){
-              score++;
-            }
-          });
-
-          candidatos.push({
-            numero:n,
-            terminal:t,
-            score:score
+    par.forEach(t => {
+      track.forEach(numero => {
+        if(terminal(numero) === t){
+          vizinhos1(numero).forEach(vizinho => {
+            cobertura.add(vizinho);
           });
         }
+      });
+    });
+
+    return cobertura;
+  }
+
+  // ================= ANÁLISE DO MELHOR PAR =================
+
+  function analisarPar(par){
+    const cobertura = coberturaDoPar(par);
+
+    const acertos = [];
+    const quebras = [];
+
+    historico.forEach(item => {
+      if(cobertura.has(item.numero)){
+        acertos.push(item);
+      }else{
+        quebras.push(item);
       }
     });
 
-    numerosFortes = candidatos
-      .sort((a,b)=>{
-        if(b.score !== a.score) return b.score - a.score;
-        return a.numero - b.numero;
-      })
-      .slice(0,5)
-      .map(x=>x.numero);
+    const total = historico.length;
+    const percentual = total > 0
+      ? (acertos.length / total) * 100
+      : 0;
+
+    return {
+      par,
+      cobertura,
+      acertos,
+      quebras,
+      total,
+      percentual
+    };
   }
 
-  function mapaAnaliseNumero(){
+  function encontrarMelhorPar(){
+    let melhor = null;
 
-    const mapa = {};
+    for(let primeiro = 0; primeiro <= 9; primeiro++){
+      for(let segundo = primeiro + 1; segundo <= 9; segundo++){
 
-    numerosFortes.forEach((n,i)=>{
+        const analise = analisarPar([primeiro,segundo]);
 
-      vizinhos2(n).forEach(v=>{
-
-        if(!mapa[v]){
-          mapa[v] = coresNumerosFortes[i];
+        if(
+          !melhor ||
+          analise.percentual > melhor.percentual ||
+          (
+            analise.percentual === melhor.percentual &&
+            analise.acertos.length > melhor.acertos.length
+          ) ||
+          (
+            analise.percentual === melhor.percentual &&
+            analise.acertos.length === melhor.acertos.length &&
+            analise.quebras.length < melhor.quebras.length
+          )
+        ){
+          melhor = analise;
         }
+      }
+    }
 
-      });
+    return melhor || analisarPar([0,1]);
+  }
 
+  // ================= INSERÇÃO =================
+
+  function adicionarNumero(numero){
+
+    historico.unshift({
+      numero,
+      horario: proximoHorario
     });
 
-    return mapa;
+    proximoHorario = somarMinutos(proximoHorario,1);
+
+    salvarHistorico();
+    render();
   }
 
+  function apagarUltimo(){
+    if(!historico.length){
+      return;
+    }
+
+    historico.shift();
+
+    proximoHorario = calcularProximoHorario();
+
+    salvarHistorico();
+    render();
+  }
+
+  function apagarTudo(){
+    const confirmar = window.confirm(
+      "Apagar todo o histórico armazenado?"
+    );
+
+    if(!confirmar){
+      return;
+    }
+
+    historico = [];
+    proximoHorario = calcularProximoHorario();
+
+    salvarHistorico();
+    render();
+  }
+
+  // ================= COR DA ROLETA =================
+
+  function corNumeroRoleta(numero){
+    if(numero === 0){
+      return {
+        fundo:"#f5f5f5",
+        texto:"#8d1431"
+      };
+    }
+
+    if(numerosVermelhos.has(numero)){
+      return {
+        fundo:"#ef3852",
+        texto:"#ffffff"
+      };
+    }
+
+    return {
+      fundo:"#262223",
+      texto:"#ffffff"
+    };
+  }
+
+  // ================= INTERFACE =================
+
+  document.body.style.margin = "0";
   document.body.style.background = "#111";
   document.body.style.color = "#fff";
-  document.body.style.fontFamily = "sans-serif";
+  document.body.style.fontFamily = "Arial, sans-serif";
 
   document.body.innerHTML = `
     <style>
-      @keyframes piscaStrong {
-        0% { transform:scale(1); }
-        50% { transform:scale(1.2); }
-        100% { transform:scale(1); }
+
+      *{
+        box-sizing:border-box;
       }
+
+      button,
+      input{
+        font-family:Arial,sans-serif;
+      }
+
+      button{
+        cursor:pointer;
+        touch-action:manipulation;
+      }
+
+      .csm-container{
+        width:100%;
+        max-width:1100px;
+        margin:auto;
+        padding:12px;
+      }
+
+      .csm-painel{
+        background:#1d1d1f;
+        border:1px solid #444;
+        border-radius:10px;
+        padding:10px;
+        margin-bottom:10px;
+      }
+
+      .csm-resumo{
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        gap:8px;
+      }
+
+      .csm-card{
+        min-height:90px;
+        background:#272729;
+        border:1px solid #414145;
+        border-radius:9px;
+        padding:9px;
+      }
+
+      .csm-label{
+        color:#aaa;
+        font-size:12px;
+        margin-bottom:6px;
+      }
+
+      .csm-valor{
+        font-size:22px;
+        font-weight:900;
+      }
+
+      .csm-terminal{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-width:50px;
+        height:42px;
+        margin-right:6px;
+        border-radius:8px;
+        color:#fff;
+        font-size:20px;
+        font-weight:900;
+        border:2px solid rgba(255,255,255,.6);
+      }
+
+      .csm-barra{
+        height:12px;
+        border-radius:8px;
+        background:#3a3a3a;
+        overflow:hidden;
+        margin-top:8px;
+      }
+
+      .csm-barra-interna{
+        height:100%;
+        width:0;
+        background:linear-gradient(
+          90deg,
+          #00e5ff,
+          #00e676
+        );
+      }
+
+      .csm-horario{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+
+      .csm-horario-atual{
+        font-size:30px;
+        font-weight:900;
+        color:#00e5ff;
+      }
+
+      .csm-time-input{
+        padding:8px;
+        background:#222;
+        color:#fff;
+        border:1px solid #555;
+        border-radius:7px;
+        font-size:18px;
+        font-weight:900;
+      }
+
+      .csm-btn{
+        padding:9px 12px;
+        border:1px solid #555;
+        border-radius:7px;
+        background:#333;
+        color:#fff;
+        font-weight:800;
+      }
+
+      .csm-btn-verde{
+        background:#146438;
+      }
+
+      .csm-btn-vermelho{
+        background:#70242d;
+      }
+
+      .csm-teclado{
+        display:grid;
+        grid-template-columns:repeat(9,1fr);
+        gap:6px;
+      }
+
+      .csm-numero-btn{
+        min-height:42px;
+        border:1px solid #555;
+        border-radius:7px;
+        color:#fff;
+        font-size:16px;
+        font-weight:900;
+      }
+
+      .csm-timeline{
+        font-size:18px;
+        font-weight:800;
+        line-height:1.9;
+        word-break:break-word;
+      }
+
+      .csm-historico{
+        display:grid;
+        grid-template-columns:repeat(6,1fr);
+        gap:10px;
+      }
+
+      .csm-historico-item{
+        text-align:center;
+      }
+
+      .csm-historico-numero{
+        height:76px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        position:relative;
+        border-radius:9px;
+        font-size:22px;
+        font-weight:900;
+        border:2px solid #555;
+      }
+
+      .csm-historico-numero:after{
+        content:"";
+        position:absolute;
+        width:42px;
+        height:42px;
+        border-radius:50%;
+        border:4px solid currentColor;
+      }
+
+      .csm-historico-numero span{
+        position:relative;
+        z-index:2;
+      }
+
+      .csm-acerto{
+        box-shadow:
+          0 0 0 3px #00e676,
+          0 0 15px rgba(0,230,118,.6);
+      }
+
+      .csm-quebra{
+        box-shadow:
+          0 0 0 3px #ff5252,
+          0 0 15px rgba(255,82,82,.55);
+      }
+
+      .csm-historico-hora{
+        margin-top:5px;
+        font-size:13px;
+        font-weight:800;
+      }
+
+      .csm-quebras{
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        margin-top:8px;
+      }
+
+      .csm-quebra-chip{
+        padding:6px 8px;
+        background:#5d222b;
+        border:1px solid #a84d5a;
+        border-radius:7px;
+        font-size:13px;
+        font-weight:900;
+      }
+
+      @media(max-width:750px){
+
+        .csm-resumo{
+          grid-template-columns:repeat(2,1fr);
+        }
+
+        .csm-historico{
+          grid-template-columns:repeat(4,1fr);
+        }
+
+        .csm-teclado{
+          grid-template-columns:repeat(6,1fr);
+        }
+
+        .csm-historico-numero{
+          height:65px;
+        }
+
+      }
+
     </style>
 
-    <div style="padding:10px;max-width:1000px;margin:auto">
+    <div class="csm-container">
 
-      <textarea
-        id="inputHist"
-        placeholder="Cole histórico aqui"
-        style="
-          width:100%;
-          margin-bottom:10px;
-          background:#222;
-          color:#fff;
-          border:1px solid #555;
-          padding:6px
-        ">
-      </textarea>
+      <h2 style="text-align:center;margin:4px 0 12px">
+        CSM — Melhor Par com 1 Vizinho
+      </h2>
 
-      <h3 style="text-align:center">CSM</h3>
+      <div class="csm-painel">
 
-      <div style="margin:10px 0">
-        🕒 Timeline:
-        <span id="tl" style="font-size:18px;font-weight:600"></span>
-      </div>
+        <div class="csm-horario">
 
-      <div id="analiseNumeroArea" style="display:none;margin:8px 0"></div>
+          <div>
+            <div class="csm-label">
+              Horário do próximo número
+            </div>
 
-      <div style="
-        display:flex;
-        gap:8px;
-        margin-bottom:10px;
-        flex-wrap:wrap">
+            <div
+              id="csmProximoHorario"
+              class="csm-horario-atual">
+              --:--
+            </div>
+          </div>
 
-        <button id="btnUndo">Apagar último</button>
+          <div>
+            <div class="csm-label">
+              Ajustar horário
+            </div>
 
-        <button id="btnClear">Apagar tudo</button>
+            <input
+              id="csmHorarioInput"
+              class="csm-time-input"
+              type="time"
+              step="60">
+          </div>
 
-        <button id="btnAnaliseNumero">Análise Número</button>
+          <button
+            id="csmMenosMinuto"
+            class="csm-btn">
+            −1 minuto
+          </button>
 
-      </div>
+          <button
+            id="csmMaisMinuto"
+            class="csm-btn">
+            +1 minuto
+          </button>
 
-      <div style="
-        border:1px solid #555;
-        padding:8px;
-        margin-bottom:10px">
+          <button
+            id="csmApagarUltimo"
+            class="csm-btn">
+            Apagar último
+          </button>
 
-        Terminais:
+          <button
+            id="csmApagarTudo"
+            class="csm-btn csm-btn-vermelho">
+            Apagar tudo
+          </button>
 
-        <div id="btnT"
-          style="
-            display:flex;
-            gap:6px;
-            flex-wrap:wrap;
-            margin-top:6px">
         </div>
 
       </div>
 
-      <div id="conjArea"
-        style="
-          display:none;
-          margin-top:12px;
-          overflow-x:auto">
+      <div class="csm-painel">
+
+        <div class="csm-resumo">
+
+          <div class="csm-card">
+
+            <div class="csm-label">
+              Melhor par
+            </div>
+
+            <div id="csmMelhorPar"></div>
+
+          </div>
+
+          <div class="csm-card">
+
+            <div class="csm-label">
+              Percentual com 1 vizinho
+            </div>
+
+            <div
+              id="csmPercentual"
+              class="csm-valor">
+              0%
+            </div>
+
+            <div class="csm-barra">
+              <div
+                id="csmBarra"
+                class="csm-barra-interna">
+              </div>
+            </div>
+
+          </div>
+
+          <div class="csm-card">
+
+            <div class="csm-label">
+              Acertos
+            </div>
+
+            <div
+              id="csmAcertos"
+              class="csm-valor">
+              0 / 0
+            </div>
+
+          </div>
+
+          <div class="csm-card">
+
+            <div class="csm-label">
+              Última quebra
+            </div>
+
+            <div
+              id="csmUltimaQuebra"
+              class="csm-valor">
+              —
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
-      <div id="nums"
-        style="
-          display:grid;
-          grid-template-columns:repeat(9,1fr);
-          gap:6px;
-          margin-top:12px">
+      <div class="csm-painel">
+
+        <b>Onde aconteceram as quebras</b>
+
+        <div
+          id="csmListaQuebras"
+          class="csm-quebras">
+        </div>
+
+      </div>
+
+      <div class="csm-painel">
+
+        <b>Timeline analisada</b>
+
+        <div
+          id="csmTimeline"
+          class="csm-timeline">
+        </div>
+
+      </div>
+
+      <div class="csm-painel">
+
+        <b>Teclado 0–36</b>
+
+        <div style="
+          color:#aaa;
+          font-size:12px;
+          margin:5px 0 9px">
+          Clique no número. Ele será armazenado com o horário acima.
+        </div>
+
+        <div
+          id="csmTeclado"
+          class="csm-teclado">
+        </div>
+
+      </div>
+
+      <div class="csm-painel">
+
+        <b>Histórico armazenado</b>
+
+        <div
+          id="csmHistorico"
+          class="csm-historico"
+          style="margin-top:10px">
+        </div>
+
       </div>
 
     </div>
   `;
 
-  inputHist.addEventListener("paste", ()=>{
-    setTimeout(()=>{
-      historicoCompleto = inputHist.value
-        .split(/[\s,;|]+/)
-        .map(Number)
-        .filter(n => n >= 0 && n <= 36);
+  // ================= ELEMENTOS =================
 
-      timeline = historicoCompleto.slice(-14).reverse();
+  const elementoProximoHorario =
+    document.getElementById("csmProximoHorario");
 
-      inputHist.style.display = "none";
+  const elementoHorarioInput =
+    document.getElementById("csmHorarioInput");
 
-      calcularAnaliseNumero();
+  const elementoMelhorPar =
+    document.getElementById("csmMelhorPar");
 
-      render();
-    },0);
-  });
+  const elementoPercentual =
+    document.getElementById("csmPercentual");
 
-  btnAnaliseNumero.onclick = ()=>{
+  const elementoBarra =
+    document.getElementById("csmBarra");
 
-    analiseNumeroAtiva = !analiseNumeroAtiva;
+  const elementoAcertos =
+    document.getElementById("csmAcertos");
 
-    if(!analiseNumeroAtiva){
-      numerosFortes = [];
-    } else {
-      calcularAnaliseNumero();
-    }
+  const elementoUltimaQuebra =
+    document.getElementById("csmUltimaQuebra");
 
-    render();
-  };
+  const elementoListaQuebras =
+    document.getElementById("csmListaQuebras");
 
-  for(let t=0; t<=9; t++){
+  const elementoTimeline =
+    document.getElementById("csmTimeline");
 
-    const b = document.createElement("button");
+  const elementoHistorico =
+    document.getElementById("csmHistorico");
 
-    b.textContent = "T" + t;
+  const elementoTeclado =
+    document.getElementById("csmTeclado");
 
-    b.style = `
-      padding:6px;
-      background:#444;
-      color:#fff;
-      border:1px solid #666
-    `;
+  // ================= TECLADO =================
 
-    b.onclick = ()=>{
+  for(let numero = 0; numero <= 36; numero++){
 
-      if(analises.MANUAL.filtros.has(t)){
+    const cores = corNumeroRoleta(numero);
 
-        analises.MANUAL.filtros.delete(t);
+    const botao = document.createElement("button");
 
-        const idx = ordemSelecionados.indexOf(t);
+    botao.className = "csm-numero-btn";
+    botao.textContent = numero;
 
-        if(idx !== -1){
-          ordemSelecionados.splice(idx,1);
-        }
+    botao.style.background = cores.fundo;
+    botao.style.color = cores.texto;
 
-      } else {
-
-        analises.MANUAL.filtros.add(t);
-        ordemSelecionados.push(t);
-
-      }
-
-      atualizarModosPorOrdem();
-
-      calcularAnaliseNumero();
-
-      render();
+    botao.onclick = () => {
+      adicionarNumero(numero);
     };
 
-    btnT.appendChild(b);
+    elementoTeclado.appendChild(botao);
+
   }
 
-  for(let n=0; n<=36; n++){
+  // ================= EVENTOS =================
 
-    const b = document.createElement("button");
+  document
+    .getElementById("csmMenosMinuto")
+    .onclick = () => {
 
-    b.textContent = n;
+      proximoHorario =
+        somarMinutos(proximoHorario,-1);
 
-    b.style = `
-      padding:8px;
-      background:#333;
-      color:#fff
-    `;
+      render();
 
-    b.onclick = ()=>add(n);
+    };
 
-    nums.appendChild(b);
-  }
+  document
+    .getElementById("csmMaisMinuto")
+    .onclick = () => {
 
-  btnUndo.onclick = ()=>{
+      proximoHorario =
+        somarMinutos(proximoHorario,1);
 
-    if(!timeline.length) return;
+      render();
 
-    historicoCompleto.pop();
+    };
 
-    timeline = historicoCompleto
-      .slice(-14)
-      .reverse();
+  document
+    .getElementById("csmApagarUltimo")
+    .onclick = apagarUltimo;
 
-    calcularAnaliseNumero();
+  document
+    .getElementById("csmApagarTudo")
+    .onclick = apagarTudo;
 
-    render();
-  };
+  elementoHorarioInput.onchange = event => {
 
-  btnClear.onclick = ()=>{
-
-    timeline = [];
-    historicoCompleto = [];
-    numerosFortes = [];
-    expandido = false;
-    analiseNumeroAtiva = false;
-
-    ordemSelecionados.length = 0;
-
-    analises.MANUAL.filtros.clear();
-
-    for(let t=0; t<=9; t++){
-      modosTerminais[t] = 0;
+    if(event.target.value){
+      proximoHorario = event.target.value;
+      render();
     }
 
-    render();
   };
 
-  function add(n){
-
-    historicoCompleto.push(n);
-
-    timeline = historicoCompleto
-      .slice(-14)
-      .reverse();
-
-    calcularAnaliseNumero();
-
-    render();
-  }
-
-  function renderTimelinePrincipal(){
-
-    tl.innerHTML = timeline.map(n=>`
-      <span style="
-        display:inline-block;
-        margin:2px;
-        padding:3px 5px;
-        border-radius:4px;
-        background:#222;
-        border:1px solid #444;
-        color:#fff;
-      ">${n}</span>
-    `).join("");
-  }
-
-  function renderAnaliseNumero(){
-
-    if(!analiseNumeroAtiva || numerosFortes.length === 0){
-
-      analiseNumeroArea.style.display = "none";
-      analiseNumeroArea.innerHTML = "";
-      return;
-    }
-
-    const mapa = mapaAnaliseNumero();
-    const ultimoNumero = timeline[0];
-
-    analiseNumeroArea.style.display = "block";
-
-    analiseNumeroArea.innerHTML = `
-      <div style="margin-bottom:6px">
-        ${numerosFortes.map((n,i)=>`
-          <span style="
-            display:inline-block;
-            margin:2px 6px 2px 0;
-            padding:4px 7px;
-            border-radius:4px;
-            background:${coresNumerosFortes[i]};
-            color:#000;
-            font-weight:800;
-            font-size:13px;
-          ">${n}</span>
-        `).join("")}
-      </div>
-
-      <div>
-        ${timeline.map(n=>`
-          <span style="
-            display:inline-block;
-            margin:2px;
-            padding:3px 5px;
-            border-radius:4px;
-            background:${mapa[n] || "#222"};
-            border:${n===ultimoNumero ? `3px solid ${mapa[n] || "#fff"}` : "1px solid #444"};
-            color:${mapa[n] ? "#000" : "#fff"};
-            font-weight:${mapa[n] ? "800" : "400"};
-            box-shadow:${n===ultimoNumero ? `0 0 10px ${mapa[n] || "#fff"}` : "none"};
-            animation:${n===ultimoNumero ? "piscaStrong 0.8s infinite" : "none"};
-          ">${n}</span>
-        `).join("")}
-      </div>
-    `;
-  }
+  // ================= RENDERIZAÇÃO =================
 
   function render(){
 
-    renderTimelinePrincipal();
+    const melhor = encontrarMelhorPar();
 
-    calcularAnaliseNumero();
+    elementoProximoHorario.textContent =
+      proximoHorario;
 
-    renderAnaliseNumero();
+    elementoHorarioInput.value =
+      proximoHorario;
 
-    btnAnaliseNumero.style.background = analiseNumeroAtiva ? "#00e676" : "";
-    btnAnaliseNumero.style.color = analiseNumeroAtiva ? "#000" : "";
+    elementoMelhorPar.innerHTML =
+      melhor.par.map(t => `
+        <span
+          class="csm-terminal"
+          style="background:${corTerminal[t]}">
+          T${t}
+        </span>
+      `).join("");
 
-    document.querySelectorAll("#btnT button").forEach(b=>{
+    const percentualArredondado =
+      Math.round(melhor.percentual);
 
-      const t = +b.textContent.match(/\d+/)[0];
-      const ativo = analises.MANUAL.filtros.has(t);
+    elementoPercentual.textContent =
+      percentualArredondado + "%";
 
-      b.style.background = ativo ? corTerminal[t] : "#444";
+    elementoBarra.style.width =
+      percentualArredondado + "%";
 
-      if(modosTerminais[t] === 2){
+    elementoAcertos.textContent =
+      `${melhor.acertos.length} / ${melhor.total}`;
 
-        b.style.border = "3px solid #fff";
-        b.style.boxShadow = `0 0 10px ${corTerminal[t]}`;
-        b.textContent = `T${t} 2v`;
+    if(melhor.quebras.length > 0){
 
-      } else if(modosTerminais[t] === 1){
+      const ultimaQuebra = melhor.quebras[0];
 
-        b.style.border = "2px solid #999";
-        b.style.boxShadow = "none";
-        b.textContent = `T${t} 1v`;
-
-      } else {
-
-        b.style.border = "1px solid #666";
-        b.style.boxShadow = "none";
-        b.textContent = `T${t}`;
-
-      }
-
-    });
-
-    if(analises.MANUAL.filtros.size > 0){
-
-      const mapaCores = {};
-      const base = expandido ? historicoCompleto.slice().reverse() : timeline;
-      const ultimoNumero = timeline[0];
-
-      analises.MANUAL.filtros.forEach(t=>{
-
-        track.forEach(n=>{
-
-          if(terminal(n) === t){
-
-            if(modosTerminais[t] === 2){
-
-              vizinhos2(n).forEach(v=>{
-                mapaCores[v] = corTerminal[t];
-              });
-
-              segundoVizinho(n).forEach(v=>{
-                mapaCores[v] = clarearCor(corTerminal[t]);
-              });
-
-            } else if(modosTerminais[t] === 1){
-
-              vizinhos1(n).forEach(v=>{
-                if(!mapaCores[v]){
-                  mapaCores[v] = corTerminal[t];
-                }
-              });
-
-            }
-
-          }
-
-        });
-
-      });
-
-      conjArea.style.display = "block";
-
-      conjArea.innerHTML = `
+      elementoUltimaQuebra.innerHTML = `
+        ${ultimaQuebra.numero}
         <div style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit,minmax(26px,1fr));
-          gap:4px">
-
-          ${base.map(n=>`
-            <div style="
-              height:26px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              background:${mapaCores[n] || "#222"};
-              color:#fff;
-              font-size:10px;
-              border-radius:4px;
-              border:${n===ultimoNumero ? `3px solid ${mapaCores[n] || "#fff"}` : "1px solid #333"};
-              box-shadow:${n===ultimoNumero ? `0 0 10px ${mapaCores[n] || "#fff"}` : "none"};
-              animation:${n===ultimoNumero ? "piscaStrong 0.8s infinite" : "none"};
-            ">${n}</div>
-          `).join("")}
-
+          font-size:12px;
+          color:#aaa;
+          margin-top:3px">
+          ${ultimaQuebra.horario}
         </div>
       `;
 
-    } else {
+    }else{
 
-      conjArea.style.display = "none";
-      conjArea.innerHTML = "";
+      elementoUltimaQuebra.textContent = "—";
 
     }
 
-  }
+    if(melhor.quebras.length > 0){
 
-  conjArea.onclick = ()=>{
-    expandido = !expandido;
-    render();
-  };
+      elementoListaQuebras.innerHTML =
+        melhor.quebras.map(item => `
+          <span class="csm-quebra-chip">
+            ${item.numero} · ${item.horario}
+          </span>
+        `).join("");
+
+    }else{
+
+      elementoListaQuebras.innerHTML = `
+        <span style="
+          color:#00e676;
+          font-weight:900">
+          Sem quebra no histórico atual
+        </span>
+      `;
+
+    }
+
+    elementoTimeline.innerHTML =
+      historico.map(item => {
+
+        const acertou =
+          melhor.cobertura.has(item.numero);
+
+        return `
+          <span style="
+            display:inline-block;
+            margin-right:5px;
+            color:${acertou ? "#00e676" : "#ff5252"};
+          ">
+            ${item.numero}
+          </span>
+        `;
+
+      }).join("");
+
+    elementoHistorico.innerHTML =
+      historico.map(item => {
+
+        const cores =
+          corNumeroRoleta(item.numero);
+
+        const acertou =
+          melhor.cobertura.has(item.numero);
+
+        return `
+          <div class="csm-historico-item">
+
+            <div
+              class="
+                csm-historico-numero
+                ${acertou ? "csm-acerto" : "csm-quebra"}
+              "
+              style="
+                background:${cores.fundo};
+                color:${cores.texto};
+              ">
+
+              <span>${item.numero}</span>
+
+            </div>
+
+            <div class="csm-historico-hora">
+              ${item.horario}
+            </div>
+
+          </div>
+        `;
+
+      }).join("");
+
+  }
 
   render();
 
