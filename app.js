@@ -1,314 +1,864 @@
 (function () {
 
+  // ================= CONFIGURAÇÃO =================
+
   const track = [
     32,15,19,4,21,2,25,17,34,6,
     27,13,36,11,30,8,23,10,5,24,
     16,33,1,20,14,31,9,22,18,29,
     7,28,12,35,3,26,0
   ];
-  const terminal = n => n % 10;
 
-  const corTerminal = {
-    0:"#ff5252",1:"#ff9800",2:"#ffc107",3:"#00e676",
-    4:"#00bcd4",5:"#2196f3",6:"#9c27b0",7:"#e91e63",
-    8:"#8bc34a",9:"#ff00ff"
-  };
-
-  const eixos = [
-    { nome:"ZERO", trios:[[0,32,15],[19,4,21],[2,25,17],[34,6,27]] },
-    { nome:"TIERS", trios:[[13,36,11],[30,8,23],[10,5,24],[16,33,1]] },
-    { nome:"ORPHELINS", trios:[[20,14,31],[9,22,18],[7,29,28],[12,35,3]] }
+  const paresFixos = [
+    [1,5],
+    [3,9],
+    [4,8],
+    [0,7],
+    [6,2],
+    [3,2]
   ];
 
-  let timeline = [];
-  let janela = 6;
-
-  const analises = {
-    MANUAL: { filtros:new Set(), res:[] }
+  const corTerminal = {
+    0:"#ff5252",
+    1:"#ff9800",
+    2:"#ffc107",
+    3:"#00e676",
+    4:"#00bcd4",
+    5:"#2196f3",
+    6:"#9c27b0",
+    7:"#e91e63",
+    8:"#8bc34a",
+    9:"#ff00ff"
   };
 
-  let filtrosConjuntos = new Set();
-  let terminalPrincipal = null; // 🔥 novo
+  const terminal = numero => numero % 10;
 
-  function vizinhos1(n){
-    const i = track.indexOf(n);
-    return [ track[(i+36)%37], n, track[(i+1)%37] ];
+  let historicoOriginal = [];
+  let historicoCronologico = [];
+  let terminalGatilho = 8;
+
+  // ================= VIZINHOS DA ROLETA =================
+
+  function vizinhos(numero, quantidade){
+
+    const indice = track.indexOf(numero);
+
+    if(indice === -1){
+      return [];
+    }
+
+    const resultado = [numero];
+
+    for(let distancia = 1; distancia <= quantidade; distancia++){
+
+      resultado.push(
+        track[(indice - distancia + 37) % 37]
+      );
+
+      resultado.push(
+        track[(indice + distancia) % 37]
+      );
+    }
+
+    return resultado;
   }
 
-  function vizinhos2(n){
-    const i = track.indexOf(n);
-    return [
-      track[(i+35)%37],
-      track[(i+36)%37],
-      n,
-      track[(i+1)%37],
-      track[(i+2)%37]
-    ];
-  }
+  function coberturaTerminal(numeroTerminal, quantidadeVizinhos){
 
-  function triosSelecionados(filtros){
-    let lista=[];
-    eixos.forEach(e=>{
-      e.trios.forEach(trio=>{
-        const inter = trio.map(terminal)
-          .filter(t=>!filtros.size||filtros.has(t)).length;
-        if(inter>0) lista.push({eixo:e.nome,trio});
-      });
-    });
-    return lista.slice(0,9);
-  }
+    const cobertura = new Set();
 
-  function validar(n, filtros){
-    return triosSelecionados(filtros).some(x=>x.trio.includes(n));
-  }
+    track.forEach(numero => {
 
-  function registrar(n){
-    analises.MANUAL.res.unshift(
-      validar(n,analises.MANUAL.filtros)?"V":"X"
-    );
-  }
+      if(terminal(numero) === numeroTerminal){
 
-  document.body.style.background="#111";
-  document.body.style.color="#fff";
-  document.body.style.fontFamily="sans-serif";
-
-  document.body.innerHTML = `
-    <div style="padding:10px;max-width:1000px;margin:auto">
-      <h3 style="text-align:center">CSM</h3>
-
-      <div style="display:flex;justify-content:center;margin-bottom:10px">
-        <canvas id="radar" width="260" height="260"></canvas>
-      </div>
-
-      <div style="margin:10px 0">
-        🕒 Timeline:
-        <span id="tl" style="font-size:18px;font-weight:600"></span>
-      </div>
-
-      <div style="border:1px solid #555;padding:8px;margin-bottom:10px">
-        Terminais:
-        <div id="btnT" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        <div><b>ZERO</b><div id="cZERO"></div></div>
-        <div><b>TIERS</b><div id="cTIERS"></div></div>
-        <div><b>ORPHELINS</b><div id="cORPH"></div></div>
-      </div>
-
-      <div style="margin-top:15px;border:1px solid #444;padding:8px">
-        <b>Ímpares / Pares (Últimos 14)</b>
-        <div id="parImparBox" style="margin-top:6px;font-weight:700;font-size:16px"></div>
-      </div>
-
-      <div id="conjArea" style="display:none;margin-top:12px;overflow-x:auto"></div>
-
-      <div id="nums" style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-top:12px"></div>
-    </div>
-  `;
-
-  for(let t=0;t<=9;t++){
-    const b=document.createElement("button");
-    b.textContent="T"+t;
-    b.style="padding:6px;background:#444;color:#fff;border:1px solid #666";
-    b.onclick=()=>{
-      if(analises.MANUAL.filtros.has(t)){
-        analises.MANUAL.filtros.delete(t);
-        filtrosConjuntos.delete(t);
-        if(terminalPrincipal===t) terminalPrincipal=null;
-      } else {
-        analises.MANUAL.filtros.add(t);
-        filtrosConjuntos.add(t);
-        if(terminalPrincipal===null) terminalPrincipal=t; // 🔥 primeiro vira principal
+        vizinhos(numero, quantidadeVizinhos)
+          .forEach(v => cobertura.add(v));
       }
-      render();
+    });
+
+    return cobertura;
+  }
+
+  // ================= EXTRAÇÃO DAS OCORRÊNCIAS =================
+
+  function encontrarOcorrencias(){
+
+    const ocorrencias = [];
+
+    for(let i = 0; i < historicoCronologico.length - 1; i++){
+
+      const numeroGatilho = historicoCronologico[i];
+
+      if(terminal(numeroGatilho) === terminalGatilho){
+
+        ocorrencias.push({
+          gatilho: numeroGatilho,
+          proximo: historicoCronologico[i + 1],
+          posicao: i + 1
+        });
+      }
+    }
+
+    return ocorrencias;
+  }
+
+  // ================= ANÁLISE DE UMA CONFIGURAÇÃO =================
+
+  function analisarConfiguracao(par, vizinhosPrimeiro, vizinhosSegundo){
+
+    const coberturaPrimeiro =
+      coberturaTerminal(par[0], vizinhosPrimeiro);
+
+    const coberturaSegundo =
+      coberturaTerminal(par[1], vizinhosSegundo);
+
+    const coberturaTotal = new Set([
+      ...coberturaPrimeiro,
+      ...coberturaSegundo
+    ]);
+
+    const ocorrencias = encontrarOcorrencias();
+
+    const acertos = [];
+    const quebras = [];
+
+    ocorrencias.forEach(item => {
+
+      if(coberturaTotal.has(item.proximo)){
+        acertos.push(item);
+      }else{
+        quebras.push(item);
+      }
+    });
+
+    const total = ocorrencias.length;
+
+    const percentual =
+      total > 0
+        ? (acertos.length / total) * 100
+        : 0;
+
+    return {
+      par,
+      vizinhosPrimeiro,
+      vizinhosSegundo,
+      coberturaTotal,
+      acertos,
+      quebras,
+      total,
+      percentual
     };
-    btnT.appendChild(b);
   }
 
-  for(let n=0;n<=36;n++){
-    const b=document.createElement("button");
-    b.textContent=n;
-    b.style="padding:8px;background:#333;color:#fff";
-    b.onclick=()=>add(n);
-    nums.appendChild(b);
+  // ================= MELHOR CONFIGURAÇÃO DO PAR =================
+
+  function analisarParFixo(par){
+
+    const configuracoes = [
+      analisarConfiguracao(par, 1, 1),
+      analisarConfiguracao(par, 2, 1),
+      analisarConfiguracao(par, 1, 2)
+    ];
+
+    configuracoes.sort((a,b) => {
+
+      if(b.percentual !== a.percentual){
+        return b.percentual - a.percentual;
+      }
+
+      if(b.acertos.length !== a.acertos.length){
+        return b.acertos.length - a.acertos.length;
+      }
+
+      return a.quebras.length - b.quebras.length;
+    });
+
+    return configuracoes[0];
   }
 
-  function add(n){
-    timeline.unshift(n);
-    if(timeline.length>14) timeline.pop();
-    registrar(n);
+  function analisarTodosPares(){
+
+    return paresFixos
+      .map(analisarParFixo)
+      .sort((a,b) => {
+
+        if(b.percentual !== a.percentual){
+          return b.percentual - a.percentual;
+        }
+
+        if(b.acertos.length !== a.acertos.length){
+          return b.acertos.length - a.acertos.length;
+        }
+
+        return a.quebras.length - b.quebras.length;
+      });
+  }
+
+  // ================= LEITURA DO HISTÓRICO =================
+
+  function lerHistorico(){
+
+    const texto =
+      document.getElementById("entradaHistorico").value;
+
+    const numeros = texto
+      .match(/\b(?:[0-9]|[12][0-9]|3[0-6])\b/g);
+
+    historicoOriginal = numeros
+      ? numeros.map(Number).slice(0,300)
+      : [];
+
+    const maisRecentePrimeiro =
+      document.getElementById("ordemHistorico").checked;
+
+    historicoCronologico =
+      maisRecentePrimeiro
+        ? historicoOriginal.slice().reverse()
+        : historicoOriginal.slice();
+
     render();
   }
 
-  function desenharRadar(){
+  // ================= INTERFACE =================
 
-    const canvas = document.getElementById("radar");
-    const ctx = canvas.getContext("2d");
+  document.body.style.margin = "0";
+  document.body.style.background = "#111";
+  document.body.style.color = "#fff";
+  document.body.style.fontFamily = "Arial, sans-serif";
 
-    ctx.clearRect(0,0,260,260);
+  document.body.innerHTML = `
+    <style>
 
-    const cx = 130;
-    const cy = 130;
-    const r = 110;
-
-    const ang = (Math.PI*2)/track.length;
-
-    const ativos = new Set(timeline);
-
-    let mapaCores = {};
-
-    analises.MANUAL.filtros.forEach(t=>{
-      track.forEach(n=>{
-        if(terminal(n)===t){
-
-          if(t===terminalPrincipal){
-            vizinhos2(n).forEach(v=>mapaCores[v]="#00e676"); // verde
-          } else {
-            vizinhos1(n).forEach(v=>{
-              if(!mapaCores[v]) mapaCores[v]="#00b0ff"; // azul
-            });
-          }
-
-        }
-      });
-    });
-
-    for(let i=0;i<track.length;i++){
-
-      const a1 = i*ang + Math.PI/2;
-      const a2 = a1 + ang;
-
-      ctx.beginPath();
-      ctx.moveTo(cx,cy);
-      ctx.arc(cx,cy,r,a1,a2);
-      ctx.closePath();
-
-      ctx.fillStyle="#1c1c1c";
-      ctx.fill();
-
-      const meio = (a1+a2)/2;
-
-      const tx = cx + Math.cos(meio)*(r-25);
-      const ty = cy + Math.sin(meio)*(r-25);
-
-      let corNumero = mapaCores[track[i]] || "#fff";
-
-      if(ativos.has(track[i])){
-        corNumero="#00e676";
+      *{
+        box-sizing:border-box;
       }
 
-      ctx.fillStyle=corNumero;
-      ctx.font="9px Arial";
-      ctx.textAlign="center";
-      ctx.textBaseline="middle";
-      ctx.fillText(track[i],tx,ty);
-    }
+      button,
+      textarea,
+      select{
+        font-family:Arial,sans-serif;
+      }
 
-    ctx.beginPath();
-    ctx.arc(cx,cy,45,0,Math.PI*2);
-    ctx.fillStyle="#111";
-    ctx.fill();
+      button{
+        cursor:pointer;
+        touch-action:manipulation;
+      }
+
+      .app{
+        width:100%;
+        max-width:1000px;
+        margin:auto;
+        padding:12px;
+      }
+
+      .painel{
+        background:#1d1d1f;
+        border:1px solid #444;
+        border-radius:10px;
+        padding:10px;
+        margin-bottom:10px;
+      }
+
+      .linha{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        align-items:center;
+      }
+
+      textarea{
+        width:100%;
+        min-height:110px;
+        padding:10px;
+        background:#222;
+        color:#fff;
+        border:1px solid #555;
+        border-radius:8px;
+        font-size:15px;
+      }
+
+      select{
+        padding:8px;
+        background:#222;
+        color:#fff;
+        border:1px solid #555;
+        border-radius:7px;
+        font-size:16px;
+        font-weight:800;
+      }
+
+      .btn{
+        padding:9px 12px;
+        background:#333;
+        color:#fff;
+        border:1px solid #555;
+        border-radius:7px;
+        font-weight:800;
+      }
+
+      .btn-verde{
+        background:#146238;
+      }
+
+      .resumo{
+        display:grid;
+        grid-template-columns:repeat(4,1fr);
+        gap:8px;
+      }
+
+      .card{
+        background:#272729;
+        border:1px solid #444;
+        border-radius:9px;
+        padding:10px;
+        min-height:90px;
+      }
+
+      .label{
+        color:#aaa;
+        font-size:12px;
+        margin-bottom:6px;
+      }
+
+      .valor{
+        font-size:22px;
+        font-weight:900;
+      }
+
+      .terminal{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        min-width:48px;
+        height:40px;
+        border-radius:8px;
+        margin-right:5px;
+        color:#fff;
+        font-size:19px;
+        font-weight:900;
+        border:2px solid rgba(255,255,255,.55);
+      }
+
+      .barra{
+        height:12px;
+        background:#3b3b3b;
+        border-radius:7px;
+        overflow:hidden;
+        margin-top:7px;
+      }
+
+      .barra-interna{
+        height:100%;
+        background:linear-gradient(
+          90deg,
+          #00e5ff,
+          #00e676
+        );
+      }
+
+      .tabela{
+        width:100%;
+        border-collapse:collapse;
+      }
+
+      .tabela th,
+      .tabela td{
+        border-bottom:1px solid #3d3d3d;
+        padding:8px 5px;
+        text-align:center;
+        font-size:13px;
+      }
+
+      .tabela th{
+        color:#aaa;
+      }
+
+      .melhor-linha{
+        background:rgba(0,230,118,.12);
+        box-shadow:inset 3px 0 #00e676;
+      }
+
+      .quebras{
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        margin-top:8px;
+      }
+
+      .quebra{
+        padding:6px 8px;
+        background:#5b222a;
+        border:1px solid #a04754;
+        border-radius:7px;
+        font-size:13px;
+        font-weight:800;
+      }
+
+      .ocorrencias{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
+        gap:6px;
+      }
+
+      .ocorrencia{
+        background:#252525;
+        border:1px solid #414141;
+        border-radius:7px;
+        padding:7px;
+        text-align:center;
+        font-size:13px;
+      }
+
+      .seta{
+        color:#aaa;
+        margin:0 4px;
+      }
+
+      .acerto{
+        color:#00e676;
+        font-weight:900;
+      }
+
+      .erro{
+        color:#ff5252;
+        font-weight:900;
+      }
+
+      @media(max-width:700px){
+
+        .resumo{
+          grid-template-columns:repeat(2,1fr);
+        }
+
+        .tabela th,
+        .tabela td{
+          font-size:11px;
+          padding:7px 2px;
+        }
+      }
+
+    </style>
+
+    <div class="app">
+
+      <h2 style="text-align:center;margin:4px 0 12px">
+        Análise de Terminal e Pares Fixos
+      </h2>
+
+      <div class="painel">
+
+        <textarea
+          id="entradaHistorico"
+          placeholder="Cole até 300 números aqui. Exemplo: 8 13 28 22 18 5 34 12..."
+        ></textarea>
+
+        <div class="linha" style="margin-top:8px">
+
+          <button
+            id="btnAnalisar"
+            class="btn btn-verde"
+          >
+            Analisar histórico
+          </button>
+
+          <button
+            id="btnLimpar"
+            class="btn"
+          >
+            Limpar
+          </button>
+
+          <label style="font-size:13px">
+
+            <input
+              id="ordemHistorico"
+              type="checkbox"
+              checked
+            >
+
+            O primeiro número colado é o mais recente
+
+          </label>
+
+        </div>
+
+      </div>
+
+      <div class="painel">
+
+        <div class="linha">
+
+          <b>Terminal gatilho:</b>
+
+          <select id="terminalGatilho">
+
+            ${Array.from(
+              {length:10},
+              (_,t) =>
+                `<option value="${t}" ${t===8 ? "selected" : ""}>
+                  T${t}
+                </option>`
+            ).join("")}
+
+          </select>
+
+          <span style="color:#aaa;font-size:13px">
+            O sistema analisa o número que saiu logo depois de cada ocorrência.
+          </span>
+
+        </div>
+
+      </div>
+
+      <div class="painel">
+
+        <div class="resumo">
+
+          <div class="card">
+
+            <div class="label">
+              Melhor par fixo
+            </div>
+
+            <div id="melhorPar"></div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="label">
+              Melhor configuração
+            </div>
+
+            <div
+              id="melhorConfiguracao"
+              class="valor"
+            >
+              —
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="label">
+              Percentual de ganho
+            </div>
+
+            <div
+              id="melhorPercentual"
+              class="valor"
+            >
+              0%
+            </div>
+
+            <div class="barra">
+
+              <div
+                id="barraPercentual"
+                class="barra-interna"
+                style="width:0%"
+              ></div>
+
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="label">
+              Ocorrências do gatilho
+            </div>
+
+            <div
+              id="totalOcorrencias"
+              class="valor"
+            >
+              0
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="painel">
+
+        <b>Comparação dos pares fixos</b>
+
+        <div style="overflow-x:auto;margin-top:7px">
+
+          <table class="tabela">
+
+            <thead>
+
+              <tr>
+                <th>Par</th>
+                <th>Configuração</th>
+                <th>Acertos</th>
+                <th>Quebras</th>
+                <th>Resultado</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="tabelaPares"></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+      <div class="painel">
+
+        <b>Quebras do melhor par</b>
+
+        <div
+          id="listaQuebras"
+          class="quebras"
+        ></div>
+
+      </div>
+
+      <div class="painel">
+
+        <b>
+          Sequências encontradas:
+          terminal gatilho → próximo número
+        </b>
+
+        <div
+          id="listaOcorrencias"
+          class="ocorrencias"
+          style="margin-top:8px"
+        ></div>
+
+      </div>
+
+    </div>
+  `;
+
+  // ================= EVENTOS =================
+
+  document
+    .getElementById("btnAnalisar")
+    .onclick = lerHistorico;
+
+  document
+    .getElementById("btnLimpar")
+    .onclick = () => {
+
+      historicoOriginal = [];
+      historicoCronologico = [];
+
+      document
+        .getElementById("entradaHistorico")
+        .value = "";
+
+      render();
+    };
+
+  document
+    .getElementById("terminalGatilho")
+    .onchange = event => {
+
+      terminalGatilho =
+        Number(event.target.value);
+
+      render();
+    };
+
+  document
+    .getElementById("ordemHistorico")
+    .onchange = () => {
+
+      if(historicoOriginal.length){
+        lerHistorico();
+      }
+    };
+
+  // ================= RENDERIZAÇÃO =================
+
+  function textoConfiguracao(analise){
+
+    return (
+      `T${analise.par[0]}: ${analise.vizinhosPrimeiro}V` +
+      ` + ` +
+      `T${analise.par[1]}: ${analise.vizinhosSegundo}V`
+    );
   }
 
   function render(){
 
-    const res = analises.MANUAL.res;
+    const resultados =
+      analisarTodosPares();
 
-    tl.innerHTML = timeline.map((n,i)=>{
-      const r=res[i];
-      const c=r==="V"?"#00e676":r==="X"?"#ff5252":"#aaa";
-      return `<span style="color:${c}">${n}</span>`;
-    }).join(" · ");
+    const melhor =
+      resultados[0];
 
-    const filtros = analises.MANUAL.filtros;
+    const ocorrencias =
+      encontrarOcorrencias();
 
-    document.querySelectorAll("#btnT button").forEach(b=>{
-      const t=+b.textContent.slice(1);
-      b.style.background =
-        filtros.has(t) ? corTerminal[t] : "#444";
-    });
+    document
+      .getElementById("totalOcorrencias")
+      .textContent =
+        ocorrencias.length;
 
-    const trios = triosSelecionados(filtros);
-    const por={ZERO:[],TIERS:[],ORPHELINS:[]};
-    trios.forEach(x=>por[x.eixo].push(x.trio.join("-")));
-    cZERO.innerHTML=por.ZERO.join("<div></div>");
-    cTIERS.innerHTML=por.TIERS.join("<div></div>");
-    cORPH.innerHTML=por.ORPHELINS.join("<div></div>");
+    document
+      .getElementById("melhorPar")
+      .innerHTML = melhor
+        ? melhor.par.map(t => `
+            <span
+              class="terminal"
+              style="background:${corTerminal[t]}"
+            >
+              T${t}
+            </span>
+          `).join("")
+        : "—";
 
-    let pares = 0;
-    let impares = 0;
+    document
+      .getElementById("melhorConfiguracao")
+      .textContent =
+        melhor && melhor.total
+          ? textoConfiguracao(melhor)
+          : "—";
 
-    timeline.forEach(n=>{
-      if(n === 0) return;
-      if(n % 2 === 0) pares++;
-      else impares++;
-    });
+    const percentual =
+      melhor
+        ? Math.round(melhor.percentual)
+        : 0;
 
-    const corMaior = "#ff6d00";
-    const corMenor = "#00e5ff";
+    document
+      .getElementById("melhorPercentual")
+      .textContent =
+        percentual + "%";
 
-    let corPar = "#fff";
-    let corImpar = "#fff";
+    document
+      .getElementById("barraPercentual")
+      .style.width =
+        percentual + "%";
 
-    if(pares > impares){
-      corPar = corMaior;
-      corImpar = corMenor;
-    } else if(impares > pares){
-      corImpar = corMaior;
-      corPar = corMenor;
+    document
+      .getElementById("tabelaPares")
+      .innerHTML =
+        resultados.map((resultado,index) => `
+
+          <tr class="${index === 0 ? "melhor-linha" : ""}">
+
+            <td>
+
+              <span style="
+                color:${corTerminal[resultado.par[0]]};
+                font-weight:900
+              ">
+                T${resultado.par[0]}
+              </span>
+
+              +
+
+              <span style="
+                color:${corTerminal[resultado.par[1]]};
+                font-weight:900
+              ">
+                T${resultado.par[1]}
+              </span>
+
+            </td>
+
+            <td>
+              ${textoConfiguracao(resultado)}
+            </td>
+
+            <td style="color:#00e676;font-weight:900">
+              ${resultado.acertos.length}
+            </td>
+
+            <td style="color:#ff5252;font-weight:900">
+              ${resultado.quebras.length}
+            </td>
+
+            <td>
+              ${Math.round(resultado.percentual)}%
+            </td>
+
+          </tr>
+
+        `).join("");
+
+    if(melhor && melhor.quebras.length){
+
+      document
+        .getElementById("listaQuebras")
+        .innerHTML =
+          melhor.quebras.map(item => `
+
+            <span class="quebra">
+
+              ${item.gatilho}
+
+              <span class="seta">→</span>
+
+              ${item.proximo}
+
+            </span>
+
+          `).join("");
+
+    }else{
+
+      document
+        .getElementById("listaQuebras")
+        .innerHTML =
+          ocorrencias.length
+            ? `
+              <span style="
+                color:#00e676;
+                font-weight:900
+              ">
+                Nenhuma quebra encontrada
+              </span>
+            `
+            : `
+              <span style="color:#aaa">
+                Nenhuma ocorrência do terminal T${terminalGatilho}
+              </span>
+            `;
     }
 
-    parImparBox.innerHTML = `
-      <span style="color:${corImpar}">Ímpares: ${impares}</span>
-      &nbsp;&nbsp;|&nbsp;&nbsp;
-      <span style="color:${corPar}">Pares: ${pares}</span>
-    `;
+    document
+      .getElementById("listaOcorrencias")
+      .innerHTML =
+        ocorrencias.map(item => {
 
-    if(filtros.size > 0){
+          const acertou =
+            melhor &&
+            melhor.coberturaTotal.has(item.proximo);
 
-      const mapaCores = {};
+          return `
 
-      filtros.forEach(t=>{
-        track.forEach(n=>{
-          if(terminal(n)===t){
+            <div class="ocorrencia">
 
-            if(t===terminalPrincipal){
-              vizinhos2(n).forEach(v=>mapaCores[v]="#00e676");
-            } else {
-              vizinhos1(n).forEach(v=>{
-                if(!mapaCores[v]) mapaCores[v]="#00b0ff";
-              });
-            }
+              <span>
+                ${item.gatilho}
+              </span>
 
-          }
-        });
-      });
+              <span class="seta">
+                →
+              </span>
 
-      conjArea.style.display = "block";
+              <span class="${acertou ? "acerto" : "erro"}">
+                ${item.proximo}
+              </span>
 
-      conjArea.innerHTML = `
-        <div style="
-          display:grid;
-          grid-template-columns:repeat(auto-fit, minmax(26px, 1fr));
-          gap:4px;
-        ">
-          ${timeline.map(n=>`
-            <div style="
-              height:26px;
-              display:flex;align-items:center;justify-content:center;
-              background:${mapaCores[n] || "#222"};
-              color:#fff;font-size:10px;font-weight:700;
-              border-radius:4px;border:1px solid #333;
-            ">${n}</div>
-          `).join("")}
-        </div>
-      `;
-    } else {
-      conjArea.style.display = "none";
-    }
+            </div>
 
-    desenharRadar();
+          `;
+
+        }).join("");
+
   }
 
   render();
