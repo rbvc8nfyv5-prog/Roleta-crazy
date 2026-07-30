@@ -9,6 +9,8 @@
     7,28,12,35,3,26,0
   ];
 
+  const terminal = numero => numero % 10;
+
   const paresFixos = [
     [1,5],
     [3,9],
@@ -31,11 +33,71 @@
     9:"#ff00ff"
   };
 
-  const terminal = numero => numero % 10;
+  const numerosVermelhos = new Set([
+    1,3,5,7,9,12,14,16,18,
+    19,21,23,25,27,30,32,34,36
+  ]);
 
-  let historicoOriginal = [];
-  let historicoCronologico = [];
-  let terminalGatilho = 8;
+  const STORAGE_KEY = "CSM_GATILHO_TERMINAL_V1";
+
+  // O histórico fica do mais antigo para o mais recente.
+  let historico = carregarHistorico();
+
+  // O último número do histórico define o terminal gatilho.
+  let numeroGatilho = historico.length
+    ? historico[historico.length - 1]
+    : null;
+
+  // ================= ARMAZENAMENTO =================
+
+  function carregarHistorico(){
+
+    try{
+
+      const salvo = localStorage.getItem(STORAGE_KEY);
+
+      if(!salvo){
+        return [];
+      }
+
+      const dados = JSON.parse(salvo);
+
+      if(!Array.isArray(dados)){
+        return [];
+      }
+
+      return dados
+        .map(Number)
+        .filter(numero =>
+          Number.isInteger(numero) &&
+          numero >= 0 &&
+          numero <= 36
+        )
+        .slice(-300);
+
+    }catch(erro){
+
+      return [];
+    }
+  }
+
+  function salvarHistorico(){
+
+    try{
+
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(historico)
+      );
+
+    }catch(erro){
+
+      console.error(
+        "Não foi possível salvar o histórico.",
+        erro
+      );
+    }
+  }
 
   // ================= VIZINHOS DA ROLETA =================
 
@@ -49,21 +111,32 @@
 
     const resultado = [numero];
 
-    for(let distancia = 1; distancia <= quantidade; distancia++){
+    for(
+      let distancia = 1;
+      distancia <= quantidade;
+      distancia++
+    ){
 
       resultado.push(
-        track[(indice - distancia + 37) % 37]
+        track[
+          (indice - distancia + 37) % 37
+        ]
       );
 
       resultado.push(
-        track[(indice + distancia) % 37]
+        track[
+          (indice + distancia) % 37
+        ]
       );
     }
 
     return resultado;
   }
 
-  function coberturaTerminal(numeroTerminal, quantidadeVizinhos){
+  function coberturaTerminal(
+    numeroTerminal,
+    quantidadeVizinhos
+  ){
 
     const cobertura = new Set();
 
@@ -72,29 +145,51 @@
       if(terminal(numero) === numeroTerminal){
 
         vizinhos(numero, quantidadeVizinhos)
-          .forEach(v => cobertura.add(v));
+          .forEach(vizinho => {
+            cobertura.add(vizinho);
+          });
       }
     });
 
     return cobertura;
   }
 
-  // ================= EXTRAÇÃO DAS OCORRÊNCIAS =================
+  // ================= OCORRÊNCIAS DO GATILHO =================
 
   function encontrarOcorrencias(){
 
+    if(numeroGatilho === null){
+      return [];
+    }
+
+    const terminalGatilho =
+      terminal(numeroGatilho);
+
     const ocorrencias = [];
 
-    for(let i = 0; i < historicoCronologico.length - 1; i++){
+    /*
+      Percorre até o penúltimo número porque
+      cada gatilho precisa ter um número seguinte.
+    */
 
-      const numeroGatilho = historicoCronologico[i];
+    for(
+      let i = 0;
+      i < historico.length - 1;
+      i++
+    ){
 
-      if(terminal(numeroGatilho) === terminalGatilho){
+      const numeroAtual = historico[i];
+      const numeroSeguinte = historico[i + 1];
+
+      if(
+        terminal(numeroAtual) ===
+        terminalGatilho
+      ){
 
         ocorrencias.push({
-          gatilho: numeroGatilho,
-          proximo: historicoCronologico[i + 1],
-          posicao: i + 1
+          gatilho: numeroAtual,
+          proximo: numeroSeguinte,
+          indice: i
         });
       }
     }
@@ -102,31 +197,47 @@
     return ocorrencias;
   }
 
-  // ================= ANÁLISE DE UMA CONFIGURAÇÃO =================
+  // ================= ANÁLISE DOS PARES FIXOS =================
 
-  function analisarConfiguracao(par, vizinhosPrimeiro, vizinhosSegundo){
+  function analisarConfiguracao(
+    par,
+    vizinhosPrimeiro,
+    vizinhosSegundo
+  ){
 
     const coberturaPrimeiro =
-      coberturaTerminal(par[0], vizinhosPrimeiro);
+      coberturaTerminal(
+        par[0],
+        vizinhosPrimeiro
+      );
 
     const coberturaSegundo =
-      coberturaTerminal(par[1], vizinhosSegundo);
+      coberturaTerminal(
+        par[1],
+        vizinhosSegundo
+      );
 
     const coberturaTotal = new Set([
       ...coberturaPrimeiro,
       ...coberturaSegundo
     ]);
 
-    const ocorrencias = encontrarOcorrencias();
+    const ocorrencias =
+      encontrarOcorrencias();
 
     const acertos = [];
     const quebras = [];
 
     ocorrencias.forEach(item => {
 
-      if(coberturaTotal.has(item.proximo)){
+      if(
+        coberturaTotal.has(item.proximo)
+      ){
+
         acertos.push(item);
+
       }else{
+
         quebras.push(item);
       }
     });
@@ -150,14 +261,20 @@
     };
   }
 
-  // ================= MELHOR CONFIGURAÇÃO DO PAR =================
+  function melhorConfiguracaoDoPar(par){
 
-  function analisarParFixo(par){
+    /*
+      O par é testado das duas formas:
+
+      Primeiro terminal com 2 vizinhos
+      Segundo terminal com 1 vizinho
+
+      E depois invertido.
+    */
 
     const configuracoes = [
-      analisarConfiguracao(par, 1, 1),
-      analisarConfiguracao(par, 2, 1),
-      analisarConfiguracao(par, 1, 2)
+      analisarConfiguracao(par,2,1),
+      analisarConfiguracao(par,1,2)
     ];
 
     configuracoes.sort((a,b) => {
@@ -170,53 +287,202 @@
         return b.acertos.length - a.acertos.length;
       }
 
-      return a.quebras.length - b.quebras.length;
+      return a.quebras.length -
+             b.quebras.length;
     });
 
     return configuracoes[0];
   }
 
-  function analisarTodosPares(){
+  function encontrarMelhorPar(){
 
-    return paresFixos
-      .map(analisarParFixo)
-      .sort((a,b) => {
+    const resultados =
+      paresFixos.map(melhorConfiguracaoDoPar);
 
-        if(b.percentual !== a.percentual){
-          return b.percentual - a.percentual;
-        }
+    resultados.sort((a,b) => {
 
-        if(b.acertos.length !== a.acertos.length){
-          return b.acertos.length - a.acertos.length;
-        }
+      if(b.percentual !== a.percentual){
+        return b.percentual - a.percentual;
+      }
 
-        return a.quebras.length - b.quebras.length;
-      });
+      if(b.acertos.length !== a.acertos.length){
+        return b.acertos.length - a.acertos.length;
+      }
+
+      return a.quebras.length -
+             b.quebras.length;
+    });
+
+    return resultados[0] || null;
   }
 
-  // ================= LEITURA DO HISTÓRICO =================
+  // ================= HISTÓRICO =================
 
-  function lerHistorico(){
+  function extrairNumeros(texto){
+
+    const encontrados = texto.match(
+      /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
+    );
+
+    if(!encontrados){
+      return [];
+    }
+
+    return encontrados
+      .map(Number)
+      .filter(numero =>
+        numero >= 0 &&
+        numero <= 36
+      )
+      .slice(-300);
+  }
+
+  function inserirHistorico(){
 
     const texto =
-      document.getElementById("entradaHistorico").value;
+      document
+        .getElementById("entradaHistorico")
+        .value;
 
-    const numeros = texto
-      .match(/\b(?:[0-9]|[12][0-9]|3[0-6])\b/g);
+    const numeros =
+      extrairNumeros(texto);
 
-    historicoOriginal = numeros
-      ? numeros.map(Number).slice(0,300)
-      : [];
+    if(!numeros.length){
 
-    const maisRecentePrimeiro =
-      document.getElementById("ordemHistorico").checked;
+      statusArea.textContent =
+        "Nenhum número válido encontrado.";
 
-    historicoCronologico =
-      maisRecentePrimeiro
-        ? historicoOriginal.slice().reverse()
-        : historicoOriginal.slice();
+      statusArea.style.color =
+        "#ff5252";
+
+      return;
+    }
+
+    historico = numeros.slice(-300);
+
+    numeroGatilho =
+      historico[historico.length - 1];
+
+    salvarHistorico();
+
+    document
+      .getElementById("entradaHistorico")
+      .value = "";
+
+    statusArea.textContent =
+      `${historico.length} números carregados. ` +
+      `O último número, ${numeroGatilho}, ` +
+      `definiu o terminal T${terminal(numeroGatilho)} como gatilho.`;
+
+    statusArea.style.color =
+      "#00e676";
 
     render();
+  }
+
+  function adicionarNumero(numero){
+
+    historico.push(numero);
+
+    if(historico.length > 300){
+      historico.shift();
+    }
+
+    /*
+      O número clicado passa imediatamente
+      a ser o novo gatilho.
+    */
+
+    numeroGatilho = numero;
+
+    salvarHistorico();
+
+    statusArea.textContent =
+      `Número ${numero} inserido. ` +
+      `Agora o gatilho é o terminal T${terminal(numero)}.`;
+
+    statusArea.style.color =
+      "#00e5ff";
+
+    render();
+  }
+
+  function apagarUltimo(){
+
+    if(!historico.length){
+      return;
+    }
+
+    historico.pop();
+
+    numeroGatilho =
+      historico.length
+        ? historico[historico.length - 1]
+        : null;
+
+    salvarHistorico();
+
+    statusArea.textContent =
+      numeroGatilho === null
+        ? "Histórico vazio."
+        : `Último número apagado. ` +
+          `O gatilho voltou a ser ${numeroGatilho}, ` +
+          `terminal T${terminal(numeroGatilho)}.`;
+
+    statusArea.style.color =
+      "#ffc107";
+
+    render();
+  }
+
+  function apagarTudo(){
+
+    const confirmar = window.confirm(
+      "Apagar todo o histórico?"
+    );
+
+    if(!confirmar){
+      return;
+    }
+
+    historico = [];
+    numeroGatilho = null;
+
+    salvarHistorico();
+
+    statusArea.textContent =
+      "Histórico apagado.";
+
+    statusArea.style.color =
+      "#ff5252";
+
+    render();
+  }
+
+  // ================= COR DA ROLETA =================
+
+  function corNumeroRoleta(numero){
+
+    if(numero === 0){
+
+      return {
+        fundo:"#f5f5f5",
+        texto:"#8d1431"
+      };
+    }
+
+    if(numerosVermelhos.has(numero)){
+
+      return {
+        fundo:"#ef3852",
+        texto:"#ffffff"
+      };
+    }
+
+    return {
+      fundo:"#262223",
+      texto:"#ffffff"
+    };
   }
 
   // ================= INTERFACE =================
@@ -224,9 +490,11 @@
   document.body.style.margin = "0";
   document.body.style.background = "#111";
   document.body.style.color = "#fff";
-  document.body.style.fontFamily = "Arial, sans-serif";
+  document.body.style.fontFamily =
+    "Arial, sans-serif";
 
   document.body.innerHTML = `
+
     <style>
 
       *{
@@ -234,8 +502,7 @@
       }
 
       button,
-      textarea,
-      select{
+      textarea{
         font-family:Arial,sans-serif;
       }
 
@@ -246,7 +513,7 @@
 
       .app{
         width:100%;
-        max-width:1000px;
+        max-width:1050px;
         margin:auto;
         padding:12px;
       }
@@ -259,16 +526,9 @@
         margin-bottom:10px;
       }
 
-      .linha{
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        align-items:center;
-      }
-
       textarea{
         width:100%;
-        min-height:110px;
+        min-height:105px;
         padding:10px;
         background:#222;
         color:#fff;
@@ -277,14 +537,11 @@
         font-size:15px;
       }
 
-      select{
-        padding:8px;
-        background:#222;
-        color:#fff;
-        border:1px solid #555;
-        border-radius:7px;
-        font-size:16px;
-        font-weight:800;
+      .linha{
+        display:flex;
+        gap:8px;
+        flex-wrap:wrap;
+        align-items:center;
       }
 
       .btn{
@@ -300,6 +557,10 @@
         background:#146238;
       }
 
+      .btn-vermelho{
+        background:#70242d;
+      }
+
       .resumo{
         display:grid;
         grid-template-columns:repeat(4,1fr);
@@ -311,7 +572,7 @@
         border:1px solid #444;
         border-radius:9px;
         padding:10px;
-        min-height:90px;
+        min-height:96px;
       }
 
       .label{
@@ -329,26 +590,27 @@
         display:inline-flex;
         align-items:center;
         justify-content:center;
-        min-width:48px;
-        height:40px;
+        min-width:50px;
+        height:42px;
+        margin-right:6px;
         border-radius:8px;
-        margin-right:5px;
         color:#fff;
-        font-size:19px;
+        font-size:20px;
         font-weight:900;
-        border:2px solid rgba(255,255,255,.55);
+        border:2px solid rgba(255,255,255,.6);
       }
 
       .barra{
         height:12px;
-        background:#3b3b3b;
-        border-radius:7px;
+        background:#3a3a3a;
+        border-radius:8px;
         overflow:hidden;
-        margin-top:7px;
+        margin-top:8px;
       }
 
       .barra-interna{
         height:100%;
+        width:0%;
         background:linear-gradient(
           90deg,
           #00e5ff,
@@ -356,62 +618,73 @@
         );
       }
 
-      .tabela{
-        width:100%;
-        border-collapse:collapse;
-      }
-
-      .tabela th,
-      .tabela td{
-        border-bottom:1px solid #3d3d3d;
-        padding:8px 5px;
-        text-align:center;
-        font-size:13px;
-      }
-
-      .tabela th{
-        color:#aaa;
-      }
-
-      .melhor-linha{
-        background:rgba(0,230,118,.12);
-        box-shadow:inset 3px 0 #00e676;
-      }
-
       .quebras{
         display:flex;
         flex-wrap:wrap;
-        gap:6px;
+        gap:7px;
         margin-top:8px;
       }
 
       .quebra{
-        padding:6px 8px;
+        padding:7px 9px;
         background:#5b222a;
         border:1px solid #a04754;
         border-radius:7px;
-        font-size:13px;
+        font-size:14px;
+        font-weight:900;
+      }
+
+      .teclado{
+        display:grid;
+        grid-template-columns:repeat(9,1fr);
+        gap:6px;
+      }
+
+      .numero-btn{
+        min-height:44px;
+        border:1px solid #555;
+        border-radius:7px;
+        font-size:16px;
+        font-weight:900;
+      }
+
+      .timeline{
+        font-size:17px;
         font-weight:800;
+        line-height:1.9;
+        word-break:break-word;
+      }
+
+      .historico{
+        display:grid;
+        grid-template-columns:repeat(8,1fr);
+        gap:7px;
+      }
+
+      .historico-item{
+        min-height:40px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        border-radius:7px;
+        border:1px solid #555;
+        font-weight:900;
       }
 
       .ocorrencias{
         display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(100px,1fr));
+        grid-template-columns:
+          repeat(auto-fit,minmax(95px,1fr));
         gap:6px;
       }
 
       .ocorrencia{
-        background:#252525;
-        border:1px solid #414141;
-        border-radius:7px;
         padding:7px;
+        border-radius:7px;
+        background:#262626;
+        border:1px solid #444;
         text-align:center;
         font-size:13px;
-      }
-
-      .seta{
-        color:#aaa;
-        margin:0 4px;
       }
 
       .acerto{
@@ -424,16 +697,18 @@
         font-weight:900;
       }
 
-      @media(max-width:700px){
+      @media(max-width:720px){
 
         .resumo{
           grid-template-columns:repeat(2,1fr);
         }
 
-        .tabela th,
-        .tabela td{
-          font-size:11px;
-          padding:7px 2px;
+        .teclado{
+          grid-template-columns:repeat(6,1fr);
+        }
+
+        .historico{
+          grid-template-columns:repeat(6,1fr);
         }
       }
 
@@ -441,71 +716,55 @@
 
     <div class="app">
 
-      <h2 style="text-align:center;margin:4px 0 12px">
-        Análise de Terminal e Pares Fixos
+      <h2 style="
+        text-align:center;
+        margin:4px 0 12px
+      ">
+        Análise por Terminal Gatilho
       </h2>
 
       <div class="painel">
 
         <textarea
           id="entradaHistorico"
-          placeholder="Cole até 300 números aqui. Exemplo: 8 13 28 22 18 5 34 12..."
+          placeholder="Cole até 300 números do mais antigo para o mais recente."
         ></textarea>
 
         <div class="linha" style="margin-top:8px">
 
           <button
-            id="btnAnalisar"
+            id="btnInserirHistorico"
             class="btn btn-verde"
           >
-            Analisar histórico
+            Inserir histórico
           </button>
 
           <button
-            id="btnLimpar"
+            id="btnApagarUltimo"
             class="btn"
           >
-            Limpar
+            Apagar último
           </button>
 
-          <label style="font-size:13px">
-
-            <input
-              id="ordemHistorico"
-              type="checkbox"
-              checked
-            >
-
-            O primeiro número colado é o mais recente
-
-          </label>
+          <button
+            id="btnApagarTudo"
+            class="btn btn-vermelho"
+          >
+            Apagar tudo
+          </button>
 
         </div>
 
-      </div>
-
-      <div class="painel">
-
-        <div class="linha">
-
-          <b>Terminal gatilho:</b>
-
-          <select id="terminalGatilho">
-
-            ${Array.from(
-              {length:10},
-              (_,t) =>
-                `<option value="${t}" ${t===8 ? "selected" : ""}>
-                  T${t}
-                </option>`
-            ).join("")}
-
-          </select>
-
-          <span style="color:#aaa;font-size:13px">
-            O sistema analisa o número que saiu logo depois de cada ocorrência.
-          </span>
-
+        <div
+          id="statusArea"
+          style="
+            margin-top:8px;
+            color:#aaa;
+            font-size:13px;
+            font-weight:800
+          "
+        >
+          Cole o histórico ou use o teclado.
         </div>
 
       </div>
@@ -517,21 +776,11 @@
           <div class="card">
 
             <div class="label">
-              Melhor par fixo
-            </div>
-
-            <div id="melhorPar"></div>
-
-          </div>
-
-          <div class="card">
-
-            <div class="label">
-              Melhor configuração
+              Último número / gatilho
             </div>
 
             <div
-              id="melhorConfiguracao"
+              id="gatilhoNumero"
               class="valor"
             >
               —
@@ -542,11 +791,39 @@
           <div class="card">
 
             <div class="label">
-              Percentual de ganho
+              Melhor par fixo
+            </div>
+
+            <div id="melhorPar">
+              —
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="label">
+              Configuração vencedora
             </div>
 
             <div
-              id="melhorPercentual"
+              id="configuracao"
+              class="valor"
+              style="font-size:17px"
+            >
+              —
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="label">
+              Ganho nas ocorrências
+            </div>
+
+            <div
+              id="percentual"
               class="valor"
             >
               0%
@@ -557,63 +834,19 @@
               <div
                 id="barraPercentual"
                 class="barra-interna"
-                style="width:0%"
               ></div>
 
             </div>
 
           </div>
 
-          <div class="card">
-
-            <div class="label">
-              Ocorrências do gatilho
-            </div>
-
-            <div
-              id="totalOcorrencias"
-              class="valor"
-            >
-              0
-            </div>
-
-          </div>
-
         </div>
 
       </div>
 
       <div class="painel">
 
-        <b>Comparação dos pares fixos</b>
-
-        <div style="overflow-x:auto;margin-top:7px">
-
-          <table class="tabela">
-
-            <thead>
-
-              <tr>
-                <th>Par</th>
-                <th>Configuração</th>
-                <th>Acertos</th>
-                <th>Quebras</th>
-                <th>Resultado</th>
-              </tr>
-
-            </thead>
-
-            <tbody id="tabelaPares"></tbody>
-
-          </table>
-
-        </div>
-
-      </div>
-
-      <div class="painel">
-
-        <b>Quebras do melhor par</b>
+        <b>Números que foram quebra</b>
 
         <div
           id="listaQuebras"
@@ -625,8 +858,8 @@
       <div class="painel">
 
         <b>
-          Sequências encontradas:
-          terminal gatilho → próximo número
+          Ocorrências do gatilho:
+          número gatilho → próximo número
         </b>
 
         <div
@@ -637,205 +870,281 @@
 
       </div>
 
+      <div class="painel">
+
+        <b>
+          Teclado para continuar inserindo
+        </b>
+
+        <div style="
+          color:#aaa;
+          font-size:12px;
+          margin:5px 0 9px
+        ">
+          Cada número clicado entra no histórico e passa a ser o novo terminal gatilho.
+        </div>
+
+        <div
+          id="teclado"
+          class="teclado"
+        ></div>
+
+      </div>
+
+      <div class="painel">
+
+        <b>
+          Histórico armazenado:
+          <span id="quantidadeHistorico">0</span>/300
+        </b>
+
+        <div
+          id="timeline"
+          class="timeline"
+          style="margin-top:7px"
+        ></div>
+
+      </div>
+
     </div>
   `;
+
+  // ================= ELEMENTOS =================
+
+  const statusArea =
+    document.getElementById("statusArea");
+
+  const elementoGatilhoNumero =
+    document.getElementById("gatilhoNumero");
+
+  const elementoMelhorPar =
+    document.getElementById("melhorPar");
+
+  const elementoConfiguracao =
+    document.getElementById("configuracao");
+
+  const elementoPercentual =
+    document.getElementById("percentual");
+
+  const elementoBarra =
+    document.getElementById("barraPercentual");
+
+  const elementoListaQuebras =
+    document.getElementById("listaQuebras");
+
+  const elementoListaOcorrencias =
+    document.getElementById("listaOcorrencias");
+
+  const elementoTimeline =
+    document.getElementById("timeline");
+
+  const elementoQuantidade =
+    document.getElementById("quantidadeHistorico");
+
+  const elementoTeclado =
+    document.getElementById("teclado");
+
+  // ================= TECLADO =================
+
+  for(let numero = 0; numero <= 36; numero++){
+
+    const cores =
+      corNumeroRoleta(numero);
+
+    const botao =
+      document.createElement("button");
+
+    botao.className =
+      "numero-btn";
+
+    botao.textContent =
+      numero;
+
+    botao.style.background =
+      cores.fundo;
+
+    botao.style.color =
+      cores.texto;
+
+    botao.onclick = () => {
+      adicionarNumero(numero);
+    };
+
+    elementoTeclado.appendChild(botao);
+  }
 
   // ================= EVENTOS =================
 
   document
-    .getElementById("btnAnalisar")
-    .onclick = lerHistorico;
+    .getElementById("btnInserirHistorico")
+    .onclick = inserirHistorico;
 
   document
-    .getElementById("btnLimpar")
-    .onclick = () => {
-
-      historicoOriginal = [];
-      historicoCronologico = [];
-
-      document
-        .getElementById("entradaHistorico")
-        .value = "";
-
-      render();
-    };
+    .getElementById("btnApagarUltimo")
+    .onclick = apagarUltimo;
 
   document
-    .getElementById("terminalGatilho")
-    .onchange = event => {
-
-      terminalGatilho =
-        Number(event.target.value);
-
-      render();
-    };
-
-  document
-    .getElementById("ordemHistorico")
-    .onchange = () => {
-
-      if(historicoOriginal.length){
-        lerHistorico();
-      }
-    };
+    .getElementById("btnApagarTudo")
+    .onclick = apagarTudo;
 
   // ================= RENDERIZAÇÃO =================
 
-  function textoConfiguracao(analise){
+  function textoConfiguracao(resultado){
+
+    if(!resultado){
+      return "—";
+    }
 
     return (
-      `T${analise.par[0]}: ${analise.vizinhosPrimeiro}V` +
+      `T${resultado.par[0]} com ` +
+      `${resultado.vizinhosPrimeiro}V` +
       ` + ` +
-      `T${analise.par[1]}: ${analise.vizinhosSegundo}V`
+      `T${resultado.par[1]} com ` +
+      `${resultado.vizinhosSegundo}V`
     );
   }
 
   function render(){
 
-    const resultados =
-      analisarTodosPares();
-
-    const melhor =
-      resultados[0];
+    numeroGatilho =
+      historico.length
+        ? historico[historico.length - 1]
+        : null;
 
     const ocorrencias =
       encontrarOcorrencias();
 
-    document
-      .getElementById("totalOcorrencias")
-      .textContent =
-        ocorrencias.length;
+    const melhor =
+      encontrarMelhorPar();
 
-    document
-      .getElementById("melhorPar")
-      .innerHTML = melhor
-        ? melhor.par.map(t => `
-            <span
-              class="terminal"
-              style="background:${corTerminal[t]}"
-            >
-              T${t}
-            </span>
-          `).join("")
-        : "—";
+    elementoQuantidade.textContent =
+      historico.length;
 
-    document
-      .getElementById("melhorConfiguracao")
-      .textContent =
-        melhor && melhor.total
-          ? textoConfiguracao(melhor)
-          : "—";
+    if(numeroGatilho === null){
 
-    const percentual =
-      melhor
-        ? Math.round(melhor.percentual)
-        : 0;
-
-    document
-      .getElementById("melhorPercentual")
-      .textContent =
-        percentual + "%";
-
-    document
-      .getElementById("barraPercentual")
-      .style.width =
-        percentual + "%";
-
-    document
-      .getElementById("tabelaPares")
-      .innerHTML =
-        resultados.map((resultado,index) => `
-
-          <tr class="${index === 0 ? "melhor-linha" : ""}">
-
-            <td>
-
-              <span style="
-                color:${corTerminal[resultado.par[0]]};
-                font-weight:900
-              ">
-                T${resultado.par[0]}
-              </span>
-
-              +
-
-              <span style="
-                color:${corTerminal[resultado.par[1]]};
-                font-weight:900
-              ">
-                T${resultado.par[1]}
-              </span>
-
-            </td>
-
-            <td>
-              ${textoConfiguracao(resultado)}
-            </td>
-
-            <td style="color:#00e676;font-weight:900">
-              ${resultado.acertos.length}
-            </td>
-
-            <td style="color:#ff5252;font-weight:900">
-              ${resultado.quebras.length}
-            </td>
-
-            <td>
-              ${Math.round(resultado.percentual)}%
-            </td>
-
-          </tr>
-
-        `).join("");
-
-    if(melhor && melhor.quebras.length){
-
-      document
-        .getElementById("listaQuebras")
-        .innerHTML =
-          melhor.quebras.map(item => `
-
-            <span class="quebra">
-
-              ${item.gatilho}
-
-              <span class="seta">→</span>
-
-              ${item.proximo}
-
-            </span>
-
-          `).join("");
+      elementoGatilhoNumero.textContent =
+        "—";
 
     }else{
 
-      document
-        .getElementById("listaQuebras")
-        .innerHTML =
-          ocorrencias.length
-            ? `
-              <span style="
-                color:#00e676;
-                font-weight:900
-              ">
-                Nenhuma quebra encontrada
-              </span>
-            `
-            : `
-              <span style="color:#aaa">
-                Nenhuma ocorrência do terminal T${terminalGatilho}
-              </span>
-            `;
+      elementoGatilhoNumero.innerHTML = `
+        ${numeroGatilho}
+
+        <span
+          class="terminal"
+          style="
+            background:
+            ${corTerminal[terminal(numeroGatilho)]};
+            margin-left:7px
+          "
+        >
+          T${terminal(numeroGatilho)}
+        </span>
+      `;
     }
 
-    document
-      .getElementById("listaOcorrencias")
-      .innerHTML =
+    if(
+      melhor &&
+      melhor.total > 0
+    ){
+
+      elementoMelhorPar.innerHTML =
+        melhor.par.map(t => `
+
+          <span
+            class="terminal"
+            style="
+              background:${corTerminal[t]}
+            "
+          >
+            T${t}
+          </span>
+
+        `).join("");
+
+      elementoConfiguracao.textContent =
+        textoConfiguracao(melhor);
+
+      const percentualArredondado =
+        Math.round(melhor.percentual);
+
+      elementoPercentual.textContent =
+        percentualArredondado + "%";
+
+      elementoBarra.style.width =
+        percentualArredondado + "%";
+
+    }else{
+
+      elementoMelhorPar.textContent =
+        "—";
+
+      elementoConfiguracao.textContent =
+        "Aguardando ocorrências";
+
+      elementoPercentual.textContent =
+        "0%";
+
+      elementoBarra.style.width =
+        "0%";
+    }
+
+    // ===== QUEBRAS =====
+
+    if(
+      melhor &&
+      melhor.total > 0 &&
+      melhor.quebras.length > 0
+    ){
+
+      elementoListaQuebras.innerHTML =
+        melhor.quebras.map(item => `
+
+          <span class="quebra">
+
+            ${item.proximo}
+
+          </span>
+
+        `).join("");
+
+    }else if(
+      melhor &&
+      melhor.total > 0
+    ){
+
+      elementoListaQuebras.innerHTML = `
+
+        <span style="
+          color:#00e676;
+          font-weight:900
+        ">
+          Nenhuma quebra encontrada
+        </span>
+      `;
+
+    }else{
+
+      elementoListaQuebras.innerHTML = `
+
+        <span style="color:#aaa">
+          Ainda não existem ocorrências anteriores do terminal gatilho com um número depois.
+        </span>
+      `;
+    }
+
+    // ===== OCORRÊNCIAS =====
+
+    if(ocorrencias.length){
+
+      elementoListaOcorrencias.innerHTML =
         ocorrencias.map(item => {
 
           const acertou =
             melhor &&
-            melhor.coberturaTotal.has(item.proximo);
+            melhor.coberturaTotal.has(
+              item.proximo
+            );
 
           return `
 
@@ -845,20 +1154,83 @@
                 ${item.gatilho}
               </span>
 
-              <span class="seta">
+              <span style="
+                color:#aaa;
+                margin:0 4px
+              ">
                 →
               </span>
 
-              <span class="${acertou ? "acerto" : "erro"}">
+              <span class="${
+                acertou
+                  ? "acerto"
+                  : "erro"
+              }">
                 ${item.proximo}
               </span>
 
             </div>
-
           `;
 
         }).join("");
 
+    }else{
+
+      elementoListaOcorrencias.innerHTML = `
+
+        <div style="color:#aaa">
+
+          Nenhuma ocorrência anterior do terminal
+          ${
+            numeroGatilho === null
+              ? "—"
+              : "T" + terminal(numeroGatilho)
+          }.
+
+        </div>
+      `;
+    }
+
+    // ===== HISTÓRICO =====
+
+    elementoTimeline.innerHTML =
+      historico.map((numero,index) => {
+
+        const ultimo =
+          index === historico.length - 1;
+
+        const cores =
+          corNumeroRoleta(numero);
+
+        return `
+
+          <span style="
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            min-width:31px;
+            height:31px;
+            margin:2px;
+            padding:3px 5px;
+            border-radius:6px;
+            background:${cores.fundo};
+            color:${cores.texto};
+            border:${
+              ultimo
+                ? "3px solid #00e5ff"
+                : "1px solid #555"
+            };
+            box-shadow:${
+              ultimo
+                ? "0 0 10px #00e5ff"
+                : "none"
+            };
+          ">
+            ${numero}
+          </span>
+        `;
+
+      }).join("");
   }
 
   render();
