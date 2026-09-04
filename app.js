@@ -16,30 +16,10 @@
   const TAMANHO_JANELA = 14;
 
   const STORAGE_KEY =
-    "ANALISADOR_TRIOS_0369_1V_J14_V2";
+    "ANALISADOR_EXCLUSIVO_069_1V_V2";
 
-  const trios = [
-
-    {
-      nome:"0–3–6",
-      terminais:[0,3,6]
-    },
-
-    {
-      nome:"0–3–9",
-      terminais:[0,3,9]
-    },
-
-    {
-      nome:"0–6–9",
-      terminais:[0,6,9]
-    },
-
-    {
-      nome:"3–6–9",
-      terminais:[3,6,9]
-    }
-
+  const TERMINAIS_ANALISADOS = [
+    0,6,9
   ];
 
   const numerosVermelhos = new Set([
@@ -49,8 +29,9 @@
     30,32,34,36
   ]);
 
+
   // =========================================================
-  // REGIÕES DA ROLETA
+  // REGIÕES
   // =========================================================
 
   const regioesRoleta = {
@@ -75,6 +56,7 @@
 
   };
 
+
   const coresRegioes = {
 
     ZERO:"#9bea2c",
@@ -86,6 +68,22 @@
     TIERS:"#29499b"
 
   };
+
+
+  // =========================================================
+  // CORES DOS TERMINAIS 0 / 6 / 9
+  // =========================================================
+
+  const coresTerminais = {
+
+    0:"#00c853",
+
+    6:"#ffc107",
+
+    9:"#2196f3"
+
+  };
+
 
   let historico =
     carregarHistorico();
@@ -102,41 +100,7 @@
 
 
   // =========================================================
-  // REGIÃO DO NÚMERO
-  // =========================================================
-
-  function regiaoDoNumero(numero){
-
-    if(
-      regioesRoleta.ZERO.has(numero)
-    ){
-      return "ZERO";
-    }
-
-    if(
-      regioesRoleta.VOISINS.has(numero)
-    ){
-      return "VOISINS";
-    }
-
-    if(
-      regioesRoleta.ORPHELINS.has(numero)
-    ){
-      return "ORPHELINS";
-    }
-
-    if(
-      regioesRoleta.TIERS.has(numero)
-    ){
-      return "TIERS";
-    }
-
-    return null;
-  }
-
-
-  // =========================================================
-  // ARMAZENAMENTO
+  // STORAGE
   // =========================================================
 
   function carregarHistorico(){
@@ -152,12 +116,15 @@
         return [];
       }
 
+
       const dados =
         JSON.parse(salvo);
+
 
       if(!Array.isArray(dados)){
         return [];
       }
+
 
       return dados
         .map(Number)
@@ -206,12 +173,15 @@
     const indice =
       track.indexOf(numero);
 
+
     if(indice === -1){
       return [];
     }
 
+
     const resultado =
       [numero];
+
 
     for(
       let distancia = 1;
@@ -220,6 +190,7 @@
     ){
 
       resultado.push(
+
         track[
           (
             indice -
@@ -228,9 +199,12 @@
           ) %
           track.length
         ]
+
       );
 
+
       resultado.push(
+
         track[
           (
             indice +
@@ -238,8 +212,11 @@
           ) %
           track.length
         ]
+
       );
+
     }
+
 
     return resultado;
   }
@@ -256,6 +233,7 @@
     const cobertura =
       new Set();
 
+
     track.forEach(numero => {
 
       if(
@@ -269,139 +247,119 @@
             cobertura.add(
               numeroCoberto
             );
+
           });
+
       }
+
     });
+
 
     return cobertura;
   }
 
 
   // =========================================================
-  // COBERTURA DE UM TRIO
+  // COBERTURAS FIXAS 0 / 6 / 9
   // =========================================================
 
-  function coberturaTrio1V(
-    terminaisTrio
+  const coberturas069 = {
+
+    0:coberturaTerminal1V(0),
+
+    6:coberturaTerminal1V(6),
+
+    9:coberturaTerminal1V(9)
+
+  };
+
+
+  // =========================================================
+  // AJUSTE MANUAL DO TERMINAL 9
+  //
+  // 25, 17 e 2 também contam como T9.
+  // =========================================================
+
+  [
+    25,
+    17,
+    2
+  ].forEach(numero => {
+
+    coberturas069[9].add(
+      numero
+    );
+
+  });
+
+
+  // =========================================================
+  // QUAL TERMINAL O NÚMERO BATE
+  // =========================================================
+
+  function terminaisQueBatem(
+    numero
   ){
 
-    const cobertura =
-      new Set();
+    const resultado = [];
 
-    terminaisTrio
+
+    TERMINAIS_ANALISADOS
       .forEach(t => {
 
-        coberturaTerminal1V(t)
-          .forEach(numero => {
+        if(
+          coberturas069[t]
+            .has(numero)
+        ){
 
-            cobertura.add(numero);
-          });
+          resultado.push(t);
+
+        }
+
       });
 
-    return cobertura;
+
+    return resultado;
   }
 
 
   // =========================================================
-  // FORÇA INDIVIDUAL DOS TERMINAIS
+  // REGIÃO
   // =========================================================
 
-  function analisarForcaDosTerminais(
-    terminaisTrio,
-    janela
+  function regiaoDoNumero(
+    numero
   ){
 
-    const analises =
-      terminaisTrio.map(t => {
-
-        const cobertura =
-          coberturaTerminal1V(t);
-
-        const acertos =
-          janela.filter(numero =>
-            cobertura.has(numero)
-          );
-
-        return {
-
-          terminal:t,
-
-          quantidade:
-            acertos.length,
-
-          acertos
-
-        };
-      });
+    if(
+      regioesRoleta.ZERO.has(numero)
+    ){
+      return "ZERO";
+    }
 
 
-    const quantidades =
-      analises.map(item =>
-        item.quantidade
-      );
+    if(
+      regioesRoleta.VOISINS.has(numero)
+    ){
+      return "VOISINS";
+    }
 
 
-    const maximo =
-      Math.max(...quantidades);
-
-    const minimo =
-      Math.min(...quantidades);
-
-
-    analises.forEach(item => {
-
-      if(maximo === minimo){
-
-        item.nivel =
-          "medio";
-
-        item.cor =
-          "#ffc107";
-
-        return;
-      }
+    if(
+      regioesRoleta.ORPHELINS.has(numero)
+    ){
+      return "ORPHELINS";
+    }
 
 
-      if(
-        item.quantidade ===
-        maximo
-      ){
-
-        item.nivel =
-          "quente";
-
-        item.cor =
-          "#00e676";
-
-        return;
-      }
+    if(
+      regioesRoleta.TIERS.has(numero)
+    ){
+      return "TIERS";
+    }
 
 
-      if(
-        item.quantidade ===
-        minimo
-      ){
-
-        item.nivel =
-          "frio";
-
-        item.cor =
-          "#2196f3";
-
-        return;
-      }
-
-
-      item.nivel =
-        "medio";
-
-      item.cor =
-        "#ffc107";
-
-    });
-
-
-    return analises;
+    return null;
   }
 
 
@@ -417,136 +375,92 @@
       );
 
 
-    const resultados =
-      trios.map(trio => {
-
-        const cobertura =
-          coberturaTrio1V(
-            trio.terminais
-          );
-
-
-        const acertos = [];
-
-        const quebras = [];
-
-
-        janela.forEach(numero => {
-
-          if(
-            cobertura.has(numero)
-          ){
-
-            acertos.push(numero);
-
-          }else{
-
-            quebras.push(numero);
-          }
-        });
-
-
-        const percentual =
-          janela.length
-            ? (
-                acertos.length /
-                janela.length
-              ) * 100
-            : 0;
-
-
-        const forcaTerminais =
-          analisarForcaDosTerminais(
-            trio.terminais,
-            janela
-          );
-
+    const sequenciaBatidas =
+      janela.map(numero => {
 
         return {
 
-          nome:
-            trio.nome,
+          numero,
 
           terminais:
-            trio.terminais,
-
-          cobertura,
-
-          acertos,
-
-          quebras,
-
-          quantidadeAcertos:
-            acertos.length,
-
-          quantidadeQuebras:
-            quebras.length,
-
-          percentual,
-
-          forcaTerminais
+            terminaisQueBatem(
+              numero
+            )
 
         };
+
       });
 
 
-    resultados.sort((a,b) => {
+    const contagem = {
 
-      if(
-        b.quantidadeAcertos !==
-        a.quantidadeAcertos
-      ){
+      0:0,
+      6:0,
+      9:0
 
-        return (
-          b.quantidadeAcertos -
-          a.quantidadeAcertos
-        );
-      }
+    };
 
 
-      if(
-        a.quantidadeQuebras !==
-        b.quantidadeQuebras
-      ){
+    sequenciaBatidas
+      .forEach(item => {
 
-        return (
-          a.quantidadeQuebras -
-          b.quantidadeQuebras
-        );
-      }
+        item.terminais
+          .forEach(t => {
+
+            contagem[t]++;
+
+          });
+
+      });
 
 
-      return 0;
-    });
+    const numerosSemBatida =
+      sequenciaBatidas
+        .filter(item =>
+          item.terminais.length === 0
+        )
+        .length;
+
+
+    const numerosComBatida =
+      sequenciaBatidas.length -
+      numerosSemBatida;
 
 
     return {
 
       janela,
 
-      resultados,
+      sequenciaBatidas,
 
-      melhor:
-        resultados[0] || null
+      contagem,
+
+      numerosComBatida,
+
+      numerosSemBatida
 
     };
   }
 
 
   // =========================================================
-  // EXTRAIR NÚMEROS
+  // EXTRAÇÃO DO HISTÓRICO
   // =========================================================
 
-  function extrairNumeros(texto){
+  function extrairNumeros(
+    texto
+  ){
 
     const encontrados =
       texto.match(
         /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
       );
 
+
     if(!encontrados){
       return [];
     }
+
 
     return encontrados
       .map(Number)
@@ -601,6 +515,7 @@
     statusArea.textContent =
       `${historico.length} números carregados.`;
 
+
     statusArea.style.color =
       "#00e676";
 
@@ -613,7 +528,9 @@
   // ADICIONAR NÚMERO
   // =========================================================
 
-  function adicionarNumero(numero){
+  function adicionarNumero(
+    numero
+  ){
 
     historico.push(numero);
 
@@ -631,6 +548,7 @@
 
     statusArea.textContent =
       `Número ${numero} inserido.`;
+
 
     statusArea.style.color =
       "#00e5ff";
@@ -660,6 +578,7 @@
 
     statusArea.textContent =
       `Número ${apagado} apagado.`;
+
 
     statusArea.style.color =
       "#ffc107";
@@ -695,6 +614,7 @@
     statusArea.textContent =
       "Histórico apagado.";
 
+
     statusArea.style.color =
       "#ff5252";
 
@@ -704,7 +624,7 @@
 
 
   // =========================================================
-  // COR DA ROLETA
+  // COR NORMAL DA ROLETA
   // =========================================================
 
   function corNumeroRoleta(
@@ -715,8 +635,7 @@
 
       return {
 
-        fundo:"#07874b",
-
+        fundo:"#087c48",
         texto:"#ffffff"
 
       };
@@ -732,7 +651,6 @@
       return {
 
         fundo:"#c6283d",
-
         texto:"#ffffff"
 
       };
@@ -742,7 +660,6 @@
     return {
 
       fundo:"#181818",
-
       texto:"#ffffff"
 
     };
@@ -784,18 +701,21 @@
       touch-action:manipulation;
     }
 
+
     .app{
       width:100%;
-      max-width:820px;
+      max-width:850px;
       margin:auto;
       padding:8px;
     }
 
+
     h2{
       text-align:center;
       margin:5px 0 10px;
-      font-size:21px;
+      font-size:22px;
     }
+
 
     .painel{
       background:#1d1d1f;
@@ -805,6 +725,7 @@
       margin-bottom:8px;
     }
 
+
     .tituloPainel{
       color:#aaa;
       font-size:12px;
@@ -812,9 +733,10 @@
       margin-bottom:7px;
     }
 
+
     textarea{
       width:100%;
-      min-height:75px;
+      min-height:72px;
       padding:8px;
       background:#111;
       color:#fff;
@@ -823,12 +745,14 @@
       font-size:14px;
     }
 
+
     .acoes{
       display:flex;
       gap:6px;
       flex-wrap:wrap;
       margin-top:7px;
     }
+
 
     .btn{
       padding:8px 11px;
@@ -839,290 +763,16 @@
       font-weight:900;
     }
 
+
     .verde{
       background:#146238;
     }
+
 
     .vermelho{
       background:#762832;
     }
 
-
-    /* ================= MELHOR TRIO ================= */
-
-    .melhorTrio{
-      background:#111;
-      border:2px solid #00e676;
-      border-radius:10px;
-      padding:10px;
-    }
-
-    .melhorTitulo{
-      text-align:center;
-      color:#aaa;
-      font-size:12px;
-      font-weight:900;
-    }
-
-    .nomeTrio{
-      text-align:center;
-      font-size:28px;
-      font-weight:900;
-      margin:4px 0;
-    }
-
-    .placar{
-      text-align:center;
-      font-size:18px;
-      font-weight:900;
-      margin-bottom:9px;
-    }
-
-    .terminaisTrio{
-      display:flex;
-      justify-content:center;
-      gap:9px;
-      margin-top:7px;
-    }
-
-    .terminalTrio{
-      min-width:70px;
-      height:55px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      border-radius:9px;
-      color:#fff;
-      font-size:21px;
-      font-weight:900;
-      border:2px solid rgba(255,255,255,.55);
-    }
-
-    .terminalQtd{
-      font-size:11px;
-      margin-top:2px;
-      opacity:.9;
-    }
-
-
-    /* ================= BARRA ================= */
-
-    .barra{
-      width:100%;
-      height:10px;
-      margin-top:7px;
-      background:#333;
-      border-radius:10px;
-      overflow:hidden;
-    }
-
-    .barraInterna{
-      height:100%;
-      background:
-        linear-gradient(
-          90deg,
-          #00bcd4,
-          #00e676
-        );
-    }
-
-
-    /* ================= TRIOS ================= */
-
-    .listaTrios{
-      display:grid;
-      grid-template-columns:
-        repeat(2,1fr);
-      gap:7px;
-    }
-
-    .cardTrio{
-      background:#111;
-      border:1px solid #444;
-      border-radius:8px;
-      padding:8px;
-    }
-
-    .cardTrio.primeiro{
-      border-color:#00e676;
-    }
-
-    .trioLinha{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:5px;
-    }
-
-    .trioNome{
-      font-size:18px;
-      font-weight:900;
-    }
-
-    .trioResultado{
-      font-weight:900;
-    }
-
-    .miniTerminais{
-      display:flex;
-      gap:4px;
-      margin-top:6px;
-    }
-
-    .miniTerminal{
-      flex:1;
-      min-height:28px;
-      border-radius:5px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      font-size:13px;
-      font-weight:900;
-    }
-
-
-    /* ================= JANELA 14 DUPLA ================= */
-
-    .janelaBloco{
-      display:flex;
-      flex-direction:column;
-      gap:7px;
-    }
-
-    .linhaJanela{
-      display:grid;
-      grid-template-columns:
-        92px minmax(0,1fr);
-      gap:7px;
-      align-items:center;
-    }
-
-    .rotuloLinha{
-      color:#bbb;
-      font-size:11px;
-      font-weight:900;
-      line-height:1.2;
-    }
-
-    .janela14{
-      display:flex;
-      gap:5px;
-      overflow-x:auto;
-      padding-bottom:3px;
-    }
-
-    .numeroJanela{
-      min-width:37px;
-      height:37px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border:2px solid rgba(255,255,255,.75);
-      font-size:14px;
-      font-weight:900;
-      color:#fff;
-    }
-
-    .numeroJanela.quebra{
-      opacity:.35;
-      border-color:#ff5252;
-    }
-
-    .numeroRegiao{
-      min-width:37px;
-      height:37px;
-      border-radius:8px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border:2px solid rgba(255,255,255,.70);
-      font-size:14px;
-      font-weight:900;
-      color:#fff;
-    }
-
-    .legendaRegioes{
-      display:flex;
-      justify-content:center;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:7px;
-      color:#aaa;
-      font-size:10px;
-    }
-
-    .itemLegendaRegiao{
-      display:flex;
-      align-items:center;
-      gap:4px;
-    }
-
-    .bolinhaRegiao{
-      width:11px;
-      height:11px;
-      border-radius:3px;
-    }
-
-
-    /* ================= TECLADO ================= */
-
-    .teclado{
-      display:grid;
-      grid-template-columns:
-        repeat(6,1fr);
-      gap:4px;
-    }
-
-    .numeroBtn{
-      min-height:40px;
-      border:1px solid #666;
-      border-radius:7px;
-      font-size:15px;
-      font-weight:900;
-      color:#fff;
-    }
-
-    .numeroBtn:active{
-      transform:scale(.96);
-    }
-
-    .zeroBtn{
-      grid-column:span 6;
-    }
-
-
-    /* ================= HISTÓRICO ================= */
-
-    .historico{
-      display:flex;
-      gap:4px;
-      overflow-x:auto;
-      min-height:34px;
-    }
-
-    .histNumero{
-      min-width:31px;
-      height:31px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:6px;
-      font-size:13px;
-      font-weight:900;
-      border:1px solid #555;
-    }
-
-    .histNumero.janelaAtual{
-      border:2px solid #00e5ff;
-    }
-
-    .histNumero.ultimo{
-      box-shadow:
-        0 0 8px #00e5ff;
-    }
 
     .status{
       margin-top:7px;
@@ -1131,15 +781,184 @@
       font-weight:900;
     }
 
-    .legenda{
+
+    /* =====================================================
+       RESUMO 0 6 9
+    ===================================================== */
+
+
+    .resumo069{
+      display:grid;
+      grid-template-columns:
+        repeat(3,1fr);
+      gap:6px;
+    }
+
+
+    .card069{
+      padding:8px;
+      border:1px solid #444;
+      border-radius:8px;
+      background:#111;
+      text-align:center;
+    }
+
+
+    .titulo069{
+      font-size:18px;
+      font-weight:900;
+    }
+
+
+    .valor069{
+      margin-top:3px;
+      font-size:14px;
+      font-weight:900;
+    }
+
+
+    /* =====================================================
+       JANELA 14
+    ===================================================== */
+
+
+    .janelaBloco{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+    }
+
+
+    .linhaJanela{
+      display:grid;
+      grid-template-columns:
+        90px minmax(0,1fr);
+      gap:6px;
+      align-items:center;
+    }
+
+
+    .rotuloLinha{
+      color:#bbb;
+      font-size:10px;
+      font-weight:900;
+      line-height:1.25;
+    }
+
+
+    .janelaScroll{
+      display:flex;
+      gap:5px;
+      overflow-x:auto;
+      padding-bottom:2px;
+    }
+
+
+    .numeroJanela{
+      min-width:37px;
+      height:37px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      border:2px solid rgba(
+        255,
+        255,
+        255,
+        .75
+      );
+      color:#fff;
+      font-size:14px;
+      font-weight:900;
+    }
+
+
+    .numeroRegiao{
+      min-width:37px;
+      height:37px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:8px;
+      border:2px solid rgba(
+        255,
+        255,
+        255,
+        .65
+      );
+      color:#fff;
+      font-size:14px;
+      font-weight:900;
+    }
+
+
+    /* =====================================================
+       LINHA DE BATIDAS 0 / 6 / 9
+    ===================================================== */
+
+
+    .batidaBox{
+      min-width:37px;
+      height:37px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:2px;
+      border-radius:8px;
+      background:#111;
+      border:1px solid #555;
+      padding:2px;
+    }
+
+
+    .batidaVazia{
+      color:#555;
+      font-size:15px;
+      font-weight:900;
+    }
+
+
+    .tagTerminal{
+      min-width:24px;
+      height:28px;
+      padding:0 4px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:6px;
+      color:#fff;
+      font-size:13px;
+      font-weight:900;
+    }
+
+
+    .batidaDupla{
+      border-color:#ffffff;
+      box-shadow:
+        0 0 7px rgba(
+          255,
+          255,
+          255,
+          .45
+        );
+    }
+
+
+    /* =====================================================
+       LEGENDAS
+    ===================================================== */
+
+
+    .legendaRegioes{
       display:flex;
       justify-content:center;
-      gap:12px;
+      gap:10px;
       flex-wrap:wrap;
       margin-top:8px;
       color:#aaa;
-      font-size:11px;
+      font-size:10px;
     }
+
 
     .legendaItem{
       display:flex;
@@ -1147,49 +966,133 @@
       gap:4px;
     }
 
+
     .legendaCor{
-      width:12px;
-      height:12px;
+      width:11px;
+      height:11px;
       border-radius:3px;
     }
 
 
-    @media(max-width:600px){
+    /* =====================================================
+       TECLADO
+    ===================================================== */
+
+
+    .teclado{
+      display:grid;
+      grid-template-columns:
+        repeat(6,1fr);
+      gap:4px;
+    }
+
+
+    .numeroBtn{
+      min-height:40px;
+      border:1px solid #666;
+      border-radius:7px;
+      color:#fff;
+      font-size:15px;
+      font-weight:900;
+    }
+
+
+    .numeroBtn:active{
+      transform:scale(.96);
+    }
+
+
+    .zeroBtn{
+      grid-column:span 6;
+    }
+
+
+    /* =====================================================
+       HISTÓRICO
+    ===================================================== */
+
+
+    .historico{
+      display:flex;
+      gap:4px;
+      overflow-x:auto;
+      min-height:34px;
+    }
+
+
+    .histNumero{
+      min-width:31px;
+      height:31px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:6px;
+      border:1px solid #555;
+      font-size:13px;
+      font-weight:900;
+    }
+
+
+    .histNumero.janelaAtual{
+      border:2px solid #00e5ff;
+    }
+
+
+    .histNumero.ultimo{
+      box-shadow:
+        0 0 8px #00e5ff;
+    }
+
+
+    @media(
+      max-width:600px
+    ){
 
       .app{
         padding:5px;
       }
 
+
       .painel{
         padding:7px;
       }
 
-      .listaTrios{
-        grid-template-columns:1fr 1fr;
-        gap:5px;
+
+      .linhaJanela{
+        grid-template-columns:
+          64px minmax(0,1fr);
       }
 
-      .terminalTrio{
-        min-width:62px;
-        height:51px;
+
+      .rotuloLinha{
+        font-size:9px;
       }
+
+
+      .numeroJanela,
+      .numeroRegiao,
+      .batidaBox{
+        min-width:34px;
+        height:34px;
+      }
+
+
+      .tagTerminal{
+        min-width:21px;
+        height:25px;
+        font-size:11px;
+      }
+
 
       .teclado{
         gap:3px;
       }
 
+
       .numeroBtn{
         min-height:38px;
       }
 
-      .linhaJanela{
-        grid-template-columns:
-          74px minmax(0,1fr);
-      }
-
-      .rotuloLinha{
-        font-size:10px;
-      }
     }
 
   </style>
@@ -1198,7 +1101,7 @@
   <main class="app">
 
     <h2>
-      Análise 0 • 3 • 6 • 9
+      Análise 0 • 6 • 9
     </h2>
 
 
@@ -1211,6 +1114,7 @@
         placeholder="Cole o histórico do mais antigo para o mais recente..."
       ></textarea>
 
+
       <div class="acoes">
 
         <button
@@ -1220,12 +1124,14 @@
           Inserir histórico
         </button>
 
+
         <button
           id="btnApagarUltimo"
           class="btn"
         >
           Apagar último
         </button>
+
 
         <button
           id="btnApagarTudo"
@@ -1235,6 +1141,7 @@
         </button>
 
       </div>
+
 
       <div
         id="statusArea"
@@ -1246,46 +1153,103 @@
     </section>
 
 
-    <!-- MELHOR TRIO -->
-
-    <section class="painel">
-
-      <div
-        id="melhorTrio"
-        class="melhorTrio"
-      ></div>
-
-    </section>
-
-
-    <!-- TODOS OS TRIOS -->
+    <!-- RESUMO EXCLUSIVO 069 -->
 
     <section class="painel">
 
       <div class="tituloPainel">
-        COMPARAÇÃO DOS 4 TRIOS — JANELA 14 / 1V
+        0 • 6 • 9 — 1 VIZINHO / ÚLTIMOS 14
       </div>
 
-      <div
-        id="listaTrios"
-        class="listaTrios"
-      ></div>
+
+      <div class="resumo069">
+
+        <div
+          class="card069"
+          style="
+            border-color:#00c853
+          "
+        >
+
+          <div class="titulo069">
+            T0
+          </div>
+
+          <div
+            id="qtdT0"
+            class="valor069"
+          >
+            0
+          </div>
+
+        </div>
+
+
+        <div
+          class="card069"
+          style="
+            border-color:#ffc107
+          "
+        >
+
+          <div class="titulo069">
+            T6
+          </div>
+
+          <div
+            id="qtdT6"
+            class="valor069"
+          >
+            0
+          </div>
+
+        </div>
+
+
+        <div
+          class="card069"
+          style="
+            border-color:#2196f3
+          "
+        >
+
+          <div class="titulo069">
+            T9
+          </div>
+
+          <div
+            id="qtdT9"
+            class="valor069"
+          >
+            0
+          </div>
+
+        </div>
+
+      </div>
 
     </section>
 
 
-    <!-- JANELA 14 DUPLA -->
+    <!-- ÚLTIMOS 14 -->
 
     <section class="painel">
 
       <div class="tituloPainel">
 
         ÚLTIMOS
-        <span id="qtdJanela">0</span>/14
+        <span id="qtdJanela">
+          0
+        </span>
+        /14
 
       </div>
 
+
       <div class="janelaBloco">
+
+
+        <!-- LINHA 1 -->
 
         <div class="linhaJanela">
 
@@ -1294,24 +1258,45 @@
             VERMELHO
           </div>
 
+
           <div
-            id="janelaCores"
-            class="janela14"
+            id="linhaCores"
+            class="janelaScroll"
           ></div>
 
         </div>
 
 
+        <!-- LINHA 2 -->
+
         <div class="linhaJanela">
 
           <div class="rotuloLinha">
-            REGIÕES<br>
-            DA ROLETA
+            REGIÕES
           </div>
 
+
           <div
-            id="janelaRegioes"
-            class="janela14"
+            id="linhaRegioes"
+            class="janelaScroll"
+          ></div>
+
+        </div>
+
+
+        <!-- LINHA 3 -->
+
+        <div class="linhaJanela">
+
+          <div class="rotuloLinha">
+            BATIDA<br>
+            0 • 6 • 9
+          </div>
+
+
+          <div
+            id="linhaBatidas"
+            class="janelaScroll"
           ></div>
 
         </div>
@@ -1321,44 +1306,55 @@
 
       <div class="legendaRegioes">
 
-        <div class="itemLegendaRegiao">
+        <div class="legendaItem">
 
           <span
-            class="bolinhaRegiao"
-            style="background:#9bea2c"
+            class="legendaCor"
+            style="
+              background:#9bea2c
+            "
           ></span>
 
           Zero
 
         </div>
 
-        <div class="itemLegendaRegiao">
+
+        <div class="legendaItem">
 
           <span
-            class="bolinhaRegiao"
-            style="background:#8a20d4"
+            class="legendaCor"
+            style="
+              background:#8a20d4
+            "
           ></span>
 
           Voisins
 
         </div>
 
-        <div class="itemLegendaRegiao">
+
+        <div class="legendaItem">
 
           <span
-            class="bolinhaRegiao"
-            style="background:#176436"
+            class="legendaCor"
+            style="
+              background:#176436
+            "
           ></span>
 
           Orphelins
 
         </div>
 
-        <div class="itemLegendaRegiao">
+
+        <div class="legendaItem">
 
           <span
-            class="bolinhaRegiao"
-            style="background:#29499b"
+            class="legendaCor"
+            style="
+              background:#29499b
+            "
           ></span>
 
           Tiers
@@ -1377,6 +1373,7 @@
       <div class="tituloPainel">
         TECLADO 0–36
       </div>
+
 
       <div
         id="teclado"
@@ -1399,6 +1396,7 @@
 
       </div>
 
+
       <div
         id="historico"
         class="historico"
@@ -1419,44 +1417,64 @@
       "statusArea"
     );
 
-  const elementoMelhorTrio =
-    document.getElementById(
-      "melhorTrio"
-    );
-
-  const elementoListaTrios =
-    document.getElementById(
-      "listaTrios"
-    );
-
-  const elementoJanelaCores =
-    document.getElementById(
-      "janelaCores"
-    );
-
-  const elementoJanelaRegioes =
-    document.getElementById(
-      "janelaRegioes"
-    );
-
-  const elementoTeclado =
-    document.getElementById(
-      "teclado"
-    );
-
-  const elementoHistorico =
-    document.getElementById(
-      "historico"
-    );
 
   const elementoQtdJanela =
     document.getElementById(
       "qtdJanela"
     );
 
+
+  const elementoLinhaCores =
+    document.getElementById(
+      "linhaCores"
+    );
+
+
+  const elementoLinhaRegioes =
+    document.getElementById(
+      "linhaRegioes"
+    );
+
+
+  const elementoLinhaBatidas =
+    document.getElementById(
+      "linhaBatidas"
+    );
+
+
+  const elementoTeclado =
+    document.getElementById(
+      "teclado"
+    );
+
+
+  const elementoHistorico =
+    document.getElementById(
+      "historico"
+    );
+
+
   const elementoQtdHistorico =
     document.getElementById(
       "qtdHistorico"
+    );
+
+
+  const elementoQtdT0 =
+    document.getElementById(
+      "qtdT0"
+    );
+
+
+  const elementoQtdT6 =
+    document.getElementById(
+      "qtdT6"
+    );
+
+
+  const elementoQtdT9 =
+    document.getElementById(
+      "qtdT9"
     );
 
 
@@ -1471,7 +1489,9 @@
   ){
 
     const cores =
-      corNumeroRoleta(numero);
+      corNumeroRoleta(
+        numero
+      );
 
 
     const botao =
@@ -1498,13 +1518,18 @@
 
     botao.onclick = () => {
 
-      adicionarNumero(numero);
+      adicionarNumero(
+        numero
+      );
 
     };
 
 
     elementoTeclado
-      .appendChild(botao);
+      .appendChild(
+        botao
+      );
+
   }
 
 
@@ -1523,7 +1548,11 @@
 
 
   botaoZero.style.background =
-    "#07874b";
+    "#087c48";
+
+
+  botaoZero.style.color =
+    "#ffffff";
 
 
   botaoZero.onclick = () => {
@@ -1534,7 +1563,9 @@
 
 
   elementoTeclado
-    .appendChild(botaoZero);
+    .appendChild(
+      botaoZero
+    );
 
 
   // =========================================================
@@ -1566,277 +1597,7 @@
 
 
   // =========================================================
-  // RENDER MELHOR TRIO
-  // =========================================================
-
-  function renderMelhorTrio(
-    analise
-  ){
-
-    const melhor =
-      analise.melhor;
-
-
-    if(
-      !melhor ||
-      !analise.janela.length
-    ){
-
-      elementoMelhorTrio.innerHTML = `
-
-        <div class="melhorTitulo">
-          MELHOR TRIO
-        </div>
-
-        <div class="nomeTrio">
-          —
-        </div>
-
-        <div style="
-          text-align:center;
-          color:#888;
-        ">
-          Insira números para iniciar.
-        </div>
-      `;
-
-      return;
-    }
-
-
-    const percentual =
-      Math.round(
-        melhor.percentual
-      );
-
-
-    const terminaisHTML =
-      melhor.forcaTerminais
-        .map(item => `
-
-          <div
-            class="terminalTrio"
-            style="
-              background:${item.cor}
-            "
-          >
-
-            T${item.terminal}
-
-            <div class="terminalQtd">
-              ${item.quantidade}/${analise.janela.length}
-            </div>
-
-          </div>
-
-        `)
-        .join("");
-
-
-    elementoMelhorTrio.innerHTML = `
-
-      <div class="melhorTitulo">
-        MELHOR TRIO — 1 VIZINHO
-      </div>
-
-      <div class="nomeTrio">
-        ${melhor.nome}
-      </div>
-
-      <div class="placar">
-
-        ${melhor.quantidadeAcertos}
-        /
-        ${analise.janela.length}
-
-        &nbsp;•&nbsp;
-
-        ${percentual}%
-
-      </div>
-
-
-      <div class="terminaisTrio">
-
-        ${terminaisHTML}
-
-      </div>
-
-
-      <div class="legenda">
-
-        <div class="legendaItem">
-
-          <span
-            class="legendaCor"
-            style="background:#00e676"
-          ></span>
-
-          Mais quente
-
-        </div>
-
-        <div class="legendaItem">
-
-          <span
-            class="legendaCor"
-            style="background:#ffc107"
-          ></span>
-
-          Intermediário
-
-        </div>
-
-        <div class="legendaItem">
-
-          <span
-            class="legendaCor"
-            style="background:#2196f3"
-          ></span>
-
-          Mais frio
-
-        </div>
-
-      </div>
-
-
-      <div class="barra">
-
-        <div
-          class="barraInterna"
-          style="
-            width:${percentual}%
-          "
-        ></div>
-
-      </div>
-    `;
-  }
-
-
-  // =========================================================
-  // RENDER TODOS OS TRIOS
-  // =========================================================
-
-  function renderTrios(
-    analise
-  ){
-
-    if(!analise.janela.length){
-
-      elementoListaTrios.innerHTML = `
-
-        <span style="
-          color:#888;
-          font-size:12px;
-        ">
-          Aguardando números.
-        </span>
-      `;
-
-      return;
-    }
-
-
-    elementoListaTrios.innerHTML =
-      analise.resultados
-        .map(
-          (
-            resultado,
-            indice
-          ) => {
-
-
-            const percentual =
-              Math.round(
-                resultado.percentual
-              );
-
-
-            const mini =
-              resultado
-                .forcaTerminais
-                .map(item => `
-
-                  <div
-                    class="miniTerminal"
-                    style="
-                      background:${item.cor}
-                    "
-                  >
-
-                    T${item.terminal}
-
-                  </div>
-
-                `)
-                .join("");
-
-
-            return `
-
-              <div
-                class="
-                  cardTrio
-                  ${
-                    indice === 0
-                      ? "primeiro"
-                      : ""
-                  }
-                "
-              >
-
-                <div class="trioLinha">
-
-                  <span class="trioNome">
-                    ${resultado.nome}
-                  </span>
-
-                  <span class="trioResultado">
-
-                    ${resultado.quantidadeAcertos}
-                    /
-                    ${analise.janela.length}
-
-                  </span>
-
-                </div>
-
-
-                <div
-                  style="
-                    color:#aaa;
-                    font-size:11px;
-                    margin-top:3px;
-                  "
-                >
-
-                  ${percentual}%
-                  •
-                  ${resultado.quantidadeQuebras}
-                  quebra(s)
-
-                </div>
-
-
-                <div class="miniTerminais">
-
-                  ${mini}
-
-                </div>
-
-              </div>
-            `;
-
-          }
-        )
-        .join("");
-  }
-
-
-  // =========================================================
-  // RENDER DAS DUAS LINHAS DOS ÚLTIMOS 14
+  // RENDER JANELA 14
   // =========================================================
 
   function renderJanela(
@@ -1847,75 +1608,67 @@
       analise.janela.length;
 
 
-    if(!analise.janela.length){
-
-      elementoJanelaCores.innerHTML = `
-
-        <span style="
-          color:#888;
-          font-size:12px;
-        ">
-          Sem números.
-        </span>
-      `;
+    elementoQtdT0.textContent =
+      analise.contagem[0] +
+      "/" +
+      analise.janela.length;
 
 
-      elementoJanelaRegioes.innerHTML = `
+    elementoQtdT6.textContent =
+      analise.contagem[6] +
+      "/" +
+      analise.janela.length;
 
-        <span style="
-          color:#888;
-          font-size:12px;
-        ">
-          Sem números.
-        </span>
-      `;
+
+    elementoQtdT9.textContent =
+      analise.contagem[9] +
+      "/" +
+      analise.janela.length;
+
+
+    if(
+      !analise.janela.length
+    ){
+
+      elementoLinhaCores.innerHTML =
+        "Sem números.";
+
+      elementoLinhaRegioes.innerHTML =
+        "Sem números.";
+
+      elementoLinhaBatidas.innerHTML =
+        "Sem números.";
 
       return;
     }
 
 
-    const melhor =
-      analise.melhor;
+    // =====================================================
+    // LINHA 1 — COR NORMAL
+    // =====================================================
 
-
-    // ---------------------------------------------------------
-    // LINHA 1 — PRETO / VERMELHO
-    // ---------------------------------------------------------
-
-    elementoJanelaCores.innerHTML =
+    elementoLinhaCores.innerHTML =
       analise.janela
         .map(numero => {
 
-
           const cores =
-            corNumeroRoleta(numero);
-
-
-          const acertou =
-            melhor
-              ? melhor.cobertura.has(
-                  numero
-                )
-              : false;
+            corNumeroRoleta(
+              numero
+            );
 
 
           return `
 
             <div
-              class="
-                numeroJanela
-                ${
-                  acertou
-                    ? ""
-                    : "quebra"
-                }
-              "
+              class="numeroJanela"
               style="
                 background:${cores.fundo};
                 color:${cores.texto};
               "
             >
+
               ${numero}
+
             </div>
 
           `;
@@ -1924,20 +1677,21 @@
         .join("");
 
 
-    // ---------------------------------------------------------
+    // =====================================================
     // LINHA 2 — REGIÕES
-    // ---------------------------------------------------------
+    // =====================================================
 
-    elementoJanelaRegioes.innerHTML =
+    elementoLinhaRegioes.innerHTML =
       analise.janela
         .map(numero => {
 
-
           const regiao =
-            regiaoDoNumero(numero);
+            regiaoDoNumero(
+              numero
+            );
 
 
-          const corRegiao =
+          const cor =
             regiao
               ? coresRegioes[regiao]
               : "#555";
@@ -1948,11 +1702,85 @@
             <div
               class="numeroRegiao"
               style="
-                background:${corRegiao};
+                background:${cor};
               "
               title="${regiao || ""}"
             >
+
               ${numero}
+
+            </div>
+
+          `;
+
+        })
+        .join("");
+
+
+    // =====================================================
+    // LINHA 3 — BATIDA 0 / 6 / 9
+    // =====================================================
+
+    elementoLinhaBatidas.innerHTML =
+      analise.sequenciaBatidas
+        .map(item => {
+
+
+          if(
+            !item.terminais.length
+          ){
+
+            return `
+
+              <div
+                class="batidaBox"
+              >
+
+                <span
+                  class="batidaVazia"
+                >
+                  —
+                </span>
+
+              </div>
+
+            `;
+          }
+
+
+          const tags =
+            item.terminais
+              .map(t => `
+
+                <span
+                  class="tagTerminal"
+                  style="
+                    background:
+                    ${coresTerminais[t]};
+                  "
+                >
+                  ${t}
+                </span>
+
+              `)
+              .join("");
+
+
+          return `
+
+            <div
+              class="
+                batidaBox
+                ${
+                  item.terminais.length > 1
+                    ? "batidaDupla"
+                    : ""
+                }
+              "
+            >
+
+              ${tags}
+
             </div>
 
           `;
@@ -1963,7 +1791,7 @@
 
 
   // =========================================================
-  // RENDER HISTÓRICO
+  // HISTÓRICO
   // =========================================================
 
   function renderHistorico(){
@@ -1974,15 +1802,8 @@
 
     if(!historico.length){
 
-      elementoHistorico.innerHTML = `
-
-        <span style="
-          color:#888;
-          font-size:12px;
-        ">
-          Histórico vazio.
-        </span>
-      `;
+      elementoHistorico.innerHTML =
+        "Histórico vazio.";
 
       return;
     }
@@ -2007,55 +1828,65 @@
 
     elementoHistorico.innerHTML =
       visiveis
-        .map((numero,index) => {
-
-          const indiceReal =
-            offset + index;
-
-
-          const cores =
-            corNumeroRoleta(numero);
+        .map(
+          (
+            numero,
+            index
+          ) => {
 
 
-          const dentroJanela =
-            indiceReal >=
-            inicioJanela;
+            const indiceReal =
+              offset + index;
 
 
-          const ultimo =
-            indiceReal ===
-            historico.length - 1;
+            const cores =
+              corNumeroRoleta(
+                numero
+              );
 
 
-          return `
+            const dentroJanela =
+              indiceReal >=
+              inicioJanela;
 
-            <div
-              class="
-                histNumero
-                ${
-                  dentroJanela
-                    ? "janelaAtual"
-                    : ""
-                }
-                ${
-                  ultimo
-                    ? "ultimo"
-                    : ""
-                }
-              "
-              style="
-                background:${cores.fundo};
-                color:${cores.texto};
-              "
-            >
 
-              ${numero}
+            const ultimo =
+              indiceReal ===
+              historico.length - 1;
 
-            </div>
 
-          `;
+            return `
 
-        })
+              <div
+                class="
+                  histNumero
+                  ${
+                    dentroJanela
+                      ? "janelaAtual"
+                      : ""
+                  }
+                  ${
+                    ultimo
+                      ? "ultimo"
+                      : ""
+                  }
+                "
+                style="
+                  background:
+                  ${cores.fundo};
+                  color:
+                  ${cores.texto};
+                "
+              >
+
+                ${numero}
+
+              </div>
+
+            `;
+
+          }
+        )
         .join("");
 
 
@@ -2074,22 +1905,13 @@
       analisarJanela14();
 
 
-    renderMelhorTrio(
-      analise
-    );
-
-
-    renderTrios(
-      analise
-    );
-
-
     renderJanela(
       analise
     );
 
 
     renderHistorico();
+
   }
 
 
