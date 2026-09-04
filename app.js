@@ -1,6 +1,10 @@
 (function () {
 
-  // ================= CONFIGURAÇÃO =================
+  "use strict";
+
+  // =========================================================
+  // CONFIGURAÇÃO
+  // =========================================================
 
   const track = [
     32,15,19,4,21,2,25,17,34,6,
@@ -9,68 +13,75 @@
     7,28,12,35,3,26,0
   ];
 
-  const terminal = numero => numero % 10;
+  const TAMANHO_JANELA = 14;
 
-  const paresFixos = [
-  [1,5],
-  [3,9],
-  [4,8],
-  [0,7],
-  [6,2],
-  [3,2],
-  [6,9],
-  [0,9],
-  [0,2],
-  [3,4],
-  [5,8],
-  [1,3],
-  [4,6],
-  [6,8]
-];
+  const STORAGE_KEY =
+    "ANALISADOR_TRIOS_0369_1V_J14_V1";
 
+  const trios = [
 
+    {
+      nome:"0–3–6",
+      terminais:[0,3,6]
+    },
 
-  const corTerminal = {
-    0:"#ff5252",
-    1:"#ff9800",
-    2:"#ffc107",
-    3:"#00e676",
-    4:"#00bcd4",
-    5:"#2196f3",
-    6:"#9c27b0",
-    7:"#e91e63",
-    8:"#8bc34a",
-    9:"#ff00ff"
-  };
+    {
+      nome:"0–3–9",
+      terminais:[0,3,9]
+    },
+
+    {
+      nome:"0–6–9",
+      terminais:[0,6,9]
+    },
+
+    {
+      nome:"3–6–9",
+      terminais:[3,6,9]
+    }
+
+  ];
 
   const numerosVermelhos = new Set([
-    1,3,5,7,9,12,14,16,18,
-    19,21,23,25,27,30,32,34,36
+    1,3,5,7,9,
+    12,14,16,18,
+    19,21,23,25,27,
+    30,32,34,36
   ]);
 
-  const STORAGE_KEY = "CSM_GATILHO_TERMINAL_V1";
+  let historico =
+    carregarHistorico();
 
-  // O histórico fica do mais antigo para o mais recente.
-  let historico = carregarHistorico();
 
-  // O último número do histórico define o terminal gatilho.
-  let numeroGatilho = historico.length
-    ? historico[historico.length - 1]
-    : null;
+  // =========================================================
+  // TERMINAL
+  // =========================================================
 
-  // ================= ARMAZENAMENTO =================
+  function terminal(numero){
+
+    return numero % 10;
+  }
+
+
+  // =========================================================
+  // ARMAZENAMENTO
+  // =========================================================
 
   function carregarHistorico(){
 
     try{
 
-      const salvo = localStorage.getItem(STORAGE_KEY);
+      const salvo =
+        localStorage.getItem(
+          STORAGE_KEY
+        );
 
       if(!salvo){
         return [];
       }
 
-      const dados = JSON.parse(salvo);
+      const dados =
+        JSON.parse(salvo);
 
       if(!Array.isArray(dados)){
         return [];
@@ -91,6 +102,7 @@
     }
   }
 
+
   function salvarHistorico(){
 
     try{
@@ -103,23 +115,31 @@
     }catch(erro){
 
       console.error(
-        "Não foi possível salvar o histórico.",
+        "Erro ao salvar histórico.",
         erro
       );
     }
   }
 
-  // ================= VIZINHOS DA ROLETA =================
 
-  function vizinhos(numero, quantidade){
+  // =========================================================
+  // VIZINHOS NA RACE
+  // =========================================================
 
-    const indice = track.indexOf(numero);
+  function vizinhos(
+    numero,
+    quantidade = 1
+  ){
+
+    const indice =
+      track.indexOf(numero);
 
     if(indice === -1){
       return [];
     }
 
-    const resultado = [numero];
+    const resultado =
+      [numero];
 
     for(
       let distancia = 1;
@@ -129,13 +149,22 @@
 
       resultado.push(
         track[
-          (indice - distancia + 37) % 37
+          (
+            indice -
+            distancia +
+            track.length
+          ) %
+          track.length
         ]
       );
 
       resultado.push(
         track[
-          (indice + distancia) % 37
+          (
+            indice +
+            distancia
+          ) %
+          track.length
         ]
       );
     }
@@ -143,20 +172,31 @@
     return resultado;
   }
 
-  function coberturaTerminal(
-    numeroTerminal,
-    quantidadeVizinhos
+
+  // =========================================================
+  // COBERTURA DE UM TERMINAL COM 1 VIZINHO
+  // =========================================================
+
+  function coberturaTerminal1V(
+    numeroTerminal
   ){
 
-    const cobertura = new Set();
+    const cobertura =
+      new Set();
 
     track.forEach(numero => {
 
-      if(terminal(numero) === numeroTerminal){
+      if(
+        terminal(numero) ===
+        numeroTerminal
+      ){
 
-        vizinhos(numero, quantidadeVizinhos)
-          .forEach(vizinho => {
-            cobertura.add(vizinho);
+        vizinhos(numero,1)
+          .forEach(numeroCoberto => {
+
+            cobertura.add(
+              numeroCoberto
+            );
           });
       }
     });
@@ -164,175 +204,299 @@
     return cobertura;
   }
 
-  // ================= OCORRÊNCIAS DO GATILHO =================
 
-  function encontrarOcorrencias(){
+  // =========================================================
+  // COBERTURA DE UM TRIO
+  // =========================================================
 
-    if(numeroGatilho === null){
-      return [];
-    }
-
-    const terminalGatilho =
-      terminal(numeroGatilho);
-
-    const ocorrencias = [];
-
-    /*
-      Percorre até o penúltimo número porque
-      cada gatilho precisa ter um número seguinte.
-    */
-
-    for(
-      let i = 0;
-      i < historico.length - 1;
-      i++
-    ){
-
-      const numeroAtual = historico[i];
-      const numeroSeguinte = historico[i + 1];
-
-      if(
-        terminal(numeroAtual) ===
-        terminalGatilho
-      ){
-
-        ocorrencias.push({
-          gatilho: numeroAtual,
-          proximo: numeroSeguinte,
-          indice: i
-        });
-      }
-    }
-
-    return ocorrencias;
-  }
-
-  // ================= ANÁLISE DOS PARES FIXOS =================
-
-  function analisarConfiguracao(
-    par,
-    vizinhosPrimeiro,
-    vizinhosSegundo
+  function coberturaTrio1V(
+    terminaisTrio
   ){
 
-    const coberturaPrimeiro =
-      coberturaTerminal(
-        par[0],
-        vizinhosPrimeiro
+    const cobertura =
+      new Set();
+
+    terminaisTrio
+      .forEach(t => {
+
+        coberturaTerminal1V(t)
+          .forEach(numero => {
+
+            cobertura.add(numero);
+          });
+      });
+
+    return cobertura;
+  }
+
+
+  // =========================================================
+  // FORÇA INDIVIDUAL DOS TERMINAIS
+  // =========================================================
+
+  function analisarForcaDosTerminais(
+    terminaisTrio,
+    janela
+  ){
+
+    const analises =
+      terminaisTrio.map(t => {
+
+        const cobertura =
+          coberturaTerminal1V(t);
+
+        const acertos =
+          janela.filter(numero =>
+            cobertura.has(numero)
+          );
+
+        return {
+
+          terminal:t,
+
+          quantidade:
+            acertos.length,
+
+          acertos
+
+        };
+      });
+
+
+    const quantidades =
+      analises.map(item =>
+        item.quantidade
       );
 
-    const coberturaSegundo =
-      coberturaTerminal(
-        par[1],
-        vizinhosSegundo
-      );
 
-    const coberturaTotal = new Set([
-      ...coberturaPrimeiro,
-      ...coberturaSegundo
-    ]);
+    const maximo =
+      Math.max(...quantidades);
 
-    const ocorrencias =
-      encontrarOcorrencias();
+    const minimo =
+      Math.min(...quantidades);
 
-    const acertos = [];
-    const quebras = [];
 
-    ocorrencias.forEach(item => {
+    analises.forEach(item => {
+
+      /*
+        TODOS EMPATADOS
+      */
+
+      if(maximo === minimo){
+
+        item.nivel =
+          "medio";
+
+        item.cor =
+          "#ffc107";
+
+        return;
+      }
+
+
+      /*
+        MAIS QUENTE
+      */
 
       if(
-        coberturaTotal.has(item.proximo)
+        item.quantidade ===
+        maximo
       ){
 
-        acertos.push(item);
+        item.nivel =
+          "quente";
 
-      }else{
+        item.cor =
+          "#00e676";
 
-        quebras.push(item);
+        return;
       }
+
+
+      /*
+        MAIS FRIO
+      */
+
+      if(
+        item.quantidade ===
+        minimo
+      ){
+
+        item.nivel =
+          "frio";
+
+        item.cor =
+          "#2196f3";
+
+        return;
+      }
+
+
+      /*
+        INTERMEDIÁRIO
+      */
+
+      item.nivel =
+        "medio";
+
+      item.cor =
+        "#ffc107";
+
     });
 
-    const total = ocorrencias.length;
 
-    const percentual =
-      total > 0
-        ? (acertos.length / total) * 100
-        : 0;
-
-    return {
-      par,
-      vizinhosPrimeiro,
-      vizinhosSegundo,
-      coberturaTotal,
-      acertos,
-      quebras,
-      total,
-      percentual
-    };
+    return analises;
   }
 
-  function melhorConfiguracaoDoPar(par){
 
-    /*
-      O par é testado das duas formas:
+  // =========================================================
+  // ANÁLISE DOS ÚLTIMOS 14
+  // =========================================================
 
-      Primeiro terminal com 2 vizinhos
-      Segundo terminal com 1 vizinho
+  function analisarJanela14(){
 
-      E depois invertido.
-    */
+    const janela =
+      historico.slice(
+        -TAMANHO_JANELA
+      );
 
-    const configuracoes = [
-      analisarConfiguracao(par,2,1),
-      analisarConfiguracao(par,1,2)
-    ];
-
-    configuracoes.sort((a,b) => {
-
-      if(b.percentual !== a.percentual){
-        return b.percentual - a.percentual;
-      }
-
-      if(b.acertos.length !== a.acertos.length){
-        return b.acertos.length - a.acertos.length;
-      }
-
-      return a.quebras.length -
-             b.quebras.length;
-    });
-
-    return configuracoes[0];
-  }
-
-  function encontrarMelhorPar(){
 
     const resultados =
-      paresFixos.map(melhorConfiguracaoDoPar);
+      trios.map(trio => {
+
+        const cobertura =
+          coberturaTrio1V(
+            trio.terminais
+          );
+
+
+        const acertos = [];
+
+        const quebras = [];
+
+
+        janela.forEach(numero => {
+
+          if(
+            cobertura.has(numero)
+          ){
+
+            acertos.push(numero);
+
+          }else{
+
+            quebras.push(numero);
+          }
+        });
+
+
+        const percentual =
+          janela.length
+            ? (
+                acertos.length /
+                janela.length
+              ) * 100
+            : 0;
+
+
+        const forcaTerminais =
+          analisarForcaDosTerminais(
+            trio.terminais,
+            janela
+          );
+
+
+        return {
+
+          nome:
+            trio.nome,
+
+          terminais:
+            trio.terminais,
+
+          cobertura,
+
+          acertos,
+
+          quebras,
+
+          quantidadeAcertos:
+            acertos.length,
+
+          quantidadeQuebras:
+            quebras.length,
+
+          percentual,
+
+          forcaTerminais
+
+        };
+      });
+
 
     resultados.sort((a,b) => {
 
-      if(b.percentual !== a.percentual){
-        return b.percentual - a.percentual;
+      /*
+        PRIMEIRO:
+        MAIOR NÚMERO DE ACERTOS
+      */
+
+      if(
+        b.quantidadeAcertos !==
+        a.quantidadeAcertos
+      ){
+
+        return (
+          b.quantidadeAcertos -
+          a.quantidadeAcertos
+        );
       }
 
-      if(b.acertos.length !== a.acertos.length){
-        return b.acertos.length - a.acertos.length;
+
+      /*
+        SEGUNDO:
+        MENOR NÚMERO DE QUEBRAS
+      */
+
+      if(
+        a.quantidadeQuebras !==
+        b.quantidadeQuebras
+      ){
+
+        return (
+          a.quantidadeQuebras -
+          b.quantidadeQuebras
+        );
       }
 
-      return a.quebras.length -
-             b.quebras.length;
+
+      return 0;
     });
 
-    return resultados[0] || null;
+
+    return {
+
+      janela,
+
+      resultados,
+
+      melhor:
+        resultados[0] || null
+
+    };
   }
 
-  // ================= HISTÓRICO =================
+
+  // =========================================================
+  // EXTRAIR NÚMEROS DO TEXTO
+  // =========================================================
 
   function extrairNumeros(texto){
 
-    const encontrados = texto.match(
-      /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
-    );
+    const encontrados =
+      texto.match(
+        /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
+      );
 
     if(!encontrados){
       return [];
@@ -347,15 +511,24 @@
       .slice(-300);
   }
 
+
+  // =========================================================
+  // INSERIR HISTÓRICO
+  // =========================================================
+
   function inserirHistorico(){
 
-    const texto =
-      document
-        .getElementById("entradaHistorico")
-        .value;
+    const entrada =
+      document.getElementById(
+        "entradaHistorico"
+      );
+
 
     const numeros =
-      extrairNumeros(texto);
+      extrairNumeros(
+        entrada.value
+      );
+
 
     if(!numeros.length){
 
@@ -368,54 +541,62 @@
       return;
     }
 
-    historico = numeros.slice(-300);
 
-    numeroGatilho =
-      historico[historico.length - 1];
+    historico =
+      numeros.slice(-300);
+
 
     salvarHistorico();
 
-    document
-      .getElementById("entradaHistorico")
-      .value = "";
+
+    entrada.value = "";
+
 
     statusArea.textContent =
-      `${historico.length} números carregados. ` +
-      `O último número, ${numeroGatilho}, ` +
-      `definiu o terminal T${terminal(numeroGatilho)} como gatilho.`;
+      `${historico.length} números carregados.`;
 
     statusArea.style.color =
       "#00e676";
 
+
     render();
   }
+
+
+  // =========================================================
+  // ADICIONAR NÚMERO
+  // =========================================================
 
   function adicionarNumero(numero){
 
     historico.push(numero);
 
-    if(historico.length > 300){
+
+    if(
+      historico.length > 300
+    ){
+
       historico.shift();
     }
 
-    /*
-      O número clicado passa imediatamente
-      a ser o novo gatilho.
-    */
-
-    numeroGatilho = numero;
 
     salvarHistorico();
 
+
     statusArea.textContent =
-      `Número ${numero} inserido. ` +
-      `Agora o gatilho é o terminal T${terminal(numero)}.`;
+      `Número ${numero} inserido.`;
 
     statusArea.style.color =
       "#00e5ff";
 
+
     render();
   }
+
+
+  // =========================================================
+  // APAGAR ÚLTIMO
+  // =========================================================
 
   function apagarUltimo(){
 
@@ -423,42 +604,47 @@
       return;
     }
 
-    historico.pop();
 
-    numeroGatilho =
-      historico.length
-        ? historico[historico.length - 1]
-        : null;
+    const apagado =
+      historico.pop();
+
 
     salvarHistorico();
 
+
     statusArea.textContent =
-      numeroGatilho === null
-        ? "Histórico vazio."
-        : `Último número apagado. ` +
-          `O gatilho voltou a ser ${numeroGatilho}, ` +
-          `terminal T${terminal(numeroGatilho)}.`;
+      `Número ${apagado} apagado.`;
 
     statusArea.style.color =
       "#ffc107";
 
+
     render();
   }
 
+
+  // =========================================================
+  // APAGAR TUDO
+  // =========================================================
+
   function apagarTudo(){
 
-    const confirmar = window.confirm(
-      "Apagar todo o histórico?"
-    );
+    const confirmar =
+      window.confirm(
+        "Apagar todo o histórico?"
+      );
+
 
     if(!confirmar){
       return;
     }
 
+
     historico = [];
-    numeroGatilho = null;
+
 
     salvarHistorico();
+
 
     statusArea.textContent =
       "Histórico apagado.";
@@ -466,782 +652,1204 @@
     statusArea.style.color =
       "#ff5252";
 
+
     render();
   }
 
-  // ================= COR DA ROLETA =================
 
-  function corNumeroRoleta(numero){
+  // =========================================================
+  // COR DA ROLETA
+  // =========================================================
+
+  function corNumeroRoleta(
+    numero
+  ){
 
     if(numero === 0){
 
       return {
-        fundo:"#f5f5f5",
-        texto:"#8d1431"
+
+        fundo:"#07874b",
+
+        texto:"#ffffff"
+
       };
     }
 
-    if(numerosVermelhos.has(numero)){
+
+    if(
+      numerosVermelhos.has(
+        numero
+      )
+    ){
 
       return {
-        fundo:"#ef3852",
+
+        fundo:"#c6283d",
+
         texto:"#ffffff"
+
       };
     }
 
+
     return {
-      fundo:"#262223",
+
+      fundo:"#181818",
+
       texto:"#ffffff"
+
     };
   }
 
-  // ================= INTERFACE =================
 
-  document.body.style.margin = "0";
-  document.body.style.background = "#111";
-  document.body.style.color = "#fff";
+  // =========================================================
+  // INTERFACE
+  // =========================================================
+
+  document.body.style.margin =
+    "0";
+
+  document.body.style.background =
+    "#101010";
+
+  document.body.style.color =
+    "#ffffff";
+
   document.body.style.fontFamily =
-    "Arial, sans-serif";
+    "Arial,sans-serif";
+
 
   document.body.innerHTML = `
 
-    <style>
+  <style>
 
-      *{
-        box-sizing:border-box;
-      }
+    *{
+      box-sizing:border-box;
+    }
 
-      button,
-      textarea{
-        font-family:Arial,sans-serif;
-      }
+    button,
+    textarea{
+      font-family:Arial,sans-serif;
+    }
 
-      button{
-        cursor:pointer;
-        touch-action:manipulation;
-      }
+    button{
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+
+    .app{
+      width:100%;
+      max-width:820px;
+      margin:auto;
+      padding:8px;
+    }
+
+    h2{
+      text-align:center;
+      margin:5px 0 10px;
+      font-size:21px;
+    }
+
+    .painel{
+      background:#1d1d1f;
+      border:1px solid #444;
+      border-radius:10px;
+      padding:9px;
+      margin-bottom:8px;
+    }
+
+    .tituloPainel{
+      color:#aaa;
+      font-size:12px;
+      font-weight:900;
+      margin-bottom:7px;
+    }
+
+    textarea{
+      width:100%;
+      min-height:75px;
+      padding:8px;
+      background:#111;
+      color:#fff;
+      border:1px solid #555;
+      border-radius:7px;
+      font-size:14px;
+    }
+
+    .acoes{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:7px;
+    }
+
+    .btn{
+      padding:8px 11px;
+      background:#333;
+      color:#fff;
+      border:1px solid #555;
+      border-radius:7px;
+      font-weight:900;
+    }
+
+    .verde{
+      background:#146238;
+    }
+
+    .vermelho{
+      background:#762832;
+    }
+
+
+    /* ================= MELHOR TRIO ================= */
+
+    .melhorTrio{
+      background:#111;
+      border:2px solid #00e676;
+      border-radius:10px;
+      padding:10px;
+    }
+
+    .melhorTitulo{
+      text-align:center;
+      color:#aaa;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .nomeTrio{
+      text-align:center;
+      font-size:28px;
+      font-weight:900;
+      margin:4px 0;
+    }
+
+    .placar{
+      text-align:center;
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:9px;
+    }
+
+    .terminaisTrio{
+      display:flex;
+      justify-content:center;
+      gap:9px;
+      margin-top:7px;
+    }
+
+    .terminalTrio{
+      min-width:70px;
+      height:55px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      border-radius:9px;
+      color:#fff;
+      font-size:21px;
+      font-weight:900;
+      border:2px solid rgba(255,255,255,.55);
+    }
+
+    .terminalQtd{
+      font-size:11px;
+      margin-top:2px;
+      opacity:.9;
+    }
+
+
+    /* ================= BARRA ================= */
+
+    .barra{
+      width:100%;
+      height:10px;
+      margin-top:7px;
+      background:#333;
+      border-radius:10px;
+      overflow:hidden;
+    }
+
+    .barraInterna{
+      height:100%;
+      background:
+        linear-gradient(
+          90deg,
+          #00bcd4,
+          #00e676
+        );
+    }
+
+
+    /* ================= TRIOS ================= */
+
+    .listaTrios{
+      display:grid;
+      grid-template-columns:
+        repeat(2,1fr);
+      gap:7px;
+    }
+
+    .cardTrio{
+      background:#111;
+      border:1px solid #444;
+      border-radius:8px;
+      padding:8px;
+    }
+
+    .cardTrio.primeiro{
+      border-color:#00e676;
+    }
+
+    .trioLinha{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:5px;
+    }
+
+    .trioNome{
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .trioResultado{
+      font-weight:900;
+    }
+
+    .miniTerminais{
+      display:flex;
+      gap:4px;
+      margin-top:6px;
+    }
+
+    .miniTerminal{
+      flex:1;
+      min-height:28px;
+      border-radius:5px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:#fff;
+      font-size:13px;
+      font-weight:900;
+    }
+
+
+    /* ================= JANELA ================= */
+
+    .janela14{
+      display:flex;
+      gap:5px;
+      overflow-x:auto;
+      padding-bottom:3px;
+    }
+
+    .numeroJanela{
+      min-width:37px;
+      height:37px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:2px solid #00e5ff;
+      font-size:14px;
+      font-weight:900;
+    }
+
+    .numeroJanela.quebra{
+      opacity:.35;
+      border-color:#ff5252;
+    }
+
+
+    /* ================= TECLADO ================= */
+
+    .teclado{
+      display:grid;
+      grid-template-columns:
+        repeat(6,1fr);
+      gap:4px;
+    }
+
+    .numeroBtn{
+      min-height:40px;
+      border:1px solid #666;
+      border-radius:7px;
+      font-size:15px;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .numeroBtn:active{
+      transform:scale(.96);
+    }
+
+    .zeroBtn{
+      grid-column:span 6;
+    }
+
+
+    /* ================= HISTÓRICO ================= */
+
+    .historico{
+      display:flex;
+      gap:4px;
+      overflow-x:auto;
+      min-height:34px;
+    }
+
+    .histNumero{
+      min-width:31px;
+      height:31px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:6px;
+      font-size:13px;
+      font-weight:900;
+      border:1px solid #555;
+    }
+
+    .histNumero.janelaAtual{
+      border:2px solid #00e5ff;
+    }
+
+    .histNumero.ultimo{
+      box-shadow:
+        0 0 8px #00e5ff;
+    }
+
+    .status{
+      margin-top:7px;
+      color:#aaa;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .legenda{
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:8px;
+      color:#aaa;
+      font-size:11px;
+    }
+
+    .legendaItem{
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+
+    .legendaCor{
+      width:12px;
+      height:12px;
+      border-radius:3px;
+    }
+
+
+    @media(max-width:600px){
 
       .app{
-        width:100%;
-        max-width:1050px;
-        margin:auto;
-        padding:12px;
+        padding:5px;
       }
 
       .painel{
-        background:#1d1d1f;
-        border:1px solid #444;
-        border-radius:10px;
-        padding:10px;
-        margin-bottom:10px;
+        padding:7px;
       }
 
-      textarea{
-        width:100%;
-        min-height:105px;
-        padding:10px;
-        background:#222;
-        color:#fff;
-        border:1px solid #555;
-        border-radius:8px;
-        font-size:15px;
+      .listaTrios{
+        grid-template-columns:1fr 1fr;
+        gap:5px;
       }
 
-      .linha{
-        display:flex;
-        gap:8px;
-        flex-wrap:wrap;
-        align-items:center;
-      }
-
-      .btn{
-        padding:9px 12px;
-        background:#333;
-        color:#fff;
-        border:1px solid #555;
-        border-radius:7px;
-        font-weight:800;
-      }
-
-      .btn-verde{
-        background:#146238;
-      }
-
-      .btn-vermelho{
-        background:#70242d;
-      }
-
-      .resumo{
-        display:grid;
-        grid-template-columns:repeat(4,1fr);
-        gap:8px;
-      }
-
-      .card{
-        background:#272729;
-        border:1px solid #444;
-        border-radius:9px;
-        padding:10px;
-        min-height:96px;
-      }
-
-      .label{
-        color:#aaa;
-        font-size:12px;
-        margin-bottom:6px;
-      }
-
-      .valor{
-        font-size:22px;
-        font-weight:900;
-      }
-
-      .terminal{
-        display:inline-flex;
-        align-items:center;
-        justify-content:center;
-        min-width:50px;
-        height:42px;
-        margin-right:6px;
-        border-radius:8px;
-        color:#fff;
-        font-size:20px;
-        font-weight:900;
-        border:2px solid rgba(255,255,255,.6);
-      }
-
-      .barra{
-        height:12px;
-        background:#3a3a3a;
-        border-radius:8px;
-        overflow:hidden;
-        margin-top:8px;
-      }
-
-      .barra-interna{
-        height:100%;
-        width:0%;
-        background:linear-gradient(
-          90deg,
-          #00e5ff,
-          #00e676
-        );
-      }
-
-      .quebras{
-        display:flex;
-        flex-wrap:wrap;
-        gap:7px;
-        margin-top:8px;
-      }
-
-      .quebra{
-        padding:7px 9px;
-        background:#5b222a;
-        border:1px solid #a04754;
-        border-radius:7px;
-        font-size:14px;
-        font-weight:900;
+      .terminalTrio{
+        min-width:62px;
+        height:51px;
       }
 
       .teclado{
-        display:grid;
-        grid-template-columns:repeat(9,1fr);
-        gap:6px;
+        gap:3px;
       }
 
-      .numero-btn{
-        min-height:44px;
-        border:1px solid #555;
-        border-radius:7px;
-        font-size:16px;
-        font-weight:900;
+      .numeroBtn{
+        min-height:38px;
       }
+    }
 
-      .timeline{
-        font-size:17px;
-        font-weight:800;
-        line-height:1.9;
-        word-break:break-word;
-      }
+  </style>
 
-      .historico{
-        display:grid;
-        grid-template-columns:repeat(8,1fr);
-        gap:7px;
-      }
 
-      .historico-item{
-        min-height:40px;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        border-radius:7px;
-        border:1px solid #555;
-        font-weight:900;
-      }
+  <main class="app">
 
-      .ocorrencias{
-        display:grid;
-        grid-template-columns:
-          repeat(auto-fit,minmax(95px,1fr));
-        gap:6px;
-      }
+    <h2>
+      Análise 0 • 3 • 6 • 9
+    </h2>
 
-      .ocorrencia{
-        padding:7px;
-        border-radius:7px;
-        background:#262626;
-        border:1px solid #444;
-        text-align:center;
-        font-size:13px;
-      }
 
-      .acerto{
-        color:#00e676;
-        font-weight:900;
-      }
+    <!-- ENTRADA -->
 
-      .erro{
-        color:#ff5252;
-        font-weight:900;
-      }
+    <section class="painel">
 
-      @media(max-width:720px){
+      <textarea
+        id="entradaHistorico"
+        placeholder="Cole o histórico do mais antigo para o mais recente..."
+      ></textarea>
 
-        .resumo{
-          grid-template-columns:repeat(2,1fr);
-        }
+      <div class="acoes">
 
-        .teclado{
-          grid-template-columns:repeat(6,1fr);
-        }
-
-        .historico{
-          grid-template-columns:repeat(6,1fr);
-        }
-      }
-
-    </style>
-
-    <div class="app">
-
-      <h2 style="
-        text-align:center;
-        margin:4px 0 12px
-      ">
-        Análise por Terminal Gatilho
-      </h2>
-
-      <div class="painel">
-
-        <textarea
-          id="entradaHistorico"
-          placeholder="Cole até 300 números do mais antigo para o mais recente."
-        ></textarea>
-
-        <div class="linha" style="margin-top:8px">
-
-          <button
-            id="btnInserirHistorico"
-            class="btn btn-verde"
-          >
-            Inserir histórico
-          </button>
-
-          <button
-            id="btnApagarUltimo"
-            class="btn"
-          >
-            Apagar último
-          </button>
-
-          <button
-            id="btnApagarTudo"
-            class="btn btn-vermelho"
-          >
-            Apagar tudo
-          </button>
-
-        </div>
-
-        <div
-          id="statusArea"
-          style="
-            margin-top:8px;
-            color:#aaa;
-            font-size:13px;
-            font-weight:800
-          "
+        <button
+          id="btnInserir"
+          class="btn verde"
         >
-          Cole o histórico ou use o teclado.
-        </div>
+          Inserir histórico
+        </button>
+
+        <button
+          id="btnApagarUltimo"
+          class="btn"
+        >
+          Apagar último
+        </button>
+
+        <button
+          id="btnApagarTudo"
+          class="btn vermelho"
+        >
+          Apagar tudo
+        </button>
 
       </div>
 
-      <div class="painel">
+      <div
+        id="statusArea"
+        class="status"
+      >
+        Cole o histórico ou use o teclado.
+      </div>
 
-        <div class="resumo">
+    </section>
 
-          <div class="card">
 
-            <div class="label">
-              Último número / gatilho
-            </div>
+    <!-- MELHOR TRIO -->
 
-            <div
-              id="gatilhoNumero"
-              class="valor"
-            >
-              —
-            </div>
+    <section class="painel">
 
-          </div>
+      <div
+        id="melhorTrio"
+        class="melhorTrio"
+      ></div>
 
-          <div class="card">
+    </section>
 
-            <div class="label">
-              Melhor par fixo
-            </div>
 
-            <div id="melhorPar">
-              —
-            </div>
+    <!-- TODOS OS TRIOS -->
 
-          </div>
+    <section class="painel">
 
-          <div class="card">
+      <div class="tituloPainel">
+        COMPARAÇÃO DOS 4 TRIOS — JANELA 14 / 1V
+      </div>
 
-            <div class="label">
-              Configuração vencedora
-            </div>
+      <div
+        id="listaTrios"
+        class="listaTrios"
+      ></div>
 
-            <div
-              id="configuracao"
-              class="valor"
-              style="font-size:17px"
-            >
-              —
-            </div>
+    </section>
 
-          </div>
 
-          <div class="card">
+    <!-- JANELA 14 -->
 
-            <div class="label">
-              Ganho nas ocorrências
-            </div>
+    <section class="painel">
 
-            <div
-              id="percentual"
-              class="valor"
-            >
-              0%
-            </div>
+      <div class="tituloPainel">
 
-            <div class="barra">
-
-              <div
-                id="barraPercentual"
-                class="barra-interna"
-              ></div>
-
-            </div>
-
-          </div>
-
-        </div>
+        ÚLTIMOS
+        <span id="qtdJanela">0</span>/14
 
       </div>
 
-      <div class="painel">
+      <div
+        id="janela14"
+        class="janela14"
+      ></div>
 
-        <b>Números que foram quebra</b>
+    </section>
 
-        <div
-          id="listaQuebras"
-          class="quebras"
-        ></div>
+
+    <!-- TECLADO -->
+
+    <section class="painel">
+
+      <div class="tituloPainel">
+        TECLADO 0–36
+      </div>
+
+      <div
+        id="teclado"
+        class="teclado"
+      ></div>
+
+    </section>
+
+
+    <!-- HISTÓRICO -->
+
+    <section class="painel">
+
+      <div class="tituloPainel">
+
+        HISTÓRICO —
+        <span id="qtdHistorico">
+          0
+        </span>
 
       </div>
 
-      <div class="painel">
+      <div
+        id="historico"
+        class="historico"
+      ></div>
 
-        <b>
-          Ocorrências do gatilho:
-          número gatilho → próximo número
-        </b>
+    </section>
 
-        <div
-          id="listaOcorrencias"
-          class="ocorrencias"
-          style="margin-top:8px"
-        ></div>
-
-      </div>
-
-      <div class="painel">
-
-        <b>
-          Teclado para continuar inserindo
-        </b>
-
-        <div style="
-          color:#aaa;
-          font-size:12px;
-          margin:5px 0 9px
-        ">
-          Cada número clicado entra no histórico e passa a ser o novo terminal gatilho.
-        </div>
-
-        <div
-          id="teclado"
-          class="teclado"
-        ></div>
-
-      </div>
-
-      <div class="painel">
-
-        <b>
-          Histórico armazenado:
-          <span id="quantidadeHistorico">0</span>/300
-        </b>
-
-        <div
-          id="timeline"
-          class="timeline"
-          style="margin-top:7px"
-        ></div>
-
-      </div>
-
-    </div>
+  </main>
   `;
 
-  // ================= ELEMENTOS =================
+
+  // =========================================================
+  // ELEMENTOS
+  // =========================================================
 
   const statusArea =
-    document.getElementById("statusArea");
+    document.getElementById(
+      "statusArea"
+    );
 
-  const elementoGatilhoNumero =
-    document.getElementById("gatilhoNumero");
+  const elementoMelhorTrio =
+    document.getElementById(
+      "melhorTrio"
+    );
 
-  const elementoMelhorPar =
-    document.getElementById("melhorPar");
+  const elementoListaTrios =
+    document.getElementById(
+      "listaTrios"
+    );
 
-  const elementoConfiguracao =
-    document.getElementById("configuracao");
-
-  const elementoPercentual =
-    document.getElementById("percentual");
-
-  const elementoBarra =
-    document.getElementById("barraPercentual");
-
-  const elementoListaQuebras =
-    document.getElementById("listaQuebras");
-
-  const elementoListaOcorrencias =
-    document.getElementById("listaOcorrencias");
-
-  const elementoTimeline =
-    document.getElementById("timeline");
-
-  const elementoQuantidade =
-    document.getElementById("quantidadeHistorico");
+  const elementoJanela =
+    document.getElementById(
+      "janela14"
+    );
 
   const elementoTeclado =
-    document.getElementById("teclado");
+    document.getElementById(
+      "teclado"
+    );
 
-  // ================= TECLADO =================
+  const elementoHistorico =
+    document.getElementById(
+      "historico"
+    );
 
-  for(let numero = 0; numero <= 36; numero++){
+  const elementoQtdJanela =
+    document.getElementById(
+      "qtdJanela"
+    );
+
+  const elementoQtdHistorico =
+    document.getElementById(
+      "qtdHistorico"
+    );
+
+
+  // =========================================================
+  // TECLADO
+  // =========================================================
+
+  for(
+    let numero = 1;
+    numero <= 36;
+    numero++
+  ){
 
     const cores =
       corNumeroRoleta(numero);
 
+
     const botao =
-      document.createElement("button");
+      document.createElement(
+        "button"
+      );
+
 
     botao.className =
-      "numero-btn";
+      "numeroBtn";
+
 
     botao.textContent =
       numero;
 
+
     botao.style.background =
       cores.fundo;
+
 
     botao.style.color =
       cores.texto;
 
+
     botao.onclick = () => {
+
       adicionarNumero(numero);
+
     };
 
-    elementoTeclado.appendChild(botao);
+
+    elementoTeclado
+      .appendChild(botao);
   }
 
-  // ================= EVENTOS =================
 
-  document
-    .getElementById("btnInserirHistorico")
-    .onclick = inserirHistorico;
-
-  document
-    .getElementById("btnApagarUltimo")
-    .onclick = apagarUltimo;
-
-  document
-    .getElementById("btnApagarTudo")
-    .onclick = apagarTudo;
-
-  // ================= RENDERIZAÇÃO =================
-
-  function textoConfiguracao(resultado){
-
-    if(!resultado){
-      return "—";
-    }
-
-    return (
-      `T${resultado.par[0]} com ` +
-      `${resultado.vizinhosPrimeiro}V` +
-      ` + ` +
-      `T${resultado.par[1]} com ` +
-      `${resultado.vizinhosSegundo}V`
+  const botaoZero =
+    document.createElement(
+      "button"
     );
-  }
 
-  function render(){
 
-    numeroGatilho =
-      historico.length
-        ? historico[historico.length - 1]
-        : null;
+  botaoZero.className =
+    "numeroBtn zeroBtn";
 
-    const ocorrencias =
-      encontrarOcorrencias();
+
+  botaoZero.textContent =
+    "0";
+
+
+  botaoZero.style.background =
+    "#07874b";
+
+
+  botaoZero.onclick = () => {
+
+    adicionarNumero(0);
+
+  };
+
+
+  elementoTeclado
+    .appendChild(botaoZero);
+
+
+  // =========================================================
+  // EVENTOS
+  // =========================================================
+
+  document
+    .getElementById(
+      "btnInserir"
+    )
+    .onclick =
+      inserirHistorico;
+
+
+  document
+    .getElementById(
+      "btnApagarUltimo"
+    )
+    .onclick =
+      apagarUltimo;
+
+
+  document
+    .getElementById(
+      "btnApagarTudo"
+    )
+    .onclick =
+      apagarTudo;
+
+
+  // =========================================================
+  // RENDER MELHOR TRIO
+  // =========================================================
+
+  function renderMelhorTrio(
+    analise
+  ){
 
     const melhor =
-      encontrarMelhorPar();
+      analise.melhor;
 
-    elementoQuantidade.textContent =
-      historico.length;
-
-    if(numeroGatilho === null){
-
-      elementoGatilhoNumero.textContent =
-        "—";
-
-    }else{
-
-      elementoGatilhoNumero.innerHTML = `
-        ${numeroGatilho}
-
-        <span
-          class="terminal"
-          style="
-            background:
-            ${corTerminal[terminal(numeroGatilho)]};
-            margin-left:7px
-          "
-        >
-          T${terminal(numeroGatilho)}
-        </span>
-      `;
-    }
 
     if(
-      melhor &&
-      melhor.total > 0
+      !melhor ||
+      !analise.janela.length
     ){
 
-      elementoMelhorPar.innerHTML =
-        melhor.par.map(t => `
+      elementoMelhorTrio.innerHTML = `
 
-          <span
-            class="terminal"
+        <div class="melhorTitulo">
+          MELHOR TRIO
+        </div>
+
+        <div class="nomeTrio">
+          —
+        </div>
+
+        <div style="
+          text-align:center;
+          color:#888;
+        ">
+          Insira números para iniciar.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    const percentual =
+      Math.round(
+        melhor.percentual
+      );
+
+
+    const terminaisHTML =
+      melhor.forcaTerminais
+        .map(item => `
+
+          <div
+            class="terminalTrio"
             style="
-              background:${corTerminal[t]}
+              background:${item.cor}
             "
           >
-            T${t}
-          </span>
 
-        `).join("");
+            T${item.terminal}
 
-      elementoConfiguracao.textContent =
-        textoConfiguracao(melhor);
+            <div class="terminalQtd">
+              ${item.quantidade}/${analise.janela.length}
+            </div>
 
-      const percentualArredondado =
-        Math.round(melhor.percentual);
+          </div>
 
-      elementoPercentual.textContent =
-        percentualArredondado + "%";
+        `)
+        .join("");
 
-      elementoBarra.style.width =
-        percentualArredondado + "%";
 
-    }else{
+    elementoMelhorTrio.innerHTML = `
 
-      elementoMelhorPar.textContent =
-        "—";
+      <div class="melhorTitulo">
+        MELHOR TRIO — 1 VIZINHO
+      </div>
 
-      elementoConfiguracao.textContent =
-        "Aguardando ocorrências";
+      <div class="nomeTrio">
+        ${melhor.nome}
+      </div>
 
-      elementoPercentual.textContent =
-        "0%";
+      <div class="placar">
 
-      elementoBarra.style.width =
-        "0%";
-    }
+        ${melhor.quantidadeAcertos}
+        /
+        ${analise.janela.length}
 
-    // ===== QUEBRAS =====
+        &nbsp;•&nbsp;
 
-    if(
-      melhor &&
-      melhor.total > 0 &&
-      melhor.quebras.length > 0
-    ){
+        ${percentual}%
 
-      elementoListaQuebras.innerHTML =
-        melhor.quebras.map(item => `
+      </div>
 
-          <span class="quebra">
 
-            ${item.proximo}
+      <div class="terminaisTrio">
 
-          </span>
+        ${terminaisHTML}
 
-        `).join("");
+      </div>
 
-    }else if(
-      melhor &&
-      melhor.total > 0
-    ){
 
-      elementoListaQuebras.innerHTML = `
+      <div class="legenda">
+
+        <div class="legendaItem">
+
+          <span
+            class="legendaCor"
+            style="background:#00e676"
+          ></span>
+
+          Mais quente
+
+        </div>
+
+        <div class="legendaItem">
+
+          <span
+            class="legendaCor"
+            style="background:#ffc107"
+          ></span>
+
+          Intermediário
+
+        </div>
+
+        <div class="legendaItem">
+
+          <span
+            class="legendaCor"
+            style="background:#2196f3"
+          ></span>
+
+          Mais frio
+
+        </div>
+
+      </div>
+
+
+      <div class="barra">
+
+        <div
+          class="barraInterna"
+          style="
+            width:${percentual}%
+          "
+        ></div>
+
+      </div>
+    `;
+  }
+
+
+  // =========================================================
+  // RENDER TODOS OS TRIOS
+  // =========================================================
+
+  function renderTrios(
+    analise
+  ){
+
+    if(!analise.janela.length){
+
+      elementoListaTrios.innerHTML = `
 
         <span style="
-          color:#00e676;
-          font-weight:900
+          color:#888;
+          font-size:12px;
         ">
-          Nenhuma quebra encontrada
+          Aguardando números.
         </span>
       `;
 
-    }else{
-
-      elementoListaQuebras.innerHTML = `
-
-        <span style="color:#aaa">
-          Ainda não existem ocorrências anteriores do terminal gatilho com um número depois.
-        </span>
-      `;
+      return;
     }
 
-    // ===== OCORRÊNCIAS =====
 
-    if(ocorrencias.length){
+    elementoListaTrios.innerHTML =
+      analise.resultados
+        .map(
+          (
+            resultado,
+            indice
+          ) => {
 
-      elementoListaOcorrencias.innerHTML =
-        ocorrencias.map(item => {
+
+            const percentual =
+              Math.round(
+                resultado.percentual
+              );
+
+
+            const mini =
+              resultado
+                .forcaTerminais
+                .map(item => `
+
+                  <div
+                    class="miniTerminal"
+                    style="
+                      background:${item.cor}
+                    "
+                  >
+
+                    T${item.terminal}
+
+                  </div>
+
+                `)
+                .join("");
+
+
+            return `
+
+              <div
+                class="
+                  cardTrio
+                  ${
+                    indice === 0
+                      ? "primeiro"
+                      : ""
+                  }
+                "
+              >
+
+                <div class="trioLinha">
+
+                  <span class="trioNome">
+                    ${resultado.nome}
+                  </span>
+
+                  <span class="trioResultado">
+
+                    ${resultado.quantidadeAcertos}
+                    /
+                    ${analise.janela.length}
+
+                  </span>
+
+                </div>
+
+
+                <div
+                  style="
+                    color:#aaa;
+                    font-size:11px;
+                    margin-top:3px;
+                  "
+                >
+
+                  ${percentual}%
+                  •
+                  ${resultado.quantidadeQuebras}
+                  quebra(s)
+
+                </div>
+
+
+                <div class="miniTerminais">
+
+                  ${mini}
+
+                </div>
+
+              </div>
+            `;
+
+          }
+        )
+        .join("");
+  }
+
+
+  // =========================================================
+  // RENDER JANELA 14
+  // =========================================================
+
+  function renderJanela(
+    analise
+  ){
+
+    elementoQtdJanela.textContent =
+      analise.janela.length;
+
+
+    if(!analise.janela.length){
+
+      elementoJanela.innerHTML = `
+
+        <span style="
+          color:#888;
+          font-size:12px;
+        ">
+          Sem números.
+        </span>
+      `;
+
+      return;
+    }
+
+
+    const melhor =
+      analise.melhor;
+
+
+    elementoJanela.innerHTML =
+      analise.janela
+        .map(numero => {
+
+
+          const cores =
+            corNumeroRoleta(numero);
+
 
           const acertou =
-            melhor &&
-            melhor.coberturaTotal.has(
-              item.proximo
-            );
+            melhor
+              ? melhor.cobertura.has(
+                  numero
+                )
+              : false;
+
 
           return `
 
-            <div class="ocorrencia">
-
-              <span>
-                ${item.gatilho}
-              </span>
-
-              <span style="
-                color:#aaa;
-                margin:0 4px
-              ">
-                →
-              </span>
-
-              <span class="${
-                acertou
-                  ? "acerto"
-                  : "erro"
-              }">
-                ${item.proximo}
-              </span>
-
+            <div
+              class="
+                numeroJanela
+                ${
+                  acertou
+                    ? ""
+                    : "quebra"
+                }
+              "
+              style="
+                background:${cores.fundo};
+                color:${cores.texto};
+              "
+            >
+              ${numero}
             </div>
+
           `;
 
-        }).join("");
+        })
+        .join("");
+  }
 
-    }else{
 
-      elementoListaOcorrencias.innerHTML = `
+  // =========================================================
+  // RENDER HISTÓRICO
+  // =========================================================
 
-        <div style="color:#aaa">
+  function renderHistorico(){
 
-          Nenhuma ocorrência anterior do terminal
-          ${
-            numeroGatilho === null
-              ? "—"
-              : "T" + terminal(numeroGatilho)
-          }.
+    elementoQtdHistorico.textContent =
+      historico.length;
 
-        </div>
+
+    if(!historico.length){
+
+      elementoHistorico.innerHTML = `
+
+        <span style="
+          color:#888;
+          font-size:12px;
+        ">
+          Histórico vazio.
+        </span>
       `;
+
+      return;
     }
 
-    // ===== HISTÓRICO =====
 
-    elementoTimeline.innerHTML =
-      historico.map((numero,index) => {
+    const inicioJanela =
+      Math.max(
+        0,
+        historico.length -
+        TAMANHO_JANELA
+      );
 
-        const ultimo =
-          index === historico.length - 1;
 
-        const cores =
-          corNumeroRoleta(numero);
+    const visiveis =
+      historico.slice(-60);
 
-        return `
 
-          <span style="
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            min-width:31px;
-            height:31px;
-            margin:2px;
-            padding:3px 5px;
-            border-radius:6px;
-            background:${cores.fundo};
-            color:${cores.texto};
-            border:${
-              ultimo
-                ? "3px solid #00e5ff"
-                : "1px solid #555"
-            };
-            box-shadow:${
-              ultimo
-                ? "0 0 10px #00e5ff"
-                : "none"
-            };
-          ">
-            ${numero}
-          </span>
-        `;
+    const offset =
+      historico.length -
+      visiveis.length;
 
-      }).join("");
+
+    elementoHistorico.innerHTML =
+      visiveis
+        .map((numero,index) => {
+
+          const indiceReal =
+            offset + index;
+
+
+          const cores =
+            corNumeroRoleta(numero);
+
+
+          const dentroJanela =
+            indiceReal >=
+            inicioJanela;
+
+
+          const ultimo =
+            indiceReal ===
+            historico.length - 1;
+
+
+          return `
+
+            <div
+              class="
+                histNumero
+                ${
+                  dentroJanela
+                    ? "janelaAtual"
+                    : ""
+                }
+                ${
+                  ultimo
+                    ? "ultimo"
+                    : ""
+                }
+              "
+              style="
+                background:${cores.fundo};
+                color:${cores.texto};
+              "
+            >
+
+              ${numero}
+
+            </div>
+
+          `;
+
+        })
+        .join("");
+
+
+    elementoHistorico.scrollLeft =
+      elementoHistorico.scrollWidth;
   }
+
+
+  // =========================================================
+  // RENDER PRINCIPAL
+  // =========================================================
+
+  function render(){
+
+    const analise =
+      analisarJanela14();
+
+
+    renderMelhorTrio(
+      analise
+    );
+
+
+    renderTrios(
+      analise
+    );
+
+
+    renderJanela(
+      analise
+    );
+
+
+    renderHistorico();
+  }
+
+
+  // =========================================================
+  // INICIAR
+  // =========================================================
 
   render();
 
