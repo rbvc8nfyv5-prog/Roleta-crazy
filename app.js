@@ -16,7 +16,7 @@
   const TAMANHO_JANELA = 14;
 
   const STORAGE_KEY =
-    "ANALISADOR_TRIOS_0369_1V_J14_V1";
+    "ANALISADOR_TRIOS_0369_1V_J14_V2";
 
   const trios = [
 
@@ -49,6 +49,44 @@
     30,32,34,36
   ]);
 
+  // =========================================================
+  // REGIÕES DA ROLETA
+  // =========================================================
+
+  const regioesRoleta = {
+
+    ZERO: new Set([
+      0,32,15,26,3,35,12
+    ]),
+
+    VOISINS: new Set([
+      19,4,21,2,25,
+      28,7,29,18,22
+    ]),
+
+    ORPHELINS: new Set([
+      9,31,14,20,1,17,6,34
+    ]),
+
+    TIERS: new Set([
+      27,13,36,11,30,8,
+      23,10,5,24,16,33
+    ])
+
+  };
+
+  const coresRegioes = {
+
+    ZERO:"#9bea2c",
+
+    VOISINS:"#8a20d4",
+
+    ORPHELINS:"#176436",
+
+    TIERS:"#29499b"
+
+  };
+
   let historico =
     carregarHistorico();
 
@@ -60,6 +98,40 @@
   function terminal(numero){
 
     return numero % 10;
+  }
+
+
+  // =========================================================
+  // REGIÃO DO NÚMERO
+  // =========================================================
+
+  function regiaoDoNumero(numero){
+
+    if(
+      regioesRoleta.ZERO.has(numero)
+    ){
+      return "ZERO";
+    }
+
+    if(
+      regioesRoleta.VOISINS.has(numero)
+    ){
+      return "VOISINS";
+    }
+
+    if(
+      regioesRoleta.ORPHELINS.has(numero)
+    ){
+      return "ORPHELINS";
+    }
+
+    if(
+      regioesRoleta.TIERS.has(numero)
+    ){
+      return "TIERS";
+    }
+
+    return null;
   }
 
 
@@ -278,10 +350,6 @@
 
     analises.forEach(item => {
 
-      /*
-        TODOS EMPATADOS
-      */
-
       if(maximo === minimo){
 
         item.nivel =
@@ -293,10 +361,6 @@
         return;
       }
 
-
-      /*
-        MAIS QUENTE
-      */
 
       if(
         item.quantidade ===
@@ -313,10 +377,6 @@
       }
 
 
-      /*
-        MAIS FRIO
-      */
-
       if(
         item.quantidade ===
         minimo
@@ -331,10 +391,6 @@
         return;
       }
 
-
-      /*
-        INTERMEDIÁRIO
-      */
 
       item.nivel =
         "medio";
@@ -436,11 +492,6 @@
 
     resultados.sort((a,b) => {
 
-      /*
-        PRIMEIRO:
-        MAIOR NÚMERO DE ACERTOS
-      */
-
       if(
         b.quantidadeAcertos !==
         a.quantidadeAcertos
@@ -452,11 +503,6 @@
         );
       }
 
-
-      /*
-        SEGUNDO:
-        MENOR NÚMERO DE QUEBRAS
-      */
 
       if(
         a.quantidadeQuebras !==
@@ -488,7 +534,7 @@
 
 
   // =========================================================
-  // EXTRAIR NÚMEROS DO TEXTO
+  // EXTRAIR NÚMEROS
   // =========================================================
 
   function extrairNumeros(texto){
@@ -937,7 +983,28 @@
     }
 
 
-    /* ================= JANELA ================= */
+    /* ================= JANELA 14 DUPLA ================= */
+
+    .janelaBloco{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+    }
+
+    .linhaJanela{
+      display:grid;
+      grid-template-columns:
+        92px minmax(0,1fr);
+      gap:7px;
+      align-items:center;
+    }
+
+    .rotuloLinha{
+      color:#bbb;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.2;
+    }
 
     .janela14{
       display:flex;
@@ -953,14 +1020,50 @@
       display:flex;
       align-items:center;
       justify-content:center;
-      border:2px solid #00e5ff;
+      border:2px solid rgba(255,255,255,.75);
       font-size:14px;
       font-weight:900;
+      color:#fff;
     }
 
     .numeroJanela.quebra{
       opacity:.35;
       border-color:#ff5252;
+    }
+
+    .numeroRegiao{
+      min-width:37px;
+      height:37px;
+      border-radius:8px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:2px solid rgba(255,255,255,.70);
+      font-size:14px;
+      font-weight:900;
+      color:#fff;
+    }
+
+    .legendaRegioes{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:7px;
+      color:#aaa;
+      font-size:10px;
+    }
+
+    .itemLegendaRegiao{
+      display:flex;
+      align-items:center;
+      gap:4px;
+    }
+
+    .bolinhaRegiao{
+      width:11px;
+      height:11px;
+      border-radius:3px;
     }
 
 
@@ -1078,6 +1181,15 @@
       .numeroBtn{
         min-height:38px;
       }
+
+      .linhaJanela{
+        grid-template-columns:
+          74px minmax(0,1fr);
+      }
+
+      .rotuloLinha{
+        font-size:10px;
+      }
     }
 
   </style>
@@ -1162,7 +1274,7 @@
     </section>
 
 
-    <!-- JANELA 14 -->
+    <!-- JANELA 14 DUPLA -->
 
     <section class="painel">
 
@@ -1173,10 +1285,87 @@
 
       </div>
 
-      <div
-        id="janela14"
-        class="janela14"
-      ></div>
+      <div class="janelaBloco">
+
+        <div class="linhaJanela">
+
+          <div class="rotuloLinha">
+            PRETO /<br>
+            VERMELHO
+          </div>
+
+          <div
+            id="janelaCores"
+            class="janela14"
+          ></div>
+
+        </div>
+
+
+        <div class="linhaJanela">
+
+          <div class="rotuloLinha">
+            REGIÕES<br>
+            DA ROLETA
+          </div>
+
+          <div
+            id="janelaRegioes"
+            class="janela14"
+          ></div>
+
+        </div>
+
+      </div>
+
+
+      <div class="legendaRegioes">
+
+        <div class="itemLegendaRegiao">
+
+          <span
+            class="bolinhaRegiao"
+            style="background:#9bea2c"
+          ></span>
+
+          Zero
+
+        </div>
+
+        <div class="itemLegendaRegiao">
+
+          <span
+            class="bolinhaRegiao"
+            style="background:#8a20d4"
+          ></span>
+
+          Voisins
+
+        </div>
+
+        <div class="itemLegendaRegiao">
+
+          <span
+            class="bolinhaRegiao"
+            style="background:#176436"
+          ></span>
+
+          Orphelins
+
+        </div>
+
+        <div class="itemLegendaRegiao">
+
+          <span
+            class="bolinhaRegiao"
+            style="background:#29499b"
+          ></span>
+
+          Tiers
+
+        </div>
+
+      </div>
 
     </section>
 
@@ -1240,9 +1429,14 @@
       "listaTrios"
     );
 
-  const elementoJanela =
+  const elementoJanelaCores =
     document.getElementById(
-      "janela14"
+      "janelaCores"
+    );
+
+  const elementoJanelaRegioes =
+    document.getElementById(
+      "janelaRegioes"
     );
 
   const elementoTeclado =
@@ -1642,7 +1836,7 @@
 
 
   // =========================================================
-  // RENDER JANELA 14
+  // RENDER DAS DUAS LINHAS DOS ÚLTIMOS 14
   // =========================================================
 
   function renderJanela(
@@ -1655,7 +1849,18 @@
 
     if(!analise.janela.length){
 
-      elementoJanela.innerHTML = `
+      elementoJanelaCores.innerHTML = `
+
+        <span style="
+          color:#888;
+          font-size:12px;
+        ">
+          Sem números.
+        </span>
+      `;
+
+
+      elementoJanelaRegioes.innerHTML = `
 
         <span style="
           color:#888;
@@ -1673,7 +1878,11 @@
       analise.melhor;
 
 
-    elementoJanela.innerHTML =
+    // ---------------------------------------------------------
+    // LINHA 1 — PRETO / VERMELHO
+    // ---------------------------------------------------------
+
+    elementoJanelaCores.innerHTML =
       analise.janela
         .map(numero => {
 
@@ -1705,6 +1914,43 @@
                 background:${cores.fundo};
                 color:${cores.texto};
               "
+            >
+              ${numero}
+            </div>
+
+          `;
+
+        })
+        .join("");
+
+
+    // ---------------------------------------------------------
+    // LINHA 2 — REGIÕES
+    // ---------------------------------------------------------
+
+    elementoJanelaRegioes.innerHTML =
+      analise.janela
+        .map(numero => {
+
+
+          const regiao =
+            regiaoDoNumero(numero);
+
+
+          const corRegiao =
+            regiao
+              ? coresRegioes[regiao]
+              : "#555";
+
+
+          return `
+
+            <div
+              class="numeroRegiao"
+              style="
+                background:${corRegiao};
+              "
+              title="${regiao || ""}"
             >
               ${numero}
             </div>
