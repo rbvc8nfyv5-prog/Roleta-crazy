@@ -23,10 +23,18 @@ const MIN_REPLICAS_RX = 15;
 const MAX_REPLICAS_RX = 40;
 const MIN_ZONAS_RX = 8;
 
+const MAX_NUMEROS_JOGADA = 28;
+
 let TAMANHO_RX = 6;
 
 try{
-    const salvo = Number(localStorage.getItem(STORAGE_RX));
+
+    const salvo =
+    Number(
+        localStorage.getItem(
+            STORAGE_RX
+        )
+    );
 
     if(
         salvo === 4 ||
@@ -35,6 +43,7 @@ try{
     ){
         TAMANHO_RX = salvo;
     }
+
 }catch(e){}
 
 
@@ -48,6 +57,7 @@ const track = [
     16,33,1,20,14,31,9,22,18,29,
     7,28,12,35,3,26,0
 ];
+
 
 const numerosVermelhos = new Set([
     1,3,5,7,9,
@@ -83,6 +93,7 @@ const regioesRoleta = {
 
 };
 
+
 const coresRegioes = {
     ZERO:"#9bea2c",
     VOISINS:"#8a20d4",
@@ -101,16 +112,22 @@ const BASES_069 = [
     9,19,29
 ];
 
+
 const TODOS_IDS_RX = [
     0,10,20,30,
     6,16,26,36,
     9,19,29,39
 ];
 
+
 const IDS_ESPECIAIS = {
+
     25:[39],
+
     17:[9],
+
     2:[9]
+
 };
 
 
@@ -242,16 +259,67 @@ function vizinhos(numero, quantidade = 1){
 
 
 /* =========================================================
-   COBERTURA BASES
+   SETOR ORDENADO NA RODA
+
+   EXEMPLO:
+   2 VIZINHOS DO 36
+   27 13 36 11 30
+========================================================= */
+
+function setorVizinhosOrdenado(
+    centro,
+    quantidade
+){
+
+    const indice =
+    track.indexOf(centro);
+
+    if(indice === -1){
+        return [];
+    }
+
+    const numeros = [];
+
+    for(
+        let distancia=-quantidade;
+        distancia<=quantidade;
+        distancia++
+    ){
+
+        numeros.push(
+            track[
+                (
+                    indice +
+                    distancia +
+                    track.length
+                )
+                %
+                track.length
+            ]
+        );
+
+    }
+
+    return numeros;
+}
+
+
+/* =========================================================
+   COBERTURA DAS BASES
 ========================================================= */
 
 const coberturaDasBases = {};
 
-BASES_069.forEach(function(base){
+
+BASES_069.forEach(
+function(base){
 
     coberturaDasBases[base] =
     new Set(
-        vizinhos(base,1)
+        vizinhos(
+            base,
+            1
+        )
     );
 
 });
@@ -261,7 +329,9 @@ function idsQueBatem(numero){
 
     const ids = [];
 
-    BASES_069.forEach(function(base){
+
+    BASES_069.forEach(
+    function(base){
 
         if(
             coberturaDasBases[base]
@@ -283,15 +353,19 @@ function idsQueBatem(numero){
     ){
 
         IDS_ESPECIAIS[numero]
-        .forEach(function(id){
+        .forEach(
+        function(id){
 
-            if(!ids.includes(id)){
+            if(
+                !ids.includes(id)
+            ){
                 ids.push(id);
             }
 
         });
 
     }
+
 
     return ids;
 }
@@ -305,8 +379,13 @@ function familiasQueBatem(numero){
 
         .map(familiaDoId)
 
-        .filter(function(familia){
-            return familia !== null;
+        .filter(
+        function(familia){
+
+            return (
+                familia !== null
+            );
+
         })
 
     );
@@ -319,19 +398,31 @@ function familiasQueBatem(numero){
 
 function regiaoDoNumero(numero){
 
-    if(regioesRoleta.ZERO.has(numero)){
+    if(
+        regioesRoleta.ZERO
+        .has(numero)
+    ){
         return "ZERO";
     }
 
-    if(regioesRoleta.VOISINS.has(numero)){
+    if(
+        regioesRoleta.VOISINS
+        .has(numero)
+    ){
         return "VOISINS";
     }
 
-    if(regioesRoleta.ORPHELINS.has(numero)){
+    if(
+        regioesRoleta.ORPHELINS
+        .has(numero)
+    ){
         return "ORPHELINS";
     }
 
-    if(regioesRoleta.TIERS.has(numero)){
+    if(
+        regioesRoleta.TIERS
+        .has(numero)
+    ){
         return "TIERS";
     }
 
@@ -354,8 +445,10 @@ function corNumeroRoleta(numero){
 
     }
 
+
     if(
-        numerosVermelhos.has(numero)
+        numerosVermelhos
+        .has(numero)
     ){
 
         return {
@@ -364,6 +457,7 @@ function corNumeroRoleta(numero){
         };
 
     }
+
 
     return {
         fundo:"#181818",
@@ -385,22 +479,29 @@ function carregarHistorico(){
             STORAGE_KEY
         );
 
+
         if(!salvo){
             return [];
         }
 
+
         const dados =
         JSON.parse(salvo);
 
-        if(!Array.isArray(dados)){
+
+        if(
+            !Array.isArray(dados)
+        ){
             return [];
         }
+
 
         return dados
 
         .map(Number)
 
-        .filter(function(numero){
+        .filter(
+        function(numero){
 
             return (
                 Number.isInteger(numero) &&
@@ -411,6 +512,7 @@ function carregarHistorico(){
         })
 
         .slice(-5000);
+
 
     }catch(e){
 
@@ -430,7 +532,9 @@ function salvarHistorico(){
 
         localStorage.setItem(
             STORAGE_KEY,
-            JSON.stringify(historico)
+            JSON.stringify(
+                historico
+            )
         );
 
     }catch(e){}
@@ -439,7 +543,7 @@ function salvarHistorico(){
 
 
 /* =========================================================
-   ENTRADA
+   EXTRAIR HISTÓRICO
 ========================================================= */
 
 function extrairNumeros(texto){
@@ -449,15 +553,18 @@ function extrairNumeros(texto){
         /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
     );
 
+
     if(!encontrados){
         return [];
     }
+
 
     return encontrados
 
     .map(Number)
 
-    .filter(function(numero){
+    .filter(
+    function(numero){
 
         return (
             numero >= 0 &&
@@ -481,19 +588,24 @@ function analisarJanela14(){
         -TAMANHO_JANELA
     );
 
+
     return {
 
         janela:janela,
 
         sequencia:
-        janela.map(function(numero){
+        janela.map(
+        function(numero){
 
             return {
 
-                numero:numero,
+                numero:
+                numero,
 
                 ids:
-                idsQueBatem(numero)
+                idsQueBatem(
+                    numero
+                )
 
             };
 
@@ -517,20 +629,26 @@ function gerarTrajetoria(janela){
     const eventos = [];
 
 
-    janela.forEach(function(numero,index){
+    janela.forEach(
+    function(numero,index){
 
         const familias =
-        familiasQueBatem(numero);
+        familiasQueBatem(
+            numero
+        );
+
 
         const bate0 =
         familias.has(0)
         ? 1
         : 0;
 
+
         const bate6 =
         familias.has(6)
         ? 1
         : 0;
+
 
         const bate9 =
         familias.has(9)
@@ -545,20 +663,34 @@ function gerarTrajetoria(janela){
 
         eventos.push({
 
-            t0:bate0,
-            t6:bate6,
-            t9:bate9
+            t0:
+            bate0,
+
+            t6:
+            bate6,
+
+            t9:
+            bate9
 
         });
 
 
         pontos.push({
 
-            posicao:index+1,
-            numero:numero,
-            t0:t0,
-            t6:t6,
-            t9:t9
+            posicao:
+            index+1,
+
+            numero:
+            numero,
+
+            t0:
+            t0,
+
+            t6:
+            t6,
+
+            t9:
+            t9
 
         });
 
@@ -567,12 +699,20 @@ function gerarTrajetoria(janela){
 
     return {
 
-        pontos:pontos,
-        eventos:eventos,
+        pontos:
+        pontos,
 
-        total0:t0,
-        total6:t6,
-        total9:t9
+        eventos:
+        eventos,
+
+        total0:
+        t0,
+
+        total6:
+        t6,
+
+        total9:
+        t9
 
     };
 }
@@ -614,6 +754,7 @@ function calcularSimilaridade(
     const tamanho =
     janelaAtual.length;
 
+
     if(
         tamanho === 0 ||
         janelaAntiga.length !== tamanho
@@ -626,6 +767,7 @@ function calcularSimilaridade(
     gerarTrajetoria(
         janelaAtual
     );
+
 
     const antiga =
     gerarTrajetoria(
@@ -681,11 +823,13 @@ function calcularSimilaridade(
             antiga.pontos[i].t0
         );
 
+
         erro +=
         Math.abs(
             atual.pontos[i].t6 -
             antiga.pontos[i].t6
         );
+
 
         erro +=
         Math.abs(
@@ -738,6 +882,7 @@ function procurarReplicas(){
     const tamanho =
     TAMANHO_RX;
 
+
     const total =
     historico.length;
 
@@ -752,9 +897,14 @@ function procurarReplicas(){
 
         return {
 
-            suficiente:false,
-            replicas:[],
-            totalJanelas:0
+            suficiente:
+            false,
+
+            replicas:
+            [],
+
+            totalJanelas:
+            0
 
         };
 
@@ -805,21 +955,22 @@ function procurarReplicas(){
         }
 
 
-        const similaridade =
-        calcularSimilaridade(
-            janelaAtual,
-            janelaAntiga
-        );
-
-
         todas.push({
 
-            inicio:inicio,
-            fim:fim,
-            proximo:proximo,
+            inicio:
+            inicio,
+
+            fim:
+            fim,
+
+            proximo:
+            proximo,
 
             similaridade:
-            similaridade,
+            calcularSimilaridade(
+                janelaAtual,
+                janelaAntiga
+            ),
 
             distancia:
             inicioAtual -
@@ -830,7 +981,8 @@ function procurarReplicas(){
     }
 
 
-    todas.sort(function(a,b){
+    todas.sort(
+    function(a,b){
 
         if(
             Math.abs(
@@ -859,16 +1011,21 @@ function procurarReplicas(){
 
     return {
 
-        suficiente:true,
-        replicas:todas,
-        totalJanelas:todas.length
+        suficiente:
+        true,
+
+        replicas:
+        todas,
+
+        totalJanelas:
+        todas.length
 
     };
 }
 
 
 /* =========================================================
-   ZONAS PRESENTES
+   CONTAR ZONAS
 ========================================================= */
 
 function contarZonasDoGrupo(grupo){
@@ -877,15 +1034,18 @@ function contarZonasDoGrupo(grupo){
     new Set();
 
 
-    grupo.forEach(function(item){
+    grupo.forEach(
+    function(item){
 
         idsQueBatem(
             item.proximo
         )
-        .forEach(function(id){
+        .forEach(
+        function(id){
 
             if(
-                TODOS_IDS_RX.includes(id)
+                TODOS_IDS_RX
+                .includes(id)
             ){
                 zonas.add(id);
             }
@@ -900,7 +1060,7 @@ function contarZonasDoGrupo(grupo){
 
 
 /* =========================================================
-   SELEÇÃO DE RÉPLICAS
+   SELECIONAR RÉPLICAS
 ========================================================= */
 
 function selecionarReplicas(){
@@ -909,17 +1069,29 @@ function selecionarReplicas(){
     procurarReplicas();
 
 
-    if(!busca.suficiente){
+    if(
+        !busca.suficiente
+    ){
 
         return {
 
-            estado:"AGUARDANDO",
+            estado:
+            "AGUARDANDO",
 
-            replicas:[],
+            replicas:
+            [],
 
-            melhor:0,
-            nivel:0,
-            totalJanelas:0
+            melhor:
+            0,
+
+            nivel:
+            0,
+
+            totalJanelas:
+            0,
+
+            zonasEncontradas:
+            0
 
         };
 
@@ -927,18 +1099,28 @@ function selecionarReplicas(){
 
 
     if(
-        busca.replicas.length === 0
+        !busca.replicas.length
     ){
 
         return {
 
-            estado:"SEM DADOS",
+            estado:
+            "SEM DADOS",
 
-            replicas:[],
+            replicas:
+            [],
 
-            melhor:0,
-            nivel:0,
-            totalJanelas:0
+            melhor:
+            0,
+
+            nivel:
+            0,
+
+            totalJanelas:
+            0,
+
+            zonasEncontradas:
+            0
 
         };
 
@@ -966,7 +1148,13 @@ function selecionarReplicas(){
     quantidadeInicial =
     Math.min(
         quantidadeInicial,
-        totalDisponivel,
+        totalDisponivel
+    );
+
+
+    quantidadeInicial =
+    Math.min(
+        quantidadeInicial,
         MAX_REPLICAS_RX
     );
 
@@ -1000,8 +1188,11 @@ function selecionarReplicas(){
     ){
 
         grupo.push(
-            busca.replicas[indice]
+            busca.replicas[
+                indice
+            ]
         );
+
 
         indice++;
 
@@ -1014,12 +1205,27 @@ function selecionarReplicas(){
     }
 
 
+    let nivelMinimo = 0;
+
+
+    if(grupo.length){
+
+        nivelMinimo =
+        grupo[
+            grupo.length-1
+        ].similaridade;
+
+    }
+
+
     return {
 
         estado:
         grupo.length
-        ? "OK"
-        : "SEM DADOS",
+        ?
+        "OK"
+        :
+        "SEM DADOS",
 
         replicas:
         grupo,
@@ -1029,16 +1235,13 @@ function selecionarReplicas(){
         .similaridade,
 
         nivel:
-        grupo.length
-        ?
-        grupo[
-            grupo.length-1
-        ].similaridade
-        :
-        0,
+        nivelMinimo,
 
         totalJanelas:
-        totalDisponivel
+        totalDisponivel,
+
+        zonasEncontradas:
+        zonas.size
 
     };
 }
@@ -1054,16 +1257,22 @@ function analisarMesaAtual(){
     new Map();
 
 
-    TODOS_IDS_RX.forEach(function(id){
+    TODOS_IDS_RX
+    .forEach(
+    function(id){
 
         mapa.set(
             id,
             {
 
-                id:id,
+                id:
+                id,
 
-                incidencias14:0,
-                incidencias20:0,
+                incidencias14:
+                0,
+
+                incidencias20:
+                0,
 
                 maisRecente14:
                 Infinity,
@@ -1092,10 +1301,15 @@ function analisarMesaAtual(){
             index;
 
 
-            idsQueBatem(numero)
-            .forEach(function(id){
+            idsQueBatem(
+                numero
+            )
+            .forEach(
+            function(id){
 
-                if(!mapa.has(id)){
+                if(
+                    !mapa.has(id)
+                ){
                     return;
                 }
 
@@ -1146,7 +1360,8 @@ function analisarMesaAtual(){
     );
 
 
-    lista.sort(function(a,b){
+    lista.sort(
+    function(a,b){
 
         if(
             b.incidencias14 !==
@@ -1216,7 +1431,7 @@ function analisarMesaAtual(){
 
 
 /* =========================================================
-   RANKING RAIO X
+   RANKING BRUTO RAIO X
 ========================================================= */
 
 function gerarRankingBrutoRX(){
@@ -1229,22 +1444,28 @@ function gerarRankingBrutoRX(){
     new Map();
 
 
-    TODOS_IDS_RX.forEach(function(id){
+    TODOS_IDS_RX
+    .forEach(
+    function(id){
 
         mapa.set(
             id,
             {
 
-                id:id,
+                id:
+                id,
 
-                ocorrencias:0,
+                ocorrencias:
+                0,
 
-                melhorSimilaridade:0,
+                melhorSimilaridade:
+                0,
 
                 maisRecente:
                 Infinity,
 
-                origem:"RX"
+                origem:
+                "RX"
 
             }
         );
@@ -1253,7 +1474,8 @@ function gerarRankingBrutoRX(){
 
 
     if(
-        selecao.estado !== "OK"
+        selecao.estado !==
+        "OK"
     ){
 
         return {
@@ -1261,7 +1483,8 @@ function gerarRankingBrutoRX(){
             selecao:
             selecao,
 
-            ranking:[],
+            ranking:
+            [],
 
             familias:{
                 0:0,
@@ -1269,9 +1492,11 @@ function gerarRankingBrutoRX(){
                 9:0
             },
 
-            lider:null,
+            lider:
+            null,
 
-            similaridade:0
+            similaridade:
+            0
 
         };
 
@@ -1288,7 +1513,8 @@ function gerarRankingBrutoRX(){
 
 
     selecao.replicas
-    .forEach(function(item){
+    .forEach(
+    function(item){
 
         somaSimilaridade +=
         item.similaridade;
@@ -1297,9 +1523,12 @@ function gerarRankingBrutoRX(){
         idsQueBatem(
             item.proximo
         )
-        .forEach(function(id){
+        .forEach(
+        function(id){
 
-            if(!mapa.has(id)){
+            if(
+                !mapa.has(id)
+            ){
                 return;
             }
 
@@ -1323,7 +1552,8 @@ function gerarRankingBrutoRX(){
             registro
             .maisRecente =
             Math.min(
-                registro.maisRecente,
+                registro
+                .maisRecente,
                 item.distancia
             );
 
@@ -1338,7 +1568,9 @@ function gerarRankingBrutoRX(){
         );
 
 
-        if(familias.length){
+        if(
+            familias.length
+        ){
 
             const fracao =
             1 /
@@ -1348,15 +1580,23 @@ function gerarRankingBrutoRX(){
             familias.forEach(
             function(familia){
 
-                if(familia === 0){
+                if(
+                    familia === 0
+                ){
                     cont0 += fracao;
                 }
 
-                if(familia === 6){
+
+                if(
+                    familia === 6
+                ){
                     cont6 += fracao;
                 }
 
-                if(familia === 9){
+
+                if(
+                    familia === 9
+                ){
                     cont9 += fracao;
                 }
 
@@ -1375,17 +1615,21 @@ function gerarRankingBrutoRX(){
     let p9 = 0;
 
 
-    if(totalFamilias){
+    if(
+        totalFamilias
+    ){
 
         p0 =
         cont0 /
         totalFamilias *
         100;
 
+
         p6 =
         cont6 /
         totalFamilias *
         100;
+
 
         p9 =
         cont9 /
@@ -1399,17 +1643,19 @@ function gerarRankingBrutoRX(){
     Array.from(
         mapa.values()
     )
-
-    .filter(function(item){
+    .filter(
+    function(item){
 
         return (
-            item.ocorrencias > 0
+            item.ocorrencias >
+            0
         );
 
     });
 
 
-    ranking.sort(function(a,b){
+    ranking.sort(
+    function(a,b){
 
         if(
             b.ocorrencias !==
@@ -1514,11 +1760,9 @@ function gerarRankingBrutoRX(){
         ranking,
 
         familias:{
-
             0:p0,
             6:p6,
             9:p9
-
         },
 
         lider:
@@ -1537,12 +1781,14 @@ function gerarRankingBrutoRX(){
 
 
 /* =========================================================
-   COBERTURA PARA JOGADA
+   COBERTURA DOS IDS
 ========================================================= */
 
 function coberturaDoIdParaJogada(id){
 
-    if(id === 39){
+    if(
+        id === 39
+    ){
         return [25];
     }
 
@@ -1562,12 +1808,20 @@ function coberturaDoIdParaJogada(id){
 
     }
 
+
     return [];
 }
 
 
 /* =========================================================
-   TOP 8 NORMAL
+   TOP 8
+
+   PRIMEIRO DEFINE OS 8 CANDIDATOS NORMAIS.
+
+   SÓ DEPOIS VERIFICA 0 + 26.
+
+   0 + 26 SÓ É JUNTO SE OS DOIS
+   ESTIVEREM DENTRO DO TOP 8 REAL.
 ========================================================= */
 
 function gerarTop8Efetivo(){
@@ -1578,7 +1832,8 @@ function gerarTop8Efetivo(){
 
     const candidatos =
     bruto.ranking
-    .map(function(item){
+    .map(
+    function(item){
 
         return {
             ...item
@@ -1591,7 +1846,8 @@ function gerarTop8Efetivo(){
     analisarMesaAtual();
 
 
-    mesa.forEach(function(item){
+    mesa.forEach(
+    function(item){
 
         if(
             candidatos.some(
@@ -1628,7 +1884,8 @@ function gerarTop8Efetivo(){
             :
             item.incidencias20,
 
-            melhorSimilaridade:0,
+            melhorSimilaridade:
+            0,
 
             maisRecente:
             item.maisRecente14 !== Infinity
@@ -1649,8 +1906,36 @@ function gerarTop8Efetivo(){
     });
 
 
+    /* =====================================================
+       PRIMEIROS 8 SUPORTADOS
+    ===================================================== */
+
+    const base8 =
+    candidatos.slice(
+        0,
+        8
+    );
+
+
+    const tem0 =
+    base8.some(
+        function(item){
+            return item.id === 0;
+        }
+    );
+
+
+    const tem26 =
+    base8.some(
+        function(item){
+            return item.id === 26;
+        }
+    );
+
+
     const selecionados = [];
-    const usados = new Set();
+    const usados =
+    new Set();
 
 
     for(
@@ -1680,67 +1965,73 @@ function gerarTop8Efetivo(){
 
 
         /* =============================================
-           0 + 26
+           COMBO SOMENTE SE 0 E 26 ESTAVAM NO TOP8
         ============================================= */
 
         if(
-            atual.id === 0 ||
-            atual.id === 26
+            tem0 &&
+            tem26 &&
+            (
+                atual.id === 0 ||
+                atual.id === 26
+            )
         ){
 
-            const outro =
-            atual.id === 0
-            ?
-            26
-            :
-            0;
-
-
-            const outroCandidato =
+            const item0 =
             candidatos.find(
             function(item){
 
                 return (
-                    item.id === outro
+                    item.id === 0
+                );
+
+            });
+
+
+            const item26 =
+            candidatos.find(
+            function(item){
+
+                return (
+                    item.id === 26
                 );
 
             });
 
 
             if(
-                outroCandidato &&
-                !usados.has(outro)
+                item0 &&
+                item26
             ){
 
                 selecionados.push({
 
-                    tipo:"ZERO26",
+                    tipo:
+                    "ZERO26",
 
                     ids:[
                         0,
                         26
                     ],
 
-                    idPrincipal:0,
+                    idPrincipal:
+                    0,
 
-                    label:"0 + 3",
+                    label:
+                    "0 + 3",
 
                     ocorrencias:
-                    atual.ocorrencias +
-                    outroCandidato
-                    .ocorrencias,
+                    item0.ocorrencias +
+                    item26.ocorrencias,
+
+                    ocorrencias0:
+                    item0.ocorrencias,
+
+                    ocorrencias26:
+                    item26.ocorrencias,
 
                     origem:
-                    (
-                        atual.origem === "RX"
-                        ||
-                        outroCandidato
-                        .origem === "RX"
-                    )
-                    ?
-                    "RX"
-                    :
-                    atual.origem,
+                    "RX",
 
                     cobertura:
                     new Set([
@@ -1757,6 +2048,7 @@ function gerarTop8Efetivo(){
                 usados.add(26);
 
                 continue;
+
             }
 
         }
@@ -1764,7 +2056,8 @@ function gerarTop8Efetivo(){
 
         selecionados.push({
 
-            tipo:"NORMAL",
+            tipo:
+            "NORMAL",
 
             ids:[
                 atual.id
@@ -1774,7 +2067,9 @@ function gerarTop8Efetivo(){
             atual.id,
 
             label:
-            String(atual.id),
+            String(
+                atual.id
+            ),
 
             ocorrencias:
             atual.ocorrencias,
@@ -1799,12 +2094,17 @@ function gerarTop8Efetivo(){
     }
 
 
+    /* =====================================================
+       ÚLTIMO RECURSO
+    ===================================================== */
+
     if(
         selecionados.length < 8
     ){
 
         TODOS_IDS_RX
-        .forEach(function(id){
+        .forEach(
+        function(id){
 
             if(
                 selecionados.length >= 8
@@ -1813,14 +2113,17 @@ function gerarTop8Efetivo(){
             }
 
 
-            if(usados.has(id)){
+            if(
+                usados.has(id)
+            ){
                 return;
             }
 
 
             selecionados.push({
 
-                tipo:"NORMAL",
+                tipo:
+                "NORMAL",
 
                 ids:[
                     id
@@ -1832,7 +2135,8 @@ function gerarTop8Efetivo(){
                 label:
                 String(id),
 
-                ocorrencias:0,
+                ocorrencias:
+                0,
 
                 origem:
                 "SEM DADOS",
@@ -1869,161 +2173,200 @@ function gerarTop8Efetivo(){
 
 
 /* =========================================================
-   JOGADA
+   =========================================================
+   NOVA JOGADA DO RAIO X
+   =========================================================
+
+   NÃO USA AS 8 ZONAS PARA MONTAR APOSTA.
+
+   USA DIRETAMENTE OS RESULTADOS
+   "PROXIMO" DAS RÉPLICAS SELECIONADAS.
+
+   EXEMPLO:
+   40 RÉPLICAS =
+   ATÉ 40 RESULTADOS REAIS.
+
+   REPETIÇÃO AUMENTA O PESO.
+
+   REGRAS:
+
+   - MÁXIMO 28 NÚMEROS APOSTADOS.
+   - NENHUM NÚMERO PODE EXISTIR
+     EM DOIS BLOCOS.
+   - 2 VIZINHOS PRIMEIRO.
+   - 1 VIZINHO COMPLETA.
+   - PRIORIZA AS ÁREAS QUE PEGAM
+     MAIS RESULTADOS DAS RÉPLICAS.
 ========================================================= */
-
-function gerarAlvosDaJogada(top8){
-
-    const alvos =
-    new Set();
-
-
-    top8.forEach(function(item){
-
-        item.cobertura
-        .forEach(function(numero){
-
-            alvos.add(numero);
-
-        });
-
-    });
-
-
-    return alvos;
-}
 
 
 /* =========================================================
-   ZONAS COBERTAS POR UM BLOCO
-
-   CONSIDERA A ZONA DO RAIO X
-   SOMENTE QUANDO O BLOCO COBRE
-   A COBERTURA COMPLETA DA ZONA.
+   FREQUÊNCIA DOS NÚMEROS DAS RÉPLICAS
 ========================================================= */
 
-function zonasCobertasPeloBloco(
-    numeros,
-    top8
+function gerarFrequenciaReplicas(
+    replicas
 ){
 
-    const conjunto =
-    new Set(numeros);
-
-    const zonas = [];
+    const frequencia =
+    new Map();
 
 
-    top8.forEach(
-    function(item,index){
+    track.forEach(
+    function(numero){
 
-        const cobertura =
-        Array.from(
-            item.cobertura
-        );
-
-
-        const completa =
-        cobertura.every(
-        function(numero){
-
-            return (
-                conjunto.has(numero)
-            );
-
-        });
-
-
-        if(completa){
-
-            zonas.push({
-
-                indice:
-                index,
-
-                label:
-                item.label,
-
-                ocorrencias:
-                item.ocorrencias
-
-            });
-
-        }
-
-    });
-
-
-    zonas.sort(function(a,b){
-
-        if(
-            b.ocorrencias !==
-            a.ocorrencias
-        ){
-
-            return (
-                b.ocorrencias -
-                a.ocorrencias
-            );
-
-        }
-
-        return (
-            a.indice -
-            b.indice
+        frequencia.set(
+            numero,
+            0
         );
 
     });
 
 
-    return zonas;
-}
+    replicas.forEach(
+    function(item){
 
-
-/* =========================================================
-   GERA CANDIDATOS 2 VIZINHOS
-========================================================= */
-
-function gerarCandidatosJogada(
-    top8,
-    quantidade
-){
-
-    const candidatos = [];
-
-
-    track.forEach(function(centro){
-
-        const numeros =
-        vizinhos(
-            centro,
-            quantidade
-        );
-
-
-        const zonas =
-        zonasCobertasPeloBloco(
-            numeros,
-            top8
-        );
+        const numero =
+        item.proximo;
 
 
         if(
-            zonas.length === 0
+            !frequencia.has(numero)
         ){
             return;
         }
 
 
-        const soma =
-        zonas.reduce(
-        function(total,zona){
+        frequencia.set(
+            numero,
+            frequencia.get(numero) + 1
+        );
 
-            return (
-                total +
-                zona.ocorrencias
-            );
+    });
 
-        },0);
+
+    return frequencia;
+}
+
+
+/* =========================================================
+   PESO DE UM SETOR
+========================================================= */
+
+function pesoDoSetor(
+    numeros,
+    frequencia
+){
+
+    let peso = 0;
+    let alvosDistintos = 0;
+
+
+    numeros.forEach(
+    function(numero){
+
+        const quantidade =
+        frequencia.get(numero)
+        ||
+        0;
+
+
+        peso +=
+        quantidade;
+
+
+        if(
+            quantidade > 0
+        ){
+            alvosDistintos++;
+        }
+
+    });
+
+
+    return {
+
+        peso:
+        peso,
+
+        alvosDistintos:
+        alvosDistintos
+
+    };
+}
+
+
+/* =========================================================
+   VERIFICA SOBREPOSIÇÃO
+
+   SE QUALQUER NÚMERO DO NOVO SETOR
+   JÁ ESTIVER APOSTADO, O BLOCO
+   É DESCARTADO.
+========================================================= */
+
+function temSobreposicao(
+    numeros,
+    numerosUsados
+){
+
+    return numeros.some(
+    function(numero){
+
+        return (
+            numerosUsados.has(
+                numero
+            )
+        );
+
+    });
+}
+
+
+/* =========================================================
+   GERA TODOS OS CANDIDATOS DE UM TIPO
+========================================================= */
+
+function gerarCandidatosSetor(
+    quantidadeVizinhos,
+    frequencia,
+    numerosUsados
+){
+
+    const candidatos = [];
+
+
+    track.forEach(
+    function(centro){
+
+        const numeros =
+        setorVizinhosOrdenado(
+            centro,
+            quantidadeVizinhos
+        );
+
+
+        if(
+            temSobreposicao(
+                numeros,
+                numerosUsados
+            )
+        ){
+            return;
+        }
+
+
+        const dados =
+        pesoDoSetor(
+            numeros,
+            frequencia
+        );
+
+
+        if(
+            dados.peso <= 0
+        ){
+            return;
+        }
 
 
         candidatos.push({
@@ -2032,54 +2375,97 @@ function gerarCandidatosJogada(
             centro,
 
             quantidade:
-            quantidade,
+            quantidadeVizinhos,
 
             numeros:
             numeros,
 
-            zonas:
-            zonas,
+            peso:
+            dados.peso,
 
-            soma:
-            soma
+            alvosDistintos:
+            dados.alvosDistintos,
+
+            eficiencia:
+            dados.peso /
+            numeros.length
 
         });
 
     });
 
 
-    candidatos.sort(function(a,b){
+    candidatos.sort(
+    function(a,b){
+
+        /* =============================================
+           1. MAIOR QUANTIDADE TOTAL DE ACERTOS
+           NAS RÉPLICAS
+        ============================================= */
 
         if(
-            b.zonas.length !==
-            a.zonas.length
+            b.peso !==
+            a.peso
         ){
 
             return (
-                b.zonas.length -
-                a.zonas.length
+                b.peso -
+                a.peso
             );
 
         }
 
 
+        /* =============================================
+           2. MAIS NÚMEROS DIFERENTES DAS RÉPLICAS
+        ============================================= */
+
         if(
-            b.soma !==
-            a.soma
+            b.alvosDistintos !==
+            a.alvosDistintos
         ){
 
             return (
-                b.soma -
-                a.soma
+                b.alvosDistintos -
+                a.alvosDistintos
             );
 
         }
 
+
+        /* =============================================
+           3. EFICIÊNCIA
+        ============================================= */
+
+        if(
+            Math.abs(
+                b.eficiencia -
+                a.eficiencia
+            )
+            >
+            0.0001
+        ){
+
+            return (
+                b.eficiencia -
+                a.eficiencia
+            );
+
+        }
+
+
+        /* =============================================
+           4. ORDEM FIXA DA RODA
+        ============================================= */
 
         return (
-            track.indexOf(a.centro)
+            track.indexOf(
+                a.centro
+            )
             -
-            track.indexOf(b.centro)
+            track.indexOf(
+                b.centro
+            )
         );
 
     });
@@ -2090,574 +2476,364 @@ function gerarCandidatosJogada(
 
 
 /* =========================================================
-   MONTA JOGADA
+   REDUZ PESO DOS NÚMEROS JÁ ATENDIDOS
 
-   PRIMEIRO 2 VIZINHOS.
+   IMPORTANTE:
 
-   DEPOIS 1 VIZINHO SOMENTE
-   PARA AS ZONAS QUE NÃO FORAM
-   COBERTAS.
+   NÃO PROÍBE QUE O MESMO NÚMERO
+   TENHA APARECIDO VÁRIAS VEZES
+   NAS 40 RÉPLICAS.
+
+   O QUE NÃO PODE REPETIR É O
+   NÚMERO NA APOSTA.
+
+   DEPOIS QUE UM NÚMERO FOI COBERTO,
+   SUA FREQUÊNCIA É ZERADA PARA A
+   ESCOLHA DOS PRÓXIMOS SETORES.
 ========================================================= */
 
-function montarJogada(top8){
+function consumirSetor(
+    numeros,
+    frequenciaRestante
+){
 
-    const alvos =
-    gerarAlvosDaJogada(
-        top8
+    numeros.forEach(
+    function(numero){
+
+        frequenciaRestante.set(
+            numero,
+            0
+        );
+
+    });
+}
+
+
+/* =========================================================
+   SOMA FREQUÊNCIA RESTANTE
+========================================================= */
+
+function totalFrequencia(
+    frequencia
+){
+
+    let total = 0;
+
+
+    frequencia.forEach(
+    function(valor){
+
+        total += valor;
+
+    });
+
+
+    return total;
+}
+
+
+/* =========================================================
+   MONTA JOGADA DAS RÉPLICAS
+========================================================= */
+
+function montarJogadaDasReplicas(
+    replicas
+){
+
+    const frequenciaOriginal =
+    gerarFrequenciaReplicas(
+        replicas
     );
 
 
-    const zonasFaltando =
-    new Set(
-        top8.map(
-        function(item,index){
-            return index;
-        })
+    const frequenciaRestante =
+    new Map(
+        frequenciaOriginal
     );
+
+
+    const numerosUsados =
+    new Set();
 
 
     const blocos2 = [];
     const blocos1 = [];
 
 
-    const candidatos2 =
-    gerarCandidatosJogada(
-        top8,
-        2
-    );
-
-
     /* =====================================================
+       PRIMEIRO:
        2 VIZINHOS
+
+       CADA BLOCO = 5 NÚMEROS.
+
+       PODE USAR ATÉ 5 BLOCOS:
+       5 x 5 = 25.
+
+       SOBRAM 3 CASAS PARA
+       UM BLOCO DE 1 VIZINHO.
     ===================================================== */
 
     while(
-        zonasFaltando.size > 0
+        numerosUsados.size + 5
+        <=
+        MAX_NUMEROS_JOGADA
     ){
 
-        let melhor = null;
-        let melhorNovas = [];
+        const candidatos =
+        gerarCandidatosSetor(
+            2,
+            frequenciaRestante,
+            numerosUsados
+        );
 
 
-        candidatos2
-        .forEach(function(candidato){
-
-            const novas =
-            candidato.zonas
-            .filter(function(zona){
-
-                return (
-                    zonasFaltando
-                    .has(zona.indice)
-                );
-
-            });
+        if(
+            !candidatos.length
+        ){
+            break;
+        }
 
 
-            if(
-                novas.length === 0
-            ){
-                return;
-            }
+        const melhor =
+        candidatos[0];
 
 
-            /*
-              O BLOCO DE 2 VIZINHOS
-              PRECISA PEGAR PELO MENOS
-              UMA ZONA COMPLETA DO RX.
-            */
+        /*
+          NÃO COLOCA SETOR DE 5 CASAS
+          PARA PEGAR SÓ UM RESULTADO
+          FRACO SE A JOGADA JÁ ESTÁ
+          GRANDE.
+
+          NO COMEÇO ACEITA 1 ALVO SE
+          FOR MUITO REPETIDO.
+        */
+
+        if(
+            melhor.peso <= 0
+        ){
+            break;
+        }
 
 
-            const somaNovas =
-            novas.reduce(
-            function(total,zona){
-
-                return (
-                    total +
-                    zona.ocorrencias
-                );
-
-            },0);
+        blocos2.push(
+            melhor
+        );
 
 
-            if(!melhor){
+        melhor.numeros
+        .forEach(
+        function(numero){
 
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-                return;
-            }
-
-
-            if(
-                novas.length >
-                melhorNovas.length
-            ){
-
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-                return;
-            }
-
-
-            if(
-                novas.length <
-                melhorNovas.length
-            ){
-                return;
-            }
-
-
-            if(
-                somaNovas >
-                melhor._somaNovas
-            ){
-
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-            }
+            numerosUsados.add(
+                numero
+            );
 
         });
 
 
-        if(!melhor){
+        consumirSetor(
+            melhor.numeros,
+            frequenciaRestante
+        );
+
+
+        /*
+          QUANDO CHEGAR A 25,
+          PARAMOS PARA RESERVAR
+          ATÉ 3 NÚMEROS AO 1V.
+        */
+
+        if(
+            numerosUsados.size >= 25
+        ){
             break;
         }
 
 
         /*
-          Se restarem poucas zonas e um 2V
-          só estiver atendendo uma zona,
-          deixamos para a linha de 1V.
+          SE NÃO HÁ MAIS NADA
+          DAS RÉPLICAS PARA COBRIR,
+          PARA.
         */
 
         if(
-            melhorNovas.length === 1
+            totalFrequencia(
+                frequenciaRestante
+            )
+            <=
+            0
+        ){
+            break;
+        }
+
+    }
+
+
+    /* =====================================================
+       DEPOIS:
+       1 VIZINHO
+
+       CADA BLOCO = 3 NÚMEROS.
+
+       SOMENTE SE COUBER SEM
+       PASSAR DE 28 E SEM REPETIR
+       NENHUM NÚMERO JÁ APOSTADO.
+    ===================================================== */
+
+    while(
+        numerosUsados.size + 3
+        <=
+        MAX_NUMEROS_JOGADA
+    ){
+
+        const candidatos =
+        gerarCandidatosSetor(
+            1,
+            frequenciaRestante,
+            numerosUsados
+        );
+
+
+        if(
+            !candidatos.length
         ){
             break;
         }
 
 
-        const bloco = {
-
-            centro:
-            melhor.centro,
-
-            quantidade:2,
-
-            numeros:
-            melhor.numeros,
-
-            zonas:
-            melhorNovas,
-
-            soma:
-            melhorNovas.reduce(
-            function(total,zona){
-
-                return (
-                    total +
-                    zona.ocorrencias
-                );
-
-            },0)
-
-        };
+        const melhor =
+        candidatos[0];
 
 
-        blocos2.push(
-            bloco
-        );
-
-
-        melhorNovas
-        .forEach(function(zona){
-
-            zonasFaltando.delete(
-                zona.indice
-            );
-
-        });
-
-    }
-
-
-    /* =====================================================
-       1 VIZINHO
-    ===================================================== */
-
-    const candidatos1 =
-    gerarCandidatosJogada(
-        top8,
-        1
-    );
-
-
-    while(
-        zonasFaltando.size > 0
-    ){
-
-        let melhor = null;
-        let melhorNovas = [];
-
-
-        candidatos1
-        .forEach(function(candidato){
-
-            const novas =
-            candidato.zonas
-            .filter(function(zona){
-
-                return (
-                    zonasFaltando
-                    .has(zona.indice)
-                );
-
-            });
-
-
-            if(
-                novas.length === 0
-            ){
-                return;
-            }
-
-
-            const somaNovas =
-            novas.reduce(
-            function(total,zona){
-
-                return (
-                    total +
-                    zona.ocorrencias
-                );
-
-            },0);
-
-
-            if(!melhor){
-
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-                return;
-            }
-
-
-            if(
-                novas.length >
-                melhorNovas.length
-            ){
-
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-                return;
-            }
-
-
-            if(
-                novas.length <
-                melhorNovas.length
-            ){
-                return;
-            }
-
-
-            if(
-                somaNovas >
-                melhor._somaNovas
-            ){
-
-                melhor =
-                candidato;
-
-                melhorNovas =
-                novas;
-
-                melhor._somaNovas =
-                somaNovas;
-
-            }
-
-        });
-
-
-        if(!melhor){
+        if(
+            melhor.peso <= 0
+        ){
             break;
         }
 
 
-        const bloco = {
-
-            centro:
-            melhor.centro,
-
-            quantidade:1,
-
-            numeros:
-            melhor.numeros,
-
-            zonas:
-            melhorNovas,
-
-            soma:
-            melhorNovas.reduce(
-            function(total,zona){
-
-                return (
-                    total +
-                    zona.ocorrencias
-                );
-
-            },0)
-
-        };
-
-
         blocos1.push(
-            bloco
+            melhor
         );
 
 
-        melhorNovas
-        .forEach(function(zona){
+        melhor.numeros
+        .forEach(
+        function(numero){
 
-            zonasFaltando.delete(
-                zona.indice
+            numerosUsados.add(
+                numero
             );
 
         });
 
-    }
+
+        consumirSetor(
+            melhor.numeros,
+            frequenciaRestante
+        );
 
 
-    /* =====================================================
-       CASO 0 + 3
-
-       ESSA COBERTURA TEM 4 NÚMEROS.
-       NENHUM 1-VIZINHO COBRE OS 4.
-       SE AINDA SOBROU, COLOCA 2V.
-    ===================================================== */
-
-    if(
-        zonasFaltando.size > 0
-    ){
-
-        Array.from(
-            zonasFaltando
-        )
-        .forEach(function(indiceZona){
-
-            const zona =
-            top8[indiceZona];
-
-
-            let melhor = null;
-
-
-            track.forEach(
-            function(centro){
-
-                const numeros =
-                vizinhos(
-                    centro,
-                    2
-                );
-
-
-                const conjunto =
-                new Set(numeros);
-
-
-                const completa =
-                Array.from(
-                    zona.cobertura
-                )
-                .every(
-                function(numero){
-
-                    return (
-                        conjunto.has(numero)
-                    );
-
-                });
-
-
-                if(!completa){
-                    return;
-                }
-
-
-                if(!melhor){
-
-                    melhor = {
-
-                        centro:
-                        centro,
-
-                        quantidade:2,
-
-                        numeros:
-                        numeros
-
-                    };
-
-                }
-
-            });
-
-
-            if(melhor){
-
-                blocos2.push({
-
-                    centro:
-                    melhor.centro,
-
-                    quantidade:2,
-
-                    numeros:
-                    melhor.numeros,
-
-                    zonas:[{
-
-                        indice:
-                        indiceZona,
-
-                        label:
-                        zona.label,
-
-                        ocorrencias:
-                        zona.ocorrencias
-
-                    }],
-
-                    soma:
-                    zona.ocorrencias
-
-                });
-
-
-                zonasFaltando.delete(
-                    indiceZona
-                );
-
-            }
-
-        });
+        if(
+            totalFrequencia(
+                frequenciaRestante
+            )
+            <=
+            0
+        ){
+            break;
+        }
 
     }
 
 
     /* =====================================================
-       ORDENA MAIOR → MENOR
+       ORDENA OS QUADROS DO MAIS FORTE
+       PARA O MAIS FRACO.
     ===================================================== */
 
-    function ordenar(a,b){
+    function ordenarBlocos(a,b){
 
-        const maiorA =
-        a.zonas.length
-        ?
-        Math.max.apply(
-            null,
-            a.zonas.map(
-                function(z){
-                    return z.ocorrencias;
-                }
-            )
-        )
-        :
-        0;
-
-
-        const maiorB =
-        b.zonas.length
-        ?
-        Math.max.apply(
-            null,
-            b.zonas.map(
-                function(z){
-                    return z.ocorrencias;
-                }
-            )
-        )
-        :
-        0;
-
-
-        if(maiorB !== maiorA){
+        if(
+            b.peso !==
+            a.peso
+        ){
 
             return (
-                maiorB -
-                maiorA
+                b.peso -
+                a.peso
             );
 
         }
 
 
         if(
-            b.soma !==
-            a.soma
+            b.alvosDistintos !==
+            a.alvosDistintos
         ){
 
             return (
-                b.soma -
-                a.soma
+                b.alvosDistintos -
+                a.alvosDistintos
             );
 
         }
 
 
         return (
-            track.indexOf(a.centro)
+            track.indexOf(
+                a.centro
+            )
             -
-            track.indexOf(b.centro)
+            track.indexOf(
+                b.centro
+            )
         );
 
     }
 
 
-    blocos2.sort(ordenar);
-    blocos1.sort(ordenar);
+    blocos2.sort(
+        ordenarBlocos
+    );
+
+
+    blocos1.sort(
+        ordenarBlocos
+    );
+
+
+    /* =====================================================
+       NÚMEROS DAS RÉPLICAS QUE FORAM COBERTOS
+    ===================================================== */
+
+    let ocorrenciasCobertas = 0;
+    let totalOcorrencias = 0;
+
+
+    frequenciaOriginal
+    .forEach(
+    function(quantidade,numero){
+
+        totalOcorrencias +=
+        quantidade;
+
+
+        if(
+            numerosUsados.has(
+                numero
+            )
+        ){
+
+            ocorrenciasCobertas +=
+            quantidade;
+
+        }
+
+    });
 
 
     return {
-
-        alvos:
-        alvos,
 
         blocos2:
         blocos2,
@@ -2665,18 +2841,24 @@ function montarJogada(top8){
         blocos1:
         blocos1,
 
-        zonasFaltando:
-        zonasFaltando,
+        numerosUsados:
+        numerosUsados,
 
-        completa:
-        zonasFaltando.size === 0
+        totalNumeros:
+        numerosUsados.size,
+
+        ocorrenciasCobertas:
+        ocorrenciasCobertas,
+
+        totalOcorrencias:
+        totalOcorrencias
 
     };
 }
 
 
 /* =========================================================
-   RAIO X FINAL
+   ANÁLISE FINAL
 ========================================================= */
 
 function analisarRaioX(){
@@ -2685,9 +2867,14 @@ function analisarRaioX(){
     gerarTop8Efetivo();
 
 
+    /*
+      A JOGADA AGORA VEM DIRETAMENTE
+      DAS RÉPLICAS USADAS PELO RX.
+    */
+
     const jogada =
-    montarJogada(
-        dados.top8
+    montarJogadaDasReplicas(
+        dados.selecao.replicas
     );
 
 
@@ -2702,7 +2889,15 @@ function analisarRaioX(){
 
         totalJanelas:
         dados.selecao
-        .totalJanelas || 0,
+        .totalJanelas
+        ||
+        0,
+
+        zonasEncontradas:
+        dados.selecao
+        .zonasEncontradas
+        ||
+        0,
 
         similaridade:
         dados.similaridade,
@@ -2724,10 +2919,12 @@ function analisarRaioX(){
 
 
 /* =========================================================
-   ALTERAR RAIO X
+   TROCAR RX
 ========================================================= */
 
-function alterarTamanhoRaioX(tamanho){
+function alterarTamanhoRaioX(
+    tamanho
+){
 
     if(
         tamanho !== 4 &&
@@ -2746,13 +2943,19 @@ function alterarTamanhoRaioX(tamanho){
 
         localStorage.setItem(
             STORAGE_RX,
-            String(TAMANHO_RX)
+            String(
+                TAMANHO_RX
+            )
         );
 
     }catch(e){}
 
 
+    invalidarCache();
+
+
     atualizarBotoesRX();
+
 
     render();
 }
@@ -2776,15 +2979,20 @@ function inserirHistorico(){
     );
 
 
-    if(!numeros.length){
+    if(
+        !numeros.length
+    ){
 
         statusArea.textContent =
         "Nenhum número válido.";
 
+
         statusArea.style.color =
         "#ff5252";
 
+
         return;
+
     }
 
 
@@ -2793,6 +3001,9 @@ function inserirHistorico(){
 
 
     salvarHistorico();
+
+
+    invalidarCache();
 
 
     campo.value = "";
@@ -2811,19 +3022,27 @@ function inserirHistorico(){
 }
 
 
-function adicionarNumero(numero){
+function adicionarNumero(
+    numero
+){
 
-    historico.push(numero);
+    historico.push(
+        numero
+    );
 
 
     if(
-        historico.length > 5000
+        historico.length >
+        5000
     ){
         historico.shift();
     }
 
 
     salvarHistorico();
+
+
+    invalidarCache();
 
 
     statusArea.textContent =
@@ -2842,7 +3061,9 @@ function adicionarNumero(numero){
 
 function apagarUltimo(){
 
-    if(!historico.length){
+    if(
+        !historico.length
+    ){
         return;
     }
 
@@ -2852,6 +3073,9 @@ function apagarUltimo(){
 
 
     salvarHistorico();
+
+
+    invalidarCache();
 
 
     statusArea.textContent =
@@ -2885,6 +3109,9 @@ function apagarTudo(){
     salvarHistorico();
 
 
+    invalidarCache();
+
+
     statusArea.textContent =
     "Histórico apagado.";
 
@@ -2903,15 +3130,27 @@ function apagarTudo(){
 
 document.body.innerHTML = "";
 
-document.body.style.margin = "0";
-document.body.style.background = "#101010";
-document.body.style.color = "#fff";
+
+document.body.style.margin =
+"0";
+
+
+document.body.style.background =
+"#101010";
+
+
+document.body.style.color =
+"#fff";
+
+
 document.body.style.fontFamily =
 "Arial,sans-serif";
 
 
 const app =
-document.createElement("div");
+document.createElement(
+    "div"
+);
 
 
 app.innerHTML = `
@@ -2967,8 +3206,8 @@ gap:6px;
 
 .cabecalhoDireita{
 display:flex;
-gap:5px;
 align-items:center;
+gap:5px;
 }
 
 .btnMostrar{
@@ -2994,6 +3233,7 @@ gap:3px;
 .btnRX{
 min-width:29px;
 height:27px;
+padding:0 6px;
 background:#202020;
 border:1px solid #555;
 border-radius:6px;
@@ -3016,6 +3256,7 @@ color:#fff;
 border:1px solid #555;
 border-radius:7px;
 padding:8px;
+resize:vertical;
 }
 
 .acoes{
@@ -3067,6 +3308,7 @@ color:#aaa;
 display:flex;
 gap:4px;
 overflow-x:auto;
+padding-bottom:2px;
 }
 
 .numeroRoleta,
@@ -3133,8 +3375,12 @@ height:10px;
 border-radius:3px;
 }
 
-.jogadaBox,
-.raiox{
+
+/* =====================================================
+   JOGADA
+===================================================== */
+
+.jogadaBox{
 background:#101010;
 border:1px solid #444;
 border-radius:8px;
@@ -3145,7 +3391,7 @@ padding:8px;
 font-size:9px;
 font-weight:900;
 color:#aaa;
-margin:6px 0 5px;
+margin:7px 0 5px;
 }
 
 .linhaJogadas{
@@ -3190,35 +3436,29 @@ color:#ffc107;
 }
 
 .numerosCobertos{
-font-size:10px;
+font-size:11px;
 font-weight:900;
-color:#ddd;
+color:#eee;
 line-height:1.5;
 padding-top:5px;
 border-top:1px solid #333;
 }
 
-.zonasBloco{
-display:flex;
-justify-content:center;
-gap:3px;
-flex-wrap:wrap;
-margin-top:5px;
-}
 
-.zonaMini{
-background:#292929;
-border:1px solid #555;
-border-radius:5px;
-padding:3px 5px;
-font-size:9px;
-font-weight:900;
-white-space:nowrap;
+/* =====================================================
+   RAIO X
+===================================================== */
+
+.raiox{
+background:#101010;
+border:1px solid #444;
+border-radius:8px;
+padding:8px;
 }
 
 .rxTopo{
 display:grid;
-grid-template-columns:repeat(3,1fr);
+grid-template-columns:repeat(4,1fr);
 gap:5px;
 margin-bottom:7px;
 }
@@ -3323,6 +3563,11 @@ font-size:7px !important;
 font-weight:900;
 }
 
+
+/* =====================================================
+   TECLADO
+===================================================== */
+
 .teclado{
 display:grid;
 grid-template-columns:repeat(6,1fr);
@@ -3342,6 +3587,11 @@ font-size:14px;
 .zeroBtn{
 grid-column:span 6;
 }
+
+
+/* =====================================================
+   HISTÓRICO
+===================================================== */
 
 .historico{
 display:flex;
@@ -3369,6 +3619,7 @@ border:2px solid #00e5ff;
 box-shadow:0 0 8px #00e5ff;
 }
 
+
 @media(max-width:600px){
 
 .app069{
@@ -3394,6 +3645,10 @@ height:34px;
 min-width:138px;
 }
 
+.rxTopo{
+grid-template-columns:repeat(2,1fr);
+}
+
 }
 
 </style>
@@ -3401,7 +3656,9 @@ min-width:138px;
 
 <div class="app069">
 
-<h2>Análise 0 • 6 • 9</h2>
+<h2>
+Análise 0 • 6 • 9
+</h2>
 
 
 <section class="painel">
@@ -3451,7 +3708,9 @@ Cole o histórico ou use o teclado.
 <div class="tituloPainel">
 
 ÚLTIMOS
-<span id="qtdJanela">0</span>/14
+<span id="qtdJanela">
+0
+</span>/14
 
 </div>
 
@@ -3501,22 +3760,34 @@ class="scrollLinha"
 <div class="legendaRegioes">
 
 <div class="itemRegiao">
-<span class="corRegiao" style="background:#9bea2c"></span>
+<span
+class="corRegiao"
+style="background:#9bea2c"
+></span>
 Zero
 </div>
 
 <div class="itemRegiao">
-<span class="corRegiao" style="background:#8a20d4"></span>
+<span
+class="corRegiao"
+style="background:#8a20d4"
+></span>
 Voisins
 </div>
 
 <div class="itemRegiao">
-<span class="corRegiao" style="background:#176436"></span>
+<span
+class="corRegiao"
+style="background:#176436"
+></span>
 Orphelins
 </div>
 
 <div class="itemRegiao">
-<span class="corRegiao" style="background:#29499b"></span>
+<span
+class="corRegiao"
+style="background:#29499b"
+></span>
 Tiers
 </div>
 
@@ -3569,9 +3840,26 @@ RAIO X
 
 <div class="seletorRX">
 
-<button id="rx4" class="btnRX">4</button>
-<button id="rx5" class="btnRX">5</button>
-<button id="rx6" class="btnRX">6</button>
+<button
+id="rx4"
+class="btnRX"
+>
+4
+</button>
+
+<button
+id="rx5"
+class="btnRX"
+>
+5
+</button>
+
+<button
+id="rx6"
+class="btnRX"
+>
+6
+</button>
 
 </div>
 
@@ -3622,7 +3910,9 @@ class="teclado"
 <div class="tituloPainel">
 
 HISTÓRICO OCULTO —
-<span id="qtdHistorico">0</span>
+<span id="qtdHistorico">
+0
+</span>
 
 </div>
 
@@ -3653,7 +3943,9 @@ class="historico"
 `;
 
 
-document.body.appendChild(app);
+document.body.appendChild(
+    app
+);
 
 
 /* =========================================================
@@ -3665,45 +3957,54 @@ document.getElementById(
     "statusArea"
 );
 
+
 const qtdJanela =
 document.getElementById(
     "qtdJanela"
 );
+
 
 const linhaCores =
 document.getElementById(
     "linhaCores"
 );
 
+
 const linhaRegioes =
 document.getElementById(
     "linhaRegioes"
 );
+
 
 const linhaIds =
 document.getElementById(
     "linhaIds"
 );
 
+
 const raioX =
 document.getElementById(
     "raioX"
 );
+
 
 const jogadaArea =
 document.getElementById(
     "jogadaArea"
 );
 
+
 const teclado =
 document.getElementById(
     "teclado"
 );
 
+
 const qtdHistorico =
 document.getElementById(
     "qtdHistorico"
 );
+
 
 const elementoHistorico =
 document.getElementById(
@@ -3712,13 +4013,14 @@ document.getElementById(
 
 
 /* =========================================================
-   RX 4/5/6
+   RX 4 / 5 / 6
 ========================================================= */
 
 function atualizarBotoesRX(){
 
     [4,5,6]
-    .forEach(function(numero){
+    .forEach(
+    function(numero){
 
         const botao =
         document.getElementById(
@@ -3728,7 +4030,8 @@ function atualizarBotoesRX(){
 
         botao.classList.toggle(
             "ativo",
-            numero === TAMANHO_RX
+            numero ===
+            TAMANHO_RX
         );
 
     });
@@ -3737,26 +4040,38 @@ function atualizarBotoesRX(){
 
 
 document
-.getElementById("rx4")
+.getElementById(
+    "rx4"
+)
 .onclick =
 function(){
+
     alterarTamanhoRaioX(4);
+
 };
 
 
 document
-.getElementById("rx5")
+.getElementById(
+    "rx5"
+)
 .onclick =
 function(){
+
     alterarTamanhoRaioX(5);
+
 };
 
 
 document
-.getElementById("rx6")
+.getElementById(
+    "rx6"
+)
 .onclick =
 function(){
+
     alterarTamanhoRaioX(6);
+
 };
 
 
@@ -3941,7 +4256,7 @@ apagarTudo;
 
 
 /* =========================================================
-   RENDER JANELA
+   RENDER ÚLTIMOS 14
 ========================================================= */
 
 function renderJanela(){
@@ -3954,16 +4269,21 @@ function renderJanela(){
     analise.janela.length;
 
 
-    if(!analise.janela.length){
+    if(
+        !analise.janela.length
+    ){
 
         linhaCores.innerHTML =
         "Sem números.";
 
+
         linhaRegioes.innerHTML =
         "Sem números.";
 
+
         linhaIds.innerHTML =
         "Sem números.";
+
 
         return;
 
@@ -3974,7 +4294,8 @@ function renderJanela(){
 
     analise.janela
 
-    .map(function(numero){
+    .map(
+    function(numero){
 
         const cor =
         corNumeroRoleta(
@@ -4007,7 +4328,8 @@ function renderJanela(){
 
     analise.janela
 
-    .map(function(numero){
+    .map(
+    function(numero){
 
         const regiao =
         regiaoDoNumero(
@@ -4018,7 +4340,9 @@ function renderJanela(){
         const cor =
         regiao
         ?
-        coresRegioes[regiao]
+        coresRegioes[
+            regiao
+        ]
         :
         "#555";
 
@@ -4046,9 +4370,12 @@ function renderJanela(){
 
     analise.sequencia
 
-    .map(function(item){
+    .map(
+    function(item){
 
-        if(!item.ids.length){
+        if(
+            !item.ids.length
+        ){
 
             return (
 
@@ -4065,7 +4392,8 @@ function renderJanela(){
 
         item.ids
 
-        .map(function(id){
+        .map(
+        function(id){
 
             return (
 
@@ -4103,7 +4431,14 @@ function renderJanela(){
 
 /* =========================================================
    RENDER JOGADA
-   RECEBE O RX PRONTO
+
+   SOMENTE OS BLOCOS E NÚMEROS.
+
+   NÃO MOSTRA:
+   - LISTA COMPLETA
+   - ALVOS
+   - JOGADA COMPLETA
+   - EXPLICAÇÃO
 ========================================================= */
 
 function renderJogada(rx){
@@ -4114,52 +4449,23 @@ function renderJogada(rx){
 
     if(
         !jogada ||
-        !rx.ranking.length
+        (
+            !jogada.blocos2.length &&
+            !jogada.blocos1.length
+        )
     ){
 
         jogadaArea.innerHTML =
-        '<div style="color:#777;text-align:center;">Aguardando análise.</div>';
+        '<div style="' +
+        'text-align:center;' +
+        'color:#777;' +
+        'padding:8px' +
+        '">' +
+        'Aguardando análise.' +
+        '</div>';
+
 
         return;
-
-    }
-
-
-    function criarZonas(zonas){
-
-        if(!zonas.length){
-            return "";
-        }
-
-
-        return (
-
-            '<div class="zonasBloco">' +
-
-            zonas
-
-            .map(function(zona){
-
-                return (
-
-                    '<span class="zonaMini">' +
-
-                    zona.label +
-                    ' ' +
-                    zona.ocorrencias +
-                    'x' +
-
-                    '</span>'
-
-                );
-
-            })
-
-            .join("") +
-
-            '</div>'
-
-        );
 
     }
 
@@ -4168,7 +4474,8 @@ function renderJogada(rx){
 
 
     jogada.blocos2
-    .forEach(function(bloco){
+    .forEach(
+    function(bloco){
 
         html2 +=
 
@@ -4182,43 +4489,24 @@ function renderJogada(rx){
 
         '<div class="numerosCobertos">' +
 
-        bloco.numeros.join(
+        bloco.numeros
+        .join(
             " • "
         ) +
 
         '</div>' +
-
-        criarZonas(
-            bloco.zonas
-        ) +
 
         '</div>';
 
     });
 
 
-    if(!html2){
-
-        html2 =
-
-        '<div style="' +
-        'font-size:9px;' +
-        'color:#666;' +
-        'padding:6px' +
-        '">' +
-
-        'Nenhum bloco de 2 vizinhos.' +
-
-        '</div>';
-
-    }
-
-
     let html1 = "";
 
 
     jogada.blocos1
-    .forEach(function(bloco){
+    .forEach(
+    function(bloco){
 
         html1 +=
 
@@ -4232,67 +4520,69 @@ function renderJogada(rx){
 
         '<div class="numerosCobertos">' +
 
-        bloco.numeros.join(
+        bloco.numeros
+        .join(
             " • "
         ) +
 
         '</div>' +
-
-        criarZonas(
-            bloco.zonas
-        ) +
 
         '</div>';
 
     });
 
 
-    if(!html1){
+    let html = "";
 
-        html1 =
 
-        '<div style="' +
-        'font-size:9px;' +
-        'color:#666;' +
-        'padding:6px' +
-        '">' +
+    if(
+        html2
+    ){
 
-        'Não precisa completar com 1 vizinho.' +
+        html +=
 
+        '<div class="jogadaSubtitulo">' +
+        '2 VIZINHOS' +
+        '</div>' +
+
+        '<div class="linhaJogadas">' +
+        html2 +
+        '</div>';
+
+    }
+
+
+    if(
+        html1
+    ){
+
+        html +=
+
+        '<div class="jogadaSubtitulo">' +
+        '1 VIZINHO' +
+        '</div>' +
+
+        '<div class="linhaJogadas">' +
+        html1 +
         '</div>';
 
     }
 
 
     jogadaArea.innerHTML =
-
-    '<div class="jogadaSubtitulo">' +
-    '2 VIZINHOS' +
-    '</div>' +
-
-    '<div class="linhaJogadas">' +
-    html2 +
-    '</div>' +
-
-    '<div class="jogadaSubtitulo">' +
-    '1 VIZINHO PARA COMPLETAR' +
-    '</div>' +
-
-    '<div class="linhaJogadas">' +
-    html1 +
-    '</div>';
-
+    html;
 }
 
 
 /* =========================================================
-   RENDER RX
-   RECEBE O MESMO RX PRONTO
+   RENDER RAIO X
 ========================================================= */
 
 function renderRaioX(rx){
 
-    if(!rx.ranking.length){
+    if(
+        !rx.ranking.length
+    ){
 
         raioX.innerHTML =
 
@@ -4302,9 +4592,10 @@ function renderRaioX(rx){
         'padding:15px' +
         '">' +
 
-        'Aguardando histórico suficiente para análise.' +
+        'Aguardando histórico suficiente.' +
 
         '</div>';
+
 
         return;
 
@@ -4315,7 +4606,8 @@ function renderRaioX(rx){
 
 
     rx.ranking
-    .forEach(function(item,index){
+    .forEach(
+    function(item,index){
 
         const familia =
         familiaDoId(
@@ -4327,6 +4619,34 @@ function renderRaioX(rx){
         corFamilia(
             familia
         );
+
+
+        let ocorrenciasTexto =
+        item.ocorrencias +
+        "x";
+
+
+        if(
+            item.tipo ===
+            "ZERO26"
+            &&
+            Number.isFinite(
+                item.ocorrencias0
+            )
+            &&
+            Number.isFinite(
+                item.ocorrencias26
+            )
+        ){
+
+            ocorrenciasTexto =
+            "0:" +
+            item.ocorrencias0 +
+            "x • 26:" +
+            item.ocorrencias26 +
+            "x";
+
+        }
 
 
         rankingHTML +=
@@ -4350,16 +4670,11 @@ function renderRaioX(rx){
         '</strong>' +
 
         '<small>' +
-
-        item.ocorrencias +
-        'x' +
-
+        ocorrenciasTexto +
         '</small>' +
 
         '<small class="rxOrigem">' +
-
         item.origem +
-
         '</small>' +
 
         '</div>';
@@ -4370,7 +4685,9 @@ function renderRaioX(rx){
     let sinal = "";
 
 
-    if(rx.lider){
+    if(
+        rx.lider
+    ){
 
         const cor =
         corFamilia(
@@ -4420,32 +4737,59 @@ function renderRaioX(rx){
 
     '<div class="rxTopo">' +
 
+
     '<div class="rxCard">' +
+
     '<small>RÉPLICAS USADAS</small>' +
+
     '<strong>' +
     rx.replicas +
     '</strong>' +
+
     '</div>' +
 
+
     '<div class="rxCard">' +
+
     '<small>JANELAS</small>' +
+
     '<strong>' +
     rx.totalJanelas +
     '</strong>' +
+
     '</div>' +
 
+
     '<div class="rxCard">' +
-    '<small>SIMILARIDADE</small>' +
+
+    '<small>ZONAS DO RX</small>' +
+
     '<strong>' +
-    rx.similaridade.toFixed(1) +
-    '%' +
+    rx.zonasEncontradas +
     '</strong>' +
+
     '</div>' +
+
+
+    '<div class="rxCard">' +
+
+    '<small>SIMILARIDADE</small>' +
+
+    '<strong>' +
+    rx.similaridade
+    .toFixed(1) +
+    '%' +
+
+    '</strong>' +
+
+    '</div>' +
+
 
     '</div>' +
 
 
     '<div class="rxFamilias">' +
+
 
     '<div class="rxFamilia">' +
 
@@ -4497,9 +4841,12 @@ function renderRaioX(rx){
 
     '</div>' +
 
+
     '</div>' +
 
+
     sinal +
+
 
     '<div class="tituloPainel" ' +
     'style="margin-bottom:5px">' +
@@ -4508,6 +4855,7 @@ function renderRaioX(rx){
     rx.tamanho +
 
     '</div>' +
+
 
     '<div class="rxRanking">' +
 
@@ -4528,10 +4876,13 @@ function renderHistorico(){
     historico.length;
 
 
-    if(!historico.length){
+    if(
+        !historico.length
+    ){
 
         elementoHistorico.innerHTML =
         "Histórico vazio.";
+
 
         return;
 
@@ -4559,7 +4910,8 @@ function renderHistorico(){
 
     visiveis
 
-    .map(function(numero,index){
+    .map(
+    function(numero,index){
 
         const indiceReal =
         offset +
@@ -4631,25 +4983,58 @@ function renderHistorico(){
 
 
 /* =========================================================
-   CACHE DA ANÁLISE
+   CACHE
 ========================================================= */
 
-let ultimaChaveAnalise = "";
-let ultimaAnalise = null;
+let ultimaAnalise =
+null;
+
+
+let ultimaChaveAnalise =
+"";
+
+
+function invalidarCache(){
+
+    ultimaAnalise =
+    null;
+
+
+    ultimaChaveAnalise =
+    "";
+
+}
 
 
 function obterAnaliseAtual(){
 
     /*
-      A chave muda sempre que:
-      - entra número
-      - apaga número
-      - troca RX 4/5/6
-      - cola novo histórico
-
-      Assim não recalculamos o RX
-      várias vezes dentro do mesmo render.
+      USA O HISTÓRICO INTEIRO NA CHAVE
+      ATRAVÉS DE UMA ASSINATURA SIMPLES,
+      PARA NÃO FICAR PRESO QUANDO DOIS
+      HISTÓRICOS TÊM O MESMO TAMANHO.
     */
+
+    let assinatura = 0;
+
+
+    for(
+        let i=0;
+        i<historico.length;
+        i++
+    ){
+
+        assinatura =
+        (
+            assinatura * 31 +
+            historico[i] +
+            i
+        )
+        >>>
+        0;
+
+    }
+
 
     const chave =
 
@@ -4657,12 +5042,13 @@ function obterAnaliseAtual(){
     "|" +
     historico.length +
     "|" +
-    historico.slice(-20).join(",");
+    assinatura;
 
 
     if(
         ultimaAnalise &&
-        ultimaChaveAnalise === chave
+        ultimaChaveAnalise ===
+        chave
     ){
 
         return ultimaAnalise;
@@ -4684,10 +5070,6 @@ function obterAnaliseAtual(){
 
 /* =========================================================
    RENDER GERAL
-
-   AQUI ESTÁ A CORREÇÃO PRINCIPAL:
-
-   O RAIO X É CALCULADO UMA ÚNICA VEZ.
 ========================================================= */
 
 function render(){
@@ -4696,18 +5078,32 @@ function render(){
 
         renderJanela();
 
+
         renderHistorico();
+
 
         atualizarBotoesRX();
 
+
+        /*
+          CALCULA O RX UMA VEZ.
+
+          JOGADA E RAIO X RECEBEM
+          O MESMO RESULTADO.
+        */
 
         const rx =
         obterAnaliseAtual();
 
 
-        renderJogada(rx);
+        renderJogada(
+            rx
+        );
 
-        renderRaioX(rx);
+
+        renderRaioX(
+            rx
+        );
 
 
     }catch(erro){
@@ -4739,7 +5135,7 @@ function render(){
 
 
 /* =========================================================
-   INÍCIO
+   INICIAR
 ========================================================= */
 
 render();
