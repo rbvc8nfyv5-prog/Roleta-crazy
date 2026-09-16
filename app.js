@@ -2,22 +2,43 @@
 "use strict";
 
 /* =========================================================
-   ANALISADOR 0 • 6 • 9 — V6 ORGANISMO VIVO
-   Base: V5 enviada pelo usuário.
+   ANALISADOR 0 • 6 • 9
+   MOTOR ORIGINAL + CAMADA ADAPTATIVA
 
-   ATUALIZAÇÕES:
-   - 90% = meta operacional
-   - <90% = RECALIBRAÇÃO
-   - <=85% ou 2 LOSS = RECUPERAÇÃO FORTE
-   - 3 LOSS = REESTRUTURAÇÃO
-   - aprende com a posição/distância dos LOSS
-   - T0–T9 + vizinhos de terminal
-   - RX 4/5/6 simultâneos
-   - janelas ampliadas na recuperação
-   - previsão congelada por assinatura do histórico
-   - AUTO/MANUAL não reescreve snapshot pendente
-   - clique entra visualmente antes do cálculo pesado
-   - 5×2V + 1×1V = 28 casas sem sobreposição
+   REGRA PRINCIPAL DESTA VERSÃO:
+
+   O RAIO X NÃO FOI SUBSTITUÍDO.
+
+   MOTOR-BASE:
+   1. RX 4 / 5 / 6
+   2. Similaridade original:
+      80% eventos 0/6/9
+      20% formato da trajetória
+   3. Réplicas históricas
+   4. Próximos números reais das réplicas
+   5. 5 setores de 2 vizinhos
+   6. 1 setor de 1 vizinho
+   7. 28 números sem sobreposição
+
+   CAMADA NOVA:
+   - AUTO adaptativo
+   - offset -2/-1/0/+1/+2
+   - borda
+   - alto/baixo
+   - vermelho/preto
+   - regiões
+   - terminais
+   - vizinhos de terminal
+   - concentração física
+   - recuperação quando taxa deteriora
+   - timelines RX4/RX5/RX6 congeladas
+   - timeline AUTO congelada
+
+   IMPORTANTE:
+   As informações auxiliares NÃO mudam
+   a seleção histórica das réplicas RX.
+
+   Elas trabalham depois do RX.
 ========================================================= */
 
 
@@ -29,7 +50,7 @@ const STORAGE_KEY =
 "ANALISADOR_069_IDS_CORRESPONDENTES_V1";
 
 const STORAGE_ENGINE =
-"ANALISADOR_069_ENGINE_ADAPTATIVO_V6_ORGANISMO";
+"ANALISADOR_069_ENGINE_ORIGINAL_ADAPTATIVO_V8";
 
 const MAX_HISTORICO = 5000;
 
@@ -38,218 +59,19 @@ const JANELA_ESTADO = 20;
 
 const MAX_TIMELINE = 300;
 
-const BACKTEST_MAX = 40;
-const BACKTEST_MIN = 10;
-
-const PESO_RECENTE_MIN = 0.25;
-const PESO_RECENTE_MAX = 1.00;
+const RX_DISPONIVEIS = [4,5,6];
 
 const PERCENTUAL_REPLICAS_RX = 0.10;
-const MIN_REPLICAS_RX = 12;
+const MIN_REPLICAS_RX = 15;
 const MAX_REPLICAS_RX = 40;
 
 const QTD_2V = 5;
-const QTD_1V = 1;
 const TOTAL_COBERTURA = 28;
 
-const RX_DISPONIVEIS = [4,5,6];
+const OFFSETS_TESTADOS = [-2,-1,0,1,2];
 
-const META_ASSERTIVIDADE = 90;
-const LIMITE_FORTE = 85;
-
-
-/*
-  Em condição normal usamos menos alternativas.
-
-  Quando o comportamento deteriora,
-  o motor abre novas janelas.
-*/
-
-const JANELAS_NORMAL = [
-  8,
-  10,
-  14,
-  20
-];
-
-const JANELAS_RECALIBRACAO = [
-  6,
-  8,
-  10,
-  12,
-  14,
-  20
-];
-
-const JANELAS_RECUPERACAO = [
-  5,
-  6,
-  8,
-  10,
-  12,
-  14,
-  20
-];
-
-
-/*
-  Deslocamento físico da estrutura.
-
-  NORMAL:
-  não desloca.
-
-  RECALIBRAÇÃO:
-  testa -1 / 0 / +1.
-
-  RECUPERAÇÃO:
-  testa -2 / -1 / 0 / +1 / +2.
-*/
-
-const OFFSETS_NORMAL = [
-  0
-];
-
-const OFFSETS_RECALIBRACAO = [
-  -1,
-  0,
-  1
-];
-
-const OFFSETS_RECUPERACAO = [
-  -2,
-  -1,
-  0,
-  1,
-  2
-];
-
-
-/* =========================================================
-   PERFIS INTERNOS
-========================================================= */
-
-const PERFIS_BASE = [
-
-  {
-    id:"RX",
-
-    rx:1.00,
-
-    roda:0.15,
-
-    altoBaixo:0.00,
-
-    cor:0.00,
-
-    regiao:0.00,
-
-    familia:0.10,
-
-    terminal:0.05,
-
-    borda:0.30,
-
-    erro:0.10
-  },
-
-
-  {
-    id:"MOMENTO",
-
-    rx:0.80,
-
-    roda:0.35,
-
-    altoBaixo:0.15,
-
-    cor:0.10,
-
-    regiao:0.15,
-
-    familia:0.20,
-
-    terminal:0.20,
-
-    borda:0.40,
-
-    erro:0.25
-  },
-
-
-  {
-    id:"RODA",
-
-    rx:0.70,
-
-    roda:0.55,
-
-    altoBaixo:0.05,
-
-    cor:0.05,
-
-    regiao:0.10,
-
-    familia:0.15,
-
-    terminal:0.20,
-
-    borda:0.55,
-
-    erro:0.35
-  },
-
-
-  {
-    id:"CONFLUENCIA",
-
-    rx:0.75,
-
-    roda:0.35,
-
-    altoBaixo:0.20,
-
-    cor:0.15,
-
-    regiao:0.20,
-
-    familia:0.25,
-
-    terminal:0.30,
-
-    borda:0.45,
-
-    erro:0.35
-  },
-
-
-  {
-    id:"TERMINAL",
-
-    rx:0.70,
-
-    roda:0.30,
-
-    altoBaixo:0.10,
-
-    cor:0.05,
-
-    regiao:0.10,
-
-    familia:0.15,
-
-    terminal:0.55,
-
-    borda:0.45,
-
-    erro:0.45
-  }
-
-];
-
-
-/* =========================================================
-   CORES
-========================================================= */
+const MAX_TESTES_OFFSET = 60;
+const MIN_TESTES_OFFSET = 8;
 
 const COR_T0 = "#00c853";
 const COR_T6 = "#ffc107";
@@ -261,81 +83,53 @@ const COR_T9 = "#2196f3";
 ========================================================= */
 
 const track = [
-
   32,15,19,4,21,2,25,17,34,6,
-
   27,13,36,11,30,8,23,10,5,24,
-
   16,33,1,20,14,31,9,22,18,29,
-
   7,28,12,35,3,26,0
-
 ];
 
 
 const numerosVermelhos = new Set([
-
   1,3,5,7,9,
-
   12,14,16,18,
-
   19,21,23,25,27,
-
   30,32,34,36
-
 ]);
 
 
 /* =========================================================
-   REGIÕES
+   REGIÕES FIXAS
 ========================================================= */
 
 const regioesRoleta = {
 
   ZERO:new Set([
-
     0,32,15,26,3,35,12
-
   ]),
-
 
   VOISINS:new Set([
-
     19,4,21,2,25,
-
     28,7,29,18,22
-
   ]),
-
 
   ORPHELINS:new Set([
-
     9,31,14,20,1,17,6,34
-
   ]),
 
-
   TIERS:new Set([
-
     27,13,36,11,30,8,
-
     23,10,5,24,16,33
-
   ])
 
 };
 
 
 const coresRegioes = {
-
   ZERO:"#9bea2c",
-
   VOISINS:"#8a20d4",
-
   ORPHELINS:"#176436",
-
   TIERS:"#29499b"
-
 };
 
 
@@ -344,24 +138,23 @@ const coresRegioes = {
 ========================================================= */
 
 const BASES_069 = [
-
   0,10,20,30,
-
   6,16,26,36,
-
   9,19,29
+];
 
+
+const TODOS_IDS_RX = [
+  0,10,20,30,
+  6,16,26,36,
+  9,19,29,39
 ];
 
 
 const IDS_ESPECIAIS = {
-
   25:[39],
-
   17:[9],
-
   2:[9]
-
 };
 
 
@@ -379,97 +172,32 @@ let estado = {
 
   manualRX:6,
 
-
-  /*
-    Previsão AUTO esperando
-    o próximo resultado.
-  */
-
   pendenteAuto:null,
 
-
-  /*
-    Cada RX mantém sua própria
-    previsão congelada.
-  */
-
   pendentesRX:{
-
     4:null,
-
     5:null,
-
     6:null
-
   },
-
-
-  /*
-    Histórico fiel RX4/RX5/RX6.
-  */
 
   timelineRX:{
-
     4:[],
-
     5:[],
-
     6:[]
-
   },
-
-
-  /*
-    Histórico do AUTO.
-  */
 
   timelineAuto:[],
 
+  offsetAtual:0,
 
   ultimaConfiguracao:null,
 
-
-  motor:{
-
-    fase:"APRENDENDO",
-
-    deterioracao:0,
-
-    ultimaTaxa20:0
-
-  }
+  fase:"APRENDENDO"
 
 };
 
 
 carregarEstado();
-
-
-/* =========================================================
-   CACHE
-========================================================= */
-
-let cacheConfig =
-new Map();
-
-
-let cacheEstado =
-new Map();
-
-
-let cacheRX =
-new Map();
-
-
-function limparCaches(){
-
-  cacheConfig.clear();
-
-  cacheEstado.clear();
-
-  cacheRX.clear();
-
-}
 
 
 /* =========================================================
@@ -485,53 +213,25 @@ function carregarHistorico(){
       STORAGE_KEY
     );
 
-
     if(!raw){
-
       return [];
-
     }
-
 
     const dados =
     JSON.parse(raw);
 
-
-    if(
-      !Array.isArray(
-        dados
-      )
-    ){
-
+    if(!Array.isArray(dados)){
       return [];
-
     }
 
-
     return dados
-
     .map(Number)
-
-    .filter(numero =>
-
-      Number.isInteger(
-        numero
-      )
-
-      &&
-
-      numero >= 0
-
-      &&
-
-      numero <= 36
-
+    .filter(n =>
+      Number.isInteger(n) &&
+      n >= 0 &&
+      n <= 36
     )
-
-    .slice(
-      -MAX_HISTORICO
-    );
-
+    .slice(-MAX_HISTORICO);
 
   }catch(e){
 
@@ -547,13 +247,8 @@ function salvarHistorico(){
   try{
 
     localStorage.setItem(
-
       STORAGE_KEY,
-
-      JSON.stringify(
-        historico
-      )
-
+      JSON.stringify(historico)
     );
 
   }catch(e){}
@@ -570,11 +265,8 @@ function carregarEstado(){
       STORAGE_ENGINE
     );
 
-
     if(!raw){
-
       return;
-
     }
 
 
@@ -583,59 +275,37 @@ function carregarEstado(){
 
 
     if(
-
-      salvo.modo === "AUTO"
-
-      ||
-
+      salvo.modo === "AUTO" ||
       salvo.modo === "MANUAL"
-
     ){
-
       estado.modo =
       salvo.modo;
-
     }
 
 
     if(
-
       RX_DISPONIVEIS.includes(
         salvo.manualRX
       )
-
     ){
-
       estado.manualRX =
       salvo.manualRX;
-
     }
 
 
-    if(
-      salvo.pendenteAuto
-    ){
-
+    if(salvo.pendenteAuto){
       estado.pendenteAuto =
       salvo.pendenteAuto;
-
     }
 
 
-    if(
-      salvo.pendentesRX
-    ){
+    if(salvo.pendentesRX){
 
-      RX_DISPONIVEIS
-      .forEach(rx => {
+      RX_DISPONIVEIS.forEach(rx => {
 
-        if(
-          salvo.pendentesRX[rx]
-        ){
-
+        if(salvo.pendentesRX[rx]){
           estado.pendentesRX[rx] =
           salvo.pendentesRX[rx];
-
         }
 
       });
@@ -643,12 +313,9 @@ function carregarEstado(){
     }
 
 
-    if(
-      salvo.timelineRX
-    ){
+    if(salvo.timelineRX){
 
-      RX_DISPONIVEIS
-      .forEach(rx => {
+      RX_DISPONIVEIS.forEach(rx => {
 
         if(
           Array.isArray(
@@ -657,12 +324,8 @@ function carregarEstado(){
         ){
 
           estado.timelineRX[rx] =
-
           salvo.timelineRX[rx]
-
-          .slice(
-            -MAX_TIMELINE
-          );
+          .slice(-MAX_TIMELINE);
 
         }
 
@@ -678,19 +341,25 @@ function carregarEstado(){
     ){
 
       estado.timelineAuto =
-
       salvo.timelineAuto
-
-      .slice(
-        -MAX_TIMELINE
-      );
+      .slice(-MAX_TIMELINE);
 
     }
 
 
     if(
-      salvo.ultimaConfiguracao
+      Number.isInteger(
+        salvo.offsetAtual
+      )
     ){
+
+      estado.offsetAtual =
+      salvo.offsetAtual;
+
+    }
+
+
+    if(salvo.ultimaConfiguracao){
 
       estado.ultimaConfiguracao =
       salvo.ultimaConfiguracao;
@@ -698,20 +367,12 @@ function carregarEstado(){
     }
 
 
-    if(
-      salvo.motor
-    ){
+    if(salvo.fase){
 
-      estado.motor = {
-
-        ...estado.motor,
-
-        ...salvo.motor
-
-      };
+      estado.fase =
+      salvo.fase;
 
     }
-
 
   }catch(e){}
 
@@ -723,46 +384,11 @@ function salvarEstado(){
   try{
 
     localStorage.setItem(
-
       STORAGE_ENGINE,
-
-      JSON.stringify(
-        estado
-      )
-
+      JSON.stringify(estado)
     );
 
   }catch(e){}
-
-}
-
-
-/* =========================================================
-   ASSINATURA DO HISTÓRICO
-
-   Impede que render/manual altere
-   previsão que já estava congelada.
-========================================================= */
-
-function assinaturaHistorico(
-  base=historico
-){
-
-  return (
-
-    base.length
-
-    +
-
-    "|"
-
-    +
-
-    base
-    .slice(-32)
-    .join(",")
-
-  );
 
 }
 
@@ -773,9 +399,7 @@ function assinaturaHistorico(
 
 function indiceRoda(numero){
 
-  return track.indexOf(
-    numero
-  );
+  return track.indexOf(numero);
 
 }
 
@@ -786,17 +410,10 @@ function setorVizinhosOrdenado(
 ){
 
   const indice =
-  indiceRoda(
-    centro
-  );
+  indiceRoda(centro);
 
-
-  if(
-    indice < 0
-  ){
-
+  if(indice < 0){
     return [];
-
   }
 
 
@@ -812,19 +429,13 @@ function setorVizinhosOrdenado(
     numeros.push(
 
       track[
-
         (
-          indice
-          +
-          d
-          +
+          indice +
+          d +
           track.length
         )
-
         %
-
         track.length
-
       ]
 
     );
@@ -843,23 +454,15 @@ function vizinhos(
 ){
 
   const indice =
-  indiceRoda(
-    numero
-  );
+  indiceRoda(numero);
 
-
-  if(
-    indice < 0
-  ){
-
+  if(indice < 0){
     return [];
-
   }
 
 
-  const resultado=[
-    numero
-  ];
+  const resultado =
+  [numero];
 
 
   for(
@@ -871,19 +474,12 @@ function vizinhos(
     resultado.push(
 
       track[
-
         (
-          indice
-          -
-          d
-          +
+          indice-d+
           track.length
         )
-
         %
-
         track.length
-
       ]
 
     );
@@ -892,17 +488,11 @@ function vizinhos(
     resultado.push(
 
       track[
-
         (
-          indice
-          +
-          d
+          indice+d
         )
-
         %
-
         track.length
-
       ]
 
     );
@@ -915,27 +505,20 @@ function vizinhos(
 }
 
 
-function distanciaRoda(
-  a,
-  b
-){
+function distanciaRoda(a,b){
 
   const ia =
   indiceRoda(a);
-
 
   const ib =
   indiceRoda(b);
 
 
   if(
-    ia < 0
-    ||
+    ia < 0 ||
     ib < 0
   ){
-
     return 99;
-
   }
 
 
@@ -946,80 +529,91 @@ function distanciaRoda(
 
 
   return Math.min(
-
     direta,
-
     track.length-direta
-
   );
 
 }
 
 
-function deslocarCentro(
-  centro,
+function moverNaRoda(
+  numero,
   offset
 ){
 
   const indice =
-  indiceRoda(
-    centro
-  );
+  indiceRoda(numero);
 
 
-  if(
-    indice < 0
-  ){
-
-    return centro;
-
+  if(indice < 0){
+    return numero;
   }
 
 
   return track[
-
     (
-      indice
-      +
-      offset
-      +
+      indice +
+      offset +
       track.length
     )
-
     %
-
     track.length
-
   ];
 
 }
 
 
 /* =========================================================
-   CORES / REGIÕES / FAMÍLIAS
+   CORES / REGIÕES
 ========================================================= */
 
 function corNumeroRoleta(numero){
 
-  if(
-    numero === 0
-  ){
-
+  if(numero === 0){
     return "#087c48";
-
   }
 
 
-  return numerosVermelhos
-  .has(numero)
+  if(
+    numerosVermelhos.has(numero)
+  ){
+    return "#c6283d";
+  }
 
+
+  return "#181818";
+
+}
+
+
+function classeCor(numero){
+
+  if(numero === 0){
+    return "ZERO";
+  }
+
+
+  return numerosVermelhos.has(numero)
   ?
-
-  "#c6283d"
-
+  "VERMELHO"
   :
+  "PRETO";
 
-  "#181818";
+}
+
+
+function classeAltura(numero){
+
+  if(numero === 0){
+    return "ZERO";
+  }
+
+
+  return numero <= 18
+  ?
+  "BAIXO"
+  :
+  "ALTO";
 
 }
 
@@ -1027,42 +621,30 @@ function corNumeroRoleta(numero){
 function regiaoDoNumero(numero){
 
   if(
-    regioesRoleta.ZERO
-    .has(numero)
+    regioesRoleta.ZERO.has(numero)
   ){
-
     return "ZERO";
-
   }
 
 
   if(
-    regioesRoleta.VOISINS
-    .has(numero)
+    regioesRoleta.VOISINS.has(numero)
   ){
-
     return "VOISINS";
-
   }
 
 
   if(
-    regioesRoleta.ORPHELINS
-    .has(numero)
+    regioesRoleta.ORPHELINS.has(numero)
   ){
-
     return "ORPHELINS";
-
   }
 
 
   if(
-    regioesRoleta.TIERS
-    .has(numero)
+    regioesRoleta.TIERS.has(numero)
   ){
-
     return "TIERS";
-
   }
 
 
@@ -1071,50 +653,68 @@ function regiaoDoNumero(numero){
 }
 
 
+/* =========================================================
+   TERMINAIS
+========================================================= */
+
+function terminal(numero){
+
+  return numero % 10;
+
+}
+
+
+function terminalAnterior(t){
+
+  return (
+    t+9
+  ) % 10;
+
+}
+
+
+function terminalSeguinte(t){
+
+  return (
+    t+1
+  ) % 10;
+
+}
+
+
+/* =========================================================
+   FAMÍLIAS
+========================================================= */
+
 function familiaDoId(id){
 
   if(
-    id === 0
-    ||
-    id === 10
-    ||
-    id === 20
-    ||
+    id === 0 ||
+    id === 10 ||
+    id === 20 ||
     id === 30
   ){
-
     return 0;
-
   }
 
 
   if(
-    id === 6
-    ||
-    id === 16
-    ||
-    id === 26
-    ||
+    id === 6 ||
+    id === 16 ||
+    id === 26 ||
     id === 36
   ){
-
     return 6;
-
   }
 
 
   if(
-    id === 9
-    ||
-    id === 19
-    ||
-    id === 29
-    ||
+    id === 9 ||
+    id === 19 ||
+    id === 29 ||
     id === 39
   ){
-
     return 9;
-
   }
 
 
@@ -1129,30 +729,18 @@ function corDoId(id){
   familiaDoId(id);
 
 
-  if(
-    familia === 0
-  ){
-
+  if(familia === 0){
     return COR_T0;
-
   }
 
 
-  if(
-    familia === 6
-  ){
-
+  if(familia === 6){
     return COR_T6;
-
   }
 
 
-  if(
-    familia === 9
-  ){
-
+  if(familia === 9){
     return COR_T9;
-
   }
 
 
@@ -1168,16 +756,11 @@ function corDoId(id){
 const coberturaDasBases = {};
 
 
-BASES_069
-.forEach(base => {
+BASES_069.forEach(base => {
 
   coberturaDasBases[base] =
-
   new Set(
-    vizinhos(
-      base,
-      1
-    )
+    vizinhos(base,1)
   );
 
 });
@@ -1188,19 +771,14 @@ function idsQueBatem(numero){
   const ids=[];
 
 
-  BASES_069
-  .forEach(base => {
+  BASES_069.forEach(base => {
 
     if(
-
       coberturaDasBases[base]
       .has(numero)
-
     ){
 
-      ids.push(
-        base
-      );
+      ids.push(base);
 
     }
 
@@ -1208,14 +786,12 @@ function idsQueBatem(numero){
 
 
   if(
-
     Object.prototype
     .hasOwnProperty
     .call(
       IDS_ESPECIAIS,
       numero
     )
-
   ){
 
     IDS_ESPECIAIS[numero]
@@ -1224,9 +800,7 @@ function idsQueBatem(numero){
       if(
         !ids.includes(id)
       ){
-
         ids.push(id);
-
       }
 
     });
@@ -1244,14 +818,9 @@ function familiasQueBatem(numero){
   return new Set(
 
     idsQueBatem(numero)
-
-    .map(
-      familiaDoId
-    )
-
-    .filter(
-      familia =>
-      familia !== null
+    .map(familiaDoId)
+    .filter(f =>
+      f !== null
     )
 
   );
@@ -1260,143 +829,67 @@ function familiasQueBatem(numero){
 
 
 /* =========================================================
-   TERMINAIS
-========================================================= */
+   TRAJETÓRIA ORIGINAL 0/6/9
 
-function terminalDoNumero(numero){
-
-  return numero % 10;
-
-}
-
-
-function terminaisVizinhos(
-  terminal
-){
-
-  return [
-
-    (
-      terminal +
-      9
-    )
-    %
-    10,
-
-    terminal,
-
-    (
-      terminal +
-      1
-    )
-    %
-    10
-
-  ];
-
-}
-
-
-/* =========================================================
-   TRAJETÓRIA 0 / 6 / 9
+   NÃO ALTERAR A LÓGICA DO RX.
 ========================================================= */
 
 function gerarTrajetoria(janela){
 
   let t0=0;
-
   let t6=0;
-
   let t9=0;
 
-
   const pontos=[];
-
   const eventos=[];
 
 
-  janela
-  .forEach(
+  janela.forEach(
   (numero,index) => {
 
     const familias =
-    familiasQueBatem(
-      numero
-    );
+    familiasQueBatem(numero);
 
 
     const b0 =
-    familias.has(0)
-    ?
-    1
-    :
-    0;
-
+    familias.has(0) ? 1 : 0;
 
     const b6 =
-    familias.has(6)
-    ?
-    1
-    :
-    0;
-
+    familias.has(6) ? 1 : 0;
 
     const b9 =
-    familias.has(9)
-    ?
-    1
-    :
-    0;
+    familias.has(9) ? 1 : 0;
 
 
     t0 += b0;
-
     t6 += b6;
-
     t9 += b9;
 
 
     eventos.push({
-
       t0:b0,
-
       t6:b6,
-
       t9:b9
-
     });
 
 
     pontos.push({
-
-      posicao:
-      index+1,
-
+      posicao:index+1,
       numero,
-
       t0,
-
       t6,
-
       t9
-
     });
 
   });
 
 
   return {
-
     pontos,
-
     eventos,
-
     total0:t0,
-
     total6:t6,
-
     total9:t9
-
   };
 
 }
@@ -1407,30 +900,16 @@ function chaveEvento(evento){
   let chave="";
 
 
-  if(
-    evento.t0
-  ){
-
+  if(evento.t0){
     chave+="0";
-
   }
 
-
-  if(
-    evento.t6
-  ){
-
+  if(evento.t6){
     chave+="6";
-
   }
 
-
-  if(
-    evento.t9
-  ){
-
+  if(evento.t9){
     chave+="9";
-
   }
 
 
@@ -1438,6 +917,16 @@ function chaveEvento(evento){
 
 }
 
+
+/* =========================================================
+   SIMILARIDADE ORIGINAL
+
+   80% sequência
+   20% formato
+
+   ALTO/BAIXO, COR, REGIÃO E TERMINAL
+   NÃO ENTRAM AQUI.
+========================================================= */
 
 function calcularSimilaridade(
   janelaAtual,
@@ -1449,18 +938,10 @@ function calcularSimilaridade(
 
 
   if(
-
-    tamanho === 0
-
-    ||
-
-    janelaAntiga.length !==
-    tamanho
-
+    tamanho === 0 ||
+    janelaAntiga.length !== tamanho
   ){
-
     return 0;
-
   }
 
 
@@ -1486,17 +967,13 @@ function calcularSimilaridade(
   ){
 
     if(
-
       chaveEvento(
         atual.eventos[i]
       )
-
       ===
-
       chaveEvento(
         antiga.eventos[i]
       )
-
     ){
 
       iguais++;
@@ -1507,11 +984,8 @@ function calcularSimilaridade(
 
 
   const scoreEventos =
-
-  iguais
-  /
-  tamanho
-  *
+  iguais /
+  tamanho *
   100;
 
 
@@ -1525,221 +999,335 @@ function calcularSimilaridade(
   ){
 
     erro +=
-
     Math.abs(
-
-      atual.pontos[i].t0
-
-      -
-
+      atual.pontos[i].t0 -
       antiga.pontos[i].t0
-
     );
 
 
     erro +=
-
     Math.abs(
-
-      atual.pontos[i].t6
-
-      -
-
+      atual.pontos[i].t6 -
       antiga.pontos[i].t6
-
     );
 
 
     erro +=
-
     Math.abs(
-
-      atual.pontos[i].t9
-
-      -
-
+      atual.pontos[i].t9 -
       antiga.pontos[i].t9
-
     );
 
   }
 
 
   const maxErro =
-
-  tamanho
-  *
-  tamanho
-  *
+  tamanho *
+  tamanho *
   3;
 
 
   let scoreForma =
-
-  1
-
-  -
-
+  1 -
   erro/maxErro;
 
 
   scoreForma =
-
   Math.max(
-
     0,
-
     Math.min(
       1,
       scoreForma
     )
-
   )
-
   *
-
   100;
 
 
   return (
-
-    scoreEventos
-    *
+    scoreEventos *
     0.80
-
     +
-
-    scoreForma
-    *
+    scoreForma *
     0.20
-
   );
 
 }
 
 
 /* =========================================================
-   DESCREVER ESTADO
+   RAIO X ORIGINAL
+
+   IMPORTANTE:
+
+   A seleção das réplicas volta a ser
+   determinada SOMENTE pelo RX.
+
+   Nenhum:
+   - alto/baixo
+   - vermelho/preto
+   - região
+   - terminal
+   entra na seleção.
 ========================================================= */
 
-function descreverEstado(
+function selecionarReplicasRX(
   base,
-  tamanho
+  rx
 ){
 
-  const chave =
-
-  base.length
-
-  +
-
-  "|"
-
-  +
-
-  tamanho
-
-  +
-
-  "|"
-
-  +
-
-  base
-  .slice(
-    -Math.max(
-      32,
-      tamanho
-    )
-  )
-  .join(",");
+  const total =
+  base.length;
 
 
   if(
-    cacheEstado.has(
-      chave
-    )
+    total <
+    rx*2+2
   ){
 
-    return cacheEstado
-    .get(chave);
+    return {
+      estado:"AGUARDANDO",
+      replicas:[],
+      similaridade:0
+    };
 
   }
 
 
-  const janela =
+  const inicioAtual =
+  total-rx;
+
+
+  const janelaAtual =
   base.slice(
-    -tamanho
+    inicioAtual,
+    total
   );
 
 
-  const desc = {
-
-    tamanho:
-    janela.length,
+  const candidatos=[];
 
 
-    alto:0,
+  for(
+    let inicio=0;
+    inicio+rx<inicioAtual;
+    inicio++
+  ){
 
-    baixo:0,
-
-
-    vermelho:0,
-
-    preto:0,
-
-
-    zero:0,
-
-
-    regioes:{
-
-      ZERO:0,
-
-      VOISINS:0,
-
-      ORPHELINS:0,
-
-      TIERS:0
-
-    },
+    const janelaAntiga =
+    base.slice(
+      inicio,
+      inicio+rx
+    );
 
 
-    familias:{
-
-      0:0,
-
-      6:0,
-
-      9:0
-
-    },
+    const proximo =
+    base[
+      inicio+rx
+    ];
 
 
-    terminais:
-
-    Array(10)
-    .fill(0),
-
-
-    terminalViz:
-
-    Array(10)
-    .fill(0),
+    if(
+      proximo === undefined
+    ){
+      continue;
+    }
 
 
-    frequenciaRoda:
+    const similaridade =
+    calcularSimilaridade(
+      janelaAtual,
+      janelaAntiga
+    );
 
-    new Map()
+
+    candidatos.push({
+
+      inicio,
+
+      proximo,
+
+      similaridade,
+
+      distancia:
+      inicioAtual -
+      (
+        inicio+rx
+      )
+
+    });
+
+  }
+
+
+  candidatos.sort(
+  (a,b) => {
+
+    if(
+      Math.abs(
+        b.similaridade -
+        a.similaridade
+      )
+      >
+      0.0001
+    ){
+
+      return (
+        b.similaridade -
+        a.similaridade
+      );
+
+    }
+
+
+    return (
+      a.distancia -
+      b.distancia
+    );
+
+  });
+
+
+  if(!candidatos.length){
+
+    return {
+      estado:"SEM DADOS",
+      replicas:[],
+      similaridade:0
+    };
+
+  }
+
+
+  let quantidade =
+  Math.ceil(
+    candidatos.length *
+    PERCENTUAL_REPLICAS_RX
+  );
+
+
+  quantidade =
+  Math.max(
+    MIN_REPLICAS_RX,
+    quantidade
+  );
+
+
+  quantidade =
+  Math.min(
+    MAX_REPLICAS_RX,
+    candidatos.length,
+    quantidade
+  );
+
+
+  let replicas =
+  candidatos.slice(
+    0,
+    quantidade
+  );
+
+
+  /*
+    Expansão até termos diversidade
+    suficiente de IDs.
+
+    Não muda a ordenação histórica.
+  */
+
+  function contarIDs(lista){
+
+    const ids =
+    new Set();
+
+
+    lista.forEach(item => {
+
+      idsQueBatem(
+        item.proximo
+      )
+      .forEach(id => {
+
+        ids.add(id);
+
+      });
+
+    });
+
+
+    return ids.size;
+
+  }
+
+
+  while(
+    replicas.length <
+    Math.min(
+      MAX_REPLICAS_RX,
+      candidatos.length
+    )
+    &&
+    contarIDs(replicas) < 8
+  ){
+
+    replicas.push(
+      candidatos[
+        replicas.length
+      ]
+    );
+
+  }
+
+
+  const similaridade =
+  replicas.reduce(
+    (s,x) =>
+      s+x.similaridade,
+    0
+  )
+  /
+  Math.max(
+    1,
+    replicas.length
+  );
+
+
+  return {
+
+    estado:"OK",
+
+    replicas,
+
+    similaridade
 
   };
 
+}
 
-  track
-  .forEach(numero => {
 
-    desc.frequenciaRoda
-    .set(
+/* =========================================================
+   FREQUÊNCIA REAL DOS PRÓXIMOS
+
+   ESSA É A BASE DA JOGADA.
+
+   Não é frequência inventada pelo
+   momento atual.
+
+   São os resultados reais que vieram
+   depois das réplicas históricas.
+========================================================= */
+
+function gerarFrequenciaReplicas(
+  replicas
+){
+
+  const mapa =
+  new Map();
+
+
+  track.forEach(numero => {
+
+    mapa.set(
       numero,
       0
     );
@@ -1747,148 +1335,195 @@ function descreverEstado(
   });
 
 
-  janela
-  .forEach(numero => {
+  replicas.forEach(item => {
+
+    mapa.set(
+
+      item.proximo,
+
+      (
+        mapa.get(
+          item.proximo
+        )
+        ||
+        0
+      )
+      +
+      1
+
+    );
+
+  });
 
 
-    if(
-      numero === 0
-    ){
+  return mapa;
 
-      desc.zero++;
+}
+
+
+/* =========================================================
+   ESTADO ATUAL AUXILIAR
+
+   NÃO ALTERA AS RÉPLICAS.
+========================================================= */
+
+function analisarMomento(
+  base,
+  tamanho=JANELA_ESTADO
+){
+
+  const janela =
+  base.slice(-tamanho);
+
+
+  const resultado = {
+
+    tamanho:
+    janela.length,
+
+    alto:0,
+    baixo:0,
+
+    vermelho:0,
+    preto:0,
+
+    zero:0,
+
+    regioes:{
+      ZERO:0,
+      VOISINS:0,
+      ORPHELINS:0,
+      TIERS:0
+    },
+
+    familias:{
+      0:0,
+      6:0,
+      9:0
+    },
+
+    terminais:
+    Array(10).fill(0),
+
+    vizinhancaTerminal:
+    Array(10).fill(0),
+
+    roda:
+    new Map()
+
+  };
+
+
+  track.forEach(n => {
+
+    resultado.roda.set(
+      n,
+      0
+    );
+
+  });
+
+
+  janela.forEach(numero => {
+
+    if(numero === 0){
+
+      resultado.zero++;
 
     }
 
-    else if(
-      numero <= 18
-    ){
+    else if(numero <= 18){
 
-      desc.baixo++;
+      resultado.baixo++;
 
     }
 
     else{
 
-      desc.alto++;
+      resultado.alto++;
 
     }
 
 
     if(
-      numerosVermelhos
-      .has(numero)
+      numerosVermelhos.has(numero)
     ){
 
-      desc.vermelho++;
+      resultado.vermelho++;
 
     }
 
-    else if(
-      numero !== 0
-    ){
+    else if(numero !== 0){
 
-      desc.preto++;
+      resultado.preto++;
 
     }
 
 
     const regiao =
-    regiaoDoNumero(
-      numero
-    );
+    regiaoDoNumero(numero);
 
 
     if(regiao){
 
-      desc.regioes[regiao]++;
+      resultado.regioes[
+        regiao
+      ]++;
 
     }
 
 
     familiasQueBatem(numero)
-    .forEach(familia => {
+    .forEach(f => {
 
-      desc.familias[
-        familia
-      ]++;
+      resultado.familias[f]++;
 
     });
 
 
-    const terminal =
-    terminalDoNumero(
-      numero
-    );
-
-
-    desc.terminais[
-      terminal
+    resultado.terminais[
+      terminal(numero)
     ]++;
 
 
-    terminaisVizinhos(
-      terminal
-    )
-    .forEach(tv => {
+    /*
+      Densidade física recente.
+    */
 
-      desc.terminalViz[
-        tv
-      ]++;
+    track.forEach(alvo => {
 
-    });
-
-
-    track
-    .forEach(alvo => {
-
-      const distancia =
+      const d =
       distanciaRoda(
         numero,
         alvo
       );
 
 
-      let incremento=0;
+      let peso=0;
 
 
-      if(
-        distancia === 0
-      ){
-
-        incremento=1;
-
+      if(d === 0){
+        peso=1;
       }
 
-      else if(
-        distancia === 1
-      ){
-
-        incremento=0.55;
-
+      else if(d === 1){
+        peso=0.55;
       }
 
-      else if(
-        distancia === 2
-      ){
-
-        incremento=0.25;
-
+      else if(d === 2){
+        peso=0.25;
       }
 
 
-      if(incremento){
+      if(peso){
 
-        desc.frequenciaRoda
-        .set(
+        resultado.roda.set(
 
           alvo,
 
-          desc.frequenciaRoda
-          .get(alvo)
-
+          resultado.roda.get(alvo)
           +
-
-          incremento
+          peso
 
         );
 
@@ -1899,381 +1534,57 @@ function descreverEstado(
   });
 
 
-  cacheEstado.set(
-    chave,
-    desc
-  );
-
-
-  return desc;
-
-}
-
-
-/* =========================================================
-   SIMILARIDADE DO ESTADO
-========================================================= */
-
-function similaridadeEstado(
-  atual,
-  antigo
-){
-
-  if(
-
-    !atual.tamanho
-
-    ||
-
-    !antigo.tamanho
-
+  for(
+    let t=0;
+    t<=9;
+    t++
   ){
 
-    return 0;
+    resultado.vizinhancaTerminal[t] =
 
-  }
-
-
-  function proporcao(
-    valor,
-    total
-  ){
-
-    return total
-    ?
-    valor/total
-    :
-    0;
-
-  }
-
-
-  let erro=0;
-
-  let componentes=0;
-
-
-  const campos = [
-
-    [
-
-      proporcao(
-        atual.alto,
-        atual.tamanho
-      ),
-
-      proporcao(
-        antigo.alto,
-        antigo.tamanho
-      )
-
-    ],
-
-
-    [
-
-      proporcao(
-        atual.baixo,
-        atual.tamanho
-      ),
-
-      proporcao(
-        antigo.baixo,
-        antigo.tamanho
-      )
-
-    ],
-
-
-    [
-
-      proporcao(
-        atual.vermelho,
-        atual.tamanho
-      ),
-
-      proporcao(
-        antigo.vermelho,
-        antigo.tamanho
-      )
-
-    ],
-
-
-    [
-
-      proporcao(
-        atual.preto,
-        atual.tamanho
-      ),
-
-      proporcao(
-        antigo.preto,
-        antigo.tamanho
-      )
-
+    resultado.terminais[
+      terminalAnterior(t)
     ]
-
-  ];
-
-
-  campos
-  .forEach(par => {
-
-    erro +=
-    Math.abs(
-      par[0]-par[1]
-    );
-
-    componentes++;
-
-  });
-
-
-  [
-    "ZERO",
-    "VOISINS",
-    "ORPHELINS",
-    "TIERS"
-  ]
-  .forEach(regiao => {
-
-    erro +=
-    Math.abs(
-
-      atual.regioes[regiao]
-      /
-      atual.tamanho
-
-      -
-
-      antigo.regioes[regiao]
-      /
-      antigo.tamanho
-
-    );
-
-    componentes++;
-
-  });
-
-
-  [0,6,9]
-  .forEach(familia => {
-
-    erro +=
-    Math.abs(
-
-      atual.familias[familia]
-      /
-      atual.tamanho
-
-      -
-
-      antigo.familias[familia]
-      /
-      antigo.tamanho
-
-    );
-
-    componentes++;
-
-  });
-
-
-  /*
-    Terminais individuais.
-  */
-
-  for(
-    let t=0;
-    t<10;
-    t++
-  ){
-
-    erro +=
-    Math.abs(
-
-      atual.terminais[t]
-      /
-      atual.tamanho
-
-      -
-
-      antigo.terminais[t]
-      /
-      antigo.tamanho
-
-    );
-
-    componentes++;
-
-  }
-
-
-  /*
-    Terminal + terminais vizinhos.
-  */
-
-  for(
-    let t=0;
-    t<10;
-    t++
-  ){
-
-    erro +=
-    Math.abs(
-
-      atual.terminalViz[t]
-      /
-      Math.max(
-        1,
-        atual.tamanho*3
-      )
-
-      -
-
-      antigo.terminalViz[t]
-      /
-      Math.max(
-        1,
-        antigo.tamanho*3
-      )
-
-    );
-
-    componentes++;
-
-  }
-
-
-  let erroRoda=0;
-
-
-  track
-  .forEach(numero => {
-
-    const a =
-
-    atual.frequenciaRoda
-    .get(numero)
-
-    /
-
-    Math.max(
-      1,
-      atual.tamanho
-    );
-
-
-    const b =
-
-    antigo.frequenciaRoda
-    .get(numero)
-
-    /
-
-    Math.max(
-      1,
-      antigo.tamanho
-    );
-
-
-    erroRoda +=
-    Math.abs(
-      a-b
-    );
-
-  });
-
-
-  erroRoda /=
-  track.length;
-
-
-  const erroMedio =
-
-  erro
-
-  /
-
-  Math.max(
-    1,
-    componentes
-  );
-
-
-  const score =
-
-  100
-
-  -
-
-  (
-
-    erroMedio
-    *
-    0.72
 
     +
 
-    erroRoda
-    *
-    0.28
+    resultado.terminais[t]
 
-  )
+    +
 
-  *
+    resultado.terminais[
+      terminalSeguinte(t)
+    ];
 
-  100;
+  }
 
 
-  return Math.max(
-
-    0,
-
-    Math.min(
-      100,
-      score
-    )
-
-  );
+  return resultado;
 
 }
 
 
 /* =========================================================
-   ESTATÍSTICA TIMELINE
+   ESTATÍSTICA DA TIMELINE
 ========================================================= */
 
 function estatisticaTimeline(lista){
 
   function taxa(itens){
 
-    if(
-      !itens.length
-    ){
-
+    if(!itens.length){
       return 0;
-
     }
 
 
     return (
-
       itens.filter(
-        item =>
-        item.green
+        x => x.green
       ).length
-
       /
-
       itens.length
-
       *
-
       100
-
     );
 
   }
@@ -2288,68 +1599,23 @@ function estatisticaTimeline(lista){
     i--
   ){
 
-    if(
-      lista[i].green
-    ){
-
+    if(lista[i].green){
       break;
-
     }
-
 
     lossSeguidos++;
 
   }
 
 
-  const ult5 =
+  const ultimos5 =
   lista.slice(-5);
 
-
-  const ult10 =
+  const ultimos10 =
   lista.slice(-10);
 
-
-  const ult20 =
+  const ultimos20 =
   lista.slice(-20);
-
-
-  const taxa5 =
-  taxa(ult5);
-
-
-  const taxa10 =
-  taxa(ult10);
-
-
-  const taxa20 =
-  taxa(ult20);
-
-
-  const metadeAnterior =
-  ult10.slice(
-    0,
-    5
-  );
-
-
-  const metadeAtual =
-  ult10.slice(
-    -5
-  );
-
-
-  const tendencia =
-
-  taxa(
-    metadeAtual
-  )
-
-  -
-
-  taxa(
-    metadeAnterior
-  );
 
 
   return {
@@ -2357,15 +1623,19 @@ function estatisticaTimeline(lista){
     total:
     lista.length,
 
-    taxa5,
+    taxa5:
+    taxa(ultimos5),
 
-    taxa10,
+    taxa10:
+    taxa(ultimos10),
 
-    taxa20,
+    taxa20:
+    taxa(ultimos20),
 
-    lossSeguidos,
+    taxaGeral:
+    taxa(lista),
 
-    tendencia
+    lossSeguidos
 
   };
 
@@ -2373,7 +1643,11 @@ function estatisticaTimeline(lista){
 
 
 /* =========================================================
-   FASE DO ORGANISMO
+   FASE DO MOTOR
+
+   90% = alvo de estabilidade.
+
+   Não fabrica taxa.
 ========================================================= */
 
 function determinarFase(){
@@ -2384,1128 +1658,136 @@ function determinarFase(){
   );
 
 
-  let fase =
-  "APRENDENDO";
+  if(stats.total < 5){
 
-
-  let nivel=0;
-
-
-  if(
-    stats.total >= 5
-  ){
-
-
-    if(
-
-      stats.lossSeguidos >= 3
-
-      ||
-
-      stats.taxa20 < 80
-
-    ){
-
-      fase =
-      "REESTRUTURAÇÃO";
-
-      nivel=3;
-
-    }
-
-
-    else if(
-
-      stats.lossSeguidos >= 2
-
-      ||
-
-      stats.taxa20 <=
-      LIMITE_FORTE
-
-    ){
-
-      fase =
-      "RECUPERAÇÃO FORTE";
-
-      nivel=2;
-
-    }
-
-
-    else if(
-
-      stats.taxa20 <
-      META_ASSERTIVIDADE
-
-      ||
-
-      stats.tendencia <= -20
-
-    ){
-
-      fase =
-      "RECALIBRAÇÃO";
-
-      nivel=1;
-
-    }
-
-
-    else{
-
-      fase =
-      "NORMAL";
-
-      nivel=0;
-
-    }
-
-  }
-
-
-  estado.motor.fase =
-  fase;
-
-
-  estado.motor.ultimaTaxa20 =
-  stats.taxa20;
-
-
-  return {
-
-    fase,
-
-    nivel,
-
-    stats
-
-  };
-
-}
-
-
-function janelasDaFase(
-  fase
-){
-
-  if(
-    fase.nivel >= 2
-  ){
-
-    return JANELAS_RECUPERACAO;
+    return "APRENDENDO";
 
   }
 
 
   if(
-    fase.nivel === 1
-  ){
-
-    return JANELAS_RECALIBRACAO;
-
-  }
-
-
-  return JANELAS_NORMAL;
-
-}
-
-
-function offsetsDaFase(
-  fase
-){
-
-  if(
-    fase.nivel >= 2
-  ){
-
-    return OFFSETS_RECUPERACAO;
-
-  }
-
-
-  if(
-    fase.nivel === 1
-  ){
-
-    return OFFSETS_RECALIBRACAO;
-
-  }
-
-
-  return OFFSETS_NORMAL;
-
-}
-
-
-/* =========================================================
-   ANÁLISE DOS LOSS
-========================================================= */
-
-function distanciaAteCobertura(
-  numero,
-  numeros
-){
-
-  if(
-    numeros.includes(
-      numero
-    )
-  ){
-
-    return 0;
-
-  }
-
-
-  let menor=99;
-
-
-  numeros
-  .forEach(alvo => {
-
-    menor =
-    Math.min(
-
-      menor,
-
-      distanciaRoda(
-        numero,
-        alvo
-      )
-
-    );
-
-  });
-
-
-  return menor;
-
-}
-
-
-function analisarErrosRecentes(){
-
-  const losses =
-
-  estado.timelineAuto
-
-  .filter(
-    item =>
-    !item.green
-  )
-
-  .slice(-8);
-
-
-  const resultado = {
-
-    total:
-    losses.length,
-
-
-    fora1:0,
-
-    fora2:0,
-
-    distantes:0,
-
-
-    terminais:
-    Array(10)
-    .fill(0),
-
-
-    terminalViz:
-    Array(10)
-    .fill(0),
-
-
-    regioes:{
-
-      ZERO:0,
-
-      VOISINS:0,
-
-      ORPHELINS:0,
-
-      TIERS:0
-
-    },
-
-
-    alto:0,
-
-    baixo:0,
-
-
-    vermelho:0,
-
-    preto:0,
-
-
-    roda:
-    new Map()
-
-  };
-
-
-  track
-  .forEach(numero => {
-
-    resultado.roda
-    .set(
-      numero,
-      0
-    );
-
-  });
-
-
-  losses
-  .forEach(item => {
-
-    const numero =
-    item.resultado;
-
-
-    const numeros =
-
-    Array.isArray(
-      item.numeros
-    )
-
-    ?
-
-    item.numeros
-
-    :
-
-    [];
-
-
-    const distancia =
-
-    distanciaAteCobertura(
-      numero,
-      numeros
-    );
-
-
-    if(
-      distancia === 1
-    ){
-
-      resultado.fora1++;
-
-    }
-
-    else if(
-      distancia === 2
-    ){
-
-      resultado.fora2++;
-
-    }
-
-    else if(
-      distancia > 2
-    ){
-
-      resultado.distantes++;
-
-    }
-
-
-    const terminal =
-    terminalDoNumero(
-      numero
-    );
-
-
-    resultado.terminais[
-      terminal
-    ]++;
-
-
-    terminaisVizinhos(
-      terminal
-    )
-    .forEach(tv => {
-
-      resultado.terminalViz[
-        tv
-      ]++;
-
-    });
-
-
-    const regiao =
-    regiaoDoNumero(
-      numero
-    );
-
-
-    if(regiao){
-
-      resultado.regioes[
-        regiao
-      ]++;
-
-    }
-
-
-    if(
-      numero >= 19
-    ){
-
-      resultado.alto++;
-
-    }
-
-    else if(
-      numero >= 1
-    ){
-
-      resultado.baixo++;
-
-    }
-
-
-    if(
-      numerosVermelhos
-      .has(numero)
-    ){
-
-      resultado.vermelho++;
-
-    }
-
-    else if(
-      numero !== 0
-    ){
-
-      resultado.preto++;
-
-    }
-
-
-    track
-    .forEach(alvo => {
-
-      const d =
-      distanciaRoda(
-        numero,
-        alvo
-      );
-
-
-      let peso=0;
-
-
-      if(
-        d === 0
-      ){
-
-        peso=1;
-
-      }
-
-      else if(
-        d === 1
-      ){
-
-        peso=0.65;
-
-      }
-
-      else if(
-        d === 2
-      ){
-
-        peso=0.30;
-
-      }
-
-
-      if(peso){
-
-        resultado.roda
-        .set(
-
-          alvo,
-
-          resultado.roda
-          .get(alvo)
-
-          +
-
-          peso
-
-        );
-
-      }
-
-    });
-
-  });
-
-
-  return resultado;
-
-}
-
-
-/* =========================================================
-   SELECIONAR RÉPLICAS
-========================================================= */
-
-function selecionarReplicas(
-  base,
-  rx,
-  janelaEstado,
-  perfil
-){
-
-  const chave = [
-
-    base.length,
-
-    base
-    .slice(-32)
-    .join(","),
-
-    rx,
-
-    janelaEstado,
-
-    perfil.id
-
-  ]
-  .join("|");
-
-
-  if(
-    cacheRX.has(
-      chave
-    )
-  ){
-
-    return cacheRX
-    .get(chave);
-
-  }
-
-
-  const total =
-  base.length;
-
-
-  if(
-
-    total
-
-    <
-
-    Math.max(
-
-      rx*2+2,
-
-      janelaEstado*2+2
-
-    )
-
-  ){
-
-    const vazio = {
-
-      estado:
-      "AGUARDANDO",
-
-      replicas:[],
-
-      similaridade:0
-
-    };
-
-
-    cacheRX.set(
-      chave,
-      vazio
-    );
-
-
-    return vazio;
-
-  }
-
-
-  const inicioAtual =
-  total-rx;
-
-
-  const janelaRXAtual =
-  base.slice(
-    inicioAtual,
-    total
-  );
-
-
-  const estadoAtual =
-  descreverEstado(
-    base,
-    janelaEstado
-  );
-
-
-  const candidatos=[];
-
-
-  for(
-
-    let inicio=
-    Math.max(
-      janelaEstado,
-      rx
-    );
-
-    inicio+rx <
-    inicioAtual;
-
-    inicio++
-
-  ){
-
-    const janelaAntiga =
-
-    base.slice(
-      inicio,
-      inicio+rx
-    );
-
-
-    const proximo =
-
-    base[
-      inicio+rx
-    ];
-
-
-    if(
-      proximo === undefined
-    ){
-
-      continue;
-
-    }
-
-
-    const baseEstadoAntigo =
-
-    base.slice(
-      0,
-      inicio+rx
-    );
-
-
-    const estadoAntigo =
-
-    descreverEstado(
-      baseEstadoAntigo,
-      janelaEstado
-    );
-
-
-    const simRX =
-
-    calcularSimilaridade(
-      janelaRXAtual,
-      janelaAntiga
-    );
-
-
-    const simEstado =
-
-    similaridadeEstado(
-      estadoAtual,
-      estadoAntigo
-    );
-
-
-    /*
-      RX continua sendo o núcleo.
-
-      Estado atual entra como camada
-      adaptativa.
-    */
-
-    const pesoRX =
-
-    Math.max(
-      0.60,
-      perfil.rx
-    );
-
-
-    const pesoEstado =
-
-    0.18
-
-    +
-
-    perfil.roda
-    *
-    0.10
-
-    +
-
-    perfil.altoBaixo
-    *
-    0.08
-
-    +
-
-    perfil.cor
-    *
-    0.05
-
-    +
-
-    perfil.regiao
-    *
-    0.06
-
-    +
-
-    perfil.familia
-    *
-    0.08
-
-    +
-
-    perfil.terminal
-    *
-    0.12;
-
-
-    const similaridade =
-
+    stats.lossSeguidos >= 3 ||
     (
-
-      simRX
-      *
-      pesoRX
-
-      +
-
-      simEstado
-      *
-      pesoEstado
-
+      stats.total >= 10 &&
+      stats.taxa10 < 80
     )
+  ){
 
-    /
-
-    (
-      pesoRX
-      +
-      pesoEstado
-    );
-
-
-    candidatos.push({
-
-      inicio,
-
-      proximo,
-
-      simRX,
-
-      simEstado,
-
-      similaridade,
-
-      distancia:
-
-      inicioAtual
-
-      -
-
-      (
-        inicio+rx
-      )
-
-    });
+    return "REESTRUTURAÇÃO";
 
   }
-
-
-  candidatos.sort(
-  (a,b) => {
-
-    if(
-
-      Math.abs(
-
-        b.similaridade
-
-        -
-
-        a.similaridade
-
-      )
-
-      >
-
-      0.0001
-
-    ){
-
-      return (
-
-        b.similaridade
-
-        -
-
-        a.similaridade
-
-      );
-
-    }
-
-
-    return (
-
-      a.distancia
-
-      -
-
-      b.distancia
-
-    );
-
-  });
 
 
   if(
-    !candidatos.length
+    stats.lossSeguidos >= 2 ||
+    (
+      stats.total >= 10 &&
+      stats.taxa10 < 85
+    )
   ){
 
-    const vazio = {
-
-      estado:
-      "SEM DADOS",
-
-      replicas:[],
-
-      similaridade:0
-
-    };
-
-
-    cacheRX.set(
-      chave,
-      vazio
-    );
-
-
-    return vazio;
+    return "RECUPERAÇÃO";
 
   }
 
 
-  let quantidade =
+  if(
+    stats.total >= 10 &&
+    stats.taxa10 < 90
+  ){
 
-  Math.ceil(
+    return "RECALIBRAÇÃO";
 
-    candidatos.length
-
-    *
-
-    PERCENTUAL_REPLICAS_RX
-
-  );
+  }
 
 
-  quantidade =
-
-  Math.max(
-
-    MIN_REPLICAS_RX,
-
-    quantidade
-
-  );
-
-
-  quantidade =
-
-  Math.min(
-
-    MAX_REPLICAS_RX,
-
-    candidatos.length,
-
-    quantidade
-
-  );
-
-
-  const replicas =
-
-  candidatos.slice(
-    0,
-    quantidade
-  );
-
-
-  const similaridade =
-
-  replicas.reduce(
-
-    (s,item) =>
-    s+item.similaridade,
-
-    0
-
-  )
-
-  /
-
-  replicas.length;
-
-
-  const saida = {
-
-    estado:"OK",
-
-    replicas,
-
-    similaridade,
-
-    estadoAtual
-
-  };
-
-
-  cacheRX.set(
-    chave,
-    saida
-  );
-
-
-  return saida;
+  return "NORMAL";
 
 }
 
 
 /* =========================================================
-   FREQUÊNCIA DOS PRÓXIMOS RESULTADOS
+   ANÁLISE DE BORDA
 ========================================================= */
 
-function gerarFrequenciaReplicas(
-  replicas
-){
+function pesoBordaAtual(){
 
-  const mapa =
-  new Map();
+  const fase =
+  determinarFase();
 
 
-  track
-  .forEach(numero => {
-
-    mapa.set(
-      numero,
-      0
-    );
-
-  });
+  if(
+    fase === "REESTRUTURAÇÃO"
+  ){
+    return 0.60;
+  }
 
 
-  replicas
-  .forEach(item => {
-
-    mapa.set(
-
-      item.proximo,
-
-      (
-        mapa.get(
-          item.proximo
-        )
-
-        ||
-
-        0
-      )
-
-      +
-
-      1
-
-    );
-
-  });
+  if(
+    fase === "RECUPERAÇÃO"
+  ){
+    return 0.50;
+  }
 
 
-  return mapa;
+  if(
+    fase === "RECALIBRAÇÃO"
+  ){
+    return 0.42;
+  }
+
+
+  return 0.35;
 
 }
 
 
 /* =========================================================
-   AVALIAR SETOR
+   PONTUAÇÃO DE UM SETOR
+
+   A frequência das réplicas continua
+   sendo a força principal.
+
+   Momento atual apenas auxilia
+   desempate e borda.
 ========================================================= */
 
 function avaliarSetor(
-
-  centroOriginal,
-
+  centro,
   quantidade,
-
   frequencia,
-
-  estadoAtual,
-
-  perfil,
-
-  offset,
-
-  fase,
-
-  erros
-
+  momento
 ){
 
-  const centro =
-
-  deslocarCentro(
-    centroOriginal,
-    offset
-  );
-
-
   const numeros =
-
   setorVizinhosOrdenado(
     centro,
     quantidade
   );
 
 
-  if(
-    !numeros.length
-  ){
-
+  if(!numeros.length){
     return null;
-
   }
 
 
+  let scoreBase=0;
   let suporte=0;
 
-  let scoreRX=0;
 
-
-  let altos=0;
-
-  let baixos=0;
-
-
-  let vermelhos=0;
-
-  let pretos=0;
-
-
-  const regioes = {
-
-    ZERO:0,
-
-    VOISINS:0,
-
-    ORPHELINS:0,
-
-    TIERS:0
-
-  };
-
-
-  const familias = {
-
-    0:0,
-
-    6:0,
-
-    9:0
-
-  };
-
-
-  let scoreTerminal=0;
-
-  let scoreErro=0;
-
-
-  const maxTerminal =
-
-  Math.max(
-
-    1,
-
-    ...estadoAtual
-    .terminalViz
-
-  );
-
-
-  const maxErroTerminal =
-
-  Math.max(
-
-    1,
-
-    ...erros
-    .terminalViz
-
-  );
-
-
-  const maxErroRoda =
-
-  Math.max(
-
-    1,
-
-    ...[
-      ...erros.roda.values()
-    ]
-
-  );
-
-
-  numeros
-  .forEach(
+  numeros.forEach(
   (numero,index) => {
 
-
     const freq =
-
-    frequencia.get(
-      numero
-    )
-
+    frequencia.get(numero)
     ||
-
     0;
 
 
-    suporte +=
-    freq;
+    suporte += freq;
 
 
     const distancia =
-
     Math.abs(
       index-quantidade
     );
@@ -3514,512 +1796,86 @@ function avaliarSetor(
     let multiplicador=1;
 
 
-    if(
-      quantidade === 2
-    ){
+    if(quantidade === 2){
 
-      if(
-        distancia === 0
-      ){
-
-        multiplicador =
-        1.40;
-
+      if(distancia === 0){
+        multiplicador=1.45;
       }
 
-      else if(
-        distancia === 1
-      ){
+      else if(distancia === 1){
+        multiplicador=1.20;
+      }
 
-        multiplicador =
-        1.18;
-
+      else{
+        multiplicador=1.00;
       }
 
     }
 
     else{
 
-      if(
-        distancia === 0
-      ){
+      if(distancia === 0){
+        multiplicador=1.30;
+      }
 
-        multiplicador =
-        1.28;
-
+      else{
+        multiplicador=1.00;
       }
 
     }
 
 
-    scoreRX +=
-
-    freq
-
-    *
-
+    scoreBase +=
+    freq *
     multiplicador;
 
-
-    if(
-      numero >= 19
-    ){
-
-      altos++;
-
-    }
-
-    else if(
-      numero >= 1
-    ){
-
-      baixos++;
-
-    }
-
-
-    if(
-      numerosVermelhos
-      .has(numero)
-    ){
-
-      vermelhos++;
-
-    }
-
-    else if(
-      numero !== 0
-    ){
-
-      pretos++;
-
-    }
-
-
-    const regiao =
-    regiaoDoNumero(
-      numero
-    );
-
-
-    if(regiao){
-
-      regioes[
-        regiao
-      ]++;
-
-    }
-
-
-    familiasQueBatem(
-      numero
-    )
-    .forEach(familia => {
-
-      familias[
-        familia
-      ]++;
-
-    });
-
-
-    const terminal =
-    terminalDoNumero(
-      numero
-    );
-
-
-    scoreTerminal +=
-
-    estadoAtual
-    .terminalViz[
-      terminal
-    ]
-
-    /
-
-    maxTerminal;
-
-
-    scoreErro +=
-
-    erros
-    .terminalViz[
-      terminal
-    ]
-
-    /
-
-    maxErroTerminal;
-
-
-    scoreErro +=
-
-    (
-      erros.roda
-      .get(numero)
-
-      ||
-
-      0
-    )
-
-    /
-
-    maxErroRoda;
-
   });
 
 
-  const tamanhoSetor =
-  numeros.length;
-
-
-  const tamanhoEstado =
-
-  Math.max(
-    1,
-    estadoAtual.tamanho
-  );
-
-
-  /* =======================================================
-     ALTO / BAIXO
-  ======================================================= */
-
-  const pAltoEstado =
-
-  estadoAtual.alto
-  /
-  tamanhoEstado;
-
-
-  const pBaixoEstado =
-
-  estadoAtual.baixo
-  /
-  tamanhoEstado;
-
-
-  const pAltoSetor =
-
-  altos
-  /
-  tamanhoSetor;
-
-
-  const pBaixoSetor =
-
-  baixos
-  /
-  tamanhoSetor;
-
-
-  const scoreAltoBaixo =
-
-  1
-
-  -
-
-  (
-
-    Math.abs(
-      pAltoEstado-pAltoSetor
-    )
-
-    +
-
-    Math.abs(
-      pBaixoEstado-pBaixoSetor
-    )
-
-  )
-
-  /
-
-  2;
-
-
-  /* =======================================================
-     COR
-  ======================================================= */
-
-  const pVermelhoEstado =
-
-  estadoAtual.vermelho
-  /
-  tamanhoEstado;
-
-
-  const pPretoEstado =
-
-  estadoAtual.preto
-  /
-  tamanhoEstado;
-
-
-  const pVermelhoSetor =
-
-  vermelhos
-  /
-  tamanhoSetor;
-
-
-  const pPretoSetor =
-
-  pretos
-  /
-  tamanhoSetor;
-
-
-  const scoreCor =
-
-  1
-
-  -
-
-  (
-
-    Math.abs(
-
-      pVermelhoEstado
-
-      -
-
-      pVermelhoSetor
-
-    )
-
-    +
-
-    Math.abs(
-
-      pPretoEstado
-
-      -
-
-      pPretoSetor
-
-    )
-
-  )
-
-  /
-
-  2;
-
-
-  /* =======================================================
-     REGIÃO
-  ======================================================= */
-
-  let scoreRegiao=0;
-
-
-  [
-    "ZERO",
-    "VOISINS",
-    "ORPHELINS",
-    "TIERS"
-  ]
-  .forEach(regiao => {
-
-    const pEstado =
-
-    estadoAtual
-    .regioes[
-      regiao
-    ]
-
-    /
-
-    tamanhoEstado;
-
-
-    const pSetor =
-
-    regioes[
-      regiao
-    ]
-
-    /
-
-    tamanhoSetor;
-
-
-    scoreRegiao +=
-
-    1
-
-    -
-
-    Math.abs(
-      pEstado-pSetor
-    );
-
-  });
-
-
-  scoreRegiao /=
-  4;
-
-
-  /* =======================================================
-     FAMÍLIAS
-  ======================================================= */
-
-  let scoreFamilia=0;
-
-
-  [0,6,9]
-  .forEach(familia => {
-
-    const pEstado =
-
-    estadoAtual
-    .familias[
-      familia
-    ]
-
-    /
-
-    tamanhoEstado;
-
-
-    const pSetor =
-
-    familias[
-      familia
-    ]
-
-    /
-
-    tamanhoSetor;
-
-
-    scoreFamilia +=
-
-    1
-
-    -
-
-    Math.abs(
-      pEstado-pSetor
-    );
-
-  });
-
-
-  scoreFamilia /=
-  3;
-
-
-  /* =======================================================
-     CONCENTRAÇÃO FÍSICA
-  ======================================================= */
-
-  let scoreRoda=0;
-
-
-  numeros
-  .forEach(numero => {
-
-    scoreRoda +=
-
-    estadoAtual
-    .frequenciaRoda
-    .get(numero)
-
-    ||
-
-    0;
-
-  });
-
-
-  scoreRoda /=
-
-  Math.max(
-    1,
-    tamanhoSetor
-  );
-
-
-  scoreTerminal /=
-
-  Math.max(
-    1,
-    tamanhoSetor
-  );
-
-
-  scoreErro /=
-
-  Math.max(
-    1,
-    tamanhoSetor
-  );
-
-
-  /* =======================================================
-     BORDA
-  ======================================================= */
-
-  const indice =
-  indiceRoda(
-    centro
-  );
+  /*
+    ERRO DE BORDA
+
+    Penaliza quando existe frequência
+    histórica imediatamente do lado de
+    fora do setor.
+  */
+
+  const indiceCentro =
+  indiceRoda(centro);
 
 
   const foraEsquerda =
-
   track[
-
     (
-      indice
-      -
-      quantidade
-      -
-      1
-      +
+      indiceCentro -
+      quantidade -
+      1 +
       track.length
     )
-
     %
-
     track.length
-
   ];
 
 
   const foraDireita =
-
   track[
-
     (
-      indice
-      +
-      quantidade
-      +
+      indiceCentro +
+      quantidade +
       1
     )
-
     %
-
     track.length
-
   ];
 
 
-  const forcaBorda =
+  const freqFora =
 
   (
     frequencia.get(
       foraEsquerda
     )
-
     ||
-
     0
   )
 
@@ -4029,188 +1885,179 @@ function avaliarSetor(
     frequencia.get(
       foraDireita
     )
-
     ||
-
     0
   );
 
 
-  /*
-    Quanto pior a fase,
-    maior a necessidade de corrigir
-    a estrutura atual.
-  */
-
-  const fatorRecuperacao =
-
-  fase.nivel === 0
-
-  ?
-
-  1
-
-  :
-
-  fase.nivel === 1
-
-  ?
-
-  1.20
-
-  :
-
-  fase.nivel === 2
-
-  ?
-
-  1.55
-
-  :
-
-  1.90;
+  const penalidadeBorda =
+  freqFora *
+  pesoBordaAtual();
 
 
   /*
-    Se os LOSS estão caindo
-    imediatamente fora da cobertura,
-    aumenta a sensibilidade de borda.
+    AUXÍLIO DO MOMENTO.
+
+    Pequeno de propósito.
+
+    Não substitui o RX.
   */
 
-  const fatorErroBorda =
-
-  1
-
-  +
-
-  erros.fora1
-  *
-  0.08
-
-  +
-
-  erros.fora2
-  *
-  0.03;
+  let bonusMomento=0;
 
 
-  const penalBorda =
+  if(
+    momento &&
+    momento.tamanho
+  ){
 
-  forcaBorda
-
-  *
-
-  perfil.borda
-
-  *
-
-  fatorRecuperacao
-
-  *
-
-  fatorErroBorda;
+    const total =
+    Math.max(
+      1,
+      momento.tamanho
+    );
 
 
-  /* =======================================================
-     SCORE FINAL
-  ======================================================= */
+    numeros.forEach(numero => {
+
+      /*
+        Concentração física.
+      */
+
+      bonusMomento +=
+      (
+        momento.roda.get(numero)
+        ||
+        0
+      )
+      *
+      0.025;
+
+
+      /*
+        Terminal.
+      */
+
+      const t =
+      terminal(numero);
+
+
+      bonusMomento +=
+      (
+        momento.vizinhancaTerminal[t]
+        /
+        total
+      )
+      *
+      0.10;
+
+
+      /*
+        Alto / baixo.
+      */
+
+      if(numero >= 19){
+
+        bonusMomento +=
+        (
+          momento.alto /
+          total
+        )
+        *
+        0.025;
+
+      }
+
+      else if(numero >= 1){
+
+        bonusMomento +=
+        (
+          momento.baixo /
+          total
+        )
+        *
+        0.025;
+
+      }
+
+
+      /*
+        Cor.
+      */
+
+      if(
+        numerosVermelhos.has(numero)
+      ){
+
+        bonusMomento +=
+        (
+          momento.vermelho /
+          total
+        )
+        *
+        0.02;
+
+      }
+
+      else if(numero !== 0){
+
+        bonusMomento +=
+        (
+          momento.preto /
+          total
+        )
+        *
+        0.02;
+
+      }
+
+
+      /*
+        Região.
+      */
+
+      const regiao =
+      regiaoDoNumero(numero);
+
+
+      if(regiao){
+
+        bonusMomento +=
+        (
+          momento.regioes[regiao]
+          /
+          total
+        )
+        *
+        0.025;
+
+      }
+
+    });
+
+  }
+
+
+  /*
+    RX manda.
+  */
 
   const score =
 
-  scoreRX
-  *
-  perfil.rx
-
-  +
-
-  suporte
-  *
-  scoreRoda
-  *
-  perfil.roda
-  *
-  0.20
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreAltoBaixo
-  *
-  perfil.altoBaixo
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreCor
-  *
-  perfil.cor
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreRegiao
-  *
-  perfil.regiao
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreFamilia
-  *
-  perfil.familia
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreTerminal
-  *
-  perfil.terminal
-  *
-  fatorRecuperacao
-
-  +
-
-  suporte
-  *
-  scoreErro
-  *
-  perfil.erro
-  *
-  (
-    fase.nivel >= 1
-    ?
-    1
-    :
-    0.25
-  )
+  scoreBase
 
   -
 
-  penalBorda;
+  penalidadeBorda
+
+  +
+
+  bonusMomento;
 
 
   return {
 
     centro,
-
-    centroOriginal,
-
-    offset,
 
     quantidade,
 
@@ -4218,23 +2065,13 @@ function avaliarSetor(
 
     suporte,
 
-    score,
+    scoreBase,
 
-    scoreAltoBaixo,
+    penalidadeBorda,
 
-    scoreCor,
+    bonusMomento,
 
-    scoreRegiao,
-
-    scoreFamilia,
-
-    scoreRoda,
-
-    scoreTerminal,
-
-    scoreErro,
-
-    penalBorda
+    score
 
   };
 
@@ -4242,121 +2079,82 @@ function avaliarSetor(
 
 
 /* =========================================================
-   MONTAR JOGADA
+   MONTAGEM ORIGINAL DA JOGADA
+
+   5 blocos de 2V
+   1 bloco de 1V
+   28 números únicos
 ========================================================= */
 
-function montarJogada(
-
+function montarJogadaBase(
   replicas,
-
-  estadoAtual,
-
-  perfil,
-
-  offset,
-
-  fase,
-
-  erros
-
+  base
 ){
 
   const frequencia =
-
   gerarFrequenciaReplicas(
     replicas
   );
 
 
+  const momento =
+  analisarMomento(
+    base,
+    JANELA_ESTADO
+  );
+
+
   const candidatos2 =
-
   track
-
   .map(centro =>
 
     avaliarSetor(
-
       centro,
-
       2,
-
       frequencia,
-
-      estadoAtual,
-
-      perfil,
-
-      offset,
-
-      fase,
-
-      erros
-
+      momento
     )
 
   )
-
   .filter(Boolean)
-
   .sort(
     (a,b) =>
-    b.score-a.score
+      b.score-a.score
   );
 
 
   const candidatos1 =
-
   track
-
   .map(centro =>
 
     avaliarSetor(
-
       centro,
-
       1,
-
       frequencia,
-
-      estadoAtual,
-
-      perfil,
-
-      offset,
-
-      fase,
-
-      erros
-
+      momento
     )
 
   )
-
   .filter(Boolean)
-
   .sort(
     (a,b) =>
-    b.score-a.score
+      b.score-a.score
   );
 
 
   let melhor=null;
 
 
-  for(
-    const bloco1
-    of candidatos1
-  ){
+  candidatos1.forEach(
+  bloco1 => {
 
     const usados =
-
     new Set(
       bloco1.numeros
     );
 
 
     const blocos2=[];
-
 
     let scoreTotal =
     bloco1.score;
@@ -4368,21 +2166,14 @@ function montarJogada(
     ){
 
       const conflito =
-
       bloco2.numeros
       .some(numero =>
-
-        usados.has(
-          numero
-        )
-
+        usados.has(numero)
       );
 
 
       if(conflito){
-
         continue;
-
       }
 
 
@@ -4398,9 +2189,7 @@ function montarJogada(
       bloco2.numeros
       .forEach(numero => {
 
-        usados.add(
-          numero
-        );
+        usados.add(numero);
 
       });
 
@@ -4409,9 +2198,7 @@ function montarJogada(
         blocos2.length ===
         QTD_2V
       ){
-
         break;
-
       }
 
     }
@@ -4421,9 +2208,7 @@ function montarJogada(
       blocos2.length !==
       QTD_2V
     ){
-
-      continue;
-
+      return;
     }
 
 
@@ -4431,21 +2216,14 @@ function montarJogada(
       usados.size !==
       TOTAL_COBERTURA
     ){
-
-      continue;
-
+      return;
     }
 
 
     if(
-
-      !melhor
-
-      ||
-
+      !melhor ||
       scoreTotal >
       melhor.scoreTotal
-
     ){
 
       melhor = {
@@ -4465,35 +2243,26 @@ function montarJogada(
 
     }
 
-  }
+  });
 
 
-  if(
-    !melhor
-  ){
+  if(!melhor){
 
     return {
-
       valido:false,
-
       blocos2:[],
-
       blocos1:[],
-
       numerosUsados:
       new Set(),
-
       scoreTotal:0
-
     };
 
   }
 
 
-  melhor.blocos2
-  .sort(
+  melhor.blocos2.sort(
     (a,b) =>
-    b.score-a.score
+      b.score-a.score
   );
 
 
@@ -4506,91 +2275,169 @@ function montarJogada(
 
 
 /* =========================================================
-   GERAR CONFIGURAÇÃO
+   APLICAR OFFSET GLOBAL
+
+   Move TODOS os blocos igualmente.
+
+   Portanto:
+   - mantém geometria
+   - mantém ausência de sobreposição
+   - mantém 28 números
 ========================================================= */
 
-function gerarConfiguracao(
-
-  base,
-
-  rx,
-
-  janelaEstado,
-
-  perfil,
-
-  offset=0,
-
-  faseOverride=null,
-
-  errosOverride=null
-
+function aplicarOffsetJogada(
+  jogada,
+  offset
 ){
 
-  const fase =
-
-  faseOverride
-
-  ||
-
-  determinarFase();
-
-
-  const erros =
-
-  errosOverride
-
-  ||
-
-  analisarErrosRecentes();
-
-
-  const chave = [
-
-    base.length,
-
-    base
-    .slice(-32)
-    .join(","),
-
-    rx,
-
-    janelaEstado,
-
-    perfil.id,
-
-    offset,
-
-    fase.nivel
-
-  ]
-  .join("|");
-
-
   if(
-    cacheConfig.has(
-      chave
-    )
+    !jogada ||
+    !jogada.valido
   ){
+    return jogada;
+  }
 
-    return cacheConfig
-    .get(chave);
+
+  if(offset === 0){
+
+    return {
+
+      ...jogada,
+
+      offset:0,
+
+      numerosUsados:
+      new Set(
+        jogada.numerosUsados
+      )
+
+    };
 
   }
 
 
+  const blocos2 =
+  jogada.blocos2
+  .map(bloco => {
+
+    const centro =
+    moverNaRoda(
+      bloco.centro,
+      offset
+    );
+
+
+    return {
+
+      ...bloco,
+
+      centro,
+
+      numeros:
+      setorVizinhosOrdenado(
+        centro,
+        2
+      )
+
+    };
+
+  });
+
+
+  const blocos1 =
+  jogada.blocos1
+  .map(bloco => {
+
+    const centro =
+    moverNaRoda(
+      bloco.centro,
+      offset
+    );
+
+
+    return {
+
+      ...bloco,
+
+      centro,
+
+      numeros:
+      setorVizinhosOrdenado(
+        centro,
+        1
+      )
+
+    };
+
+  });
+
+
+  const usados =
+  new Set();
+
+
+  blocos2
+  .forEach(bloco => {
+
+    bloco.numeros
+    .forEach(numero => {
+
+      usados.add(numero);
+
+    });
+
+  });
+
+
+  blocos1
+  .forEach(bloco => {
+
+    bloco.numeros
+    .forEach(numero => {
+
+      usados.add(numero);
+
+    });
+
+  });
+
+
+  return {
+
+    ...jogada,
+
+    blocos2,
+
+    blocos1,
+
+    numerosUsados:
+    usados,
+
+    offset,
+
+    valido:
+    usados.size ===
+    TOTAL_COBERTURA
+
+  };
+
+}
+
+
+/* =========================================================
+   CONFIGURAÇÃO RX PURA
+========================================================= */
+
+function gerarConfiguracaoRX(
+  base,
+  rx,
+  offset=0
+){
+
   const selecao =
-
-  selecionarReplicas(
-
+  selecionarReplicasRX(
     base,
-
-    rx,
-
-    janelaEstado,
-
-    perfil
-
+    rx
   );
 
 
@@ -4598,240 +2445,114 @@ function gerarConfiguracao(
     selecao.estado !== "OK"
   ){
 
-    const vazio = {
-
+    return {
       valido:false,
-
       rx,
-
-      janelaEstado,
-
-      perfil,
-
-      offset
-
+      offset,
+      replicas:[],
+      similaridade:0
     };
 
-
-    cacheConfig.set(
-      chave,
-      vazio
-    );
+  }
 
 
-    return vazio;
+  const jogadaBase =
+  montarJogadaBase(
+    selecao.replicas,
+    base
+  );
+
+
+  if(!jogadaBase.valido){
+
+    return {
+      valido:false,
+      rx,
+      offset,
+      replicas:
+      selecao.replicas,
+      similaridade:
+      selecao.similaridade
+    };
 
   }
 
 
   const jogada =
-
-  montarJogada(
-
-    selecao.replicas,
-
-    selecao.estadoAtual,
-
-    perfil,
-
-    offset,
-
-    fase,
-
-    erros
-
+  aplicarOffsetJogada(
+    jogadaBase,
+    offset
   );
 
 
-  const saida = {
+  return {
 
     valido:
-
     jogada.valido
-
     &&
-
     jogada.numerosUsados.size ===
     TOTAL_COBERTURA,
 
-
     rx,
 
-    janelaEstado,
-
-    perfil,
-
     offset,
-
-    fase:
-    fase.fase,
-
 
     replicas:
     selecao.replicas,
 
-
     similaridade:
     selecao.similaridade,
-
-
-    estadoAtual:
-    selecao.estadoAtual,
-
 
     jogada
 
   };
 
+}
 
-  cacheConfig.set(
-    chave,
-    saida
+
+/* =========================================================
+   TAXA AUXILIAR
+========================================================= */
+
+function taxaResultados(lista){
+
+  if(!lista.length){
+    return 0;
+  }
+
+
+  return (
+    lista.filter(Boolean).length
+    /
+    lista.length
+    *
+    100
   );
-
-
-  return saida;
 
 }
 
 
 /* =========================================================
-   GERAR CANDIDATAS
+   BACKTEST DO OFFSET
+
+   WALK-FORWARD:
+
+   Para prever resultado N,
+   só utiliza dados anteriores a N.
+
+   O resultado N nunca entra
+   na própria previsão.
 ========================================================= */
 
-function gerarCandidatas(
+function backtestOffset(
   base,
-  fase
-){
-
-  const candidatas=[];
-
-
-  const janelas =
-  janelasDaFase(
-    fase
-  );
-
-
-  const offsets =
-  offsetsDaFase(
-    fase
-  );
-
-
-  /*
-    NORMAL:
-    mantém busca menor.
-
-    DETERIORAÇÃO:
-    abre todos os perfis.
-  */
-
-  const perfis =
-
-  fase.nivel === 0
-
-  ?
-
-  PERFIS_BASE.slice(
-    0,
-    4
-  )
-
-  :
-
-  PERFIS_BASE;
-
-
-  const erros =
-  analisarErrosRecentes();
-
-
-  RX_DISPONIVEIS
-  .forEach(rx => {
-
-
-    janelas
-    .forEach(janelaEstado => {
-
-
-      perfis
-      .forEach(perfil => {
-
-
-        offsets
-        .forEach(offset => {
-
-
-          const config =
-
-          gerarConfiguracao(
-
-            base,
-
-            rx,
-
-            janelaEstado,
-
-            perfil,
-
-            offset,
-
-            fase,
-
-            erros
-
-          );
-
-
-          if(
-            config.valido
-          ){
-
-            candidatas.push(
-              config
-            );
-
-          }
-
-
-        });
-
-      });
-
-    });
-
-  });
-
-
-  return candidatas;
-
-}
-
-
-/* =========================================================
-   WALK-FORWARD
-========================================================= */
-
-function backtestConfiguracao(
-  base,
-  template
+  rx
 ){
 
   const minimo =
-
   Math.max(
-
-    35,
-
-    template.janelaEstado
-    *
-    2,
-
-    template.rx
-    *
-    4
-
+    30,
+    rx*5
   );
 
 
@@ -4840,208 +2561,67 @@ function backtestConfiguracao(
   ){
 
     return {
-
+      offset:0,
       testes:0,
-
-      acertos:0,
-
-      taxa:0,
-
-      taxa5:0,
-
-      taxa10:0,
-
-      taxa20:0,
-
-      taxaPonderada:0,
-
-      lossSeguidos:0,
-
-      tendencia:0,
-
-      score:0,
-
-      timeline:[]
-
+      ranking:[]
     };
 
   }
 
 
   const inicio =
-
   Math.max(
-
     minimo,
-
-    base.length
-    -
-    BACKTEST_MAX
-
+    base.length -
+    MAX_TESTES_OFFSET
   );
 
 
-  const timeline=[];
+  const stats = {};
 
 
-  let pesoTotal=0;
+  OFFSETS_TESTADOS
+  .forEach(offset => {
 
-  let pesoAcertos=0;
+    stats[offset] = {
+      offset,
+      resultados:[],
+      acertos:0,
+      testes:0
+    };
 
-
-  /*
-    O backtest usa uma fase definida
-    antes de conhecer o resultado testado.
-  */
-
-  const faseTeste = {
-
-    fase:"BACKTEST",
-
-    nivel:
-
-    template.fase ===
-    "REESTRUTURAÇÃO"
-
-    ?
-
-    2
-
-    :
-
-    template.fase ===
-    "RECUPERAÇÃO FORTE"
-
-    ?
-
-    2
-
-    :
-
-    template.fase ===
-    "RECALIBRAÇÃO"
-
-    ?
-
-    1
-
-    :
-
-    0
-
-  };
-
-
-  /*
-    Erros futuros não podem entrar
-    retroativamente no backtest.
-  */
-
-  const errosVazios = {
-
-    total:0,
-
-    fora1:0,
-
-    fora2:0,
-
-    distantes:0,
-
-
-    terminais:
-    Array(10)
-    .fill(0),
-
-
-    terminalViz:
-    Array(10)
-    .fill(0),
-
-
-    regioes:{
-
-      ZERO:0,
-
-      VOISINS:0,
-
-      ORPHELINS:0,
-
-      TIERS:0
-
-    },
-
-
-    alto:0,
-
-    baixo:0,
-
-    vermelho:0,
-
-    preto:0,
-
-
-    roda:
-
-    new Map(
-
-      track.map(
-        numero =>
-        [
-          numero,
-          0
-        ]
-      )
-
-    )
-
-  };
+  });
 
 
   for(
-
     let indice=inicio;
-
     indice<base.length;
-
     indice++
-
   ){
 
     const passado =
-
     base.slice(
       0,
       indice
     );
 
 
-    const previsao =
+    /*
+      Uma única jogada-base.
 
-    gerarConfiguracao(
+      Depois testamos rotações dela.
+    */
 
+    const configBase =
+    gerarConfiguracaoRX(
       passado,
-
-      template.rx,
-
-      template.janelaEstado,
-
-      template.perfil,
-
-      template.offset,
-
-      faseTeste,
-
-      errosVazios
-
+      rx,
+      0
     );
 
 
-    if(
-      !previsao.valido
-    ){
-
+    if(!configBase.valido){
       continue;
-
     }
 
 
@@ -5049,368 +2629,207 @@ function backtestConfiguracao(
     base[indice];
 
 
-    const green =
+    OFFSETS_TESTADOS
+    .forEach(offset => {
 
-    previsao.jogada
-    .numerosUsados
-    .has(real);
-
-
-    const progresso =
-
-    (
-      indice
-      -
-      inicio
-      +
-      1
-    )
-
-    /
-
-    Math.max(
-
-      1,
-
-      base.length
-      -
-      inicio
-
-    );
+      const jogada =
+      aplicarOffsetJogada(
+        configBase.jogada,
+        offset
+      );
 
 
-    const peso =
-
-    PESO_RECENTE_MIN
-
-    +
-
-    progresso
-
-    *
-
-    (
-
-      PESO_RECENTE_MAX
-
-      -
-
-      PESO_RECENTE_MIN
-
-    );
+      const green =
+      jogada.valido
+      &&
+      jogada.numerosUsados
+      .has(real);
 
 
-    pesoTotal +=
-    peso;
+      const s =
+      stats[offset];
 
 
-    if(green){
-
-      pesoAcertos +=
-      peso;
-
-    }
+      s.testes++;
 
 
-    timeline.push({
+      if(green){
+        s.acertos++;
+      }
 
-      resultado:
-      real,
 
-      green
+      s.resultados.push(
+        green
+      );
+
+
+      if(
+        s.resultados.length >
+        MAX_TESTES_OFFSET
+      ){
+
+        s.resultados.shift();
+
+      }
 
     });
 
   }
 
 
-  const testes =
-  timeline.length;
+  const ranking =
+  Object.values(stats)
+  .map(s => {
+
+    const ult10 =
+    s.resultados.slice(-10);
+
+    const ult20 =
+    s.resultados.slice(-20);
+
+    const ult40 =
+    s.resultados.slice(-40);
 
 
-  const acertos =
-
-  timeline.filter(
-    item =>
-    item.green
-  ).length;
-
-
-  function taxa(lista){
-
-    if(
-      !lista.length
-    ){
-
-      return 0;
-
-    }
-
-
-    return (
-
-      lista.filter(
-        item =>
-        item.green
-      ).length
-
-      /
-
-      lista.length
-
-      *
-
-      100
-
+    const taxa10 =
+    taxaResultados(
+      ult10
     );
 
-  }
 
+    const taxa20 =
+    taxaResultados(
+      ult20
+    );
 
-  const taxaGeral =
 
-  testes
+    const taxa40 =
+    taxaResultados(
+      ult40
+    );
 
-  ?
 
-  acertos
-  /
-  testes
-  *
-  100
+    const geral =
+    s.testes
+    ?
+    s.acertos /
+    s.testes *
+    100
+    :
+    0;
 
-  :
 
-  0;
+    /*
+      Recente manda mais.
 
+      Sem near-miss na escolha.
+      Só GREEN real.
+    */
 
-  const taxaPonderada =
+    let score =
 
-  pesoTotal
-
-  ?
-
-  pesoAcertos
-  /
-  pesoTotal
-  *
-  100
-
-  :
-
-  0;
-
-
-  const taxa5 =
-
-  taxa(
-    timeline.slice(-5)
-  );
-
-
-  const taxa10 =
-
-  taxa(
-    timeline.slice(-10)
-  );
-
-
-  const taxa20 =
-
-  taxa(
-    timeline.slice(-20)
-  );
-
-
-  let lossSeguidos=0;
-
-
-  for(
-
-    let i=timeline.length-1;
-
-    i>=0;
-
-    i--
-
-  ){
-
-    if(
-      timeline[i].green
-    ){
-
-      break;
-
-    }
-
-
-    lossSeguidos++;
-
-  }
-
-
-  const ult10 =
-
-  timeline.slice(-10);
-
-
-  const tendencia =
-
-  taxa(
-    ult10.slice(-5)
-  )
-
-  -
-
-  taxa(
-    ult10.slice(0,5)
-  );
-
-
-  /*
-    SCORE:
-
-    últimos resultados pesam mais.
-
-    Não deixa um histórico antigo
-    esconder deterioração atual.
-  */
-
-  let score =
-
-  taxa5
-  *
-  0.25
-
-  +
-
-  taxa10
-  *
-  0.30
-
-  +
-
-  taxa20
-  *
-  0.25
-
-  +
-
-  taxaPonderada
-  *
-  0.12
-
-  +
-
-  taxaGeral
-  *
-  0.08;
-
-
-  /*
-    Tendência negativa.
-  */
-
-  if(
-    tendencia < 0
-  ){
-
-    score +=
-
-    tendencia
-    *
-    0.12;
-
-  }
-
-
-  /*
-    LOSS consecutivos derrubam
-    a configuração rapidamente.
-  */
-
-  if(
-    lossSeguidos === 1
-  ){
-
-    score -= 5;
-
-  }
-
-
-  else if(
-    lossSeguidos === 2
-  ){
-
-    score -= 18;
-
-  }
-
-
-  else if(
-    lossSeguidos >= 3
-  ){
-
-    score -=
-
-    35
+    taxa10 *
+    0.40
 
     +
 
-    (
-      lossSeguidos-3
-    )
-    *
-    10;
+    taxa20 *
+    0.35
 
-  }
+    +
+
+    taxa40 *
+    0.15
+
+    +
+
+    geral *
+    0.10;
 
 
-  /*
-    Evita 100% em amostra curtíssima
-    dominar uma configuração ruim
-    nos últimos 20.
-  */
+    /*
+      Pequena preferência por offset
+      menor quando desempenho empata.
+    */
+
+    score -=
+    Math.abs(s.offset) *
+    0.15;
+
+
+    return {
+
+      ...s,
+
+      taxa10,
+      taxa20,
+      taxa40,
+      geral,
+      score
+
+    };
+
+  })
+  .sort(
+    (a,b) => {
+
+      if(
+        Math.abs(
+          b.score-a.score
+        )
+        >
+        0.001
+      ){
+
+        return (
+          b.score-a.score
+        );
+
+      }
+
+
+      return (
+        Math.abs(a.offset) -
+        Math.abs(b.offset)
+      );
+
+    });
+
+
+  let melhor =
+  ranking[0];
+
 
   if(
-
-    taxa5 >= 90
-
-    &&
-
-    taxa20 < 80
-
+    !melhor ||
+    melhor.testes <
+    MIN_TESTES_OFFSET
   ){
 
-    score -= 10;
+    melhor =
+    ranking.find(
+      x => x.offset === 0
+    )
+    ||
+    {
+      offset:0,
+      testes:0
+    };
 
   }
 
 
   return {
 
-    testes,
+    offset:
+    melhor.offset,
 
-    acertos,
+    testes:
+    melhor.testes,
 
-    taxa:
-    taxaGeral,
+    melhor,
 
-    taxaPonderada,
-
-    taxa5,
-
-    taxa10,
-
-    taxa20,
-
-    lossSeguidos,
-
-    tendencia,
-
-    score,
-
-    timeline
+    ranking
 
   };
 
@@ -5418,545 +2837,290 @@ function backtestConfiguracao(
 
 
 /* =========================================================
-   OTIMIZADOR PRINCIPAL
+   QUALIDADE RECENTE DE CADA RX
 ========================================================= */
 
-function otimizarProximaJogada(
-  base
-){
+function qualidadeRX(rx){
 
-  const fase =
-  determinarFase();
+  const lista =
+  estado.timelineRX[rx];
 
 
-  const candidatas =
-
-  gerarCandidatas(
-    base,
-    fase
+  const stats =
+  estatisticaTimeline(
+    lista
   );
 
 
-  if(
-    !candidatas.length
-  ){
+  if(!stats.total){
 
     return {
-
-      escolhido:null,
-
-      ranking:[],
-
-      fase
-
+      rx,
+      ...stats,
+      score:0
     };
 
   }
 
 
   /*
-    Primeiro ranking barato.
-
-    Evita backtestar centenas de
-    configurações desnecessariamente.
+    Não deixamos uma amostra de
+    2 ou 3 resultados dominar.
   */
 
-  candidatas.sort(
-  (a,b) => {
-
-    const scoreA =
-
-    a.similaridade
-    *
-    0.60
-
-    +
-
-    a.jogada.scoreTotal
-    *
-    0.40;
-
-
-    const scoreB =
-
-    b.similaridade
-    *
-    0.60
-
-    +
-
-    b.jogada.scoreTotal
-    *
-    0.40;
-
-
-    return (
-      scoreB-scoreA
-    );
-
-  });
-
-
-  const limiteBacktest =
-
-  fase.nivel === 0
-
-  ?
-
-  16
-
-  :
-
-  fase.nivel === 1
-
-  ?
-
-  24
-
-  :
-
-  32;
-
-
-  const shortlist =
-
-  candidatas.slice(
-    0,
-    limiteBacktest
+  const conf5 =
+  Math.min(
+    1,
+    stats.total/5
   );
 
 
-  const avaliadas=[];
+  const conf10 =
+  Math.min(
+    1,
+    stats.total/10
+  );
 
 
-  shortlist
-  .forEach(config => {
-
-    const bt =
-
-    backtestConfiguracao(
-      base,
-      config
-    );
+  const conf20 =
+  Math.min(
+    1,
+    stats.total/20
+  );
 
 
-    const confiancaAmostra =
+  let score =
 
-    Math.min(
+  stats.taxa5 *
+  0.30 *
+  conf5
 
-      1,
+  +
 
-      bt.testes
-      /
-      BACKTEST_MIN
+  stats.taxa10 *
+  0.35 *
+  conf10
 
-    );
+  +
+
+  stats.taxa20 *
+  0.25 *
+  conf20
+
+  +
+
+  stats.taxaGeral *
+  0.10;
 
 
-    let scoreFinal =
+  if(stats.lossSeguidos === 1){
 
-    bt.score
+    score -= 3;
+
+  }
+
+  else if(stats.lossSeguidos === 2){
+
+    score -= 12;
+
+  }
+
+  else if(stats.lossSeguidos >= 3){
+
+    score -=
+    25
+    +
+    (
+      stats.lossSeguidos-3
+    )
     *
-    confiancaAmostra
+    8;
+
+  }
+
+
+  return {
+    rx,
+    ...stats,
+    score
+  };
+
+}
+
+
+/* =========================================================
+   AUTO
+
+   O AUTO NÃO CRIA OUTRO MOTOR.
+
+   Ele escolhe RX4/RX5/RX6 e offset
+   usando o desempenho real recente.
+========================================================= */
+
+function escolherAuto(
+  configs,
+  offsets
+){
+
+  const fase =
+  determinarFase();
+
+
+  const candidatos =
+  RX_DISPONIVEIS
+  .map(rx => {
+
+    const config =
+    configs[rx];
+
+
+    if(
+      !config ||
+      !config.valido
+    ){
+      return null;
+    }
+
+
+    const qualidade =
+    qualidadeRX(rx);
+
+
+    const offsetInfo =
+    offsets[rx];
+
+
+    /*
+      Similaridade original entra
+      como estabilidade/desempate.
+    */
+
+    let score =
+
+    qualidade.score
 
     +
 
-    config.similaridade
-    *
+    config.similaridade *
     0.08;
 
 
     /*
-      Configuração realmente sustentada
-      acima da meta ganha bônus.
+      Offset só auxilia.
+
+      Não substitui o RX.
     */
 
     if(
-
-      bt.taxa20 >= 90
-
-      &&
-
-      bt.taxa10 >= 90
-
+      offsetInfo &&
+      offsetInfo.melhor &&
+      offsetInfo.melhor.testes >=
+      MIN_TESTES_OFFSET
     ){
 
-      scoreFinal += 8;
+      score +=
+      offsetInfo.melhor.score *
+      0.08;
 
     }
 
 
     /*
-      Abaixo de 90:
-      começa pressão de substituição.
+      Em recuperação o motor reage
+      mais aos LOSS reais recentes.
     */
 
     if(
-      bt.taxa20 < 90
+      fase === "RECUPERAÇÃO" ||
+      fase === "REESTRUTURAÇÃO"
     ){
 
-      scoreFinal -=
-
-      (
-        90
-        -
-        bt.taxa20
-      )
-
-      *
-
-      0.45;
-
-    }
-
-
-    /*
-      85 ou menos:
-      estrutura perde confiança.
-    */
-
-    if(
-      bt.taxa20 <= 85
-    ){
-
-      scoreFinal -= 8;
-
-    }
-
-
-    /*
-      2 LOSS:
-      não continua insistindo.
-    */
-
-    if(
-      bt.lossSeguidos >= 2
-    ){
-
-      scoreFinal -= 15;
-
-    }
-
-
-    /*
-      Em recuperação a configuração
-      anterior perde preferência.
-
-      Isso impede o motor de ficar
-      preso no mesmo pensamento.
-    */
-
-    if(
-
-      fase.nivel >= 1
-
-      &&
-
-      estado.ultimaConfiguracao
-
-      &&
-
-      estado.ultimaConfiguracao.rx
-      ===
-      config.rx
-
-      &&
-
-      estado.ultimaConfiguracao.janelaEstado
-      ===
-      config.janelaEstado
-
-      &&
-
-      estado.ultimaConfiguracao.perfil
-      ===
-      config.perfil.id
-
-      &&
-
-      estado.ultimaConfiguracao.offset
-      ===
-      config.offset
-
-    ){
-
-      scoreFinal -=
-
-      fase.nivel
-      *
+      score -=
+      qualidade.lossSeguidos *
       8;
 
     }
 
 
-    avaliadas.push({
+    return {
 
-      ...config,
+      rx,
 
-      backtest:bt,
+      config,
 
-      scoreFinal
+      qualidade,
+
+      offsetInfo,
+
+      score
+
+    };
+
+  })
+  .filter(Boolean);
+
+
+  if(!candidatos.length){
+
+    return {
+      escolhido:null,
+      ranking:[]
+    };
+
+  }
+
+
+  candidatos.sort(
+    (a,b) => {
+
+      /*
+        Evita ficar preso no mesmo RX
+        quando ele começou a deteriorar.
+      */
+
+      if(
+        a.qualidade.lossSeguidos !==
+        b.qualidade.lossSeguidos
+      ){
+
+        return (
+          a.qualidade.lossSeguidos -
+          b.qualidade.lossSeguidos
+        );
+
+      }
+
+
+      if(
+        Math.abs(
+          b.score-a.score
+        )
+        >
+        0.001
+      ){
+
+        return (
+          b.score-a.score
+        );
+
+      }
+
+
+      return (
+        b.config.similaridade -
+        a.config.similaridade
+      );
 
     });
-
-  });
-
-
-  avaliadas.sort(
-  (a,b) => {
-
-
-    const estavelA =
-
-    a.backtest.testes
-    >=
-    BACKTEST_MIN
-
-    &&
-
-    a.backtest.taxa10
-    >=
-    90
-
-    &&
-
-    a.backtest.taxa20
-    >=
-    90
-
-    &&
-
-    a.backtest.lossSeguidos
-    <
-    2;
-
-
-    const estavelB =
-
-    b.backtest.testes
-    >=
-    BACKTEST_MIN
-
-    &&
-
-    b.backtest.taxa10
-    >=
-    90
-
-    &&
-
-    b.backtest.taxa20
-    >=
-    90
-
-    &&
-
-    b.backtest.lossSeguidos
-    <
-    2;
-
-
-    if(
-      estavelA !==
-      estavelB
-    ){
-
-      return (
-
-        Number(estavelB)
-
-        -
-
-        Number(estavelA)
-
-      );
-
-    }
-
-
-    /*
-      Quando deteriorou:
-      últimos 5 passam a ser muito
-      importantes.
-    */
-
-    if(
-      fase.nivel >= 1
-    ){
-
-      if(
-
-        Math.abs(
-
-          b.backtest.taxa5
-
-          -
-
-          a.backtest.taxa5
-
-        )
-
-        >
-
-        0.001
-
-      ){
-
-        return (
-
-          b.backtest.taxa5
-
-          -
-
-          a.backtest.taxa5
-
-        );
-
-      }
-
-
-      if(
-
-        a.backtest.lossSeguidos
-
-        !==
-
-        b.backtest.lossSeguidos
-
-      ){
-
-        return (
-
-          a.backtest.lossSeguidos
-
-          -
-
-          b.backtest.lossSeguidos
-
-        );
-
-      }
-
-    }
-
-
-    if(
-
-      Math.abs(
-
-        b.backtest.taxa10
-
-        -
-
-        a.backtest.taxa10
-
-      )
-
-      >
-
-      0.001
-
-    ){
-
-      return (
-
-        b.backtest.taxa10
-
-        -
-
-        a.backtest.taxa10
-
-      );
-
-    }
-
-
-    if(
-
-      Math.abs(
-
-        b.backtest.taxa20
-
-        -
-
-        a.backtest.taxa20
-
-      )
-
-      >
-
-      0.001
-
-    ){
-
-      return (
-
-        b.backtest.taxa20
-
-        -
-
-        a.backtest.taxa20
-
-      );
-
-    }
-
-
-    if(
-
-      Math.abs(
-
-        b.scoreFinal
-
-        -
-
-        a.scoreFinal
-
-      )
-
-      >
-
-      0.001
-
-    ){
-
-      return (
-
-        b.scoreFinal
-
-        -
-
-        a.scoreFinal
-
-      );
-
-    }
-
-
-    return (
-
-      b.similaridade
-
-      -
-
-      a.similaridade
-
-    );
-
-  });
 
 
   return {
 
     escolhido:
-    avaliadas[0]
-    ||
-    null,
+    candidatos[0],
 
     ranking:
-    avaliadas,
-
-    fase
+    candidatos
 
   };
 
@@ -5964,97 +3128,35 @@ function otimizarProximaJogada(
 
 
 /* =========================================================
-   MELHOR CONFIGURAÇÃO RX4 / RX5 / RX6
+   ASSINATURA DO HISTÓRICO
+
+   Impede que clique manual reescreva
+   previsão congelada.
 ========================================================= */
 
-function melhorConfiguracaoDoRX(
-  base,
-  rx,
-  fase
-){
+function assinaturaHistorico(){
 
-  const candidatas=[];
+  return (
 
+    historico.length
 
-  const janelas =
-  janelasDaFase(
-    fase
+    +
+
+    "|"
+
+    +
+
+    historico
+    .slice(-32)
+    .join(",")
+
   );
-
-
-  const erros =
-  analisarErrosRecentes();
-
-
-  janelas
-  .forEach(janelaEstado => {
-
-
-    PERFIS_BASE
-    .forEach(perfil => {
-
-
-      const config =
-
-      gerarConfiguracao(
-
-        base,
-
-        rx,
-
-        janelaEstado,
-
-        perfil,
-
-        0,
-
-        fase,
-
-        erros
-
-      );
-
-
-      if(
-        config.valido
-      ){
-
-        candidatas.push(
-          config
-        );
-
-      }
-
-
-    });
-
-  });
-
-
-  if(
-    !candidatas.length
-  ){
-
-    return null;
-
-  }
-
-
-  candidatas.sort(
-    (a,b) =>
-    b.similaridade
-    -
-    a.similaridade
-  );
-
-
-  return candidatas[0];
 
 }
 
 
 /* =========================================================
-   SNAPSHOT CONGELADO
+   SNAPSHOT
 ========================================================= */
 
 function criarSnapshot(
@@ -6063,17 +3165,10 @@ function criarSnapshot(
 ){
 
   if(
-
-    !config
-
-    ||
-
+    !config ||
     !config.valido
-
   ){
-
     return null;
-
   }
 
 
@@ -6081,103 +3176,44 @@ function criarSnapshot(
 
     assinatura,
 
-
     criadoCom:
     historico.length,
-
 
     rx:
     config.rx,
 
-
-    janelaEstado:
-    config.janelaEstado,
-
-
-    perfil:
-    config.perfil.id,
-
-
     offset:
-    config.offset
-    ||
-    0,
-
-
-    fase:
-    config.fase
-    ||
-    estado.motor.fase,
-
+    config.offset || 0,
 
     numeros:
-
     Array.from(
-      config.jogada
-      .numerosUsados
+      config.jogada.numerosUsados
     ),
 
-
     blocos2:
+    config.jogada.blocos2
+    .map(b => ({
 
-    config.jogada
-    .blocos2
-
-    .map(bloco => ({
-
-      centro:
-      bloco.centro,
+      centro:b.centro,
 
       numeros:
-      bloco.numeros.slice()
+      b.numeros.slice()
 
     })),
-
 
     blocos1:
+    config.jogada.blocos1
+    .map(b => ({
 
-    config.jogada
-    .blocos1
-
-    .map(bloco => ({
-
-      centro:
-      bloco.centro,
+      centro:b.centro,
 
       numeros:
-      bloco.numeros.slice()
+      b.numeros.slice()
 
     })),
 
-
-    backtest:
-
-    config.backtest
-
-    ?
-
-    {
-
-      taxa:
-      config.backtest.taxa,
-
-      taxa5:
-      config.backtest.taxa5,
-
-      taxa10:
-      config.backtest.taxa10,
-
-      taxa20:
-      config.backtest.taxa20,
-
-      testes:
-      config.backtest.testes
-
-    }
-
-    :
-
-    null
+    similaridade:
+    config.similaridade
 
   };
 
@@ -6196,46 +3232,31 @@ function avaliarPendentes(
   assinaturaHistorico();
 
 
-  /*
-    RX4 / RX5 / RX6
-  */
-
   RX_DISPONIVEIS
   .forEach(rx => {
 
     const pendente =
-    estado.pendentesRX[
-      rx
-    ];
+    estado.pendentesRX[rx];
 
 
-    if(
-      !pendente
-    ){
-
+    if(!pendente){
       return;
-
     }
 
 
     /*
-      Se o histórico foi alterado,
-      não marca resultado falso.
+      Só vale se realmente foi criada
+      para o histórico anterior ao
+      novo resultado.
     */
 
     if(
-
-      pendente.assinatura
-
-      !==
-
+      pendente.assinatura !==
       assinaturaAntes
-
     ){
 
-      estado.pendentesRX[
-        rx
-      ] = null;
+      estado.pendentesRX[rx] =
+      null;
 
       return;
 
@@ -6243,16 +3264,13 @@ function avaliarPendentes(
 
 
     const green =
-
     pendente.numeros
     .includes(
       novoNumero
     );
 
 
-    estado.timelineRX[
-      rx
-    ]
+    estado.timelineRX[rx]
     .push({
 
       resultado:
@@ -6262,23 +3280,14 @@ function avaliarPendentes(
 
       rx,
 
-      assinatura:
-      pendente.assinatura,
+      offset:
+      pendente.offset,
 
       numeros:
       pendente.numeros.slice(),
 
-      blocos2:
-      pendente.blocos2,
-
-      blocos1:
-      pendente.blocos1,
-
-      offset:
-      pendente.offset,
-
-      fase:
-      pendente.fase,
+      assinatura:
+      pendente.assinatura,
 
       hora:
       Date.now()
@@ -6286,51 +3295,32 @@ function avaliarPendentes(
     });
 
 
-    estado.timelineRX[
-      rx
-    ] =
-
-    estado.timelineRX[
-      rx
-    ]
-
-    .slice(
-      -MAX_TIMELINE
-    );
+    estado.timelineRX[rx] =
+    estado.timelineRX[rx]
+    .slice(-MAX_TIMELINE);
 
 
-    estado.pendentesRX[
-      rx
-    ] = null;
+    estado.pendentesRX[rx] =
+    null;
 
   });
 
-
-  /*
-    AUTO
-  */
 
   if(
     estado.pendenteAuto
   ){
 
-    const pendente =
+    const p =
     estado.pendenteAuto;
 
 
     if(
-
-      pendente.assinatura
-
-      ===
-
+      p.assinatura ===
       assinaturaAntes
-
     ){
 
       const green =
-
-      pendente.numeros
+      p.numeros
       .includes(
         novoNumero
       );
@@ -6344,46 +3334,17 @@ function avaliarPendentes(
 
         green,
 
-
         rx:
-        pendente.rx,
-
-
-        janelaEstado:
-        pendente.janelaEstado,
-
-
-        perfil:
-        pendente.perfil,
-
+        p.rx,
 
         offset:
-        pendente.offset,
-
-
-        fase:
-        pendente.fase,
-
-
-        assinatura:
-        pendente.assinatura,
-
+        p.offset,
 
         numeros:
-        pendente.numeros.slice(),
+        p.numeros.slice(),
 
-
-        blocos2:
-        pendente.blocos2,
-
-
-        blocos1:
-        pendente.blocos1,
-
-
-        backtest:
-        pendente.backtest,
-
+        assinatura:
+        p.assinatura,
 
         hora:
         Date.now()
@@ -6392,12 +3353,8 @@ function avaliarPendentes(
 
 
       estado.timelineAuto =
-
       estado.timelineAuto
-
-      .slice(
-        -MAX_TIMELINE
-      );
+      .slice(-MAX_TIMELINE);
 
     }
 
@@ -6408,99 +3365,8 @@ function avaliarPendentes(
   }
 
 
-  salvarEstado();
-
-}
-
-
-/* =========================================================
-   GARANTIR PENDENTES
-
-   Render ou clique manual não pode
-   substituir previsão aberta.
-========================================================= */
-
-function garantirPendentes(
-  rxConfigs,
-  otimizacao
-){
-
-  const assinatura =
-  assinaturaHistorico();
-
-
-  RX_DISPONIVEIS
-  .forEach(rx => {
-
-    const atual =
-    estado.pendentesRX[
-      rx
-    ];
-
-
-    if(
-
-      atual
-
-      &&
-
-      atual.assinatura
-      ===
-      assinatura
-
-    ){
-
-      return;
-
-    }
-
-
-    estado.pendentesRX[
-      rx
-    ] =
-
-    criarSnapshot(
-
-      rxConfigs[
-        rx
-      ],
-
-      assinatura
-
-    );
-
-  });
-
-
-  const atualAuto =
-  estado.pendenteAuto;
-
-
-  if(
-
-    !(
-      atualAuto
-
-      &&
-
-      atualAuto.assinatura
-      ===
-      assinatura
-    )
-
-  ){
-
-    estado.pendenteAuto =
-
-    criarSnapshot(
-
-      otimizacao.escolhido,
-
-      assinatura
-
-    );
-
-  }
+  estado.fase =
+  determinarFase();
 
 
   salvarEstado();
@@ -6514,85 +3380,196 @@ function garantirPendentes(
 
 function processarEstadoAtual(){
 
-  limparCaches();
+  const assinatura =
+  assinaturaHistorico();
 
 
-  const fase =
-  determinarFase();
+  const configsBase = {};
+
+  const offsets = {};
+
+  const configsFinais = {};
 
 
-  const rxConfigs={};
-
+  /*
+    Primeiro:
+    gera RX puro 4 / 5 / 6.
+  */
 
   RX_DISPONIVEIS
   .forEach(rx => {
 
-    rxConfigs[
-      rx
-    ] =
-
-    melhorConfiguracaoDoRX(
-
+    configsBase[rx] =
+    gerarConfiguracaoRX(
       historico,
-
       rx,
-
-      fase
-
+      0
     );
 
   });
 
 
-  const otimizacao =
+  /*
+    Depois:
+    calibra offset separadamente.
 
-  otimizarProximaJogada(
-    historico
+    Isso não muda as réplicas.
+  */
+
+  RX_DISPONIVEIS
+  .forEach(rx => {
+
+    offsets[rx] =
+    backtestOffset(
+      historico,
+      rx
+    );
+
+
+    const base =
+    configsBase[rx];
+
+
+    if(
+      !base ||
+      !base.valido
+    ){
+
+      configsFinais[rx] =
+      base;
+
+      return;
+
+    }
+
+
+    const offset =
+    offsets[rx].offset || 0;
+
+
+    const jogada =
+    aplicarOffsetJogada(
+      base.jogada,
+      offset
+    );
+
+
+    configsFinais[rx] = {
+
+      ...base,
+
+      offset,
+
+      jogada
+
+    };
+
+  });
+
+
+  /*
+    AUTO escolhe entre os motores
+    originais já existentes.
+  */
+
+  const auto =
+  escolherAuto(
+    configsFinais,
+    offsets
   );
 
 
-  garantirPendentes(
+  /*
+    CONGELAMENTO RX4/RX5/RX6
 
-    rxConfigs,
+    Se já existe previsão para a mesma
+    assinatura, NÃO substitui.
+  */
 
-    otimizacao
+  RX_DISPONIVEIS
+  .forEach(rx => {
 
-  );
+    const existente =
+    estado.pendentesRX[rx];
 
+
+    if(
+      existente &&
+      existente.assinatura ===
+      assinatura
+    ){
+
+      return;
+
+    }
+
+
+    estado.pendentesRX[rx] =
+    criarSnapshot(
+      configsFinais[rx],
+      assinatura
+    );
+
+  });
+
+
+  /*
+    AUTO congelado.
+  */
 
   if(
-    otimizacao.escolhido
+    !(
+      estado.pendenteAuto &&
+      estado.pendenteAuto.assinatura ===
+      assinatura
+    )
   ){
+
+    if(auto.escolhido){
+
+      estado.pendenteAuto =
+      criarSnapshot(
+        auto.escolhido.config,
+        assinatura
+      );
+
+    }
+
+    else{
+
+      estado.pendenteAuto =
+      null;
+
+    }
+
+  }
+
+
+  if(auto.escolhido){
+
+    estado.offsetAtual =
+    auto.escolhido.config.offset;
+
 
     estado.ultimaConfiguracao = {
 
       rx:
-      otimizacao.escolhido.rx,
-
-
-      janelaEstado:
-      otimizacao.escolhido
-      .janelaEstado,
-
-
-      perfil:
-      otimizacao.escolhido
-      .perfil.id,
-
+      auto.escolhido.rx,
 
       offset:
-      otimizacao.escolhido
-      .offset
-      ||
-      0,
+      auto.escolhido.config.offset,
 
-
-      fase:
-      otimizacao.fase.fase
+      similaridade:
+      auto.escolhido.config
+      .similaridade
 
     };
 
   }
+
+
+  estado.fase =
+  determinarFase();
 
 
   salvarEstado();
@@ -6600,11 +3577,14 @@ function processarEstadoAtual(){
 
   return {
 
-    rxConfigs,
+    configs:
+    configsFinais,
 
-    otimizacao,
+    configsBase,
 
-    fase
+    offsets,
+
+    auto
 
   };
 
@@ -6615,29 +3595,12 @@ function processarEstadoAtual(){
    ADICIONAR NÚMERO
 ========================================================= */
 
-let calculando=false;
-
-let filaCalculo=false;
-
-
-function adicionarNumero(
-  numero
-){
-
-  /*
-    PRIMEIRO:
-    fecha previsão anterior.
-  */
+function adicionarNumero(numero){
 
   avaliarPendentes(
     numero
   );
 
-
-  /*
-    DEPOIS:
-    insere o novo resultado.
-  */
 
   historico.push(
     numero
@@ -6645,7 +3608,6 @@ function adicionarNumero(
 
 
   historico =
-
   historico.slice(
     -MAX_HISTORICO
   );
@@ -6654,126 +3616,18 @@ function adicionarNumero(
   salvarHistorico();
 
 
-  /*
-    Atualização visual imediata.
-  */
-
-  render14();
-
-
-  renderTimeline(
-
-    "timelineAUTO",
-
-    "AUTO",
-
-    estado.timelineAuto
-
-  );
-
-
-  renderTimeline(
-
-    "timeline4",
-
-    "RX4",
-
-    estado.timelineRX[4]
-
-  );
-
-
-  renderTimeline(
-
-    "timeline5",
-
-    "RX5",
-
-    estado.timelineRX[5]
-
-  );
-
-
-  renderTimeline(
-
-    "timeline6",
-
-    "RX6",
-
-    estado.timelineRX[6]
-
-  );
-
-
-  renderMomento();
-
-
   statusArea.textContent =
 
-  "Número "
-
-  +
-
-  numero
-
-  +
-
-  " inserido • organismo recalculando...";
+  "Número " +
+  numero +
+  " inserido • recalculando próxima jogada...";
 
 
   statusArea.style.color =
   "#00e5ff";
 
 
-  solicitarRenderPesado();
-
-}
-
-
-function solicitarRenderPesado(){
-
-  if(
-    calculando
-  ){
-
-    filaCalculo=true;
-
-    return;
-
-  }
-
-
-  calculando=true;
-
-
-  setTimeout(
-  () => {
-
-    try{
-
-      renderPesado();
-
-    }
-
-    finally{
-
-      calculando=false;
-
-
-      if(
-        filaCalculo
-      ){
-
-        filaCalculo=false;
-
-        solicitarRenderPesado();
-
-      }
-
-    }
-
-  },
-  0);
+  render();
 
 }
 
@@ -6782,45 +3636,26 @@ function solicitarRenderPesado(){
    HISTÓRICO COLADO
 ========================================================= */
 
-function extrairNumeros(
-  texto
-){
+function extrairNumeros(texto){
 
   const encontrados =
-
   texto.match(
-
     /\b(?:[0-9]|[12][0-9]|3[0-6])\b/g
-
   );
 
 
-  if(
-    !encontrados
-  ){
-
+  if(!encontrados){
     return [];
-
   }
 
 
   return encontrados
-
   .map(Number)
-
-  .filter(numero =>
-
-    numero >= 0
-
-    &&
-
-    numero <= 36
-
+  .filter(n =>
+    n >= 0 &&
+    n <= 36
   )
-
-  .slice(
-    -MAX_HISTORICO
-  );
+  .slice(-MAX_HISTORICO);
 
 }
 
@@ -6828,30 +3663,24 @@ function extrairNumeros(
 function inserirHistorico(){
 
   const campo =
-
   document.getElementById(
     "entradaHistorico"
   );
 
 
   const numeros =
-
   extrairNumeros(
     campo.value
   );
 
 
-  if(
-    !numeros.length
-  ){
+  if(!numeros.length){
 
     statusArea.textContent =
     "Nenhum número válido.";
 
-
     statusArea.style.color =
     "#ff5252";
-
 
     return;
 
@@ -6862,53 +3691,34 @@ function inserirHistorico(){
   numeros;
 
 
-  estado.pendenteAuto =
-  null;
+  /*
+    Histórico substituído:
+    previsões e timelines anteriores
+    deixam de pertencer à sequência.
+  */
 
+  estado.pendenteAuto=null;
 
-  estado.pendentesRX = {
-
+  estado.pendentesRX={
     4:null,
-
     5:null,
-
     6:null
-
   };
 
-
-  estado.timelineRX = {
-
+  estado.timelineRX={
     4:[],
-
     5:[],
-
     6:[]
-
   };
-
 
   estado.timelineAuto=[];
 
+  estado.offsetAtual=0;
 
-  estado.ultimaConfiguracao =
-  null;
-
-
-  estado.motor = {
-
-    fase:
-    "APRENDENDO",
-
-    deterioracao:0,
-
-    ultimaTaxa20:0
-
-  };
+  estado.fase="APRENDENDO";
 
 
   salvarHistorico();
-
   salvarEstado();
 
 
@@ -6917,10 +3727,7 @@ function inserirHistorico(){
 
   statusArea.textContent =
 
-  historico.length
-
-  +
-
+  historico.length +
   " números carregados.";
 
 
@@ -6928,11 +3735,7 @@ function inserirHistorico(){
   "#00e676";
 
 
-  render14();
-
-  renderMomento();
-
-  solicitarRenderPesado();
+  render();
 
 }
 
@@ -6943,43 +3746,34 @@ function inserirHistorico(){
 
 function apagarUltimo(){
 
-  if(
-    !historico.length
-  ){
-
+  if(!historico.length){
     return;
-
   }
 
 
   historico.pop();
 
 
-  estado.pendenteAuto =
-  null;
+  /*
+    Previsões abertas deixam de valer.
 
+    Timeline fechada permanece.
+  */
 
-  estado.pendentesRX = {
+  estado.pendenteAuto=null;
 
+  estado.pendentesRX={
     4:null,
-
     5:null,
-
     6:null
-
   };
 
 
   salvarHistorico();
-
   salvarEstado();
 
 
-  render14();
-
-  renderMomento();
-
-  solicitarRenderPesado();
+  render();
 
 }
 
@@ -6987,76 +3781,47 @@ function apagarUltimo(){
 function apagarTudo(){
 
   if(
-
     !confirm(
       "Apagar todo o histórico?"
     )
-
   ){
-
     return;
-
   }
 
 
   historico=[];
 
 
-  estado.pendenteAuto =
-  null;
+  estado.pendenteAuto=null;
 
-
-  estado.pendentesRX = {
-
+  estado.pendentesRX={
     4:null,
-
     5:null,
-
     6:null
-
   };
 
 
-  estado.timelineRX = {
-
+  estado.timelineRX={
     4:[],
-
     5:[],
-
     6:[]
-
   };
 
 
   estado.timelineAuto=[];
 
+  estado.offsetAtual=0;
 
-  estado.ultimaConfiguracao =
-  null;
+  estado.ultimaConfiguracao=null;
 
-
-  estado.motor = {
-
-    fase:
-    "APRENDENDO",
-
-    deterioracao:0,
-
-    ultimaTaxa20:0
-
-  };
+  estado.fase="APRENDENDO";
 
 
   salvarHistorico();
-
   salvarEstado();
 
 
-  render14();
-
-  renderMomento();
-
-  solicitarRenderPesado();
+  render();
 
 }
 
@@ -7073,8 +3838,7 @@ function ativarAuto(){
 
   salvarEstado();
 
-
-  renderExibicaoAtual();
+  render();
 
 }
 
@@ -7091,8 +3855,7 @@ function ativarManual(rx){
 
   salvarEstado();
 
-
-  renderExibicaoAtual();
+  render();
 
 }
 
@@ -7103,21 +3866,14 @@ function ativarManual(rx){
 
 document.body.innerHTML="";
 
-
 document.body.style.margin="0";
-
 document.body.style.background="#101010";
-
 document.body.style.color="#fff";
-
-document.body.style.fontFamily=
-"Arial,sans-serif";
+document.body.style.fontFamily="Arial,sans-serif";
 
 
 const app =
-document.createElement(
-  "div"
-);
+document.createElement("div");
 
 
 app.innerHTML = `
@@ -7276,7 +4032,7 @@ color:#00e676;
 color:#ffc107;
 }
 
-.recuperacao{
+.critico{
 color:#ff5252;
 }
 
@@ -7285,7 +4041,7 @@ color:#ff5252;
 
 .momento{
 display:grid;
-grid-template-columns:repeat(6,1fr);
+grid-template-columns:repeat(5,1fr);
 gap:4px;
 margin-top:7px;
 }
@@ -7306,7 +4062,7 @@ font-weight:900;
 }
 
 .momentoBox strong{
-font-size:13px;
+font-size:14px;
 }
 
 
@@ -7507,7 +4263,7 @@ grid-template-columns:repeat(3,1fr);
 }
 
 .momento{
-grid-template-columns:repeat(3,1fr);
+grid-template-columns:repeat(2,1fr);
 }
 
 .timelineLinha{
@@ -7539,7 +4295,6 @@ id="entradaHistorico"
 placeholder="Cole o histórico do mais antigo para o mais recente..."
 ></textarea>
 
-
 <div class="acoes">
 
 <button
@@ -7562,7 +4317,6 @@ Apagar tudo
 
 </div>
 
-
 <div
 id="statusArea"
 class="status">
@@ -7575,33 +4329,24 @@ Pronto.
 <section class="painel">
 
 <div class="titulo">
-MOTOR ADAPTATIVO — ORGANISMO VIVO
+MOTOR ADAPTATIVO — RX ORIGINAL PRESERVADO
 </div>
-
 
 <div class="controle">
 
-<button
-id="auto"
-class="modo">
+<button id="auto" class="modo">
 AUTO
 </button>
 
-<button
-id="rx4"
-class="modo">
+<button id="rx4" class="modo">
 4
 </button>
 
-<button
-id="rx5"
-class="modo">
+<button id="rx5" class="modo">
 5
 </button>
 
-<button
-id="rx6"
-class="modo">
+<button id="rx6" class="modo">
 6
 </button>
 
@@ -7623,7 +4368,7 @@ class="momento">
 <div class="timelineArea">
 
 <div class="titulo">
-LINHA DO TEMPO REAL — ÚLTIMOS 20
+LINHA DO TEMPO REAL — PREVISÃO CONGELADA
 </div>
 
 <div
@@ -7656,7 +4401,6 @@ class="timelineLinha">
 <div class="titulo">
 ÚLTIMOS 14
 </div>
-
 
 <div class="linha">
 
@@ -7718,7 +4462,6 @@ class="jogadaInfo">
 
 </div>
 
-
 <div id="jogadaArea">
 </div>
 
@@ -7742,9 +4485,7 @@ class="teclado">
 `;
 
 
-document.body.appendChild(
-  app
-);
+document.body.appendChild(app);
 
 
 /* =========================================================
@@ -7846,16 +4587,12 @@ for(
 
 
   botao.style.background =
-  corNumeroRoleta(
-    numero
-  );
+  corNumeroRoleta(numero);
 
 
   botao.onclick =
   () =>
-  adicionarNumero(
-    numero
-  );
+  adicionarNumero(numero);
 
 
   teclado.appendChild(
@@ -7875,8 +4612,7 @@ zero.className =
 "numeroBtn zeroBtn";
 
 
-zero.textContent =
-"0";
+zero.textContent="0";
 
 
 zero.style.background =
@@ -7904,9 +4640,7 @@ function renderTimeline(
 ){
 
   const area =
-  document.getElementById(
-    id
-  );
+  document.getElementById(id);
 
 
   const ultimos =
@@ -7920,62 +4654,14 @@ function renderTimeline(
 
 
   const caixas =
-
   ultimos
-
   .map(item => {
-
-
-    const detalhe =
-
-    item.rx
-
-    ?
-
-    " • RX"
-
-    +
-
-    item.rx
-
-    +
-
-    (
-      item.janelaEstado
-      ?
-      " E"+item.janelaEstado
-      :
-      ""
-    )
-
-    +
-
-    (
-      item.perfil
-      ?
-      " "+item.perfil
-      :
-      ""
-    )
-
-    +
-
-    (
-      item.offset
-      ?
-      " OFF "+item.offset
-      :
-      ""
-    )
-
-    :
-
-    "";
-
 
     return (
 
-      '<span class="gl ' +
+      '<span class="' +
+
+      'gl ' +
 
       (
         item.green
@@ -7983,15 +4669,12 @@ function renderTimeline(
         'greenGL'
         :
         'lossGL'
-      )
+      ) +
 
-      +
+      '" title="' +
 
-      '" title="Resultado ' +
-
+      'Resultado ' +
       item.resultado +
-
-      detalhe +
 
       '">' +
 
@@ -8008,48 +4691,30 @@ function renderTimeline(
     );
 
   })
-
   .join("");
 
 
   area.innerHTML =
 
   '<div class="timelineNome">' +
-
   nome +
-
   '</div>' +
-
 
   '<div class="timeline">' +
-
   caixas +
-
   '</div>' +
-
 
   '<div class="timelineTaxa">' +
 
   (
-
     estatistica.total
-
     ?
-
     estatistica.taxa20
-    .toFixed(0)
-
-    +
-
+    .toFixed(0) +
     "%"
-
     :
-
     "—"
-
-  )
-
-  +
+  ) +
 
   '</div>';
 
@@ -8062,136 +4727,74 @@ function renderTimeline(
 
 function renderMomento(){
 
-  const estadoAtual =
-
-  descreverEstado(
+  const momento =
+  analisarMomento(
     historico,
     JANELA_ESTADO
   );
 
 
   const totalAB =
-
-  estadoAtual.alto
-
-  +
-
-  estadoAtual.baixo;
+  momento.alto +
+  momento.baixo;
 
 
   const totalCor =
-
-  estadoAtual.vermelho
-
-  +
-
-  estadoAtual.preto;
+  momento.vermelho +
+  momento.preto;
 
 
   const pAlto =
-
   totalAB
-
   ?
-
-  estadoAtual.alto
-  /
-  totalAB
-  *
+  momento.alto /
+  totalAB *
   100
-
   :
-
   0;
 
 
   const pBaixo =
-
   totalAB
-
   ?
-
-  estadoAtual.baixo
-  /
-  totalAB
-  *
+  momento.baixo /
+  totalAB *
   100
-
   :
-
   0;
 
 
   const pVermelho =
-
   totalCor
-
   ?
-
-  estadoAtual.vermelho
-  /
-  totalCor
-  *
+  momento.vermelho /
+  totalCor *
   100
-
   :
-
   0;
 
 
   const pPreto =
-
   totalCor
-
   ?
-
-  estadoAtual.preto
-  /
-  totalCor
-  *
+  momento.preto /
+  totalCor *
   100
-
   :
-
   0;
 
 
-  const topTerminais =
-
-  estadoAtual.terminalViz
-
+  const terminalMaisAtivo =
+  momento.terminais
   .map(
-    (valor,terminal) =>
-    ({
-      terminal,
+    (valor,t) => ({
+      t,
       valor
     })
   )
-
   .sort(
     (a,b) =>
-    b.valor-a.valor
-  )
-
-  .slice(0,3)
-
-  .map(
-    item =>
-    "T"+item.terminal
-  )
-
-  .join(" • ");
-
-
-  const regiaoDominante =
-
-  Object.entries(
-    estadoAtual.regioes
-  )
-
-  .sort(
-    (a,b) =>
-    b[1]-a[1]
+      b.valor-a.valor
   )[0];
 
 
@@ -8201,92 +4804,45 @@ function renderMomento(){
   )
   .innerHTML =
 
-
   '<div class="momentoBox">' +
-
   '<small>BAIXO 1–18</small>' +
-
   '<strong>' +
-
   pBaixo.toFixed(0) +
-
   '%</strong>' +
-
   '</div>' +
 
-
   '<div class="momentoBox">' +
-
   '<small>ALTO 19–36</small>' +
-
   '<strong>' +
-
   pAlto.toFixed(0) +
-
   '%</strong>' +
-
   '</div>' +
 
-
   '<div class="momentoBox">' +
-
   '<small>VERMELHO</small>' +
-
   '<strong>' +
-
   pVermelho.toFixed(0) +
-
   '%</strong>' +
-
   '</div>' +
 
-
   '<div class="momentoBox">' +
-
   '<small>PRETO</small>' +
-
   '<strong>' +
-
   pPreto.toFixed(0) +
-
   '%</strong>' +
-
   '</div>' +
 
-
   '<div class="momentoBox">' +
-
-  '<small>TERMINAIS</small>' +
-
-  '<strong>' +
-
+  '<small>TERMINAL ATIVO</small>' +
+  '<strong>T' +
   (
-    topTerminais
-    ||
-    "—"
-  ) +
-
-  '</strong>' +
-
-  '</div>' +
-
-
-  '<div class="momentoBox">' +
-
-  '<small>REGIÃO</small>' +
-
-  '<strong>' +
-
-  (
-    regiaoDominante
+    terminalMaisAtivo
     ?
-    regiaoDominante[0]
+    terminalMaisAtivo.t
     :
     "—"
   ) +
-
   '</strong>' +
-
   '</div>';
 
 }
@@ -8296,217 +4852,130 @@ function renderMomento(){
    RENDER MOTOR
 ========================================================= */
 
-function classeTaxa(valor){
+function classeTaxa(taxa){
 
-  if(
-    valor >= 90
-  ){
-
+  if(taxa >= 90){
     return "meta90";
-
   }
 
 
-  if(
-    valor >= 85
-  ){
-
+  if(taxa >= 85){
     return "abaixo90";
-
   }
 
 
-  return "recuperacao";
+  return "critico";
 
 }
 
 
-function renderMotor(
-  otimizacao
-){
+function renderMotor(resultado){
 
   const area =
-
   document.getElementById(
     "motorGrid"
   );
 
 
   const escolhido =
-  otimizacao.escolhido;
+  resultado.auto.escolhido;
 
 
-  const fase =
-
-  otimizacao.fase
-
-  ||
-
-  determinarFase();
+  const autoStats =
+  estatisticaTimeline(
+    estado.timelineAuto
+  );
 
 
-  if(
-    !escolhido
-  ){
+  if(!escolhido){
 
     area.innerHTML =
 
     '<div class="motorCard">' +
-
     '<small>STATUS</small>' +
-
     '<strong>AGUARDANDO</strong>' +
-
     '</div>';
-
 
     return;
 
   }
 
 
-  const bt =
-  escolhido.backtest;
+  const qualidade =
+  escolhido.qualidade;
 
 
   area.innerHTML =
 
-
   '<div class="motorCard">' +
-
-  '<small>FASE</small>' +
-
-  '<strong class="' +
-
-  (
-
-    fase.nivel === 0
-
-    ?
-
-    'meta90'
-
-    :
-
-    fase.nivel === 1
-
-    ?
-
-    'abaixo90'
-
-    :
-
-    'recuperacao'
-
-  )
-
-  +
-
-  '">' +
-
-  fase.fase +
-
-  '</strong>' +
-
-  '</div>' +
-
-
-  '<div class="motorCard">' +
-
-  '<small>RX / ESTADO</small>' +
-
+  '<small>RX ATIVO</small>' +
   '<strong>' +
-
   escolhido.rx +
-
-  ' / ' +
-
-  escolhido.janelaEstado +
-
   '</strong>' +
-
   '</div>' +
 
-
   '<div class="motorCard">' +
-
-  '<small>ÚLTIMOS 5</small>' +
-
-  '<strong class="' +
-
-  classeTaxa(
-    bt.taxa5
-  ) +
-
-  '">' +
-
-  bt.taxa5.toFixed(0) +
-
-  '%</strong>' +
-
-  '</div>' +
-
-
-  '<div class="motorCard">' +
-
-  '<small>BACKTEST 10</small>' +
-
-  '<strong class="' +
-
-  classeTaxa(
-    bt.taxa10
-  ) +
-
-  '">' +
-
-  bt.taxa10.toFixed(0) +
-
-  '%</strong>' +
-
-  '</div>' +
-
-
-  '<div class="motorCard">' +
-
-  '<small>BACKTEST 20</small>' +
-
-  '<strong class="' +
-
-  classeTaxa(
-    bt.taxa20
-  ) +
-
-  '">' +
-
-  bt.taxa20.toFixed(0) +
-
-  '%</strong>' +
-
-  '</div>' +
-
-
-  '<div class="motorCard">' +
-
-  '<small>LOSS SEGUIDOS</small>' +
-
-  '<strong class="' +
-
+  '<small>OFFSET</small>' +
+  '<strong>' +
   (
-    bt.lossSeguidos >= 2
+    escolhido.config.offset > 0
     ?
-    'recuperacao'
+    "+"
     :
-    ''
-  )
-
-  +
-
-  '">' +
-
-  bt.lossSeguidos +
-
+    ""
+  ) +
+  escolhido.config.offset +
   '</strong>' +
+  '</div>' +
 
+  '<div class="motorCard">' +
+  '<small>REAL 10</small>' +
+  '<strong class="' +
+  classeTaxa(
+    autoStats.taxa10
+  ) +
+  '">' +
+  (
+    autoStats.total
+    ?
+    autoStats.taxa10.toFixed(0) +
+    "%"
+    :
+    "—"
+  ) +
+  '</strong>' +
+  '</div>' +
+
+  '<div class="motorCard">' +
+  '<small>RX 20</small>' +
+  '<strong class="' +
+  classeTaxa(
+    qualidade.taxa20
+  ) +
+  '">' +
+  (
+    qualidade.total
+    ?
+    qualidade.taxa20.toFixed(0) +
+    "%"
+    :
+    "—"
+  ) +
+  '</strong>' +
+  '</div>' +
+
+  '<div class="motorCard">' +
+  '<small>LOSS</small>' +
+  '<strong>' +
+  autoStats.lossSeguidos +
+  '</strong>' +
+  '</div>' +
+
+  '<div class="motorCard">' +
+  '<small>FASE</small>' +
+  '<strong style="font-size:10px">' +
+  estado.fase +
+  '</strong>' +
   '</div>';
 
 }
@@ -8553,24 +5022,27 @@ function renderControle(
 
 
     if(
-      resultado.otimizacao
-      .escolhido
+      resultado.auto.escolhido
     ){
 
-      document
-      .getElementById(
+      const rx =
+      resultado.auto
+      .escolhido.rx;
 
-        "rx"
 
-        +
+      const botao =
+      document.getElementById(
+        "rx"+rx
+      );
 
-        resultado.otimizacao
-        .escolhido.rx
 
-      )
-      .classList.add(
+      botao.classList.add(
         "vencedor"
       );
+
+
+      botao.textContent =
+      rx + " ★";
 
     }
 
@@ -8580,19 +5052,36 @@ function renderControle(
 
     document
     .getElementById(
-
-      "rx"
-
-      +
-
+      "rx" +
       estado.manualRX
-
     )
     .classList.add(
       "ativo"
     );
 
   }
+
+
+  RX_DISPONIVEIS
+  .forEach(rx => {
+
+    const botao =
+    document.getElementById(
+      "rx"+rx
+    );
+
+
+    if(
+      !botao.classList
+      .contains("vencedor")
+    ){
+
+      botao.textContent =
+      String(rx);
+
+    }
+
+  });
 
 }
 
@@ -8604,7 +5093,6 @@ function renderControle(
 function render14(){
 
   const janela =
-
   historico.slice(
     -JANELA_VISUAL
   );
@@ -8617,19 +5105,12 @@ function render14(){
   .innerHTML =
 
   janela
-
   .map(numero =>
 
     '<div class="bola" ' +
 
     'style="background:' +
-
-    corNumeroRoleta(
-      numero
-    )
-
-    +
-
+    corNumeroRoleta(numero) +
     '">' +
 
     numero +
@@ -8637,7 +5118,6 @@ function render14(){
     '</div>'
 
   )
-
   .join("");
 
 
@@ -8648,13 +5128,10 @@ function render14(){
   .innerHTML =
 
   janela
-
   .map(numero => {
 
     const regiao =
-    regiaoDoNumero(
-      numero
-    );
+    regiaoDoNumero(numero);
 
 
     return (
@@ -8666,14 +5143,10 @@ function render14(){
       (
         regiao
         ?
-        coresRegioes[
-          regiao
-        ]
+        coresRegioes[regiao]
         :
         "#555"
-      )
-
-      +
+      ) +
 
       '">' +
 
@@ -8684,7 +5157,6 @@ function render14(){
     );
 
   })
-
   .join("");
 
 
@@ -8695,27 +5167,16 @@ function render14(){
   .innerHTML =
 
   janela
-
   .map(numero => {
 
     const ids =
-    idsQueBatem(
-      numero
-    );
+    idsQueBatem(numero);
 
 
-    if(
-      !ids.length
-    ){
+    if(!ids.length){
 
       return (
-
-        '<div class="idBox">' +
-
-        '—' +
-
-        '</div>'
-
+        '<div class="idBox">—</div>'
       );
 
     }
@@ -8726,17 +5187,12 @@ function render14(){
       '<div class="idBox">' +
 
       ids
-
       .map(id =>
 
         '<span class="idTag" ' +
 
         'style="background:' +
-
-        corDoId(id)
-
-        +
-
+        corDoId(id) +
         '">' +
 
         id +
@@ -8744,17 +5200,13 @@ function render14(){
         '</span>'
 
       )
-
-      .join("")
-
-      +
+      .join("") +
 
       '</div>'
 
     );
 
   })
-
   .join("");
 
 }
@@ -8764,18 +5216,11 @@ function render14(){
    RENDER JOGADA
 ========================================================= */
 
-function renderJogada(
-  config
-){
+function renderJogada(config){
 
   if(
-
-    !config
-
-    ||
-
+    !config ||
     !config.valido
-
   ){
 
     jogadaInfo.textContent =
@@ -8785,11 +5230,8 @@ function renderJogada(
     jogadaArea.innerHTML =
 
     '<div style="' +
-
     'color:#777;' +
-
     'padding:8px' +
-
     '">' +
 
     'Histórico insuficiente.' +
@@ -8804,60 +5246,27 @@ function renderJogada(
 
   let texto =
 
-  "RX"
+  "RX" +
+  config.rx +
 
-  +
-
-  config.rx
-
-  +
-
-  " • E"
-
-  +
-
-  config.janelaEstado
-
-  +
-
-  " • "
-
-  +
-
-  config.perfil.id
-
-  +
-
-  " • OFF "
-
-  +
+  " • OFFSET " +
 
   (
-    config.offset
-    ||
-    0
-  );
+    config.offset > 0
+    ?
+    "+"
+    :
+    ""
+  ) +
 
+  config.offset +
 
-  if(
-    config.backtest
-  ){
+  " • SIM " +
 
-    texto +=
+  config.similaridade
+  .toFixed(0) +
 
-    " • "
-
-    +
-
-    config.backtest
-    .taxa20
-    .toFixed(0)
-
-    +
-
-    "%";
-
-  }
+  "%";
 
 
   jogadaInfo.textContent =
@@ -8866,8 +5275,7 @@ function renderJogada(
 
   const html2 =
 
-  config.jogada
-  .blocos2
+  config.jogada.blocos2
 
   .map(bloco =>
 
@@ -8876,29 +5284,23 @@ function renderJogada(
     '<small>2 VIZINHOS DO</small>' +
 
     '<strong>' +
-
     bloco.centro +
-
     '</strong>' +
 
     '<div class="nums">' +
-
     bloco.numeros
     .join(" • ") +
-
     '</div>' +
 
     '</div>'
 
   )
-
   .join("");
 
 
   const html1 =
 
-  config.jogada
-  .blocos1
+  config.jogada.blocos1
 
   .map(bloco =>
 
@@ -8907,120 +5309,43 @@ function renderJogada(
     '<small>1 VIZINHO DO</small>' +
 
     '<strong>' +
-
     bloco.centro +
-
     '</strong>' +
 
     '<div class="nums">' +
-
     bloco.numeros
     .join(" • ") +
-
     '</div>' +
 
     '</div>'
 
   )
-
   .join("");
 
 
   jogadaArea.innerHTML =
 
   '<div class="jogadaLinha">' +
-
   html2 +
-
   '</div>' +
 
   '<div class="jogadaLinha">' +
-
   html1 +
-
   '</div>';
 
 }
 
 
 /* =========================================================
-   RESULTADO PROCESSADO
+   RENDER
 ========================================================= */
 
-let ultimoResultadoProcessado =
-null;
-
-
-function renderExibicaoAtual(){
-
-  if(
-    !ultimoResultadoProcessado
-  ){
-
-    solicitarRenderPesado();
-
-    return;
-
-  }
-
-
-  const resultado =
-  ultimoResultadoProcessado;
-
-
-  renderControle(
-    resultado
-  );
-
-
-  let ativa=null;
-
-
-  if(
-    estado.modo ===
-    "AUTO"
-  ){
-
-    ativa =
-
-    resultado.otimizacao
-    .escolhido;
-
-  }
-
-  else{
-
-    ativa =
-
-    resultado.rxConfigs[
-      estado.manualRX
-    ];
-
-  }
-
-
-  renderJogada(
-    ativa
-  );
-
-}
-
-
-/* =========================================================
-   RENDER PESADO
-========================================================= */
-
-function renderPesado(){
+function render(){
 
   try{
 
     const resultado =
-
     processarEstadoAtual();
-
-
-    ultimoResultadoProcessado =
-    resultado;
 
 
     renderControle(
@@ -9029,7 +5354,7 @@ function renderPesado(){
 
 
     renderMotor(
-      resultado.otimizacao
+      resultado
     );
 
 
@@ -9037,46 +5362,30 @@ function renderPesado(){
 
 
     renderTimeline(
-
       "timelineAUTO",
-
       "AUTO",
-
       estado.timelineAuto
-
     );
 
 
     renderTimeline(
-
       "timeline4",
-
       "RX4",
-
       estado.timelineRX[4]
-
     );
 
 
     renderTimeline(
-
       "timeline5",
-
       "RX5",
-
       estado.timelineRX[5]
-
     );
 
 
     renderTimeline(
-
       "timeline6",
-
       "RX6",
-
       estado.timelineRX[6]
-
     );
 
 
@@ -9092,17 +5401,19 @@ function renderPesado(){
     ){
 
       ativa =
-
-      resultado.otimizacao
-      .escolhido;
+      resultado.auto.escolhido
+      ?
+      resultado.auto.escolhido
+      .config
+      :
+      null;
 
     }
 
     else{
 
       ativa =
-
-      resultado.rxConfigs[
+      resultado.configs[
         estado.manualRX
       ];
 
@@ -9114,35 +5425,38 @@ function renderPesado(){
     );
 
 
-    const fase =
+    statusArea.textContent =
 
-    resultado.otimizacao
-    .fase;
+    historico.length
+    ?
+    historico.length +
+    " números • " +
+    estado.fase
+    :
+    "Pronto.";
 
 
     if(
-      fase.nivel === 0
+      estado.fase ===
+      "NORMAL"
     ){
-
-      statusArea.textContent =
-
-      "Motor estável • próxima jogada congelada.";
-
 
       statusArea.style.color =
       "#00e676";
 
     }
 
-
     else if(
-      fase.nivel === 1
+      estado.fase ===
+      "REESTRUTURAÇÃO"
     ){
 
-      statusArea.textContent =
+      statusArea.style.color =
+      "#ff5252";
 
-      "Assertividade deteriorou • recalibração ativa.";
+    }
 
+    else{
 
       statusArea.style.color =
       "#ffc107";
@@ -9150,123 +5464,87 @@ function renderPesado(){
     }
 
 
-    else{
-
-      statusArea.textContent =
-
-      fase.fase
-
-      +
-
-      " • lógica anterior perdeu preferência • nova estrutura congelada.";
-
-
-      statusArea.style.color =
-      "#ff5252";
-
-    }
-
-
     console.log(
-
-      "ORGANISMO VIVO V6",
-
+      "MOTOR 0/6/9 — RX ORIGINAL + ADAPTAÇÃO",
       {
+
+        fase:
+        estado.fase,
 
         modo:
         estado.modo,
 
+        escolhido:
+        resultado.auto.escolhido
+        ?
+        {
+          rx:
+          resultado.auto.escolhido.rx,
 
-        fase:
-        resultado.otimizacao
-        .fase,
+          offset:
+          resultado.auto.escolhido
+          .config.offset,
 
+          similaridade:
+          resultado.auto.escolhido
+          .config.similaridade,
 
-        live:
+          qualidade:
+          resultado.auto.escolhido
+          .qualidade,
 
-        estatisticaTimeline(
-          estado.timelineAuto
-        ),
+          score:
+          resultado.auto.escolhido
+          .score
+        }
+        :
+        null,
 
+        rankingAuto:
+        resultado.auto.ranking
+        .map(x => ({
 
-        errosRecentes:
-
-        analisarErrosRecentes(),
-
-
-        selecionada:
-
-        resultado.otimizacao
-        .escolhido,
-
-
-        top10:
-
-        resultado.otimizacao
-        .ranking
-
-        .slice(0,10)
-
-        .map(config => ({
-
-          RX:
-          config.rx,
-
-
-          ESTADO:
-          config.janelaEstado,
-
-
-          PERFIL:
-          config.perfil.id,
-
+          RX:x.rx,
 
           OFFSET:
-          config.offset,
+          x.config.offset,
 
-
-          BT5:
-          config.backtest
-          .taxa5
+          T5:
+          x.qualidade.taxa5
           .toFixed(1),
 
-
-          BT10:
-          config.backtest
-          .taxa10
+          T10:
+          x.qualidade.taxa10
           .toFixed(1),
 
-
-          BT20:
-          config.backtest
-          .taxa20
+          T20:
+          x.qualidade.taxa20
           .toFixed(1),
-
-
-          TEND:
-          config.backtest
-          .tendencia
-          .toFixed(1),
-
 
           LOSS:
-          config.backtest
-          .lossSeguidos,
-
+          x.qualidade.lossSeguidos,
 
           SIM:
-          config.similaridade
+          x.config.similaridade
           .toFixed(1),
 
-
           SCORE:
-          config.scoreFinal
-          .toFixed(1)
+          x.score.toFixed(1)
 
-        }))
+        })),
+
+        offsets:{
+          RX4:
+          resultado.offsets[4],
+
+          RX5:
+          resultado.offsets[5],
+
+          RX6:
+          resultado.offsets[6]
+        }
 
       }
-
     );
 
 
@@ -9279,26 +5557,15 @@ function renderPesado(){
 
     statusArea.textContent =
 
-    "Erro: "
-
-    +
+    "Erro: " +
 
     (
-
-      erro
-
-      &&
-
+      erro &&
       erro.message
-
       ?
-
       erro.message
-
       :
-
       "erro desconhecido"
-
     );
 
 
@@ -9314,57 +5581,6 @@ function renderPesado(){
    INICIAR
 ========================================================= */
 
-render14();
-
-
-renderMomento();
-
-
-renderTimeline(
-
-  "timelineAUTO",
-
-  "AUTO",
-
-  estado.timelineAuto
-
-);
-
-
-renderTimeline(
-
-  "timeline4",
-
-  "RX4",
-
-  estado.timelineRX[4]
-
-);
-
-
-renderTimeline(
-
-  "timeline5",
-
-  "RX5",
-
-  estado.timelineRX[5]
-
-);
-
-
-renderTimeline(
-
-  "timeline6",
-
-  "RX6",
-
-  estado.timelineRX[6]
-
-);
-
-
-solicitarRenderPesado();
-
+render();
 
 })();
