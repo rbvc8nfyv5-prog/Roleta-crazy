@@ -577,21 +577,30 @@ JSON.stringify(estado)
 
 /* ============================================================
    DUPLAS VISUAIS
-   ALTERAÇÃO SOMENTE DO CONTROLE VISUAL
 
-   QUADRO PRINCIPAL:
+   REGRA VISUAL CORRIGIDA:
+
+   GREEN DIRETO = VERDE
+   LOSS = VERMELHO
+   GREEN G1 = AMARELO
+
+   FECHAMENTO:
    20 → 27
+   se precisar G1:
+   20 → 27
+        [27 → 8]
 
-   SE FECHAMENTO DO 20 DER LOSS:
-   20 → 27 [27 → 8]
+   ABERTURA:
+   se 6 for a abertura e precisar G1,
+   o próximo 10 NÃO ocupa o segundo lugar principal.
 
-   O 27 TAMBÉM DEIXA CONGELADA A JOGADA
-   DE ABERTURA DO PRÓXIMO QUADRO.
+   fica:
+   6 → —
+   [6 → 10]
 
-   SE ESSA ABERTURA DER LOSS:
-   15 → 12
+   Depois disso a próxima jogada/quadro segue à frente.
 
-   SEM REPETIR O 15.
+   ALTERAÇÃO SOMENTE DO CONTROLE VISUAL.
 ============================================================ */
 
 let duplasVisual=[];
@@ -3586,11 +3595,6 @@ fase:"ESPERA_RESULTADO"
 
 /* ============================================================
    PREPARA EVENTO VISUAL ANTES DO MOTOR
-
-   AQUI PEGAMOS A JOGADA QUE ESTAVA PENDENTE
-   ANTES DO NOVO NÚMERO.
-
-   NÃO ALTERA O MOTOR.
 ============================================================ */
 
 function prepararVisualAntes(numero){
@@ -3613,12 +3617,9 @@ duplasVisual[
 duplasVisual.length-1
 ];
 
-const chave=
-chaveVisualAtual();
-
 
 /*
-   1) QUADRO ABERTO ESPERANDO O SEGUNDO NÚMERO.
+   QUADRO NORMAL ESPERANDO O SEGUNDO NÚMERO.
 */
 
 if(
@@ -3640,8 +3641,7 @@ pendentesAntes
 
 
 /*
-   2) LOSS NO FECHAMENTO.
-   PRÓXIMO NÚMERO É G1 DO FECHAMENTO.
+   G1 DE FECHAMENTO.
 */
 
 if(
@@ -3659,11 +3659,7 @@ pendentesAntes
 
 
 /*
-   3) O QUADRO ANTERIOR TERMINOU.
-   O NÚMERO ATUAL É A ABERTURA DO PRÓXIMO QUADRO.
-
-   ELE É TESTADO CONTRA A JOGADA GERADA
-   PELO RESULTADO DO QUADRO ANTERIOR.
+   ABERTURA DO PRÓXIMO QUADRO.
 */
 
 if(
@@ -3690,13 +3686,14 @@ pendentesAntes
 
 
 /*
-   4) PRIMEIRO NÚMERO DA ABERTURA DEU LOSS.
-   O PRÓXIMO É G1 DA ABERTURA.
+   G1 DE ABERTURA.
 
-   VISUALMENTE:
-   15 → 12
+   IMPORTANTE:
+   ESTE NÚMERO É SOMENTE O G1 VISUAL
+   DA ABERTURA.
 
-   SEM REPETIR 15.
+   ELE NÃO É COLOCADO COMO SEGUNDO
+   NÚMERO PRINCIPAL DO QUADRO.
 */
 
 if(
@@ -3707,6 +3704,24 @@ return {
 tipo:"G1_ABERTURA",
 numero,
 quadro:ultima,
+pendentesAntes
+};
+
+}
+
+
+/*
+   DEPOIS DE UM G1 DE ABERTURA,
+   O PRÓXIMO NÚMERO COMEÇA UM NOVO QUADRO.
+*/
+
+if(
+ultima.fase==="ABERTURA_G1_FINALIZADA"
+){
+
+return {
+tipo:"PRIMEIRO",
+numero,
 pendentesAntes
 };
 
@@ -3749,13 +3764,16 @@ snapshotsDepois
 )
 );
 
+duplasVisual=
+duplasVisual.slice(-7);
+
 salvarDuplasVisual();
 return;
 
 }
 
 
-/* SEGUNDO NÚMERO DO QUADRO */
+/* SEGUNDO NÚMERO NORMAL */
 
 if(controle.tipo==="RESULTADO"){
 
@@ -3765,20 +3783,10 @@ controle.quadro;
 q.resultado=
 numero;
 
-/*
-   AVALIAÇÃO NORMAL DO MOTOR
-   DO NÚMERO QUE ACABOU DE SAIR.
-*/
-
 q.avaliacoes=
 capturarAvaliacoesDoResultado(
 numero
 );
-
-/*
-   GUARDA A JOGADA GERADA PELO SEGUNDO NÚMERO.
-   ELA SERÁ A JOGADA DE ABERTURA DO PRÓXIMO QUADRO.
-*/
 
 q.snapshotResultado=
 snapshotsDepois;
@@ -3820,13 +3828,6 @@ numero,
 q.snapshotGatilho
 );
 
-/*
-   O G1 FECHA A RECUPERAÇÃO.
-   O NÚMERO DO G1 NÃO É CARREGADO.
-   CONTINUA VALENDO A JOGADA GERADA
-   PELO SEGUNDO NÚMERO DO QUADRO.
-*/
-
 q.fase=
 "ESPERA_ABERTURA";
 
@@ -3857,15 +3858,6 @@ controle.snapshotOrigem
 const atual=
 controle.avaliacao[chave];
 
-/*
-   SE A ABERTURA ACERTOU:
-   O NÚMERO JÁ É O PRIMEIRO DO NOVO QUADRO
-   E AGORA ESPERA O SEGUNDO NÚMERO NORMAL.
-
-   SE DEU LOSS:
-   ESPERA UM G1 DA ABERTURA.
-*/
-
 if(atual==="LOSS"){
 
 novo.fase=
@@ -3889,7 +3881,25 @@ return;
 }
 
 
-/* G1 DA ABERTURA */
+/* ============================================================
+   G1 DA ABERTURA — CORREÇÃO VISUAL
+
+   EXEMPLO:
+
+   6 ABRIU E DEU LOSS.
+   ENTRA 10 COMO G1.
+
+   NA TELA:
+
+   6 → —
+   [6 → 10]
+
+   O 10 NÃO VIRA O SEGUNDO NÚMERO
+   PRINCIPAL DO QUADRO.
+
+   O PRÓXIMO NÚMERO COMEÇA O
+   PRÓXIMO QUADRO VISUAL.
+============================================================ */
 
 if(controle.tipo==="G1_ABERTURA"){
 
@@ -3906,17 +3916,14 @@ q.snapshotAbertura
 );
 
 /*
-   O G1 DA ABERTURA FICA NA FRENTE:
-   15 → 12
+   NÃO MUDA q.resultado.
 
-   NÃO REPETE O 15.
-
-   DEPOIS DISSO O QUADRO CONTINUA
-   ESPERANDO O SEGUNDO NÚMERO NORMAL.
+   O G1 FICA SOMENTE NO QUADRINHO
+   INFERIOR.
 */
 
 q.fase=
-"ESPERA_RESULTADO";
+"ABERTURA_G1_FINALIZADA";
 
 salvarDuplasVisual();
 return;
@@ -3983,13 +3990,6 @@ return resultado;
 
 function apagarUltimoDaDupla(){
 
-/*
-   O MOTOR NÃO É ALTERADO.
-   PARA O VISUAL NÃO FICAR COM ESTADO IMPOSSÍVEL
-   APÓS APAGAR, RECONSTRUÍMOS SOMENTE A PARTE VISUAL
-   A PARTIR DOS DADOS QUE AINDA EXISTEM.
-*/
-
 if(!duplasVisual.length)
 return;
 
@@ -4004,8 +4004,10 @@ ultima.aberturaG1!==undefined
 ){
 
 ultima.aberturaG1=null;
+
 ultima.avaliacoesAberturaG1=
 avaliacoesVazias();
+
 ultima.fase=
 "ESPERA_G1_ABERTURA";
 
@@ -4020,13 +4022,18 @@ ultima.resultado!==undefined
 ){
 
 ultima.resultado=null;
+
 ultima.avaliacoes=
 avaliacoesVazias();
+
 ultima.avaliacoesFechamentoG1=
 avaliacoesVazias();
+
 ultima.fechamentoG1=null;
+
 ultima.snapshotResultado=
 snapshotsVazios();
+
 ultima.fase=
 "ESPERA_RESULTADO";
 
@@ -4044,8 +4051,6 @@ salvarDuplasVisual();
 
 /* ============================================================
    INSERÇÃO
-   MOTOR ORIGINAL PRESERVADO.
-   SOMENTE O VISUAL É PREPARADO/FINALIZADO AO REDOR DELE.
 ============================================================ */
 
 function adicionarNumero(numero){
@@ -4075,10 +4080,7 @@ render();
 
 
 /*
-   O RENDER ACIMA GERA OS NOVOS PENDENTES
-   EXATAMENTE COMO NO CÓDIGO ORIGINAL.
-
-   AGORA SOMENTE SALVAMOS O RESULTADO VISUAL.
+   SOMENTE CONTROLE VISUAL
 */
 
 finalizarVisualDepois(
@@ -4492,16 +4494,16 @@ width:100%
 
 .dupla14{
 min-width:0;
-min-height:58px;
+min-height:66px;
 border-radius:7px;
 display:flex;
-align-items:center;
+align-items:flex-start;
 justify-content:center;
 gap:4px;
 background:#272727;
 border:2px solid #555;
 position:relative;
-padding:4px
+padding:7px 4px 25px
 }
 
 .dupla14.green{
@@ -4547,34 +4549,36 @@ border:2px solid #aaa
 .setaDupla{
 font-size:10px;
 font-weight:900;
-color:#aaa
+color:#aaa;
+margin-top:8px
 }
 
 
-/*
-   QUADRINHO INTERNO DO G1 DE FECHAMENTO
+/* ============================================================
+   QUADRINHO INFERIOR G1
+============================================================ */
 
-   EXEMPLO:
-   QUADRO PRINCIPAL 20 → 27
-   QUADRINHO       27 → 8
-*/
-
-.g1Fechamento{
+.g1Fechamento,
+.g1Abertura{
 position:absolute;
-right:2px;
+left:50%;
 bottom:2px;
+transform:translateX(-50%);
 height:20px;
-padding:2px 3px;
+padding:2px 4px;
 border-radius:5px;
 display:flex;
 align-items:center;
+justify-content:center;
 gap:2px;
 background:#171717;
 border:1px solid #ffc107;
-box-shadow:0 0 0 1px rgba(0,0,0,.4)
+box-shadow:0 0 0 1px rgba(0,0,0,.4);
+white-space:nowrap
 }
 
-.g1Fechamento.loss{
+.g1Fechamento.loss,
+.g1Abertura.loss{
 border-color:#d93a3a
 }
 
@@ -4596,26 +4600,6 @@ border:1px solid #aaa
 font-size:7px;
 font-weight:900;
 color:#bbb
-}
-
-
-/*
-   G1 DE ABERTURA FICA NA FRENTE.
-   EXEMPLO:
-   15 → 12
-
-   NÃO EXISTE OUTRO 15 REPETIDO.
-*/
-
-.aberturaG1Tag{
-position:absolute;
-top:2px;
-left:50%;
-transform:translateX(-50%);
-font-size:6px;
-font-weight:900;
-color:#ffc107;
-white-space:nowrap
 }
 
 
@@ -4742,7 +4726,7 @@ grid-template-columns:repeat(4,1fr)
 }
 
 .dupla14{
-min-height:62px
+min-height:68px
 }
 
 }
@@ -5198,7 +5182,7 @@ um+
 
 
 /* ============================================================
-   DUPLAS
+   DUPLAS — VISUAL CORRIGIDO
 ============================================================ */
 
 function renderDuplas14(){
@@ -5245,15 +5229,11 @@ chave
 
 
 /*
-   COR DO QUADRO PRINCIPAL.
+   CORES:
 
-   PRIORIDADE:
-   - abertura recuperada no G1 = amarelo;
-   - abertura loss aguardando G1 = vermelho;
-   - quadro sem resultado = aberto;
-   - fechamento green = verde;
-   - fechamento loss aguardando G1 = vermelho;
-   - fechamento recuperado no G1 = amarelo.
+   GREEN DIRETO = VERDE
+   LOSS = VERMELHO
+   GREEN G1 = AMARELO
 */
 
 if(
@@ -5262,6 +5242,13 @@ aberturaG1==="GREEN"
 ){
 
 classe="g1";
+
+}else if(
+abertura==="LOSS" &&
+aberturaG1==="LOSS"
+){
+
+classe="loss";
 
 }else if(
 abertura==="LOSS" &&
@@ -5314,46 +5301,34 @@ classe="sem";
 
 
 /*
-   PRIMEIRO E SEGUNDO NÚMERO MOSTRADOS NA FRENTE.
+   QUADRO PRINCIPAL.
 
-   SE ESTIVER EM G1 DE ABERTURA:
-   15 → 12
+   O G1 DE ABERTURA NÃO SUBSTITUI
+   O SEGUNDO NÚMERO PRINCIPAL.
 
-   NÃO REPETE O 15.
+   EXEMPLO:
+
+   6 → —
+   [6 → 10]
 */
 
-let numero1=
+const numero1=
 d.gatilho;
 
-let numero2=null;
-
-let tagAbertura="";
-
-if(
-d.aberturaG1!==null &&
-d.aberturaG1!==undefined
-){
-
-numero2=
-d.aberturaG1;
-
-tagAbertura=
-'<div class="aberturaG1Tag">G1 ABERTURA</div>';
-
-}else{
-
-numero2=
+const numero2=
 d.resultado;
-
-}
 
 
 /*
-   QUADRINHO INTERNO DO FECHAMENTO:
-   27 → 8
+   MINI G1 DE FECHAMENTO.
+
+   EXEMPLO:
+
+   20 → 27
+   [27 → 8]
 */
 
-let mini="";
+let miniFechamento="";
 
 if(
 d.fechamentoG1!==null &&
@@ -5367,7 +5342,7 @@ fechamentoG1==="GREEN"
 ?""
 :" loss";
 
-mini=
+miniFechamento=
 
 '<div class="g1Fechamento'+
 miniClasse+
@@ -5392,13 +5367,62 @@ d.fechamentoG1+
 }
 
 
+/*
+   MINI G1 DE ABERTURA.
+
+   EXEMPLO:
+
+   QUADRO PRINCIPAL:
+   6 → —
+
+   EMBAIXO:
+   6 → 10
+
+   O 10 NÃO VAI PARA CIMA.
+*/
+
+let miniAbertura="";
+
+if(
+d.aberturaG1!==null &&
+d.aberturaG1!==undefined
+){
+
+const miniClasse=
+aberturaG1==="GREEN"
+?""
+:" loss";
+
+miniAbertura=
+
+'<div class="g1Abertura'+
+miniClasse+
+'">'+
+
+'<div class="g1MiniBola" style="background:'+
+corRoleta(d.gatilho)+
+'">'+
+d.gatilho+
+'</div>'+
+
+'<span class="g1MiniSeta">›</span>'+
+
+'<div class="g1MiniBola" style="background:'+
+corRoleta(d.aberturaG1)+
+'">'+
+d.aberturaG1+
+'</div>'+
+
+'</div>';
+
+}
+
+
 html+=
 
 '<div class="dupla14 '+
 classe+
 '">'+
-
-tagAbertura+
 
 '<div class="bolaDupla" style="background:'+
 corRoleta(numero1)+
@@ -5428,7 +5452,8 @@ numero2+
 
 )+
 
-mini+
+miniFechamento+
+miniAbertura+
 
 '</div>';
 
