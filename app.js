@@ -5,21 +5,13 @@
    ANALISADOR 0 • 6 • 9
    RAIO X + MOMENTO 14 + CONCENTRAÇÃO FÍSICA DAS DÚZIAS
 
-   MOTOR PRESERVADO.
-
-   ALTERAÇÃO:
-   - ÚLTIMAS DUPLAS passam a mostrar o RESULTADO DA ENTRADA.
-   - GREEN DE PRIMEIRA = VERDE.
-   - LOSS DE PRIMEIRA = VERMELHO enquanto aguarda G1.
-   - GREEN NO G1 = AMARELO.
-   - LOSS NO G1 = VERMELHO.
-   - O GIRO DO G1 continua entrando normalmente no histórico 35
-     e em TODAS as leituras do motor.
-   - O giro do G1 NÃO cria uma nova entrada visual.
-   - TIMELINE passa a representar ENTRADAS, e não giros:
-       G verde   = green de primeira
-       G amarelo = green no G1
-       L vermelho = loss após G1
+   REGRA VISUAL DA ENTRADA:
+   - A jogada mostrada é a jogada existente ANTES do resultado.
+   - GREEN de primeira: encerra e libera a nova jogada.
+   - LOSS de primeira: congela a jogada anterior.
+   - O próximo número é G1 usando EXATAMENTE a jogada congelada.
+   - Após o G1, libera a jogada nova.
+   - Todos os números, inclusive G1, entram normalmente nos 35.
 ============================================================ */
 
 const STORAGE_KEY =
@@ -29,7 +21,10 @@ const STORAGE_ENGINE =
 "ANALISADOR_069_ENGINE_COMPLETO_V10";
 
 const STORAGE_DUPLAS =
-"ANALISADOR_069_DUPLAS_VISUAIS_V3";
+"ANALISADOR_069_DUPLAS_VISUAIS_V4";
+
+const STORAGE_FREEZE =
+"ANALISADOR_069_JOGADA_CONGELADA_V1";
 
 const MAX_HISTORICO = 35;
 const JANELA_MOMENTO = 14;
@@ -112,48 +107,19 @@ return 0;
 
 const MAPA_DUZIA_FISICA = {
 
-1: new Map([
-[3,1.00],
-[12,1.00],
-[7,.95],
-[4,.92],
-[2,.92],
-[11,.82],
-[8,.86],
-[5,.86],
-[6,.40],
-[1,.36],
-[9,.36],
-[10,.58]
+1:new Map([
+[3,1.00],[12,1.00],[7,.95],[4,.92],[2,.92],[11,.82],
+[8,.86],[5,.86],[6,.40],[1,.36],[9,.36],[10,.58]
 ]),
 
-2: new Map([
-[15,1.00],
-[19,1.00],
-[21,.98],
-[17,.70],
-[13,.72],
-[23,.96],
-[24,.94],
-[16,.94],
-[14,.88],
-[20,.88],
-[18,.92]
+2:new Map([
+[15,1.00],[19,1.00],[21,.98],[17,.70],[13,.72],[23,.96],
+[24,.94],[16,.94],[14,.88],[20,.88],[18,.92]
 ]),
 
-3: new Map([
-[29,1.00],
-[30,1.00],
-[32,.96],
-[25,.94],
-[27,.88],
-[28,.92],
-[26,.80],
-[35,.72],
-[36,.68],
-[34,.64],
-[33,.42],
-[31,.40]
+3:new Map([
+[29,1.00],[30,1.00],[32,.96],[25,.94],[27,.88],[28,.92],
+[26,.80],[35,.72],[36,.68],[34,.64],[33,.42],[31,.40]
 ])
 
 };
@@ -163,19 +129,19 @@ const MAPA_DUZIA_FISICA = {
    IDS
 ============================================================ */
 
-const BASES = [
+const BASES=[
 0,10,20,30,
 6,16,26,36,
 9,19,29
 ];
 
-const TODOS_IDS = [
+const TODOS_IDS=[
 0,10,20,30,
 6,16,26,36,
 9,19,29,39
 ];
 
-const ESPECIAIS = {
+const ESPECIAIS={
 25:[39],
 17:[9],
 2:[9]
@@ -206,9 +172,7 @@ const i=indice(centro);
 if(i<0)
 return centro;
 
-return track[
-(i+offset+37)%37
-];
+return track[(i+offset+37)%37];
 
 }
 
@@ -224,9 +188,7 @@ const r=[];
 for(let d=-qtd;d<=qtd;d++){
 
 r.push(
-track[
-(i+d+37)%37
-]
+track[(i+d+37)%37]
 );
 
 }
@@ -249,10 +211,7 @@ return 99;
 
 const d=Math.abs(ia-ib);
 
-return Math.min(
-d,
-37-d
-);
+return Math.min(d,37-d);
 
 }
 
@@ -314,8 +273,8 @@ if(n===0)
 return "VERDE";
 
 return vermelhos.has(n)
-? "VERMELHO"
-: "PRETO";
+?"VERMELHO"
+:"PRETO";
 
 }
 
@@ -325,8 +284,8 @@ if(n===0)
 return "#087c48";
 
 return vermelhos.has(n)
-? "#c6283d"
-: "#181818";
+?"#c6283d"
+:"#181818";
 
 }
 
@@ -340,9 +299,7 @@ const coberturaIds={};
 BASES.forEach(base=>{
 
 coberturaIds[base]=
-new Set(
-vizinhos(base,1)
-);
+new Set(vizinhos(base,1));
 
 });
 
@@ -382,14 +339,8 @@ const ids=[];
 
 BASES.forEach(base=>{
 
-if(
-coberturaIds[base]
-.has(numero)
-){
-
+if(coberturaIds[base].has(numero))
 ids.push(base);
-
-}
 
 });
 
@@ -400,8 +351,7 @@ numero
 )
 ){
 
-ESPECIAIS[numero]
-.forEach(id=>{
+ESPECIAIS[numero].forEach(id=>{
 
 if(!ids.includes(id))
 ids.push(id);
@@ -441,30 +391,24 @@ function carregarHistorico(){
 try{
 
 const raw=
-localStorage.getItem(
-STORAGE_KEY
-);
+localStorage.getItem(STORAGE_KEY);
 
 if(!raw)
 return [];
 
-const arr=
-JSON.parse(raw);
+const arr=JSON.parse(raw);
 
 if(!Array.isArray(arr))
 return [];
 
 return limitar35(
-
 arr
 .map(Number)
-.filter(
-n=>
+.filter(n=>
 Number.isInteger(n) &&
 n>=0 &&
 n<=36
 )
-
 );
 
 }catch(e){
@@ -505,15 +449,12 @@ function carregarEstado(){
 try{
 
 const raw=
-localStorage.getItem(
-STORAGE_ENGINE
-);
+localStorage.getItem(STORAGE_ENGINE);
 
 if(!raw)
 return;
 
-const x=
-JSON.parse(raw);
+const x=JSON.parse(raw);
 
 if(
 x.modo==="AUTO" ||
@@ -521,23 +462,17 @@ x.modo==="MANUAL"
 )
 estado.modo=x.modo;
 
-if(
-RX_LIST.includes(
-x.manualRX
-)
-)
+if(RX_LIST.includes(x.manualRX))
 estado.manualRX=x.manualRX;
 
 if(x.timelines){
 
-["AUTO",4,5,6]
-.forEach(k=>{
+["AUTO",4,5,6].forEach(k=>{
 
 if(Array.isArray(x.timelines[k])){
 
 estado.timelines[k]=
-x.timelines[k]
-.slice(-MAX_TIMELINE);
+x.timelines[k].slice(-MAX_TIMELINE);
 
 }
 
@@ -592,30 +527,7 @@ JSON.stringify(estado)
 
 
 /* ============================================================
-   DUPLAS / ENTRADAS VISUAIS
-
-   CADA QUADRO = UMA ENTRADA.
-
-   resultado = número da entrada
-   g1        = giro de recuperação, se necessário
-
-   GREEN PRIMEIRA:
-       resultado
-       [resultado verde]
-
-   LOSS AGUARDANDO G1:
-       resultado
-       [resultado vermelho]
-
-   GREEN G1:
-       resultado
-       [resultado amarelo] [G1]
-
-   LOSS G1:
-       resultado
-       [resultado vermelho] [G1]
-
-   O G1 NÃO É UMA NOVA ENTRADA.
+   ENTRADAS VISUAIS
 ============================================================ */
 
 let duplasVisual=[];
@@ -648,15 +560,20 @@ if(!p)
 return null;
 
 return {
+
 assinatura:p.assinatura,
 rx:p.rx,
-centros2:Array.isArray(p.centros2)
+
+centros2:
+Array.isArray(p.centros2)
 ?p.centros2.slice()
 :[],
+
 centro1:
 p.centro1!==undefined
 ?p.centro1
 :null
+
 };
 
 }
@@ -665,8 +582,7 @@ function capturarSnapshotsPendentes(){
 
 const r=snapshotsVazios();
 
-["AUTO",4,5,6]
-.forEach(k=>{
+["AUTO",4,5,6].forEach(k=>{
 
 r[k]=
 copiarSnapshotVisual(
@@ -686,68 +602,33 @@ return {
 resultado:
 d.resultado!==undefined
 ?d.resultado
-:(
-d.gatilho!==undefined
-?d.gatilho
-:null
-),
+:null,
 
 g1:
 d.g1!==undefined
 ?d.g1
-:(
-d.aberturaG1!==undefined &&
-d.aberturaG1!==null
-?d.aberturaG1
-:(
-d.fechamentoG1!==undefined
-?d.fechamentoG1
-:null
-)
-),
+:null,
 
 avaliacoes:
 Object.assign(
 avaliacoesVazias(),
-d.avaliacoes||d.avaliacoesAbertura||{}
+d.avaliacoes||{}
 ),
 
 avaliacoesG1:
 Object.assign(
 avaliacoesVazias(),
-d.avaliacoesG1||
-d.avaliacoesAberturaG1||
-d.avaliacoesFechamentoG1||
-{}
+d.avaliacoesG1||{}
 ),
 
 snapshotEntrada:
 Object.assign(
 snapshotsVazios(),
-d.snapshotEntrada||
-d.snapshotGatilho||
-d.snapshotAbertura||
-{}
+d.snapshotEntrada||{}
 ),
 
 fase:
-d.fase==="ESPERA_G1"
-?"ESPERA_G1"
-:(
-d.fase==="FINALIZADO"
-?"FINALIZADO"
-:(
-d.g1!==undefined &&
-d.g1!==null
-?"FINALIZADO"
-:(
-d.fase==="ESPERA_G1_ABERTURA" ||
-d.fase==="ESPERA_G1_FECHAMENTO"
-?"ESPERA_G1"
-:"FINALIZADO"
-)
-)
-)
+d.fase||"FINALIZADO"
 
 };
 
@@ -780,33 +661,116 @@ localStorage.getItem(
 STORAGE_DUPLAS
 );
 
-if(raw){
+if(!raw)
+return;
 
 const arr=
 JSON.parse(raw);
 
-if(Array.isArray(arr)){
+if(!Array.isArray(arr))
+return;
 
 duplasVisual=
 arr
 .map(normalizarDuplaVisual)
 .slice(-14);
 
-return;
-
-}
-
-}
-
 }catch(e){}
-
-duplasVisual=[];
-
-salvarDuplasVisual();
 
 }
 
 carregarDuplasVisual();
+
+
+/* ============================================================
+   JOGADA CONGELADA
+============================================================ */
+
+let jogadaCongelada=null;
+
+function copiarJogadaCongelada(config){
+
+if(
+!config ||
+!config.valido ||
+!config.jogada ||
+!config.jogada.valido
+)
+return null;
+
+return {
+
+valido:true,
+rx:config.rx,
+
+jogada:{
+
+valido:true,
+
+blocos2:
+config.jogada.blocos2.map(b=>({
+
+centro:b.centro,
+qtd:2,
+numeros:b.numeros.slice()
+
+})),
+
+blocos1:
+config.jogada.blocos1.map(b=>({
+
+centro:b.centro,
+qtd:1,
+numeros:b.numeros.slice()
+
+}))
+
+}
+
+};
+
+}
+
+function salvarJogadaCongelada(){
+
+try{
+
+localStorage.setItem(
+STORAGE_FREEZE,
+JSON.stringify(jogadaCongelada)
+);
+
+}catch(e){}
+
+}
+
+function carregarJogadaCongelada(){
+
+try{
+
+const raw=
+localStorage.getItem(
+STORAGE_FREEZE
+);
+
+if(!raw)
+return;
+
+const x=
+JSON.parse(raw);
+
+if(
+x &&
+x.valido &&
+x.jogada
+)
+jogadaCongelada=x;
+
+}catch(e){}
+
+}
+
+carregarJogadaCongelada();
 
 
 /* ============================================================
@@ -1406,10 +1370,10 @@ confluencia,
 ranking,
 
 dominante:
-ranking[0] || null,
+ranking[0]||null,
 
 segunda:
-ranking[1] || null
+ranking[1]||null
 
 };
 
@@ -1426,8 +1390,7 @@ momento.duziasFisicas;
 if(!analise)
 return 0;
 
-const d=
-duzia(numero);
+const d=duzia(numero);
 
 if(!d)
 return 0;
@@ -1688,9 +1651,7 @@ local=.50;
 else
 local=.34;
 
-}else if(
-c.perfil==="LATERAL"
-){
+}else if(c.perfil==="LATERAL"){
 
 if(d===2 || d===3)
 local=1;
@@ -1833,8 +1794,7 @@ ranking.length
 
 function analisarMomento(base){
 
-base=
-limitar35(base);
+base=limitar35(base);
 
 return {
 
@@ -1983,13 +1943,10 @@ total
 function construirCache(base){
 
 const eventos=
-new Uint8Array(
-base.length
-);
+new Uint8Array(base.length);
 
 for(let i=0;i<base.length;i++)
-eventos[i]=
-eventoNumero(base[i]);
+eventos[i]=eventoNumero(base[i]);
 
 return {
 base,
@@ -2055,8 +2012,7 @@ forma*.20;
 
 function analisarRX(base,rx){
 
-base=
-limitar35(base);
+base=limitar35(base);
 
 if(
 base.length<
@@ -2390,10 +2346,7 @@ freq
 ){
 
 const numeros=
-setor(
-centro,
-qtd
-);
+setor(centro,qtd);
 
 let score=0;
 let suporte=0;
@@ -2433,7 +2386,7 @@ numeros
 
 
 /* ============================================================
-   SCORE AUXILIAR DO MOMENTO PARA O SETOR
+   SCORE MOMENTO DO SETOR
 ============================================================ */
 
 function scoreMomentoSetor(
@@ -2443,10 +2396,7 @@ momento
 ){
 
 const numeros=
-setor(
-centro,
-qtd
-);
+setor(centro,qtd);
 
 let score=0;
 
@@ -2688,8 +2638,7 @@ numeros:new Set()
 
 }
 
-base=
-limitar35(base);
+base=limitar35(base);
 
 const momento=
 analisarMomento(base);
@@ -2743,12 +2692,9 @@ n=>usados.has(n)
 if(conflito)
 continue;
 
-dois.push(
-candidato
-);
+dois.push(candidato);
 
-score+=
-candidato.score;
+score+=candidato.score;
 
 candidato.numeros
 .forEach(
@@ -2810,8 +2756,7 @@ rxTam,
 diagnostico=null
 ){
 
-base=
-limitar35(base);
+base=limitar35(base);
 
 const raioX=
 analisarRX(
@@ -2930,6 +2875,7 @@ gap<melhor.gap
 ){
 
 melhor={
+
 gap,
 
 lado:
@@ -2976,8 +2922,7 @@ melhor.lado
 
 
 /* ============================================================
-   STATS DO MOTOR
-   PRESERVADO
+   STATS
 ============================================================ */
 
 function statsTimeline(lista){
@@ -3068,8 +3013,7 @@ base,
 rxTam
 ){
 
-base=
-limitar35(base);
+base=limitar35(base);
 
 const timeline=[];
 
@@ -3341,8 +3285,7 @@ p.centro1!==undefined
 
 centro:p.centro1,
 qtd:1,
-numeros:
-setor(p.centro1,1)
+numeros:setor(p.centro1,1)
 
 }]
 
@@ -3401,7 +3344,7 @@ salvarEstado();
 
 /* ============================================================
    AVALIA PENDENTES
-   MOTOR ORIGINAL PRESERVADO
+   MOTOR PRESERVADO
 ============================================================ */
 
 function avaliarPendentes(numero){
@@ -3495,7 +3438,7 @@ salvarEstado();
 
 
 /* ============================================================
-   CONTROLE VISUAL DAS ENTRADAS
+   CONTROLE DA ENTRADA
 ============================================================ */
 
 function chaveVisualAtual(){
@@ -3547,161 +3490,6 @@ return resultado;
 
 }
 
-function criarEntradaVisual(
-numero,
-snapshotsAntes,
-avaliacoes
-){
-
-const chave=
-chaveVisualAtual();
-
-const atual=
-avaliacoes[chave];
-
-return normalizarDuplaVisual({
-
-resultado:numero,
-
-g1:null,
-
-avaliacoes:
-avaliacoes,
-
-avaliacoesG1:
-avaliacoesVazias(),
-
-snapshotEntrada:
-snapshotsAntes,
-
-fase:
-atual==="LOSS"
-?"ESPERA_G1"
-:"FINALIZADO"
-
-});
-
-}
-
-
-/* ============================================================
-   PREPARAÇÃO VISUAL
-
-   SE EXISTE ENTRADA EM LOSS AGUARDANDO G1:
-   O NÚMERO ATUAL É G1 DELA.
-
-   CASO CONTRÁRIO:
-   O NÚMERO ATUAL É UMA NOVA ENTRADA.
-
-   EM AMBOS OS CASOS O NÚMERO CONTINUA
-   ENTRANDO NORMALMENTE NO MOTOR/HISTÓRICO.
-============================================================ */
-
-function prepararVisualAntes(numero){
-
-const snapshotsAntes=
-capturarSnapshotsPendentes();
-
-const ultima=
-duplasVisual.length
-?duplasVisual[duplasVisual.length-1]
-:null;
-
-if(
-ultima &&
-ultima.fase==="ESPERA_G1"
-){
-
-return {
-
-tipo:"G1",
-numero,
-entrada:ultima,
-snapshotsAntes
-
-};
-
-}
-
-return {
-
-tipo:"ENTRADA",
-numero,
-snapshotsAntes
-
-};
-
-}
-
-
-/* ============================================================
-   FINALIZA VISUAL
-============================================================ */
-
-function finalizarVisualDepois(
-numero,
-controle
-){
-
-if(controle.tipo==="G1"){
-
-const entrada=
-controle.entrada;
-
-entrada.g1=
-numero;
-
-entrada.avaliacoesG1=
-avaliarNumeroContraPacote(
-numero,
-entrada.snapshotEntrada
-);
-
-entrada.fase=
-"FINALIZADO";
-
-salvarDuplasVisual();
-return;
-
-}
-
-
-/*
-   NOVA ENTRADA.
-
-   A avaliação vem do motor que acabou
-   de avaliar o número inserido.
-*/
-
-if(controle.tipo==="ENTRADA"){
-
-const avaliacoes=
-capturarAvaliacoesDoResultado(
-numero
-);
-
-duplasVisual.push(
-criarEntradaVisual(
-numero,
-controle.snapshotsAntes,
-avaliacoes
-)
-);
-
-duplasVisual=
-duplasVisual.slice(-14);
-
-salvarDuplasVisual();
-
-}
-
-}
-
-
-/* ============================================================
-   CAPTURA AVALIAÇÃO NORMAL DO MOTOR
-============================================================ */
-
 function capturarAvaliacoesDoResultado(
 numero
 ){
@@ -3748,9 +3536,47 @@ return resultado;
 
 }
 
+function prepararVisualAntes(numero){
+
+const snapshotsAntes=
+capturarSnapshotsPendentes();
+
+const ultima=
+duplasVisual.length
+?duplasVisual[
+duplasVisual.length-1
+]
+:null;
+
+if(
+ultima &&
+ultima.fase==="ESPERA_G1"
+){
+
+return {
+
+tipo:"G1",
+numero,
+entrada:ultima,
+snapshotsAntes
+
+};
+
+}
+
+return {
+
+tipo:"ENTRADA",
+numero,
+snapshotsAntes
+
+};
+
+}
+
 
 /* ============================================================
-   STATUS FINAL DE UMA ENTRADA
+   STATUS DA ENTRADA
 ============================================================ */
 
 function statusEntrada(
@@ -3773,7 +3599,7 @@ if(primeira==="GREEN"){
 return {
 tipo:"GREEN1",
 texto:"G",
-classe:"entradaGreen"
+classe:"green"
 };
 
 }
@@ -3783,7 +3609,7 @@ if(primeira==="SEM"){
 return {
 tipo:"SEM",
 texto:"—",
-classe:"entradaSem"
+classe:"sem"
 };
 
 }
@@ -3798,7 +3624,7 @@ entrada.g1===undefined
 return {
 tipo:"AGUARDA_G1",
 texto:"L",
-classe:"entradaLoss"
+classe:"loss"
 };
 
 }
@@ -3808,7 +3634,7 @@ if(g1==="GREEN"){
 return {
 tipo:"GREENG1",
 texto:"G",
-classe:"entradaG1"
+classe:"g1"
 };
 
 }
@@ -3818,7 +3644,7 @@ if(g1==="SEM"){
 return {
 tipo:"SEM",
 texto:"—",
-classe:"entradaSem"
+classe:"sem"
 };
 
 }
@@ -3826,7 +3652,7 @@ classe:"entradaSem"
 return {
 tipo:"LOSS",
 texto:"L",
-classe:"entradaLoss"
+classe:"loss"
 };
 
 }
@@ -3834,132 +3660,205 @@ classe:"entradaLoss"
 return {
 tipo:"ABERTA",
 texto:"—",
-classe:"entradaAberta"
+classe:"aberta"
 };
 
 }
 
 
 /* ============================================================
-   TIMELINE VISUAL POR ENTRADAS
+   FINALIZA ENTRADA VISUAL
 
-   NÃO USA UM ITEM PARA CADA GIRO.
-
-   USA SOMENTE AS ENTRADAS VISUAIS:
-   VERDE   = GREEN PRIMEIRA
-   AMARELO = GREEN G1
-   VERMELHO = LOSS
+   IMPORTANTE:
+   - LOSS => mantém jogadaCongelada.
+   - GREEN => libera congelamento.
+   - G1 => usa snapshotEntrada da entrada anterior.
 ============================================================ */
 
-function timelineEntradas(
-chave
+function finalizarVisualDepois(
+numero,
+controle,
+configAntes
 ){
 
-return duplasVisual
-.map(d=>{
+const chave=
+chaveVisualAtual();
 
-const s=
-statusEntrada(
-d,
-chave
+if(controle.tipo==="G1"){
+
+const entrada=
+controle.entrada;
+
+entrada.g1=
+numero;
+
+entrada.avaliacoesG1=
+avaliarNumeroContraPacote(
+numero,
+entrada.snapshotEntrada
 );
+
+entrada.fase=
+"FINALIZADO";
+
+/*
+   O G1 RESOLVEU A ENTRADA.
+   AGORA A JOGADA CONGELADA PODE SER LIBERADA.
+*/
+
+jogadaCongelada=null;
+
+salvarJogadaCongelada();
+salvarDuplasVisual();
+
+return;
+
+}
+
+
+/*
+   NOVA ENTRADA
+*/
+
+const avaliacoes=
+capturarAvaliacoesDoResultado(
+numero
+);
+
+const atual=
+avaliacoes[chave];
+
+const entrada=
+normalizarDuplaVisual({
+
+resultado:numero,
+
+g1:null,
+
+avaliacoes,
+
+avaliacoesG1:
+avaliacoesVazias(),
+
+snapshotEntrada:
+controle.snapshotsAntes,
+
+fase:
+atual==="LOSS"
+?"ESPERA_G1"
+:"FINALIZADO"
+
+});
+
+duplasVisual.push(entrada);
+
+duplasVisual=
+duplasVisual.slice(-14);
+
+
+/*
+   LOSS:
+   CONGELA EXATAMENTE A JOGADA
+   QUE ESTAVA NA TELA ANTES DE O NÚMERO SAIR.
+*/
+
+if(atual==="LOSS"){
+
+jogadaCongelada=
+copiarJogadaCongelada(
+configAntes
+);
+
+}else{
+
+jogadaCongelada=null;
+
+}
+
+salvarJogadaCongelada();
+salvarDuplasVisual();
+
+}
+
+
+/* ============================================================
+   CONFIGURAÇÃO ATUAL SEM ALTERAR ESTADO
+============================================================ */
+
+function calcularConfiguracoesAtuais(){
+
+const base=
+historico.slice(-35);
+
+const configs={};
+
+RX_LIST.forEach(rx=>{
+
+configs[rx]=
+melhorDoRX(
+base,
+rx
+);
+
+});
+
+const auto=
+escolherAuto(
+configs
+);
+
+const ativa=
+estado.modo==="AUTO"
+?auto
+:configs[estado.manualRX];
 
 return {
-
-resultado:d.resultado,
-tipo:s.tipo,
-texto:s.texto,
-classe:s.classe
-
+base,
+configs,
+auto,
+ativa
 };
-
-})
-.filter(x=>
-x.tipo!=="ABERTA"
-);
-
-}
-
-function taxaEntradas(
-lista,
-qtd
-){
-
-const validos=
-lista
-.filter(x=>
-x.tipo!=="SEM" &&
-x.tipo!=="AGUARDA_G1"
-)
-.slice(-qtd);
-
-if(!validos.length)
-return 0;
-
-const greens=
-validos.filter(x=>
-x.tipo==="GREEN1" ||
-x.tipo==="GREENG1"
-).length;
-
-return greens/
-validos.length*
-100;
-
-}
-
-
-/* ============================================================
-   APAGAR VISUAL
-
-   SE O ÚLTIMO GIRO ERA G1:
-   REMOVE SOMENTE O G1.
-
-   SENÃO:
-   REMOVE A ÚLTIMA ENTRADA.
-============================================================ */
-
-function apagarUltimoDaDupla(){
-
-if(!duplasVisual.length)
-return;
-
-const ultima=
-duplasVisual[
-duplasVisual.length-1
-];
-
-if(
-ultima.g1!==null &&
-ultima.g1!==undefined
-){
-
-ultima.g1=null;
-
-ultima.avaliacoesG1=
-avaliacoesVazias();
-
-ultima.fase=
-"ESPERA_G1";
-
-salvarDuplasVisual();
-return;
-
-}
-
-duplasVisual.pop();
-
-salvarDuplasVisual();
 
 }
 
 
 /* ============================================================
    INSERÇÃO
-   MOTOR ORIGINAL PRESERVADO
+
+   PASSO 1:
+   captura a jogada que estava valendo ANTES do número.
+
+   PASSO 2:
+   motor avalia normalmente.
+
+   PASSO 3:
+   número entra nos 35.
+
+   PASSO 4:
+   se LOSS, a jogada antiga fica congelada na tela.
+
+   PASSO 5:
+   se for G1, ele também entra nos 35, mas usa a jogada
+   congelada da entrada anterior.
 ============================================================ */
 
 function adicionarNumero(numero){
+
+/*
+   JOGADA EXIBIDA ANTES DE O NÚMERO SAIR.
+*/
+
+const calculoAntes=
+calcularConfiguracoesAtuais();
+
+const configAntes=
+jogadaCongelada ||
+calculoAntes.ativa;
+
+
+/*
+   SNAPSHOTS DA JOGADA ANTES DO RESULTADO.
+*/
 
 const controleVisual=
 prepararVisualAntes(
@@ -3982,17 +3881,30 @@ historico.slice(-35);
 
 salvarHistorico();
 
+
+/*
+   GERA NOVOS PENDENTES COM O NOVO HISTÓRICO.
+*/
+
 render();
 
 
 /*
-   VISUAL DAS ENTRADAS
+   FINALIZA A ENTRADA.
 */
 
 finalizarVisualDepois(
 numero,
-controleVisual
+controleVisual,
+configAntes
 );
+
+
+/*
+   AGORA:
+   - LOSS => renderiza congelada.
+   - GREEN/G1 encerrado => renderiza nova.
+*/
 
 render();
 
@@ -4051,14 +3963,11 @@ AUTO:[],
 6:[]
 };
 
-/*
-   Ao colar histórico não inventamos
-   entradas/G1 que não foram acompanhadas
-   ao vivo.
-*/
-
 duplasVisual=[];
 
+jogadaCongelada=null;
+
+salvarJogadaCongelada();
 salvarDuplasVisual();
 salvarHistorico();
 salvarEstado();
@@ -4066,6 +3975,41 @@ salvarEstado();
 campo.value="";
 
 render();
+
+}
+
+function apagarUltimoDaDupla(){
+
+if(!duplasVisual.length)
+return;
+
+const ultima=
+duplasVisual[
+duplasVisual.length-1
+];
+
+if(
+ultima.g1!==null &&
+ultima.g1!==undefined
+){
+
+ultima.g1=null;
+
+ultima.avaliacoesG1=
+avaliacoesVazias();
+
+ultima.fase=
+"ESPERA_G1";
+
+salvarDuplasVisual();
+
+return;
+
+}
+
+duplasVisual.pop();
+
+salvarDuplasVisual();
 
 }
 
@@ -4085,6 +4029,9 @@ AUTO:null,
 6:null
 };
 
+jogadaCongelada=null;
+
+salvarJogadaCongelada();
 salvarHistorico();
 salvarEstado();
 
@@ -4103,6 +4050,7 @@ return;
 
 historico=[];
 duplasVisual=[];
+jogadaCongelada=null;
 
 estado.pendentes={
 AUTO:null,
@@ -4118,6 +4066,7 @@ AUTO:[],
 6:[]
 };
 
+salvarJogadaCongelada();
 salvarDuplasVisual();
 salvarHistorico();
 salvarEstado();
@@ -4313,9 +4262,7 @@ margin-top:3px
 }
 
 
-/* ============================================================
-   TIMELINE DAS ENTRADAS
-============================================================ */
+/* TIMELINE */
 
 .timelineRow{
 display:grid;
@@ -4350,7 +4297,7 @@ background:#00994d
 }
 
 .gl.greenG1{
-background:#d59c00;
+background:#ffc107;
 color:#111
 }
 
@@ -4359,8 +4306,7 @@ background:#c62828
 }
 
 .gl.aguardaG1{
-background:#c62828;
-opacity:.60
+background:#c62828
 }
 
 .semJogadaGL{
@@ -4387,7 +4333,7 @@ text-align:right
 
 
 /* ============================================================
-   ÚLTIMAS ENTRADAS
+   ENTRADAS
 ============================================================ */
 
 .duplas14{
@@ -4399,7 +4345,7 @@ width:100%
 
 .dupla14{
 min-width:0;
-min-height:62px;
+min-height:65px;
 border-radius:7px;
 display:flex;
 align-items:flex-start;
@@ -4407,7 +4353,7 @@ justify-content:center;
 background:#272727;
 border:2px solid #555;
 position:relative;
-padding:6px 4px 25px
+padding:6px 4px 26px
 }
 
 .dupla14.green{
@@ -4450,18 +4396,13 @@ color:#fff;
 border:2px solid #aaa
 }
 
-
-/* ============================================================
-   QUADRINHO PEQUENO DO RESULTADO DA ENTRADA
-============================================================ */
-
 .resultadoEntrada{
 position:absolute;
 left:50%;
 bottom:2px;
 transform:translateX(-50%);
 height:19px;
-min-width:24px;
+min-width:26px;
 padding:2px 5px;
 border-radius:5px;
 display:flex;
@@ -4482,8 +4423,8 @@ color:#fff
 }
 
 .resultadoEntrada.g1{
-background:#d59c00;
-border-color:#ffc107;
+background:#ffc107;
+border-color:#ffe082;
 color:#111
 }
 
@@ -4556,6 +4497,24 @@ margin-top:2px
 
 /* JOGADA */
 
+.jogadaStatus{
+font-size:8px;
+font-weight:900;
+margin:3px 0 6px;
+padding:4px 6px;
+border-radius:5px;
+display:inline-block;
+background:#15323a;
+color:#00e5ff;
+border:1px solid #007d98
+}
+
+.jogadaStatus.congelada{
+background:#4a3510;
+color:#ffc107;
+border-color:#ffc107
+}
+
 .jogada{
 display:flex;
 gap:5px;
@@ -4595,6 +4554,9 @@ font-size:9px;
 font-weight:900
 }
 
+
+/* TECLADO */
+
 .teclado{
 display:grid;
 grid-template-columns:repeat(6,1fr);
@@ -4630,7 +4592,7 @@ grid-template-columns:repeat(4,1fr)
 }
 
 .dupla14{
-min-height:64px
+min-height:65px
 }
 
 }
@@ -4699,7 +4661,6 @@ AUTO
 
 </div>
 
-
 <div id="resumo" class="resumo"></div>
 
 <div id="trio" class="trio"></div>
@@ -4717,7 +4678,7 @@ AUTO
 <div class="painel">
 
 <div class="titulo">
-ÚLTIMOS 14 • ENTRADAS
+ÚLTIMAS 14 • ENTRADAS
 </div>
 
 <div
@@ -4783,6 +4744,9 @@ document
 
 estado.modo="AUTO";
 
+jogadaCongelada=null;
+
+salvarJogadaCongelada();
 salvarEstado();
 render();
 
@@ -4799,6 +4763,9 @@ document
 estado.modo="MANUAL";
 estado.manualRX=rx;
 
+jogadaCongelada=null;
+
+salvarJogadaCongelada();
 salvarEstado();
 render();
 
@@ -4856,8 +4823,58 @@ teclado.appendChild(zero);
 
 
 /* ============================================================
-   TIMELINE VISUAL POR ENTRADAS
+   TIMELINE POR ENTRADAS
 ============================================================ */
+
+function timelineEntradas(chave){
+
+return duplasVisual.map(d=>{
+
+const s=
+statusEntrada(
+d,
+chave
+);
+
+return {
+
+resultado:d.resultado,
+tipo:s.tipo
+
+};
+
+});
+
+}
+
+function taxaEntradas(
+lista,
+qtd
+){
+
+const validos=
+lista
+.filter(x=>
+x.tipo==="GREEN1" ||
+x.tipo==="GREENG1" ||
+x.tipo==="LOSS"
+)
+.slice(-qtd);
+
+if(!validos.length)
+return 0;
+
+const greens=
+validos.filter(x=>
+x.tipo==="GREEN1" ||
+x.tipo==="GREENG1"
+).length;
+
+return greens/
+validos.length*
+100;
+
+}
 
 function renderTimeline(
 id,
@@ -4919,8 +4936,16 @@ return (
 
 }
 
+if(x.tipo==="LOSS"){
+
 return (
 '<span class="gl lossEntrada">L</span>'
+);
+
+}
+
+return (
+'<span class="semJogadaGL">—</span>'
 );
 
 }).join("")+
@@ -5045,7 +5070,10 @@ x.contagem+
    JOGADA
 ============================================================ */
 
-function renderJogada(config){
+function renderJogada(
+config,
+congelada=false
+){
 
 const area=
 document.getElementById(
@@ -5096,6 +5124,16 @@ b.numeros.join(" • ")+
 
 area.innerHTML=
 
+'<div class="jogadaStatus '+
+(congelada?"congelada":"")+
+'">'+
+(
+congelada
+?"JOGADA CONGELADA • G1"
+:"JOGADA ATUAL"
+)+
+'</div>'+
+
 '<div class="jogada">'+
 dois+
 '</div>'+
@@ -5137,48 +5175,26 @@ d,
 chave
 );
 
-let classe="aberta";
-let miniClasse="sem";
-let miniTexto="—";
+let classe=
+status.classe;
 
-if(status.tipo==="GREEN1"){
+let miniClasse=
+status.classe;
 
-classe="green";
-miniClasse="green";
-miniTexto=String(d.resultado);
+let miniTexto=
+status.texto;
 
-}else if(status.tipo==="GREENG1"){
-
-classe="g1";
-miniClasse="g1";
-miniTexto=String(d.resultado);
-
-}else if(
-status.tipo==="LOSS" ||
-status.tipo==="AGUARDA_G1"
-){
-
-classe="loss";
-miniClasse="loss";
-miniTexto=String(d.resultado);
-
-}else if(status.tipo==="SEM"){
-
-classe="sem";
-miniClasse="sem";
-miniTexto="—";
-
-}
-
-let infoG1="";
+let g1="";
 
 if(
 d.g1!==null &&
 d.g1!==undefined
 ){
 
-infoG1=
-'<span class="g1Numero">G1 '+d.g1+'</span>';
+g1=
+'<span class="g1Numero">'+
+'G1 '+d.g1+
+'</span>';
 
 }
 
@@ -5200,7 +5216,7 @@ miniClasse+
 
 miniTexto+
 
-infoG1+
+g1+
 
 '</div>'+
 
@@ -5355,11 +5371,6 @@ renderDuzias(
 momento
 );
 
-
-/*
-   TIMELINE AGORA É POR ENTRADAS.
-*/
-
 renderTimeline(
 "timelineAUTO",
 "AUTO",
@@ -5386,12 +5397,42 @@ renderTimeline(
 
 renderDuplas14();
 
+
+/*
+   PONTO PRINCIPAL:
+
+   SE EXISTE LOSS AGUARDANDO G1,
+   NÃO MOSTRA A JOGADA RECALCULADA.
+
+   MOSTRA A JOGADA QUE EXISTIA
+   ANTES DO NÚMERO QUE DEU LOSS.
+*/
+
+if(jogadaCongelada){
+
 renderJogada(
-ativa
+jogadaCongelada,
+true
 );
+
+}else{
+
+renderJogada(
+ativa,
+false
+);
+
+}
+
 
 const df=
 momento.duziasFisicas.dominante;
+
+const esperandoG1=
+duplasVisual.length &&
+duplasVisual[
+duplasVisual.length-1
+].fase==="ESPERA_G1";
 
 document
 .getElementById("status")
@@ -5401,7 +5442,12 @@ base.length+
 "/35 • MOMENTO 14 • 35×14 ATIVO"+
 (
 df
-?" • CONCENTRAÇÃO: "+df.duzia+"ª DÚIA"
+?" • CONCENTRAÇÃO: "+df.duzia+"ª DÚZIA"
+:""
+)+
+(
+esperandoG1
+?" • G1: JOGADA CONGELADA"
 :""
 );
 
