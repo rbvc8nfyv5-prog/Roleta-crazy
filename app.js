@@ -240,7 +240,7 @@ const ESPECIAIS = {
    UTILIDADES
 ============================================================ */
 
-function limitar35(base){
+function limitar20(base){
 
 if(!Array.isArray(base))
 return [];
