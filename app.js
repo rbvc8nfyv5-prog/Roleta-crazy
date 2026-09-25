@@ -813,7 +813,7 @@ carregarEstado();
 function salvarHistorico(){
 
 historico=
-limitar35(historico);
+limitar20(historico);
 
 try{
 
