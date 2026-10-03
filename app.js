@@ -2,13 +2,13 @@
 "use strict";
 
 /* ============================================================
-   ANÁLISE BETA — MOTOR DE CONTAGEM
+   ANÁLISE BETA — MOTOR NORMAL + MOTOR DINÂMICO + AUTO-SCORE
 
    MOTOR NORMAL:
    ------------------------------------------------------------
+   - C4 / C5 / C6.
    - A CONTAGEM COMANDA A ENTRADA.
-   - C4 / C5 / C6 CONTINUAM EXISTINDO COMO JANELAS.
-   - CADA JANELA POSSUI SUA PRÓPRIA CONTAGEM.
+   - CADA C POSSUI SUA PRÓPRIA CONTAGEM.
    - NÃO GERA JOGADA POR SIMPLES FREQUÊNCIA.
    - PRIMEIRO É CALCULADA A PRESSÃO DA CONTAGEM.
    - A JOGADA SÓ É LIBERADA QUANDO EXISTE CONVERGÊNCIA.
@@ -16,11 +16,28 @@
    - CONVERGÊNCIA = GERA A JOGADA.
    - BACKTEST REFAZ A CONTAGEM GIRO A GIRO SEM OLHAR O FUTURO.
 
-   AUTO:
+   MOTOR DINÂMICO:
    ------------------------------------------------------------
-   - COMPARA OS 3 CANDIDATOS.
+   - C4 / C5 / C6.
+   - LEITURA POR RÉPLICAS.
+   - SIMILARIDADE DAS JANELAS.
+   - FREQUÊNCIA DAS RÉPLICAS.
+   - MOMENTO.
+   - TERMINAIS.
+   - CORES.
+   - ZONAS.
+   - CORREDORES.
+   - DENSIDADE.
+   - DÚZIAS FÍSICAS.
+   - GIRADA DINÂMICA -2 / -1 / 0 / +1 / +2.
+   - OFFSET GLOBAL -2 / -1 / 0 / +1 / +2.
+
+   AUTO-SCORE:
+   ------------------------------------------------------------
+   - COMPARA OS 6 CANDIDATOS.
    - NORMAL C4 / C5 / C6.
-   - ESCOLHE UMA ÚNICA JOGADA PELO AUTO-SCORE.
+   - DINÂMICO C4 / C5 / C6.
+   - ESCOLHE UMA ÚNICA JOGADA PELO SCORE.
 
    G1:
    ------------------------------------------------------------
@@ -53,6 +70,9 @@ const STORAGE_DUPLAS =
 const STORAGE_FREEZE =
 "ANALISE_BETA_JOGADA_CONGELADA_CONTAGEM_V1";
 
+const STORAGE_OFFSET =
+"ANALISADOR_069_OFFSET_GLOBAL_CENTROS_V2";
+
 /* ============================================================
    CONSTANTES
 ============================================================ */
@@ -64,6 +84,10 @@ const MAX_TIMELINE = 300;
 
 const RX_LIST = [4,5,6];
 
+const MAX_REPLICAS = 40;
+
+const PESO_MOMENTO = .34;
+const MAX_GIRADA = 2;
 const PESO_DUZIA_FISICA = .16;
 
 /* ============================================================
@@ -213,6 +237,12 @@ const BASES = [
 9,19,29
 ];
 
+const TODOS_IDS = [
+0,10,20,30,
+6,16,26,36,
+9,19,29,39
+];
+
 const ESPECIAIS = {
 25:[39],
 17:[9],
@@ -244,6 +274,19 @@ return base.slice(-MAX_HISTORICO_BACKTEST);
 function indice(n){
 
 return track.indexOf(n);
+
+}
+
+function numeroOffset(centro,offset){
+
+const i = indice(centro);
+
+if(i<0)
+return centro;
+
+return track[
+(i+offset+37)%37
+];
 
 }
 
@@ -449,6 +492,26 @@ return ids;
 
 }
 
+function eventoNumero(numero){
+
+const fs=new Set(
+
+idsQueBatem(numero)
+.map(familia)
+.filter(x=>x!==null)
+
+);
+
+return (
+
+(fs.has(0)?1:0) |
+(fs.has(6)?2:0) |
+(fs.has(9)?4:0)
+
+);
+
+}
+
 /* ============================================================
    HISTÓRICO
 ============================================================ */
@@ -565,6 +628,12 @@ NORMAL:{
 4:[],
 5:[],
 6:[]
+},
+
+DINAMICO:{
+4:[],
+5:[],
+6:[]
 }
 
 };
@@ -581,6 +650,12 @@ NORMAL:{
 4:null,
 5:null,
 6:null
+},
+
+DINAMICO:{
+4:null,
+5:null,
+6:null
 }
 
 };
@@ -594,6 +669,12 @@ return {
 AUTO:null,
 
 NORMAL:{
+4:null,
+5:null,
+6:null
+},
+
+DINAMICO:{
 4:null,
 5:null,
 6:null
@@ -647,7 +728,11 @@ x.modo==="MANUAL"
 )
 estado.modo=x.modo;
 
-estado.motorManual="NORMAL";
+if(
+x.motorManual==="NORMAL" ||
+x.motorManual==="DINAMICO"
+)
+estado.motorManual=x.motorManual;
 
 if(
 RX_LIST.includes(x.manualRX)
@@ -660,17 +745,21 @@ if(Array.isArray(x.timelines.AUTO))
 estado.timelines.AUTO=
 x.timelines.AUTO.slice(-MAX_TIMELINE);
 
-if(x.timelines.NORMAL){
+["NORMAL","DINAMICO"]
+.forEach(motor=>{
+
+if(!x.timelines[motor])
+return;
 
 RX_LIST.forEach(rx=>{
 
-if(Array.isArray(x.timelines.NORMAL[rx]))
-estado.timelines.NORMAL[rx]=
-x.timelines.NORMAL[rx].slice(-MAX_TIMELINE);
+if(Array.isArray(x.timelines[motor][rx]))
+estado.timelines[motor][rx]=
+x.timelines[motor][rx].slice(-MAX_TIMELINE);
 
 });
 
-}
+});
 
 }
 
@@ -685,22 +774,26 @@ x.pendentes,
 estado.pendentes.AUTO=
 x.pendentes.AUTO;
 
-if(x.pendentes.NORMAL){
+["NORMAL","DINAMICO"]
+.forEach(motor=>{
+
+if(!x.pendentes[motor])
+return;
 
 RX_LIST.forEach(rx=>{
 
 if(
 Object.prototype.hasOwnProperty.call(
-x.pendentes.NORMAL,
+x.pendentes[motor],
 rx
 )
 )
-estado.pendentes.NORMAL[rx]=
-x.pendentes.NORMAL[rx];
+estado.pendentes[motor][rx]=
+x.pendentes[motor][rx];
 
 });
 
-}
+});
 
 }
 
@@ -715,22 +808,26 @@ x.freezes,
 estado.freezes.AUTO=
 x.freezes.AUTO;
 
-if(x.freezes.NORMAL){
+["NORMAL","DINAMICO"]
+.forEach(motor=>{
+
+if(!x.freezes[motor])
+return;
 
 RX_LIST.forEach(rx=>{
 
 if(
 Object.prototype.hasOwnProperty.call(
-x.freezes.NORMAL,
+x.freezes[motor],
 rx
 )
 )
-estado.freezes.NORMAL[rx]=
-x.freezes.NORMAL[rx];
+estado.freezes[motor][rx]=
+x.freezes[motor][rx];
 
 });
 
-}
+});
 
 }
 
@@ -778,6 +875,52 @@ JSON.stringify(estado)
 }catch(e){}
 
 }
+
+/* ============================================================
+   OFFSET DINÂMICO
+============================================================ */
+
+let offsetCentroAtual=0;
+
+function carregarOffsetCentro(){
+
+try{
+
+const raw=
+localStorage.getItem(
+STORAGE_OFFSET
+);
+
+if(raw===null)
+return;
+
+const n=Number(raw);
+
+if(
+Number.isInteger(n) &&
+n>=-2 &&
+n<=2
+)
+offsetCentroAtual=n;
+
+}catch(e){}
+
+}
+
+function salvarOffsetCentro(){
+
+try{
+
+localStorage.setItem(
+STORAGE_OFFSET,
+String(offsetCentroAtual)
+);
+
+}catch(e){}
+
+}
+
+carregarOffsetCentro();
 
 /* ============================================================
    VISUAL
@@ -2058,31 +2201,414 @@ PESO_DUZIA_FISICA
 
 }
 
+function direcaoMomento(
+centro,
+momento
+){
+
+let esquerda=0;
+let direita=0;
+
+momento.janela
+.forEach((numero,i)=>{
+
+const delta=
+deltaRoda(
+centro,
+numero
+);
+
+const d=
+Math.abs(delta);
+
+if(d>7)
+return;
+
+const recencia=
+.55+
+((i+1)/
+Math.max(
+1,
+momento.janela.length
+))
+*.45;
+
+const proximidade=
+Math.max(
+0,
+1-d/8
+);
+
+const peso=
+recencia*
+proximidade;
+
+if(delta<0)
+esquerda+=peso;
+
+else if(delta>0)
+direita+=peso;
+
+});
+
+const total=
+esquerda+direita;
+
+if(!total){
+
+return {
+direcao:0,
+forca:0
+};
+
+}
+
+return {
+
+direcao:
+direita>esquerda
+?1
+:(esquerda>direita?-1:0),
+
+forca:
+Math.abs(
+direita-esquerda
+)/
+total
+
+};
+
+}
+
 /* ============================================================
-   MOTOR DE CONTAGEM
+   RX / C DINÂMICO
+============================================================ */
 
-   CADA RESULTADO DISTRIBUI PONTOS FÍSICOS PELA RODA:
+function construirCache(base){
 
-   ALVO      = +1.00
-   V1        = +0.72
-   V2        = +0.44
-   V3        = +0.22
-   V4        = +0.10
+const eventos=
+new Uint8Array(
+base.length
+);
 
-   RESULTADOS RECENTES PESAM MAIS.
+for(
+let i=0;
+i<base.length;
+i++
+)
+eventos[i]=
+eventoNumero(
+base[i]
+);
 
-   C4 / C5 / C6 DEFINEM O TAMANHO DA JANELA RECENTE.
+return {
+base,
+eventos
+};
 
-   O MOTOR PROCURA CONVERGÊNCIA ENTRE:
+}
 
-   1. CONTAGEM RECENTE
-   2. CONTAGEM TOTAL
-   3. MOMENTO
-   4. CONCENTRAÇÃO FÍSICA
-   5. TERMINAL
-   6. CORREDOR
+function similaridadeJanelas(
+cache,
+a,
+b,
+tamanho
+){
 
-   SÓ DEPOIS DA CONVERGÊNCIA A JOGADA É GERADA.
+let iguais=0;
+let erro=0;
+
+let a0=0,a6=0,a9=0;
+let b0=0,b6=0,b9=0;
+
+for(
+let k=0;
+k<tamanho;
+k++
+){
+
+const ea=
+cache.eventos[a+k];
+
+const eb=
+cache.eventos[b+k];
+
+if(ea===eb)
+iguais++;
+
+if(ea&1)a0++;
+if(ea&2)a6++;
+if(ea&4)a9++;
+
+if(eb&1)b0++;
+if(eb&2)b6++;
+if(eb&4)b9++;
+
+erro+=
+Math.abs(a0-b0);
+
+erro+=
+Math.abs(a6-b6);
+
+erro+=
+Math.abs(a9-b9);
+
+}
+
+const eventos=
+iguais/tamanho*100;
+
+const maxErro=
+tamanho*tamanho*3;
+
+const forma=
+Math.max(
+0,
+1-erro/maxErro
+)*100;
+
+return (
+eventos*.80+
+forma*.20
+);
+
+}
+
+function analisarRX(
+base,
+rx
+){
+
+base=
+limitar35(base);
+
+if(
+base.length<
+rx*2+4
+){
+
+return {
+
+valido:false,
+rx,
+replicas:[],
+rankingIds:[],
+similaridade:0
+
+};
+
+}
+
+const cache=
+construirCache(base);
+
+const atualInicio=
+base.length-rx;
+
+const candidatos=[];
+
+for(
+let i=0;
+i+rx<atualInicio;
+i++
+){
+
+const proximo=
+base[i+rx];
+
+if(
+proximo===undefined
+)
+continue;
+
+candidatos.push({
+
+inicio:i,
+proximo,
+
+similaridade:
+similaridadeJanelas(
+cache,
+atualInicio,
+i,
+rx
+)
+
+});
+
+}
+
+candidatos.sort(
+(a,b)=>
+
+b.similaridade-a.similaridade ||
+b.inicio-a.inicio
+);
+
+if(!candidatos.length){
+
+return {
+
+valido:false,
+rx,
+replicas:[],
+rankingIds:[],
+similaridade:0
+
+};
+
+}
+
+let qtd=
+Math.ceil(
+candidatos.length*.10
+);
+
+qtd=
+Math.max(
+4,
+qtd
+);
+
+qtd=
+Math.min(
+qtd,
+MAX_REPLICAS,
+candidatos.length
+);
+
+const replicas=
+candidatos.slice(
+0,
+qtd
+);
+
+const contagem=
+new Map();
+
+TODOS_IDS.forEach(
+id=>contagem.set(id,0)
+);
+
+function contar(rep){
+
+idsQueBatem(
+rep.proximo
+)
+.forEach(id=>{
+
+contagem.set(
+id,
+(contagem.get(id)||0)+1
+);
+
+});
+
+}
+
+replicas.forEach(contar);
+
+function positivos(){
+
+return TODOS_IDS
+.filter(
+id=>
+(contagem.get(id)||0)>0
+)
+.length;
+
+}
+
+let pos=qtd;
+
+while(
+positivos()<8 &&
+pos<candidatos.length &&
+replicas.length<
+MAX_REPLICAS
+){
+
+const rep=
+candidatos[pos++];
+
+replicas.push(rep);
+
+contar(rep);
+
+}
+
+const rankingIds=
+
+TODOS_IDS
+.map((id,ordem)=>({
+
+id,
+
+ocorrencias:
+contagem.get(id)||0,
+
+ordem
+
+}))
+.filter(
+x=>x.ocorrencias>0
+)
+.sort(
+(a,b)=>
+
+b.ocorrencias-a.ocorrencias ||
+a.ordem-b.ordem
+);
+
+return {
+
+valido:true,
+rx,
+replicas,
+rankingIds,
+
+similaridade:
+replicas.reduce(
+(s,r)=>
+s+r.similaridade,
+0
+)/
+replicas.length
+
+};
+
+}
+
+/* ============================================================
+   FREQUÊNCIA DINÂMICA
+============================================================ */
+
+function frequenciaReplicas(
+replicas
+){
+
+const freq=
+new Map();
+
+track.forEach(
+n=>freq.set(n,0)
+);
+
+replicas.forEach(rep=>{
+
+freq.set(
+rep.proximo,
+(freq.get(rep.proximo)||0)+1
+);
+
+});
+
+return freq;
+
+}
+
+/* ============================================================
+   MOTOR NORMAL — CONTAGEM
 ============================================================ */
 
 function criarMapaZero(){
@@ -2237,8 +2763,6 @@ criarMapaZero();
 const mapaRecente=
 criarMapaZero();
 
-/* CONTAGEM TOTAL */
-
 base.forEach((numero,i)=>{
 
 const peso=
@@ -2254,8 +2778,6 @@ peso
 );
 
 });
-
-/* CONTAGEM RECENTE C4 / C5 / C6 */
 
 recente.forEach((numero,i)=>{
 
@@ -2351,16 +2873,13 @@ primeiro && segundo
 ?primeiro.score-segundo.score
 :0;
 
-/* ============================================================
-   CONVERGÊNCIA FÍSICA
-============================================================ */
-
 const fortes=
 ranking.slice(0,6);
 
+let convergentes=0;
 let pesoConvergencia=0;
 
-fortes.forEach(x=>{
+fortes.forEach((x,i)=>{
 
 const d=
 distanciaRoda(
@@ -2369,6 +2888,8 @@ x.numero
 );
 
 if(d<=5){
+
+convergentes++;
 
 pesoConvergencia+=
 1-d/6;
@@ -2382,10 +2903,6 @@ fortes.length
 ?pesoConvergencia/
 fortes.length
 :0;
-
-/* ============================================================
-   CONVERGÊNCIA DAS FONTES
-============================================================ */
 
 let fontes=0;
 
@@ -2510,10 +3027,6 @@ numeros:new Set()
 const candidatos=
 analise.ranking.slice();
 
-/* ============================================================
-   1 BLOCO DE 1 VIZINHO
-============================================================ */
-
 let bloco1=null;
 
 for(const candidato of candidatos){
@@ -2554,10 +3067,6 @@ numeros:new Set()
 };
 
 }
-
-/* ============================================================
-   5 BLOCOS DE 2 VIZINHOS SEM SOBREPOSIÇÃO
-============================================================ */
 
 const usados=
 new Set(
@@ -2612,10 +3121,6 @@ blocos2.length===5
 break;
 
 }
-
-/* ============================================================
-   COMPLEMENTO FÍSICO
-============================================================ */
 
 if(
 blocos2.length<5
@@ -2866,7 +3371,556 @@ forca
 }
 
 /* ============================================================
-   MOTOR NORMAL — CONTAGEM
+   SCORE DINÂMICO
+============================================================ */
+
+function scoreRXPuro(
+centro,
+qtd,
+freq
+){
+
+const numeros=
+setor(
+centro,
+qtd
+);
+
+let score=0;
+let suporte=0;
+
+numeros.forEach(n=>{
+
+const f=
+freq.get(n)||0;
+
+suporte+=f;
+
+const d=
+distanciaRoda(
+centro,
+n
+);
+
+let peso=1;
+
+if(d===0)
+peso=1.45;
+
+else if(d===1)
+peso=1.22;
+
+score+=
+f*peso;
+
+});
+
+return {
+score,
+suporte,
+numeros
+};
+
+}
+
+function scoreMomentoSetor(
+centro,
+qtd,
+momento
+){
+
+const numeros=
+setor(
+centro,
+qtd
+);
+
+let score=0;
+
+numeros.forEach(n=>{
+
+const d=
+distanciaRoda(
+centro,
+n
+);
+
+let peso=1;
+
+if(d===0)
+peso=1.20;
+
+else if(d===1)
+peso=1.08;
+
+score+=
+scoreMomentoNumero(
+n,
+momento
+)*
+peso;
+
+});
+
+return score/
+numeros.length;
+
+}
+
+/* ============================================================
+   GIRADA DINÂMICA
+============================================================ */
+
+function avaliarCentroComGiradas(
+centroOriginal,
+qtd,
+freq,
+momento,
+diagnostico
+){
+
+let melhor=null;
+
+for(
+let offset=-MAX_GIRADA;
+offset<=MAX_GIRADA;
+offset++
+){
+
+const centro=
+numeroOffset(
+centroOriginal,
+offset
+);
+
+const rx=
+scoreRXPuro(
+centro,
+qtd,
+freq
+);
+
+if(
+rx.suporte<=0
+)
+continue;
+
+const momentoScore=
+scoreMomentoSetor(
+centro,
+qtd,
+momento
+);
+
+const custoGirada=
+Math.abs(offset)*
+.15*
+Math.max(
+1,
+rx.suporte
+);
+
+const direcao=
+direcaoMomento(
+centroOriginal,
+momento
+);
+
+let bonusDirecao=0;
+
+if(
+offset!==0 &&
+direcao.direcao!==0 &&
+Math.sign(offset)===
+direcao.direcao
+){
+
+bonusDirecao=
+direcao.forca*
+rx.suporte*
+.18;
+
+}
+
+let bonusLoss=0;
+
+if(
+diagnostico &&
+diagnostico.ativo &&
+diagnostico.lado!==0 &&
+offset!==0 &&
+Math.sign(offset)===
+diagnostico.lado
+){
+
+bonusLoss=
+diagnostico.forca*
+rx.suporte*
+.22;
+
+}
+
+const scoreFinal=
+
+rx.score+
+
+(
+momentoScore*
+rx.suporte*
+PESO_MOMENTO
+)+
+
+bonusDirecao+
+
+bonusLoss-
+
+custoGirada;
+
+const item={
+
+centroOriginal,
+centro,
+offset,
+qtd,
+
+numeros:
+rx.numeros,
+
+suporte:
+rx.suporte,
+
+scoreRX:
+rx.score,
+
+scoreMomento:
+momentoScore,
+
+score:
+scoreFinal
+
+};
+
+if(
+!melhor ||
+item.score>melhor.score
+)
+melhor=item;
+
+}
+
+return melhor;
+
+}
+
+function gerarCandidatos(
+qtd,
+freq,
+momento,
+diagnostico
+){
+
+const mapa=
+new Map();
+
+track.forEach(
+centroOriginal=>{
+
+const c=
+avaliarCentroComGiradas(
+centroOriginal,
+qtd,
+freq,
+momento,
+diagnostico
+);
+
+if(!c)
+return;
+
+const existente=
+mapa.get(
+c.centro
+);
+
+if(
+!existente ||
+c.score>existente.score
+)
+mapa.set(
+c.centro,
+c
+);
+
+});
+
+return Array.from(
+mapa.values()
+)
+.sort(
+(a,b)=>
+
+b.score-a.score ||
+b.suporte-a.suporte ||
+Math.abs(a.offset)-
+Math.abs(b.offset)
+
+);
+
+}
+
+/* ============================================================
+   MONTA JOGADA DINÂMICA
+============================================================ */
+
+function montarJogada(
+raioX,
+base,
+diagnostico=null
+){
+
+if(
+!raioX ||
+!raioX.valido
+){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+base=
+limitar35(base);
+
+const momento=
+analisarMomento(base);
+
+const freq=
+frequenciaReplicas(
+raioX.replicas
+);
+
+const candidatos2=
+gerarCandidatos(
+2,
+freq,
+momento,
+diagnostico
+);
+
+const candidatos1=
+gerarCandidatos(
+1,
+freq,
+momento,
+diagnostico
+);
+
+let melhor=null;
+
+for(const um of candidatos1){
+
+const usados=
+new Set(
+um.numeros
+);
+
+const dois=[];
+
+let score=
+um.score;
+
+for(
+const candidato
+of candidatos2
+){
+
+const conflito=
+candidato.numeros
+.some(
+n=>usados.has(n)
+);
+
+if(conflito)
+continue;
+
+dois.push(
+candidato
+);
+
+score+=
+candidato.score;
+
+candidato.numeros
+.forEach(
+n=>usados.add(n)
+);
+
+if(
+dois.length===5
+)
+break;
+
+}
+
+if(
+dois.length===5 &&
+usados.size===28
+){
+
+if(
+!melhor ||
+score>melhor.score
+){
+
+melhor={
+
+valido:true,
+
+blocos2:dois,
+
+blocos1:[um],
+
+numeros:usados,
+
+score,
+
+momento
+
+};
+
+}
+
+}
+
+}
+
+return melhor || {
+
+valido:false,
+
+blocos2:[],
+
+blocos1:[],
+
+numeros:new Set(),
+
+momento
+
+};
+
+}
+
+/* ============================================================
+   OFFSET GLOBAL
+============================================================ */
+
+function aplicarOffsetGlobalNaJogada(
+jogada,
+offset
+){
+
+if(
+!jogada ||
+!jogada.valido
+)
+return jogada;
+
+if(!offset)
+return jogada;
+
+const blocos2=
+jogada.blocos2
+.map(b=>{
+
+const novoCentro=
+numeroOffset(
+b.centro,
+offset
+);
+
+return Object.assign(
+{},
+b,
+{
+
+centro:
+novoCentro,
+
+numeros:
+setor(
+novoCentro,
+2
+)
+
+}
+);
+
+});
+
+const blocos1=
+jogada.blocos1
+.map(b=>{
+
+const novoCentro=
+numeroOffset(
+b.centro,
+offset
+);
+
+return Object.assign(
+{},
+b,
+{
+
+centro:
+novoCentro,
+
+numeros:
+setor(
+novoCentro,
+1
+)
+
+}
+);
+
+});
+
+const numeros=
+new Set();
+
+blocos2.forEach(b=>
+b.numeros.forEach(
+n=>numeros.add(n)
+)
+);
+
+blocos1.forEach(b=>
+b.numeros.forEach(
+n=>numeros.add(n)
+)
+);
+
+return Object.assign(
+{},
+jogada,
+{
+blocos2,
+blocos1,
+numeros
+}
+);
+
+}
+
+/* ============================================================
+   CONFIGURAÇÃO NORMAL
 ============================================================ */
 
 function gerarConfigNormal(
@@ -2942,6 +3996,79 @@ jogada,
 
 similaridade:
 contagem.convergenciaFinal*100
+
+};
+
+}
+
+/* ============================================================
+   CONFIGURAÇÃO DINÂMICA
+============================================================ */
+
+function gerarConfigDinamico(
+base,
+rxTam,
+diagnostico=null,
+offset=offsetCentroAtual
+){
+
+base=
+limitar35(base);
+
+const raioX=
+analisarRX(
+base,
+rxTam
+);
+
+if(!raioX.valido){
+
+return {
+
+valido:false,
+motor:"DINAMICO",
+rx:rxTam,
+usarOffset:true,
+offsetAplicado:offset
+
+};
+
+}
+
+let jogada=
+montarJogada(
+raioX,
+base,
+diagnostico
+);
+
+jogada=
+aplicarOffsetGlobalNaJogada(
+jogada,
+offset
+);
+
+return {
+
+valido:
+jogada.valido,
+
+motor:"DINAMICO",
+
+rx:
+rxTam,
+
+usarOffset:true,
+
+offsetAplicado:
+offset,
+
+raioX,
+
+jogada,
+
+similaridade:
+raioX.similaridade
 
 };
 
@@ -3180,9 +4307,7 @@ lista
 }
 
 /* ============================================================
-   BACKTEST NORMAL — CONTAGEM
-   ATÉ 200 GIROS
-   SEM OLHAR O FUTURO
+   BACKTEST NORMAL
 ============================================================ */
 
 function backtestNormal(
@@ -3231,6 +4356,112 @@ gerarConfigNormal(
 passado,
 rxTam,
 diag
+);
+
+if(!cfg.valido){
+
+timeline.push({
+
+resultado:
+base[i],
+
+semJogada:true,
+
+green:null,
+
+tipo:"SEM_JOGADA",
+
+lado:0
+
+});
+
+continue;
+
+}
+
+const resultado=
+base[i];
+
+const r=
+classificarJogada(
+resultado,
+cfg.jogada
+);
+
+timeline.push({
+
+resultado,
+
+semJogada:false,
+
+green:r.green,
+
+tipo:r.tipo,
+
+lado:r.lado
+
+});
+
+}
+
+return statsTimeline(
+timeline
+);
+
+}
+
+/* ============================================================
+   BACKTEST DINÂMICO
+============================================================ */
+
+function backtestDinamico(
+base,
+rxTam,
+offsetAtual
+){
+
+base=
+limitarBacktest(base);
+
+const timeline=[];
+
+const minimo=
+Math.max(
+14,
+rxTam*2+4
+);
+
+const inicio=
+Math.min(
+minimo,
+base.length
+);
+
+for(
+let i=inicio;
+i<base.length;
+i++
+){
+
+const passadoCompleto=
+base.slice(0,i);
+
+const passado=
+passadoCompleto.slice(
+-MAX_HISTORICO
+);
+
+const diag=
+diagnosticarLosses(
+timeline
+);
+
+const cfg=
+gerarConfigDinamico(
+passado,
+rxTam,
+diag,
+offsetAtual
 );
 
 if(!cfg.valido){
@@ -3352,7 +4583,7 @@ return score;
 }
 
 /* ============================================================
-   CANDIDATO NORMAL — C4 / C5 / C6
+   CANDIDATO NORMAL
 ============================================================ */
 
 function analisarNormal(
@@ -3412,7 +4643,69 @@ live
 }
 
 /* ============================================================
-   CALCULA C4 / C5 / C6
+   CANDIDATO DINÂMICO
+============================================================ */
+
+function analisarDinamico(
+base,
+rx,
+baseBacktest=base
+){
+
+const timeline=
+estado.timelines.DINAMICO[rx];
+
+const diagnostico=
+diagnosticarLosses(
+timeline
+);
+
+const live=
+statsTimeline(
+timeline
+);
+
+const cfg=
+gerarConfigDinamico(
+base,
+rx,
+diagnostico,
+offsetCentroAtual
+);
+
+if(!cfg.valido)
+return null;
+
+const bt=
+backtestDinamico(
+baseBacktest,
+rx,
+offsetCentroAtual
+);
+
+return Object.assign(
+{},
+cfg,
+{
+
+backtest:bt,
+
+live,
+
+score:
+pontuarConfiguracao(
+cfg,
+bt,
+live
+)
+
+}
+);
+
+}
+
+/* ============================================================
+   CALCULA OS 6 CANDIDATOS
 ============================================================ */
 
 function calcularSeis(
@@ -3421,6 +4714,7 @@ baseBacktest=base
 ){
 
 const normal={};
+const dinamico={};
 
 RX_LIST.forEach(rx=>{
 
@@ -3431,16 +4725,24 @@ rx,
 baseBacktest
 );
 
+dinamico[rx]=
+analisarDinamico(
+base,
+rx,
+baseBacktest
+);
+
 });
 
 return {
-normal
+normal,
+dinamico
 };
 
 }
 
 /* ============================================================
-   AUTO — SOMENTE C4 / C5 / C6
+   AUTO — ESCOLHE ENTRE OS 6
 ============================================================ */
 
 function escolherAuto(
@@ -3457,6 +4759,14 @@ seis.normal[rx].valido
 )
 candidatos.push(
 seis.normal[rx]
+);
+
+if(
+seis.dinamico[rx] &&
+seis.dinamico[rx].valido
+)
+candidatos.push(
+seis.dinamico[rx]
 );
 
 });
@@ -3493,6 +4803,13 @@ return candidatos[0];
 function configManual(
 seis
 ){
+
+if(
+estado.motorManual==="DINAMICO"
+)
+return seis.dinamico[
+estado.manualRX
+]||null;
 
 return seis.normal[
 estado.manualRX
@@ -3546,14 +4863,20 @@ assinatura:
 assinatura(),
 
 motor:
-"NORMAL",
+config.motor,
 
 rx:
 config.rx,
 
-usarOffset:false,
+usarOffset:
+!!config.usarOffset,
 
-offsetAplicado:0,
+offsetAplicado:
+Number.isInteger(
+config.offsetAplicado
+)
+?config.offsetAplicado
+:0,
 
 centros2:
 config.jogada
@@ -3695,6 +5018,21 @@ estado.pendentes.NORMAL[rx].assinatura!==sig
 estado.pendentes.NORMAL[rx]=
 snapshot(
 seis.normal[rx]
+);
+
+}
+
+if(
+!estado.freezes.DINAMICO[rx] &&
+(
+!estado.pendentes.DINAMICO[rx] ||
+estado.pendentes.DINAMICO[rx].assinatura!==sig
+)
+){
+
+estado.pendentes.DINAMICO[rx]=
+snapshot(
+seis.dinamico[rx]
 );
 
 }
@@ -3958,7 +5296,7 @@ pendente:null
 }
 
 /* ============================================================
-   AVALIA AUTO + C4 + C5 + C6
+   AVALIA AS 7 LINHAS
 ============================================================ */
 
 function avaliarPendentes(
@@ -4018,9 +5356,185 @@ normalResultado.freeze;
 estado.pendentes.NORMAL[rx]=
 normalResultado.pendente;
 
+const dinamicoResultado=
+avaliarLinhaComG1(
+
+numero,
+
+estado.pendentes.DINAMICO[rx],
+
+estado.timelines.DINAMICO[rx],
+
+estado.freezes.DINAMICO[rx],
+
+sig
+
+);
+
+estado.timelines.DINAMICO[rx]=
+dinamicoResultado.lista;
+
+estado.freezes.DINAMICO[rx]=
+dinamicoResultado.freeze;
+
+estado.pendentes.DINAMICO[rx]=
+dinamicoResultado.pendente;
+
 });
 
 salvarEstado();
+
+}
+
+/* ============================================================
+   OFFSET DINÂMICO
+============================================================ */
+
+function encontrarBatidaGlobal(
+numero,
+config
+){
+
+if(
+!config ||
+!config.valido ||
+!config.jogada ||
+!config.jogada.valido
+)
+return null;
+
+const blocos=[
+
+...(config.jogada.blocos2||[]),
+...(config.jogada.blocos1||[])
+
+];
+
+let melhor=null;
+
+for(const bloco of blocos){
+
+if(
+!bloco.numeros.includes(numero)
+)
+continue;
+
+const delta=
+deltaRoda(
+bloco.centro,
+numero
+);
+
+if(
+Math.abs(delta)>bloco.qtd
+)
+continue;
+
+const candidato={
+
+centro:
+bloco.centro,
+
+numero,
+
+delta,
+
+qtd:
+bloco.qtd
+
+};
+
+if(
+!melhor ||
+Math.abs(delta)<
+Math.abs(melhor.delta)
+)
+melhor=candidato;
+
+}
+
+return melhor;
+
+}
+
+function melhorDinamico(
+seis
+){
+
+if(
+estado.modo==="MANUAL" &&
+estado.motorManual==="DINAMICO"
+){
+
+return seis.dinamico[
+estado.manualRX
+]||null;
+
+}
+
+const candidatos=
+RX_LIST
+.map(rx=>
+seis.dinamico[rx]
+)
+.filter(x=>
+x &&
+x.valido
+);
+
+if(!candidatos.length)
+return null;
+
+candidatos.sort(
+(a,b)=>
+
+b.score-a.score ||
+
+b.backtest.taxa10-
+a.backtest.taxa10 ||
+
+b.backtest.taxa20-
+a.backtest.taxa20 ||
+
+b.similaridade-
+a.similaridade
+);
+
+return candidatos[0];
+
+}
+
+function atualizarOffsetGlobal(
+numero,
+configDinamica
+){
+
+if(
+!configDinamica ||
+!configDinamica.valido ||
+!configDinamica.usarOffset
+)
+return;
+
+const batida=
+encontrarBatidaGlobal(
+numero,
+configDinamica
+);
+
+if(!batida)
+return;
+
+offsetCentroAtual=
+Math.max(
+-2,
+Math.min(
+2,
+batida.delta
+)
+);
+
+salvarOffsetCentro();
 
 }
 
@@ -4044,14 +5558,21 @@ return {
 
 valido:true,
 
-motor:"NORMAL",
+motor:
+config.motor,
 
 rx:
 config.rx,
 
-usarOffset:false,
+usarOffset:
+!!config.usarOffset,
 
-offsetAplicado:0,
+offsetAplicado:
+Number.isInteger(
+config.offsetAplicado
+)
+?config.offsetAplicado
+:0,
 
 jogada:{
 
@@ -4095,7 +5616,8 @@ estado.modo==="AUTO"
 return "AUTO";
 
 return (
-"NORMAL_"+
+estado.motorManual+
+"_"+
 estado.manualRX
 );
 
@@ -4155,11 +5677,21 @@ const configAntes=
 jogadaCongelada ||
 ativaAntes;
 
+const dinamicaAntes=
+melhorDinamico(
+seisAntes
+);
+
 const eraG1=
 ultimoVisualEsperaG1();
 
 avaliarPendentes(
 numero
+);
+
+atualizarOffsetGlobal(
+numero,
+dinamicaAntes
 );
 
 historicoCompleto.push(
@@ -4275,7 +5807,7 @@ chaveVisual(),
 
 motor:
 configAntes
-?"NORMAL"
+?configAntes.motor
 :null,
 
 rx:
@@ -4349,11 +5881,13 @@ pendentesVazios();
 estado.freezes=
 freezesVazios();
 
-estado.motorManual="NORMAL";
-
 duplasVisual=[];
 
 jogadaCongelada=null;
+
+offsetCentroAtual=0;
+
+salvarOffsetCentro();
 
 salvarJogadaCongelada();
 
@@ -4556,6 +6090,12 @@ padding:7px 11px
 .modo.ativo{
 background:#007d98;
 border-color:#00e5ff;
+color:#fff
+}
+
+.modo.dinamico.ativo{
+background:#6c4d00;
+border-color:#ffc107;
 color:#fff
 }
 
@@ -5070,6 +6610,36 @@ C6
 
 </div>
 
+<div class="seletorGrupo">
+
+<div class="seletorTitulo">
+DINÂMICO
+</div>
+
+<div class="modos">
+
+<button
+id="btnD4"
+class="modo dinamico">
+C4
+</button>
+
+<button
+id="btnD5"
+class="modo dinamico">
+C5
+</button>
+
+<button
+id="btnD6"
+class="modo dinamico">
+C6
+</button>
+
+</div>
+
+</div>
+
 <div
 id="origemAuto"
 class="origemAuto">
@@ -5128,6 +6698,29 @@ class="timelineRow">
 
 <div
 id="timelineN6"
+class="timelineRow">
+</div>
+
+</div>
+
+<div class="timelineSecao">
+
+<div class="timelineTituloGrupo">
+MOTOR DINÂMICO
+</div>
+
+<div
+id="timelineD4"
+class="timelineRow">
+</div>
+
+<div
+id="timelineD5"
+class="timelineRow">
+</div>
+
+<div
+id="timelineD6"
 class="timelineRow">
 </div>
 
@@ -5214,12 +6807,13 @@ render();
 }
 
 function selecionarManual(
+motor,
 rx
 ){
 
 estado.modo="MANUAL";
 
-estado.motorManual="NORMAL";
+estado.motorManual=motor;
 
 estado.manualRX=rx;
 
@@ -5247,6 +6841,20 @@ document
 .onclick=()=>{
 
 selecionarManual(
+"NORMAL",
+rx
+);
+
+};
+
+document
+.getElementById(
+"btnD"+rx
+)
+.onclick=()=>{
+
+selecionarManual(
+"DINAMICO",
 rx
 );
 
@@ -5779,7 +7387,15 @@ congelada
 :"JOGADA ATUAL"
 )+
 
-' • CONTAGEM • C'+
+' • '+
+
+(
+config.motor==="DINAMICO"
+?"DINÂMICO"
+:"CONTAGEM"
+)+
+
+' • C'+
 config.rx+
 
 '</div>'+
@@ -5918,7 +7534,7 @@ d.g1!==undefined
 }
 
 /* ============================================================
-   TEXTO MOTOR
+   TEXTO OFFSET
 ============================================================ */
 
 function textoOffset(
@@ -5931,7 +7547,27 @@ if(
 )
 return "—";
 
+if(
+config.motor!=="DINAMICO"
+)
 return "CONTAGEM";
+
+const o=
+config.offsetAplicado||0;
+
+if(o===-2)
+return "V2 ESQUERDA • TODOS -2";
+
+if(o===-1)
+return "V1 ESQUERDA • TODOS -1";
+
+if(o===1)
+return "V1 DIREITA • TODOS +1";
+
+if(o===2)
+return "V2 DIREITA • TODOS +2";
+
+return "ALVO";
 
 }
 
@@ -5939,7 +7575,9 @@ return "CONTAGEM";
    STATUS CONTAGEM
 ============================================================ */
 
-function renderStatusContagem(){
+function renderStatusContagem(
+seis
+){
 
 const area=
 document.getElementById(
@@ -6097,13 +7735,18 @@ seis,
 auto
 );
 
-/* BOTÕES */
+/* ============================================================
+   BOTÕES
+============================================================ */
 
 [
 "btnAUTO",
 "btnN4",
 "btnN5",
-"btnN6"
+"btnN6",
+"btnD4",
+"btnD5",
+"btnD6"
 ]
 .forEach(id=>{
 
@@ -6129,10 +7772,13 @@ document
 
 }else{
 
+const id=
+estado.motorManual==="NORMAL"
+?"btnN"+estado.manualRX
+:"btnD"+estado.manualRX;
+
 document
-.getElementById(
-"btnN"+estado.manualRX
-)
+.getElementById(id)
 .classList.add(
 "ativo"
 );
@@ -6152,19 +7798,31 @@ document
 auto
 
 ?(
-"AUTO-SCORE ESCOLHEU • CONTAGEM • C"+
+"AUTO-SCORE ESCOLHEU • "+
+(
+auto.motor==="DINAMICO"
+?"DINÂMICO"
+:"NORMAL"
+)+
+" • C"+
 auto.rx+
 " • SCORE "+
-auto.score.toFixed(1)
+(
+Number.isFinite(auto.score)
+?auto.score.toFixed(1)
+:"—"
+)
 )
 
-:"AUTO-SCORE • AGUARDANDO CONVERGÊNCIA";
+:"AUTO-SCORE • AGUARDANDO CANDIDATO";
 
 /* ============================================================
    CONTAGEM
 ============================================================ */
 
-renderStatusContagem();
+renderStatusContagem(
+seis
+);
 
 /* ============================================================
    RESUMO
@@ -6265,6 +7923,24 @@ renderTimeline(
 estado.timelines.NORMAL[6]
 );
 
+renderTimeline(
+"timelineD4",
+"C4",
+estado.timelines.DINAMICO[4]
+);
+
+renderTimeline(
+"timelineD5",
+"C5",
+estado.timelines.DINAMICO[5]
+);
+
+renderTimeline(
+"timelineD6",
+"C6",
+estado.timelines.DINAMICO[6]
+);
+
 /* ============================================================
    VISUAL
 ============================================================ */
@@ -6298,7 +7974,7 @@ document
 base.length+
 "/20 • BACKTEST "+
 baseBacktest.length+
-"/200 • C4/C5/C6 • AUTO-SCORE • BACKTEST WALK-FORWARD"+
+"/200 • NORMAL C4/C5/C6 + DINÂMICO C4/C5/C6 • AUTO-SCORE 6 CANDIDATOS"+
 
 (
 df
@@ -6308,7 +7984,7 @@ df.duzia+
 :""
 )+
 
-" • MOTOR: "+
+" • CENTROS: "+
 textoOffset(
 configExibida
 )+
