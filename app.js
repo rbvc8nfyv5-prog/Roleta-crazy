@@ -2707,12 +2707,6 @@ pontosResultado.set(n,0)
 
 let pesoTotal=0;
 
-/*
-   A ocorrência atual não entra.
-   A ocorrência histórica só entra se tiver
-   os 3 giros posteriores completos.
-*/
-
 for(
 let i=0;
 i<acumuladas.length-1;
@@ -2800,11 +2794,6 @@ acumuladas
 
 }
 
-/* ============================================================
-   PONTUA TODOS OS 37 BLOCOS FÍSICOS
-   ALVO = 2 ESQUERDA + ALVO + 2 DIREITA
-============================================================ */
-
 const ranking=
 track.map(centro=>{
 
@@ -2848,16 +2837,6 @@ indice(a.centro)-
 indice(b.centro)
 
 );
-
-/* ============================================================
-   SELEÇÃO CONJUNTA DOS 5 ALVOS
-
-   NÃO É GULOSA.
-
-   TESTA AS COMBINAÇÕES POSSÍVEIS DE 5 BLOCOS
-   E DESCARTA AUTOMATICAMENTE QUALQUER COMBINAÇÃO
-   QUE TENHA UM ÚNICO NÚMERO REPETIDO.
-============================================================ */
 
 let melhor=null;
 
@@ -3016,14 +2995,6 @@ acumuladas
 
 }
 
-/* ============================================================
-   FORÇA
-
-   PESO DOS RESULTADOS PÓS-GATILHO CAPTURADOS
-   PELOS 25 NÚMEROS ÚNICOS /
-   PESO TOTAL DOS RESULTADOS PÓS-GATILHO.
-============================================================ */
-
 let pesoCapturado=0;
 
 pontosResultado
@@ -3155,10 +3126,7 @@ analise
 }
 
 /* ============================================================
-   NOVO MOTOR DE CONTAGEM
-   ============================================================
-
-   MANTIDO NO CÓDIGO.
+   CONTAGEM ORIGINAL — PRESERVADA
 ============================================================ */
 
 function criarMapaZero(){
@@ -3219,10 +3187,6 @@ p*peso
 
 }
 
-/* ============================================================
-   CONTAGEM DE FAMÍLIAS
-============================================================ */
-
 function contagemFamilias(base){
 
 const contagem={
@@ -3261,10 +3225,6 @@ recencia;
 return contagem;
 
 }
-
-/* ============================================================
-   CONTAGEM PRINCIPAL ORIGINAL
-============================================================ */
 
 function analisarContagem(
 base,
@@ -3426,10 +3386,9 @@ primeiro && segundo
 const fortes=
 ranking.slice(0,6);
 
-let convergentes=0;
 let pesoConvergencia=0;
 
-fortes.forEach((x,i)=>{
+fortes.forEach(x=>{
 
 const d=
 distanciaRoda(
@@ -3438,8 +3397,6 @@ x.numero
 );
 
 if(d<=5){
-
-convergentes++;
 
 pesoConvergencia+=
 1-d/6;
@@ -3464,9 +3421,6 @@ fontes++;
 
 if(primeiro.momento>=.55)
 fontes++;
-
-const df=
-momento.duziasFisicas;
 
 if(
 scoreDuziaFisicaNumero(
@@ -3547,251 +3501,6 @@ familias:
 contagemFamilias(base),
 
 momento
-
-};
-
-}
-
-/* ============================================================
-   GERA JOGADA PELA CONTAGEM ORIGINAL
-============================================================ */
-
-function gerarJogadaContagem(
-analise
-){
-
-if(
-!analise ||
-!analise.valido ||
-!analise.convergencia
-){
-
-return {
-
-valido:false,
-blocos2:[],
-blocos1:[],
-numeros:new Set()
-
-};
-
-}
-
-const candidatos=
-analise.ranking.slice();
-
-let bloco1=null;
-
-for(const candidato of candidatos){
-
-const numeros=
-setor(
-candidato.numero,
-1
-);
-
-bloco1={
-
-centro:
-candidato.numero,
-
-qtd:1,
-
-numeros,
-
-score:
-candidato.score
-
-};
-
-break;
-
-}
-
-if(!bloco1){
-
-return {
-
-valido:false,
-blocos2:[],
-blocos1:[],
-numeros:new Set()
-
-};
-
-}
-
-const usados=
-new Set(
-bloco1.numeros
-);
-
-const blocos2=[];
-
-for(const candidato of candidatos){
-
-if(
-candidato.numero===
-bloco1.centro
-)
-continue;
-
-const numeros=
-setor(
-candidato.numero,
-2
-);
-
-const conflito=
-numeros.some(
-n=>usados.has(n)
-);
-
-if(conflito)
-continue;
-
-blocos2.push({
-
-centro:
-candidato.numero,
-
-qtd:2,
-
-numeros,
-
-score:
-candidato.score
-
-});
-
-numeros.forEach(
-n=>usados.add(n)
-);
-
-if(
-blocos2.length===5
-)
-break;
-
-}
-
-if(
-blocos2.length<5
-){
-
-const extras=
-track.map(numero=>{
-
-const item=
-analise.ranking.find(
-x=>x.numero===numero
-);
-
-return {
-
-numero,
-
-score:
-item
-?item.score
-:0
-
-};
-
-})
-.sort(
-(a,b)=>
-b.score-a.score
-);
-
-for(const candidato of extras){
-
-if(
-blocos2.length===5
-)
-break;
-
-const numeros=
-setor(
-candidato.numero,
-2
-);
-
-const conflito=
-numeros.some(
-n=>usados.has(n)
-);
-
-if(conflito)
-continue;
-
-blocos2.push({
-
-centro:
-candidato.numero,
-
-qtd:2,
-
-numeros,
-
-score:
-candidato.score
-
-});
-
-numeros.forEach(
-n=>usados.add(n)
-);
-
-}
-
-}
-
-if(
-blocos2.length!==5 ||
-usados.size!==28
-){
-
-return {
-
-valido:false,
-blocos2:[],
-blocos1:[],
-numeros:new Set()
-
-};
-
-}
-
-const score=
-
-bloco1.score+
-
-blocos2.reduce(
-(s,b)=>s+b.score,
-0
-);
-
-return {
-
-valido:true,
-
-blocos2,
-
-blocos1:[
-bloco1
-],
-
-numeros:
-usados,
-
-score,
-
-momento:
-analise.momento,
-
-contagem:
-analise
 
 };
 
@@ -4222,7 +3931,7 @@ Math.abs(b.offset)
 }
 
 /* ============================================================
-   MONTA JOGADA DINÂMICA ORIGINAL
+   MOTOR DINÂMICO
 ============================================================ */
 
 function montarJogada(
@@ -4863,8 +4572,6 @@ lista
 
 /* ============================================================
    BACKTEST NORMAL — PÓS-GATILHO
-   ATÉ 200 GIROS
-   SEM OLHAR O FUTURO
 ============================================================ */
 
 function backtestNormal(
@@ -4960,7 +4667,6 @@ timeline
 
 /* ============================================================
    BACKTEST DINÂMICO
-   ATÉ 200 GIROS
 ============================================================ */
 
 function backtestDinamico(
@@ -5132,7 +4838,7 @@ return score;
 }
 
 /* ============================================================
-   CANDIDATO NORMAL — PÓS-GATILHO
+   CANDIDATO NORMAL
 ============================================================ */
 
 function analisarNormal(
@@ -8153,9 +7859,7 @@ return "ALVO";
    STATUS CONTAGEM DE CARTAS / PÓS-GATILHO
 ============================================================ */
 
-function renderStatusContagem(
-seis
-){
+function renderStatusContagem(){
 
 const area=
 document.getElementById(
@@ -8305,10 +8009,6 @@ document
 
 }
 
-/* ============================================================
-   AUTO
-============================================================ */
-
 document
 .getElementById(
 "origemAuto"
@@ -8333,17 +8033,7 @@ auto.motor==="DINAMICO"
 
 :"AUTO • AGUARDANDO";
 
-/* ============================================================
-   CONTAGEM
-============================================================ */
-
-renderStatusContagem(
-seis
-);
-
-/* ============================================================
-   RESUMO
-============================================================ */
+renderStatusContagem();
 
 const liveAuto=
 statsTimeline(
@@ -8400,10 +8090,6 @@ liveAuto.total
 '</strong>'+
 '</div>';
 
-/* ============================================================
-   TERMINAIS / DÚZIAS
-============================================================ */
-
 renderTrio(
 momento
 );
@@ -8411,10 +8097,6 @@ momento
 renderDuzias(
 momento
 );
-
-/* ============================================================
-   TIMELINES
-============================================================ */
 
 renderTimeline(
 "timelineAUTO",
@@ -8458,10 +8140,6 @@ renderTimeline(
 estado.timelines.DINAMICO[6]
 );
 
-/* ============================================================
-   VISUAL
-============================================================ */
-
 renderUltimos14();
 
 const configExibida=
@@ -8472,10 +8150,6 @@ renderJogada(
 configExibida,
 !!jogadaCongelada
 );
-
-/* ============================================================
-   STATUS
-============================================================ */
 
 const df=
 momento
