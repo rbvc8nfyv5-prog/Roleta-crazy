@@ -51,6 +51,13 @@
    - RAIO X NORMAL C4 / C5 / C6.
    - RAIO X DINÂMICO C4 / C5 / C6.
    - ESCOLHE UMA ÚNICA JOGADA.
+   - USA SOMENTE OS 20 ÚLTIMOS RESULTADOS.
+   - PRIORIZA DESEMPENHO REAL RECENTE.
+   - PRIORIZA GREEN DE PRIMEIRA.
+   - G1 TEM PESO MENOR QUE GREEN DE PRIMEIRA.
+   - LOSS RECENTE REDUZ A FORÇA DA LINHA.
+   - CORRIGE AMOSTRAS PEQUENAS POR CONFIANÇA.
+   - A ESCOLHA É FEITA ANTES DO PRÓXIMO RESULTADO.
 
    G1:
    ------------------------------------------------------------
@@ -72,7 +79,7 @@ const STORAGE_KEY =
 "ANALISADOR_069_IDS_CORRESPONDENTES_V1";
 
 const STORAGE_HISTORICO_COMPLETO =
-"ANALISE_BETA_HISTORICO_COMPLETO_200_V1";
+"ANALISE_BETA_HISTORICO_COMPLETO_20_V1";
 
 const STORAGE_ENGINE =
 "ANALISE_BETA_MOTOR_CONTAGEM_V1";
@@ -91,9 +98,9 @@ const STORAGE_OFFSET =
 ============================================================ */
 
 const MAX_HISTORICO = 20;
-const MAX_HISTORICO_BACKTEST = 200;
+const MAX_HISTORICO_BACKTEST = 20;
 const JANELA_MOMENTO = 14;
-const MAX_TIMELINE = 300;
+const MAX_TIMELINE = 20;
 
 const RX_LIST = [4,5,6];
 
@@ -105,20 +112,6 @@ const PESO_DUZIA_FISICA = .16;
 
 /* ============================================================
    CONTAGEM — PARÂMETROS
-
-   MODELO DE RUNNING COUNT ADAPTADO À ROLETA.
-
-   NÃO É CONTAGEM DE CARTAS DE BLACKJACK:
-   A IDEIA PROFISSIONAL APROVEITADA AQUI É A MESMA
-   SEPARAÇÃO ENTRE:
-
-   - CONTAGEM BRUTA / RUNNING COUNT
-   - PRESSÃO RECENTE
-   - PRESSÃO ACUMULADA
-   - CONTAGEM NORMALIZADA
-   - CONVERGÊNCIA
-   - VANTAGEM RELATIVA ENTRE O 1º E O 2º CENTRO
-
 ============================================================ */
 
 const CONTAGEM_MINIMA = {
@@ -142,8 +135,6 @@ const DIFERENCA_MINIMA = {
 const PESO_CONTAGEM_RECENTE = 1.35;
 const PESO_CONTAGEM_TOTAL = .65;
 const PESO_CONTAGEM_MOMENTO = .70;
-
-/* NOVAS CAMADAS DA CONTAGEM */
 
 const CONTAGEM_DECAY = {
 4:.78,
@@ -243,47 +234,20 @@ return 0;
 const MAPA_DUZIA_FISICA = {
 
 1:new Map([
-[3,1.00],
-[12,1.00],
-[7,.95],
-[4,.92],
-[2,.92],
-[11,.82],
-[8,.86],
-[5,.86],
-[6,.40],
-[1,.36],
-[9,.36],
-[10,.58]
+[3,1.00],[12,1.00],[7,.95],[4,.92],[2,.92],
+[11,.82],[8,.86],[5,.86],[6,.40],[1,.36],
+[9,.36],[10,.58]
 ]),
 
 2:new Map([
-[15,1.00],
-[19,1.00],
-[21,.98],
-[17,.70],
-[13,.72],
-[23,.96],
-[24,.94],
-[16,.94],
-[14,.88],
-[20,.88],
-[18,.92]
+[15,1.00],[19,1.00],[21,.98],[17,.70],[13,.72],
+[23,.96],[24,.94],[16,.94],[14,.88],[20,.88],[18,.92]
 ]),
 
 3:new Map([
-[29,1.00],
-[30,1.00],
-[32,.96],
-[25,.94],
-[27,.88],
-[28,.92],
-[26,.80],
-[35,.72],
-[36,.68],
-[34,.64],
-[33,.42],
-[31,.40]
+[29,1.00],[30,1.00],[32,.96],[25,.94],[27,.88],
+[28,.92],[26,.80],[35,.72],[36,.68],[34,.64],
+[33,.42],[31,.40]
 ])
 
 };
@@ -333,14 +297,12 @@ return base.slice(-MAX_HISTORICO_BACKTEST);
 }
 
 function indice(n){
-
 return track.indexOf(n);
-
 }
 
 function numeroOffset(centro,offset){
 
-const i = indice(centro);
+const i=indice(centro);
 
 if(i<0)
 return centro;
@@ -353,7 +315,7 @@ return track[
 
 function setor(centro,qtd){
 
-const i = indice(centro);
+const i=indice(centro);
 
 if(i<0)
 return [];
@@ -373,9 +335,7 @@ return r;
 }
 
 function vizinhos(numero,qtd=1){
-
 return setor(numero,qtd);
-
 }
 
 function distanciaRoda(a,b){
@@ -413,21 +373,15 @@ return d;
 }
 
 function terminal(n){
-
 return n%10;
-
 }
 
 function terminalAnterior(t){
-
 return (t+9)%10;
-
 }
 
 function terminalSeguinte(t){
-
 return (t+1)%10;
-
 }
 
 /* ============================================================
@@ -719,29 +673,10 @@ return {
 
 AUTO:null,
 
-NORMAL:{
-4:null,
-5:null,
-6:null
-},
-
-DINAMICO:{
-4:null,
-5:null,
-6:null
-},
-
-RX_NORMAL:{
-4:null,
-5:null,
-6:null
-},
-
-RX_DINAMICO:{
-4:null,
-5:null,
-6:null
-}
+NORMAL:{4:null,5:null,6:null},
+DINAMICO:{4:null,5:null,6:null},
+RX_NORMAL:{4:null,5:null,6:null},
+RX_DINAMICO:{4:null,5:null,6:null}
 
 };
 
@@ -753,29 +688,10 @@ return {
 
 AUTO:null,
 
-NORMAL:{
-4:null,
-5:null,
-6:null
-},
-
-DINAMICO:{
-4:null,
-5:null,
-6:null
-},
-
-RX_NORMAL:{
-4:null,
-5:null,
-6:null
-},
-
-RX_DINAMICO:{
-4:null,
-5:null,
-6:null
-}
+NORMAL:{4:null,5:null,6:null},
+DINAMICO:{4:null,5:null,6:null},
+RX_NORMAL:{4:null,5:null,6:null},
+RX_DINAMICO:{4:null,5:null,6:null}
 
 };
 
@@ -1435,33 +1351,10 @@ contagem[z]++;
 
 const transicoes={
 
-ZERO:{
-ZERO:0,
-VOISINS:0,
-ORPHELINS:0,
-TIERS:0
-},
-
-VOISINS:{
-ZERO:0,
-VOISINS:0,
-ORPHELINS:0,
-TIERS:0
-},
-
-ORPHELINS:{
-ZERO:0,
-VOISINS:0,
-ORPHELINS:0,
-TIERS:0
-},
-
-TIERS:{
-ZERO:0,
-VOISINS:0,
-ORPHELINS:0,
-TIERS:0
-}
+ZERO:{ZERO:0,VOISINS:0,ORPHELINS:0,TIERS:0},
+VOISINS:{ZERO:0,VOISINS:0,ORPHELINS:0,TIERS:0},
+ORPHELINS:{ZERO:0,VOISINS:0,ORPHELINS:0,TIERS:0},
+TIERS:{ZERO:0,VOISINS:0,ORPHELINS:0,TIERS:0}
 
 };
 
@@ -1597,17 +1490,8 @@ const janela=
 limitar35(base)
 .slice(-JANELA_MOMENTO);
 
-const forca={
-1:0,
-2:0,
-3:0
-};
-
-const contagem={
-1:0,
-2:0,
-3:0
-};
+const forca={1:0,2:0,3:0};
+const contagem={1:0,2:0,3:0};
 
 const calor=
 new Map();
@@ -1659,19 +1543,14 @@ let peso=0;
 
 if(dist===0)
 peso=1;
-
 else if(dist===1)
 peso=.72;
-
 else if(dist===2)
 peso=.46;
-
 else if(dist===3)
 peso=.26;
-
 else if(dist===4)
 peso=.12;
-
 else if(dist===5)
 peso=.05;
 
@@ -1689,11 +1568,7 @@ peso*recencia
 
 });
 
-const confluencia={
-1:0,
-2:0,
-3:0
-};
+const confluencia={1:0,2:0,3:0};
 
 [1,2,3]
 .forEach(d=>{
@@ -1863,16 +1738,12 @@ let p=0;
 
 if(dist===0)
 p=1;
-
 else if(dist===1)
 p=.78;
-
 else if(dist===2)
 p=.52;
-
 else if(dist===3)
 p=.28;
-
 else if(dist===4)
 p=.12;
 
@@ -2076,13 +1947,10 @@ if(c.perfil==="PONTA"){
 
 if(d>=4)
 local=1;
-
 else if(d===3)
 local=.72;
-
 else if(d===2)
 local=.50;
-
 else
 local=.34;
 
@@ -2095,13 +1963,10 @@ d===2 ||
 d===3
 )
 local=1;
-
 else if(d===4)
 local=.70;
-
 else if(d===1)
 local=.62;
-
 else
 local=.45;
 
@@ -2109,13 +1974,10 @@ local=.45;
 
 if(d<=1)
 local=1;
-
 else if(d===2)
 local=.72;
-
 else if(d===3)
 local=.48;
-
 else
 local=.28;
 
@@ -2176,16 +2038,12 @@ let peso=0;
 
 if(d===0)
 peso=1;
-
 else if(d===1)
 peso=.68;
-
 else if(d===2)
 peso=.40;
-
 else if(d===3)
 peso=.20;
-
 else if(d===4)
 peso=.08;
 
@@ -2783,13 +2641,6 @@ p*peso
 
 }
 
-/* ============================================================
-   RUNNING COUNT COM DECAY
-
-   O EVENTO MAIS NOVO TEM PESO 1.
-   CADA PASSO PARA TRÁS É DESCONTADO PELO DECAY DO C.
-============================================================ */
-
 function construirRunningCount(
 base,
 rx
@@ -2822,17 +2673,6 @@ peso*=decay;
 return mapa;
 
 }
-
-/* ============================================================
-   TRUE COUNT NORMALIZADO
-
-   NO BLACKJACK O RUNNING COUNT É NORMALIZADO PELOS BARALHOS
-   RESTANTES. AQUI NÃO EXISTEM BARALHOS; PORTANTO A
-   NORMALIZAÇÃO É FEITA PELA MASSA TOTAL DE PRESSÃO DA JANELA.
-
-   ISSO PERMITE COMPARAR C4/C5/C6 SEM FAVORECER APENAS
-   A JANELA QUE ACUMULOU MAIS PONTOS.
-============================================================ */
 
 function normalizarMapaContagem(
 mapa
@@ -2881,10 +2721,6 @@ soma
 };
 
 }
-
-/* ============================================================
-   PRESSÃO DO RUNNING COUNT
-============================================================ */
 
 function calcularPressaoContagem(
 ranking
@@ -2974,10 +2810,6 @@ edge
 };
 
 }
-
-/* ============================================================
-   CONTAGEM DE FAMÍLIAS
-============================================================ */
 
 function contagemFamilias(base){
 
@@ -3069,8 +2901,6 @@ criarMapaZero();
 const mapaRecente=
 criarMapaZero();
 
-/* CONTAGEM TOTAL */
-
 base.forEach((numero,i)=>{
 
 const peso=
@@ -3087,8 +2917,6 @@ peso
 
 });
 
-/* CONTAGEM RECENTE */
-
 recente.forEach((numero,i)=>{
 
 const peso=
@@ -3104,8 +2932,6 @@ peso
 );
 
 });
-
-/* RUNNING COUNT PROFISSIONAL */
 
 const mapaRunningBruto=
 construirRunningCount(
@@ -3157,16 +2983,12 @@ numero,
 momento
 );
 
-/* TRUE COUNT RELATIVO */
-
 const trueCount=
 (
 running*.50+
 recenteScore*.30+
 total*.20
 );
-
-/* SCORE FINAL DA CONTAGEM */
 
 const score=
 
@@ -3186,19 +3008,11 @@ trueCount*.42;
 return {
 
 numero,
-
 total,
-
-recente:
-recenteScore,
-
+recente:recenteScore,
 running,
-
 trueCount,
-
-momento:
-momentoScore,
-
+momento:momentoScore,
 score
 
 };
@@ -3220,10 +3034,6 @@ const diferenca=
 primeiro && segundo
 ?primeiro.score-segundo.score
 :0;
-
-/* ============================================================
-   CONVERGÊNCIA FÍSICA
-============================================================ */
 
 const fortes=
 ranking.slice(0,6);
@@ -3255,10 +3065,6 @@ fortes.length
 ?pesoConvergencia/
 fortes.length
 :0;
-
-/* ============================================================
-   CONVERGÊNCIA DAS FONTES
-============================================================ */
 
 let fontes=0;
 
@@ -3304,8 +3110,6 @@ fontes++;
 const taxaFontes=
 fontes/8;
 
-/* PRESSÃO / ESTABILIDADE */
-
 const pressaoInfo=
 calcularPressaoContagem(
 ranking
@@ -3319,8 +3123,6 @@ pressaoInfo.estabilidade;
 
 const edge=
 pressaoInfo.edge;
-
-/* CONVERGÊNCIA FINAL */
 
 const convergenciaFinal=
 
@@ -3357,49 +3159,25 @@ CONTAGEM_ESTABILIDADE_MINIMA[rx];
 return {
 
 valido:true,
-
 rx,
-
 convergencia,
-
 forca,
-
 diferenca,
-
 convergenciaFinal,
-
 taxaConvergencia,
-
 taxaFontes,
-
 fontes,
-
 pressao,
-
 estabilidade,
-
 edge,
-
-runningCount:
-primeiro.running,
-
-trueCount:
-primeiro.trueCount,
-
+runningCount:primeiro.running,
+trueCount:primeiro.trueCount,
 ranking,
-
-mapa:
-mapaRecente,
-
+mapa:mapaRecente,
 mapaTotal,
-
 mapaRunning,
-
 mapaRunningBruto,
-
-familias:
-contagemFamilias(base),
-
+familias:contagemFamilias(base),
 momento
 
 };
@@ -3421,20 +3199,16 @@ if(
 ){
 
 return {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set()
-
 };
 
 }
 
 const candidatos=
 analise.ranking.slice();
-
-/* 1 BLOCO DE 1 VIZINHO */
 
 let bloco1=null;
 
@@ -3447,17 +3221,10 @@ candidato.numero,
 );
 
 bloco1={
-
-centro:
-candidato.numero,
-
+centro:candidato.numero,
 qtd:1,
-
 numeros,
-
-score:
-candidato.score
-
+score:candidato.score
 };
 
 break;
@@ -3467,17 +3234,13 @@ break;
 if(!bloco1){
 
 return {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set()
-
 };
 
 }
-
-/* 5 BLOCOS DE 2 VIZINHOS */
 
 const usados=
 new Set(
@@ -3509,17 +3272,10 @@ if(conflito)
 continue;
 
 blocos2.push({
-
-centro:
-candidato.numero,
-
+centro:candidato.numero,
 qtd:2,
-
 numeros,
-
-score:
-candidato.score
-
+score:candidato.score
 });
 
 numeros.forEach(
@@ -3546,14 +3302,10 @@ x=>x.numero===numero
 );
 
 return {
-
 numero,
-
-score:
-item
+score:item
 ?item.score
 :0
-
 };
 
 })
@@ -3584,17 +3336,10 @@ if(conflito)
 continue;
 
 blocos2.push({
-
-centro:
-candidato.numero,
-
+centro:candidato.numero,
 qtd:2,
-
 numeros,
-
-score:
-candidato.score
-
+score:candidato.score
 });
 
 numeros.forEach(
@@ -3611,12 +3356,10 @@ usados.size!==28
 ){
 
 return {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set()
-
 };
 
 }
@@ -3633,23 +3376,12 @@ blocos2.reduce(
 return {
 
 valido:true,
-
 blocos2,
-
-blocos1:[
-bloco1
-],
-
-numeros:
-usados,
-
+blocos1:[bloco1],
+numeros:usados,
 score,
-
-momento:
-analise.momento,
-
-contagem:
-analise
+momento:analise.momento,
+contagem:analise
 
 };
 
@@ -3663,6 +3395,9 @@ function diagnosticarLosses(lista){
 
 if(!Array.isArray(lista))
 lista=[];
+
+lista=
+lista.slice(-20);
 
 const validos=
 lista.filter(
@@ -3691,13 +3426,11 @@ validos[i]
 if(!losses.length){
 
 return {
-
 ativo:false,
 seq:0,
 tipo:"ESTAVEL",
 lado:0,
 forca:0
-
 };
 
 }
@@ -3980,12 +3713,10 @@ if(
 ){
 
 return {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set()
-
 };
 
 }
@@ -4067,23 +3798,12 @@ score>melhor.score
 ){
 
 melhor={
-
 valido:true,
-
-blocos2:
-dois,
-
-blocos1:[
-um
-],
-
-numeros:
-usados,
-
+blocos2:dois,
+blocos1:[um],
+numeros:usados,
 score,
-
 momento
-
 };
 
 }
@@ -4091,13 +3811,11 @@ momento
 }
 
 return melhor || {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set(),
 momento
-
 };
 
 }
@@ -4319,12 +4037,10 @@ if(
 ){
 
 return {
-
 valido:false,
 blocos2:[],
 blocos1:[],
 numeros:new Set()
-
 };
 
 }
@@ -4414,19 +4130,12 @@ score>melhor.score
 ){
 
 melhor={
-
 valido:true,
-
 blocos2:dois,
-
 blocos1:[um],
-
 numeros:usados,
-
 score,
-
 momento
-
 };
 
 }
@@ -4436,17 +4145,11 @@ momento
 }
 
 return melhor || {
-
 valido:false,
-
 blocos2:[],
-
 blocos1:[],
-
 numeros:new Set(),
-
 momento
-
 };
 
 }
@@ -4483,16 +4186,11 @@ return Object.assign(
 {},
 b,
 {
-
-centro:
-novoCentro,
-
-numeros:
-setor(
+centro:novoCentro,
+numeros:setor(
 novoCentro,
 2
 )
-
 }
 );
 
@@ -4512,16 +4210,11 @@ return Object.assign(
 {},
 b,
 {
-
-centro:
-novoCentro,
-
-numeros:
-setor(
+centro:novoCentro,
+numeros:setor(
 novoCentro,
 1
 )
-
 }
 );
 
@@ -4581,17 +4274,11 @@ if(
 return {
 
 valido:false,
-
 motor:"NORMAL",
-
 rx:rxTam,
-
 usarOffset:false,
-
 offsetAplicado:0,
-
 contagem,
-
 convergencia:
 contagem.convergencia||false,
 
@@ -4659,13 +4346,11 @@ rxTam
 if(!raioX.valido){
 
 return {
-
 valido:false,
 motor:"DINAMICO",
 rx:rxTam,
 usarOffset:true,
 offsetAplicado:offset
-
 };
 
 }
@@ -4731,7 +4416,6 @@ rxTam
 if(!raioX.valido){
 
 return {
-
 valido:false,
 motor:"RX_NORMAL",
 rx:rxTam,
@@ -4739,7 +4423,6 @@ usarOffset:false,
 offsetAplicado:0,
 raioX,
 similaridade:0
-
 };
 
 }
@@ -4798,7 +4481,6 @@ rxTam
 if(!raioX.valido){
 
 return {
-
 valido:false,
 motor:"RX_DINAMICO",
 rx:rxTam,
@@ -4806,7 +4488,6 @@ usarOffset:true,
 offsetAplicado:offset,
 raioX,
 similaridade:0
-
 };
 
 }
@@ -4865,11 +4546,9 @@ if(
 ){
 
 return {
-
 green:false,
 tipo:"FORA",
 lado:0
-
 };
 
 }
@@ -4940,9 +4619,7 @@ gap<melhor.gap
 ){
 
 melhor={
-
 gap,
-
 lado:
 Math.sign(
 deltaRoda(
@@ -4950,7 +4627,6 @@ b.centro,
 numero
 )
 )
-
 };
 
 }
@@ -4960,11 +4636,9 @@ numero
 if(!melhor){
 
 return {
-
 green:false,
 tipo:"FORA",
 lado:0
-
 };
 
 }
@@ -4995,6 +4669,9 @@ function statsTimeline(lista){
 
 if(!Array.isArray(lista))
 lista=[];
+
+lista=
+lista.slice(-20);
 
 function validos(arr){
 
@@ -5137,18 +4814,11 @@ diag
 if(!cfg.valido){
 
 timeline.push({
-
-resultado:
-base[i],
-
+resultado:base[i],
 semJogada:true,
-
 green:null,
-
 tipo:"SEM_JOGADA",
-
 lado:0
-
 });
 
 continue;
@@ -5165,17 +4835,11 @@ cfg.jogada
 );
 
 timeline.push({
-
 resultado,
-
 semJogada:false,
-
 green:r.green,
-
 tipo:r.tipo,
-
 lado:r.lado
-
 });
 
 }
@@ -5243,18 +4907,11 @@ offsetAtual
 if(!cfg.valido){
 
 timeline.push({
-
-resultado:
-base[i],
-
+resultado:base[i],
 semJogada:true,
-
 green:null,
-
 tipo:"SEM_JOGADA",
-
 lado:0
-
 });
 
 continue;
@@ -5271,17 +4928,11 @@ cfg.jogada
 );
 
 timeline.push({
-
 resultado,
-
 semJogada:false,
-
 green:r.green,
-
 tipo:r.tipo,
-
 lado:r.lado
-
 });
 
 }
@@ -5338,18 +4989,11 @@ rxTam
 if(!cfg.valido){
 
 timeline.push({
-
-resultado:
-base[i],
-
+resultado:base[i],
 semJogada:true,
-
 green:null,
-
 tipo:"SEM_JOGADA",
-
 lado:0
-
 });
 
 continue;
@@ -5366,17 +5010,11 @@ cfg.jogada
 );
 
 timeline.push({
-
 resultado,
-
 semJogada:false,
-
 green:r.green,
-
 tipo:r.tipo,
-
 lado:r.lado
-
 });
 
 }
@@ -5441,18 +5079,11 @@ offsetAtual
 if(!cfg.valido){
 
 timeline.push({
-
-resultado:
-base[i],
-
+resultado:base[i],
 semJogada:true,
-
 green:null,
-
 tipo:"SEM_JOGADA",
-
 lado:0
-
 });
 
 continue;
@@ -5469,17 +5100,11 @@ cfg.jogada
 );
 
 timeline.push({
-
 resultado,
-
 semJogada:false,
-
 green:r.green,
-
 tipo:r.tipo,
-
 lado:r.lado
-
 });
 
 }
@@ -5491,7 +5116,7 @@ timeline
 }
 
 /* ============================================================
-   SCORE
+   SCORE BASE
 ============================================================ */
 
 function pontuarConfiguracao(
@@ -5553,6 +5178,497 @@ live.taxa20*.025;
 }
 
 return score;
+
+}
+
+/* ============================================================
+   AUTO — LEITURA REAL DOS ÚLTIMOS 20
+
+   O AUTO NÃO USA O PRÓXIMO NÚMERO.
+   ELE ESCOLHE ANTES DO RESULTADO.
+
+   PRIORIDADE:
+   1. GREEN DE PRIMEIRA RECENTE
+   2. CONSISTÊNCIA NOS 20
+   3. AMOSTRA / CONFIANÇA
+   4. G1 COMO ACERTO PARCIAL
+   5. LOSS RECENTE COMO PENALIDADE
+   6. SCORE ESTRUTURAL COMO DESEMPATE
+============================================================ */
+
+function desempenhoAuto(
+config
+){
+
+if(
+!config ||
+!config.valido
+){
+
+return {
+score:-Infinity,
+primeira:0,
+ajustada:0,
+amostra:0,
+losses:0,
+g1:0,
+greens:0
+};
+
+}
+
+const bt=
+config.backtest &&
+Array.isArray(config.backtest.timeline)
+?config.backtest.timeline
+:[];
+
+const live=
+config.live &&
+Array.isArray(config.live.timeline)
+?config.live.timeline
+:[];
+
+const btValidos=
+bt
+.filter(x=>
+x &&
+!x.semJogada &&
+x.green!==null &&
+x.green!==undefined
+)
+.slice(-20);
+
+let pesoBT=0;
+let acertoBT=0;
+
+btValidos.forEach((x,i)=>{
+
+const recencia=
+.45+
+.55*
+((i+1)/
+Math.max(
+1,
+btValidos.length
+));
+
+pesoBT+=recencia;
+
+if(x.green===true)
+acertoBT+=recencia;
+
+});
+
+const taxaBTRaw=
+pesoBT
+?acertoBT/pesoBT
+:.5;
+
+/*
+Correção de confiança.
+Evita que uma linha com 2 acertos em 2
+passe automaticamente na frente de uma
+linha consistente com amostra maior.
+*/
+
+const taxaBTAjustada=
+(
+acertoBT+2
+)/
+(
+pesoBT+4
+);
+
+const confiancaBT=
+Math.min(
+1,
+btValidos.length/10
+);
+
+const liveValidos=
+live
+.filter(x=>
+x &&
+!x.semJogada &&
+!x.aguardandoG1 &&
+x.green!==null &&
+x.green!==undefined
+)
+.slice(-20);
+
+let pesoLive=0;
+let pontosLive=0;
+
+let greensPrimeira=0;
+let greensG1=0;
+let losses=0;
+
+liveValidos.forEach((x,i)=>{
+
+const recencia=
+.45+
+.55*
+((i+1)/
+Math.max(
+1,
+liveValidos.length
+));
+
+pesoLive+=recencia;
+
+if(x.green===true){
+
+if(
+x.fase==="G1" ||
+x.g1===true
+){
+
+greensG1++;
+
+/*
+G1 vale, mas vale menos para a escolha
+porque o objetivo do AUTO é encontrar
+a linha com maior força de primeira.
+*/
+
+pontosLive+=
+recencia*.62;
+
+}else{
+
+greensPrimeira++;
+
+pontosLive+=
+recencia;
+
+}
+
+}else if(
+x.green===false
+){
+
+losses++;
+
+}
+
+});
+
+const taxaLiveAjustada=
+(
+pontosLive+2
+)/
+(
+pesoLive+4
+);
+
+const confiancaLive=
+Math.min(
+1,
+liveValidos.length/8
+);
+
+/* ============================================================
+   ÚLTIMOS 5 — MOMENTO REAL DA LINHA
+============================================================ */
+
+const ultimos5=
+liveValidos.slice(-5);
+
+let primeira5=0;
+let g15=0;
+let loss5=0;
+
+ultimos5.forEach(x=>{
+
+if(x.green===true){
+
+if(
+x.fase==="G1" ||
+x.g1===true
+)
+g15++;
+
+else
+primeira5++;
+
+}else if(
+x.green===false
+){
+
+loss5++;
+
+}
+
+});
+
+/* ============================================================
+   SEQUÊNCIA DE GREEN DE PRIMEIRA
+============================================================ */
+
+let sequenciaPrimeira=0;
+
+for(
+let i=liveValidos.length-1;
+i>=0;
+i--
+){
+
+const x=
+liveValidos[i];
+
+if(
+x.green===true &&
+x.fase!=="G1" &&
+x.g1!==true
+)
+sequenciaPrimeira++;
+
+else
+break;
+
+}
+
+/* ============================================================
+   SEQUÊNCIA DE LOSS
+============================================================ */
+
+let sequenciaLoss=0;
+
+for(
+let i=liveValidos.length-1;
+i>=0;
+i--
+){
+
+const x=
+liveValidos[i];
+
+if(x.green===false)
+sequenciaLoss++;
+
+else
+break;
+
+}
+
+/* ============================================================
+   ESTÁ AGUARDANDO G1?
+============================================================ */
+
+const ultimoBruto=
+live.length
+?live[live.length-1]
+:null;
+
+const emG1=
+!!(
+ultimoBruto &&
+(
+ultimoBruto.aguardandoG1===true ||
+ultimoBruto.fase==="ESPERA_G1"
+)
+);
+
+/* ============================================================
+   TAXA DE PRIMEIRA REAL
+============================================================ */
+
+const totalLive=
+liveValidos.length;
+
+const taxaPrimeira=
+totalLive
+?greensPrimeira/totalLive
+:0;
+
+const taxaG1=
+totalLive
+?greensG1/totalLive
+:0;
+
+const taxaLoss=
+totalLive
+?losses/totalLive
+:0;
+
+/* ============================================================
+   SCORE AUTO
+============================================================ */
+
+let score=0;
+
+/*
+Backtest dos 20:
+peso importante, mas corrigido pela
+quantidade real de observações.
+*/
+
+score+=
+taxaBTAjustada*
+42*
+(
+.35+
+confiancaBT*.65
+);
+
+/*
+Desempenho REAL da linha.
+*/
+
+score+=
+taxaLiveAjustada*
+34*
+(
+.35+
+confiancaLive*.65
+);
+
+/*
+Green de primeira é o principal objetivo.
+*/
+
+score+=
+taxaPrimeira*
+24;
+
+/*
+Momento dos últimos cinco.
+*/
+
+score+=
+primeira5*
+4.2;
+
+score+=
+g15*
+1.15;
+
+score-=
+loss5*
+4.5;
+
+/*
+Sequência positiva.
+*/
+
+score+=
+Math.min(
+sequenciaPrimeira,
+4
+)*
+2.4;
+
+/*
+Sequência negativa.
+*/
+
+score-=
+Math.min(
+sequenciaLoss,
+4
+)*
+4.8;
+
+/*
+Linha atualmente em G1 perde prioridade
+para uma linha que está acertando de primeira.
+*/
+
+if(emG1)
+score-=4.5;
+
+/*
+Loss total dos 20.
+*/
+
+score-=
+taxaLoss*
+8;
+
+/*
+G1 ajuda, porém menos.
+*/
+
+score+=
+taxaG1*
+3;
+
+/*
+Score estrutural original fica como
+confirmação, não como comandante.
+*/
+
+if(
+Number.isFinite(
+config.score
+)
+){
+
+score+=
+Math.max(
+0,
+Math.min(
+12,
+config.score*.10
+)
+);
+
+}
+
+/*
+Similaridade entra apenas como confirmação.
+*/
+
+score+=
+Math.max(
+0,
+Math.min(
+6,
+(config.similaridade||0)*.06
+)
+);
+
+return {
+
+score,
+
+primeira:
+taxaPrimeira*100,
+
+ajustada:
+taxaBTAjustada*100,
+
+btRaw:
+taxaBTRaw*100,
+
+amostra:
+btValidos.length,
+
+amostraLive:
+liveValidos.length,
+
+losses,
+
+g1:
+greensG1,
+
+greens:
+greensPrimeira,
+
+primeira5,
+
+g15,
+
+loss5,
+
+sequenciaPrimeira,
+
+sequenciaLoss,
+
+emG1
+
+};
 
 }
 
@@ -5898,19 +6014,52 @@ seis.rxDinamico[rx]
 if(!candidatos.length)
 return null;
 
+/*
+Cada candidato recebe a leitura AUTO
+usando SOMENTE informação já existente.
+*/
+
+candidatos.forEach(c=>{
+
+c.autoAnalise=
+desempenhoAuto(c);
+
+c.autoScore=
+c.autoAnalise.score;
+
+});
+
+/*
+A decisão principal agora é pelo AUTO SCORE.
+
+DESEMPATES:
+1. maior green de primeira;
+2. maior taxa ajustada dos 20;
+3. maior amostra;
+4. menor sequência de loss;
+5. melhor score estrutural original;
+6. maior similaridade.
+*/
+
 candidatos.sort(
 (a,b)=>
 
+b.autoScore-
+a.autoScore ||
+
+b.autoAnalise.primeira-
+a.autoAnalise.primeira ||
+
+b.autoAnalise.ajustada-
+a.autoAnalise.ajustada ||
+
+b.autoAnalise.amostra-
+a.autoAnalise.amostra ||
+
+a.autoAnalise.sequenciaLoss-
+b.autoAnalise.sequenciaLoss ||
+
 b.score-a.score ||
-
-b.backtest.taxa10-
-a.backtest.taxa10 ||
-
-b.backtest.taxa20-
-a.backtest.taxa20 ||
-
-b.backtest.taxa5-
-a.backtest.taxa5 ||
 
 b.similaridade-
 a.similaridade
@@ -6044,11 +6193,9 @@ return null;
 const blocos2=
 (p.centros2||[])
 .map(c=>({
-
 centro:c,
 qtd:2,
 numeros:setor(c,2)
-
 }));
 
 const blocos1=
@@ -6056,14 +6203,12 @@ p.centro1!==null &&
 p.centro1!==undefined
 
 ?[{
-
 centro:p.centro1,
 qtd:1,
 numeros:setor(
 p.centro1,
 1
 )
-
 }]
 
 :[];
@@ -6084,12 +6229,10 @@ n=>numeros.add(n)
 );
 
 return {
-
 valido:true,
 blocos2,
 blocos1,
 numeros
-
 };
 
 }
@@ -6102,11 +6245,9 @@ p
 if(!p){
 
 return {
-
 green:false,
 tipo:"FORA",
 lado:0
-
 };
 
 }
@@ -6225,6 +6366,9 @@ sig
 
 if(!Array.isArray(lista))
 lista=[];
+
+lista=
+lista.slice(-20);
 
 if(freeze){
 
@@ -6585,17 +6729,10 @@ Math.abs(delta)>bloco.qtd
 continue;
 
 const candidato={
-
-centro:
-bloco.centro,
-
+centro:bloco.centro,
 numero,
-
 delta,
-
-qtd:
-bloco.qtd
-
+qtd:bloco.qtd
 };
 
 if(
@@ -6662,16 +6799,28 @@ seis.rxDinamico[rx]
 if(!candidatos.length)
 return null;
 
+candidatos.forEach(c=>{
+
+c.autoAnalise=
+desempenhoAuto(c);
+
+c.autoScore=
+c.autoAnalise.score;
+
+});
+
 candidatos.sort(
 (a,b)=>
 
+b.autoScore-a.autoScore ||
+
+b.autoAnalise.primeira-
+a.autoAnalise.primeira ||
+
+b.autoAnalise.ajustada-
+a.autoAnalise.ajustada ||
+
 b.score-a.score ||
-
-b.backtest.taxa10-
-a.backtest.taxa10 ||
-
-b.backtest.taxa20-
-a.backtest.taxa20 ||
 
 b.similaridade-
 a.similaridade
@@ -6758,21 +6907,17 @@ valido:true,
 blocos2:
 config.jogada.blocos2
 .map(b=>({
-
 centro:b.centro,
 qtd:2,
 numeros:b.numeros.slice()
-
 })),
 
 blocos1:
 config.jogada.blocos1
 .map(b=>({
-
 centro:b.centro,
 qtd:1,
 numeros:b.numeros.slice()
-
 }))
 
 }
@@ -6829,9 +6974,7 @@ const baseAntes=
 historico.slice(-20);
 
 const baseBacktestAntes=
-historicoCompleto.slice(
--MAX_HISTORICO_BACKTEST
-);
+historicoCompleto.slice(-20);
 
 const seisAntes=
 calcularSeis(
@@ -6876,14 +7019,10 @@ numero
 );
 
 historicoCompleto=
-historicoCompleto.slice(
--MAX_HISTORICO_BACKTEST
-);
+historicoCompleto.slice(-20);
 
 historico=
-historicoCompleto.slice(
--MAX_HISTORICO
-);
+historicoCompleto.slice(-20);
 
 salvarHistorico();
 
@@ -7043,7 +7182,7 @@ return [];
 
 return encontrados
 .map(Number)
-.slice(-MAX_HISTORICO_BACKTEST);
+.slice(-20);
 
 }
 
@@ -7090,14 +7229,10 @@ if(!numeros.length)
 return;
 
 historicoCompleto=
-numeros.slice(
--MAX_HISTORICO_BACKTEST
-);
+numeros.slice(-20);
 
 historico=
-historicoCompleto.slice(
--MAX_HISTORICO
-);
+historicoCompleto.slice(-20);
 
 resetarEstadoAnalise();
 
@@ -7121,9 +7256,7 @@ return;
 historicoCompleto.pop();
 
 historico=
-historicoCompleto.slice(
--MAX_HISTORICO
-);
+historicoCompleto.slice(-20);
 
 resetarEstadoAnalise();
 
@@ -7716,7 +7849,7 @@ grid-template-columns:70px 1fr 36px
 
 <textarea
 id="entradaHistorico"
-placeholder="Cole o histórico — até 200 para backtest"
+placeholder="Cole o histórico — últimos 20"
 ></textarea>
 
 <div class="botoes">
@@ -7777,23 +7910,9 @@ NORMAL • CONTAGEM
 
 <div class="modos">
 
-<button
-id="btnN4"
-class="modo">
-C4
-</button>
-
-<button
-id="btnN5"
-class="modo">
-C5
-</button>
-
-<button
-id="btnN6"
-class="modo">
-C6
-</button>
+<button id="btnN4" class="modo">C4</button>
+<button id="btnN5" class="modo">C5</button>
+<button id="btnN6" class="modo">C6</button>
 
 </div>
 
@@ -7807,23 +7926,9 @@ DINÂMICO
 
 <div class="modos">
 
-<button
-id="btnD4"
-class="modo dinamico">
-C4
-</button>
-
-<button
-id="btnD5"
-class="modo dinamico">
-C5
-</button>
-
-<button
-id="btnD6"
-class="modo dinamico">
-C6
-</button>
+<button id="btnD4" class="modo dinamico">C4</button>
+<button id="btnD5" class="modo dinamico">C5</button>
+<button id="btnD6" class="modo dinamico">C6</button>
 
 </div>
 
@@ -7837,23 +7942,9 @@ RAIO X NORMAL
 
 <div class="modos">
 
-<button
-id="btnRN4"
-class="modo raiox">
-RX C4
-</button>
-
-<button
-id="btnRN5"
-class="modo raiox">
-RX C5
-</button>
-
-<button
-id="btnRN6"
-class="modo raiox">
-RX C6
-</button>
+<button id="btnRN4" class="modo raiox">RX C4</button>
+<button id="btnRN5" class="modo raiox">RX C5</button>
+<button id="btnRN6" class="modo raiox">RX C6</button>
 
 </div>
 
@@ -7867,23 +7958,9 @@ RAIO X DINÂMICO
 
 <div class="modos">
 
-<button
-id="btnRD4"
-class="modo raiox dinamico">
-RX C4
-</button>
-
-<button
-id="btnRD5"
-class="modo raiox dinamico">
-RX C5
-</button>
-
-<button
-id="btnRD6"
-class="modo raiox dinamico">
-RX C6
-</button>
+<button id="btnRD4" class="modo raiox dinamico">RX C4</button>
+<button id="btnRD5" class="modo raiox dinamico">RX C5</button>
+<button id="btnRD6" class="modo raiox dinamico">RX C6</button>
 
 </div>
 
@@ -7901,20 +7978,9 @@ class="contagemBox">
 CONTAGEM • AGUARDANDO
 </div>
 
-<div
-id="resumo"
-class="resumo">
-</div>
-
-<div
-id="trio"
-class="trio">
-</div>
-
-<div
-id="duzias"
-class="duziasBox">
-</div>
+<div id="resumo" class="resumo"></div>
+<div id="trio" class="trio"></div>
+<div id="duzias" class="duziasBox"></div>
 
 <div class="timelineSecao">
 
@@ -7922,10 +7988,7 @@ class="duziasBox">
 AUTO FINAL
 </div>
 
-<div
-id="timelineAUTO"
-class="timelineRow">
-</div>
+<div id="timelineAUTO" class="timelineRow"></div>
 
 </div>
 
@@ -7935,20 +7998,9 @@ class="timelineRow">
 MOTOR NORMAL • CONTAGEM
 </div>
 
-<div
-id="timelineN4"
-class="timelineRow">
-</div>
-
-<div
-id="timelineN5"
-class="timelineRow">
-</div>
-
-<div
-id="timelineN6"
-class="timelineRow">
-</div>
+<div id="timelineN4" class="timelineRow"></div>
+<div id="timelineN5" class="timelineRow"></div>
+<div id="timelineN6" class="timelineRow"></div>
 
 </div>
 
@@ -7958,20 +8010,9 @@ class="timelineRow">
 MOTOR DINÂMICO
 </div>
 
-<div
-id="timelineD4"
-class="timelineRow">
-</div>
-
-<div
-id="timelineD5"
-class="timelineRow">
-</div>
-
-<div
-id="timelineD6"
-class="timelineRow">
-</div>
+<div id="timelineD4" class="timelineRow"></div>
+<div id="timelineD5" class="timelineRow"></div>
+<div id="timelineD6" class="timelineRow"></div>
 
 </div>
 
@@ -7981,20 +8022,9 @@ class="timelineRow">
 RAIO X NORMAL
 </div>
 
-<div
-id="timelineRN4"
-class="timelineRow">
-</div>
-
-<div
-id="timelineRN5"
-class="timelineRow">
-</div>
-
-<div
-id="timelineRN6"
-class="timelineRow">
-</div>
+<div id="timelineRN4" class="timelineRow"></div>
+<div id="timelineRN5" class="timelineRow"></div>
+<div id="timelineRN6" class="timelineRow"></div>
 
 </div>
 
@@ -8004,20 +8034,9 @@ class="timelineRow">
 RAIO X DINÂMICO
 </div>
 
-<div
-id="timelineRD4"
-class="timelineRow">
-</div>
-
-<div
-id="timelineRD5"
-class="timelineRow">
-</div>
-
-<div
-id="timelineRD6"
-class="timelineRow">
-</div>
+<div id="timelineRD4" class="timelineRow"></div>
+<div id="timelineRD5" class="timelineRow"></div>
+<div id="timelineRD6" class="timelineRow"></div>
 
 </div>
 
@@ -8029,10 +8048,7 @@ class="timelineRow">
 ÚLTIMAS 14 • JOGADA SELECIONADA
 </div>
 
-<div
-id="ultimos14"
-class="duplas14">
-</div>
+<div id="ultimos14" class="duplas14"></div>
 
 </div>
 
@@ -8042,8 +8058,7 @@ class="duplas14">
 JOGADA
 </div>
 
-<div id="jogada">
-</div>
+<div id="jogada"></div>
 
 </div>
 
@@ -8053,10 +8068,7 @@ JOGADA
 TECLADO
 </div>
 
-<div
-id="teclado"
-class="teclado">
-</div>
+<div id="teclado" class="teclado"></div>
 
 </div>
 
@@ -8246,7 +8258,9 @@ function prepararTimelineVisual(lista){
 
 const saida=[];
 
-(lista||[]).forEach(x=>{
+(lista||[])
+.slice(-20)
+.forEach(x=>{
 
 if(x.semJogada){
 
@@ -8325,7 +8339,7 @@ prepararTimelineVisual(lista)
 x.tipo!=="SEM" &&
 x.tipo!=="WAIT"
 )
-.slice(-qtd);
+.slice(-Math.min(qtd,20));
 
 if(!visual.length)
 return 0;
@@ -8374,41 +8388,19 @@ nome+
 
 visual.map(x=>{
 
-if(x.tipo==="SEM"){
+if(x.tipo==="SEM")
+return '<span class="gl sem">—</span>';
 
-return (
-'<span class="gl sem">—</span>'
-);
+if(x.tipo==="WAIT")
+return '<span class="gl wait">…</span>';
 
-}
+if(x.tipo==="GREEN")
+return '<span class="gl green">G</span>';
 
-if(x.tipo==="WAIT"){
+if(x.tipo==="G1")
+return '<span class="gl g1">G1</span>';
 
-return (
-'<span class="gl wait">…</span>'
-);
-
-}
-
-if(x.tipo==="GREEN"){
-
-return (
-'<span class="gl green">G</span>'
-);
-
-}
-
-if(x.tipo==="G1"){
-
-return (
-'<span class="gl g1">G1</span>'
-);
-
-}
-
-return (
-'<span class="gl loss">L</span>'
-);
+return '<span class="gl loss">L</span>';
 
 }).join("")+
 
@@ -8656,13 +8648,11 @@ config.jogada
 .forEach(b=>{
 
 todos.push({
-
 bloco:b,
 um:false,
 regiao:
 regiao(b.centro)||
 "OUTROS"
-
 });
 
 });
@@ -8672,13 +8662,11 @@ config.jogada
 .forEach(b=>{
 
 todos.push({
-
 bloco:b,
 um:true,
 regiao:
 regiao(b.centro)||
 "OUTROS"
-
 });
 
 });
@@ -8966,7 +8954,7 @@ RX_LIST
 
 const c=
 analisarContagem(
-historico,
+historico.slice(-20),
 r
 );
 
@@ -8993,7 +8981,7 @@ rx=candidatos[0].rx;
 
 const analise=
 analisarContagem(
-historico,
+historico.slice(-20),
 rx
 );
 
@@ -9076,14 +9064,10 @@ complemento+
 function render(){
 
 historicoCompleto=
-historicoCompleto.slice(
--MAX_HISTORICO_BACKTEST
-);
+historicoCompleto.slice(-20);
 
 historico=
-historicoCompleto.slice(
--MAX_HISTORICO
-);
+historicoCompleto.slice(-20);
 
 salvarHistorico();
 
@@ -9091,9 +9075,7 @@ const base=
 historico.slice(-20);
 
 const baseBacktest=
-historicoCompleto.slice(
--MAX_HISTORICO_BACKTEST
-);
+historicoCompleto.slice(-20);
 
 const momento=
 analisarMomento(
@@ -9121,8 +9103,6 @@ configAtiva(
 seis,
 auto
 );
-
-/* BOTÕES */
 
 [
 "btnAUTO",
@@ -9221,13 +9201,22 @@ prefixoMotor(
 auto.motor
 )+
 auto.rx+
-" • SCORE "+
+" • AUTO SCORE "+
 (
 Number.isFinite(
-auto.score
+auto.autoScore
 )
-?auto.score.toFixed(1)
+?auto.autoScore.toFixed(1)
 :"—"
+)+
+(
+auto.autoAnalise
+?" • 1ª "+
+auto.autoAnalise.primeira.toFixed(0)+
+"% • AMOSTRA "+
+auto.autoAnalise.amostra+
+"/20"
+:""
 )
 )
 
@@ -9427,7 +9416,7 @@ document
 base.length+
 "/20 • BACKTEST "+
 baseBacktest.length+
-"/200 • CONTAGEM C4/C5/C6 • DINÂMICO C4/C5/C6 • RX NORMAL C4/C5/C6 • RX DINÂMICO C4/C5/C6 • AUTO 12 CANDIDATOS"+
+"/20 • CONTAGEM C4/C5/C6 • DINÂMICO C4/C5/C6 • RX NORMAL C4/C5/C6 • RX DINÂMICO C4/C5/C6 • AUTO 12 CANDIDATOS • AUTO ANALISA SOMENTE OS 20 ÚLTIMOS"+
 
 (
 df
