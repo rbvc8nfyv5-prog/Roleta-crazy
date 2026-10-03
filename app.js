@@ -20,7 +20,7 @@
    ------------------------------------------------------------
    - COMPARA OS 3 CANDIDATOS.
    - NORMAL C4 / C5 / C6.
-   - ESCOLHE UMA ÚNICA JOGADA.
+   - ESCOLHE UMA ÚNICA JOGADA PELO AUTO-SCORE.
 
    G1:
    ------------------------------------------------------------
@@ -213,12 +213,6 @@ const BASES = [
 9,19,29
 ];
 
-const TODOS_IDS = [
-0,10,20,30,
-6,16,26,36,
-9,19,29,39
-];
-
 const ESPECIAIS = {
 25:[39],
 17:[9],
@@ -250,19 +244,6 @@ return base.slice(-MAX_HISTORICO_BACKTEST);
 function indice(n){
 
 return track.indexOf(n);
-
-}
-
-function numeroOffset(centro,offset){
-
-const i = indice(centro);
-
-if(i<0)
-return centro;
-
-return track[
-(i+offset+37)%37
-];
 
 }
 
@@ -465,26 +446,6 @@ ids.push(id);
 }
 
 return ids;
-
-}
-
-function eventoNumero(numero){
-
-const fs=new Set(
-
-idsQueBatem(numero)
-.map(familia)
-.filter(x=>x!==null)
-
-);
-
-return (
-
-(fs.has(0)?1:0) |
-(fs.has(6)?2:0) |
-(fs.has(9)?4:0)
-
-);
 
 }
 
@@ -2098,7 +2059,30 @@ PESO_DUZIA_FISICA
 }
 
 /* ============================================================
-   NOVO MOTOR DE CONTAGEM
+   MOTOR DE CONTAGEM
+
+   CADA RESULTADO DISTRIBUI PONTOS FÍSICOS PELA RODA:
+
+   ALVO      = +1.00
+   V1        = +0.72
+   V2        = +0.44
+   V3        = +0.22
+   V4        = +0.10
+
+   RESULTADOS RECENTES PESAM MAIS.
+
+   C4 / C5 / C6 DEFINEM O TAMANHO DA JANELA RECENTE.
+
+   O MOTOR PROCURA CONVERGÊNCIA ENTRE:
+
+   1. CONTAGEM RECENTE
+   2. CONTAGEM TOTAL
+   3. MOMENTO
+   4. CONCENTRAÇÃO FÍSICA
+   5. TERMINAL
+   6. CORREDOR
+
+   SÓ DEPOIS DA CONVERGÊNCIA A JOGADA É GERADA.
 ============================================================ */
 
 function criarMapaZero(){
@@ -2253,6 +2237,8 @@ criarMapaZero();
 const mapaRecente=
 criarMapaZero();
 
+/* CONTAGEM TOTAL */
+
 base.forEach((numero,i)=>{
 
 const peso=
@@ -2268,6 +2254,8 @@ peso
 );
 
 });
+
+/* CONTAGEM RECENTE C4 / C5 / C6 */
 
 recente.forEach((numero,i)=>{
 
@@ -2363,13 +2351,16 @@ primeiro && segundo
 ?primeiro.score-segundo.score
 :0;
 
+/* ============================================================
+   CONVERGÊNCIA FÍSICA
+============================================================ */
+
 const fortes=
 ranking.slice(0,6);
 
-let convergentes=0;
 let pesoConvergencia=0;
 
-fortes.forEach((x,i)=>{
+fortes.forEach(x=>{
 
 const d=
 distanciaRoda(
@@ -2378,8 +2369,6 @@ x.numero
 );
 
 if(d<=5){
-
-convergentes++;
 
 pesoConvergencia+=
 1-d/6;
@@ -2393,6 +2382,10 @@ fortes.length
 ?pesoConvergencia/
 fortes.length
 :0;
+
+/* ============================================================
+   CONVERGÊNCIA DAS FONTES
+============================================================ */
 
 let fontes=0;
 
@@ -2517,6 +2510,10 @@ numeros:new Set()
 const candidatos=
 analise.ranking.slice();
 
+/* ============================================================
+   1 BLOCO DE 1 VIZINHO
+============================================================ */
+
 let bloco1=null;
 
 for(const candidato of candidatos){
@@ -2557,6 +2554,10 @@ numeros:new Set()
 };
 
 }
+
+/* ============================================================
+   5 BLOCOS DE 2 VIZINHOS SEM SOBREPOSIÇÃO
+============================================================ */
 
 const usados=
 new Set(
@@ -2611,6 +2612,10 @@ blocos2.length===5
 break;
 
 }
+
+/* ============================================================
+   COMPLEMENTO FÍSICO
+============================================================ */
 
 if(
 blocos2.length<5
@@ -3281,7 +3286,7 @@ timeline
 }
 
 /* ============================================================
-   SCORE
+   AUTO-SCORE
 ============================================================ */
 
 function pontuarConfiguracao(
@@ -3347,7 +3352,7 @@ return score;
 }
 
 /* ============================================================
-   CANDIDATO NORMAL — CONTAGEM
+   CANDIDATO NORMAL — C4 / C5 / C6
 ============================================================ */
 
 function analisarNormal(
@@ -3407,7 +3412,7 @@ live
 }
 
 /* ============================================================
-   CALCULA OS 3 NORMAIS
+   CALCULA C4 / C5 / C6
 ============================================================ */
 
 function calcularSeis(
@@ -3435,7 +3440,7 @@ normal
 }
 
 /* ============================================================
-   AUTO
+   AUTO — SOMENTE C4 / C5 / C6
 ============================================================ */
 
 function escolherAuto(
@@ -3541,7 +3546,7 @@ assinatura:
 assinatura(),
 
 motor:
-config.motor,
+"NORMAL",
 
 rx:
 config.rx,
@@ -3953,7 +3958,7 @@ pendente:null
 }
 
 /* ============================================================
-   AVALIA 4 LINHAS
+   AVALIA AUTO + C4 + C5 + C6
 ============================================================ */
 
 function avaliarPendentes(
@@ -4039,8 +4044,7 @@ return {
 
 valido:true,
 
-motor:
-config.motor,
+motor:"NORMAL",
 
 rx:
 config.rx,
@@ -4091,8 +4095,7 @@ estado.modo==="AUTO"
 return "AUTO";
 
 return (
-"NORMAL"+
-"_"+
+"NORMAL_"+
 estado.manualRX
 );
 
@@ -4272,7 +4275,7 @@ chaveVisual(),
 
 motor:
 configAntes
-?configAntes.motor
+?"NORMAL"
 :null,
 
 rx:
@@ -4345,6 +4348,8 @@ pendentesVazios();
 
 estado.freezes=
 freezesVazios();
+
+estado.motorManual="NORMAL";
 
 duplasVisual=[];
 
@@ -5020,7 +5025,7 @@ PRONTO
 <div class="seletorGrupo">
 
 <div class="seletorTitulo">
-AUTO
+AUTO-SCORE
 </div>
 
 <div class="modos">
@@ -5095,7 +5100,7 @@ class="duziasBox">
 <div class="timelineSecao">
 
 <div class="timelineTituloGrupo">
-AUTO FINAL
+AUTO-SCORE FINAL
 </div>
 
 <div
@@ -5209,7 +5214,6 @@ render();
 }
 
 function selecionarManual(
-motor,
 rx
 ){
 
@@ -5243,7 +5247,6 @@ document
 .onclick=()=>{
 
 selecionarManual(
-"NORMAL",
 rx
 );
 
@@ -5915,7 +5918,7 @@ d.g1!==undefined
 }
 
 /* ============================================================
-   TEXTO CONTAGEM
+   TEXTO MOTOR
 ============================================================ */
 
 function textoOffset(
@@ -5936,9 +5939,7 @@ return "CONTAGEM";
    STATUS CONTAGEM
 ============================================================ */
 
-function renderStatusContagem(
-seis
-){
+function renderStatusContagem(){
 
 const area=
 document.getElementById(
@@ -6128,11 +6129,10 @@ document
 
 }else{
 
-const id=
-"btnN"+estado.manualRX;
-
 document
-.getElementById(id)
+.getElementById(
+"btnN"+estado.manualRX
+)
 .classList.add(
 "ativo"
 );
@@ -6140,7 +6140,7 @@ document
 }
 
 /* ============================================================
-   AUTO
+   AUTO-SCORE
 ============================================================ */
 
 document
@@ -6152,19 +6152,19 @@ document
 auto
 
 ?(
-"AUTO ESCOLHEU • CONTAGEM • C"+
-auto.rx
+"AUTO-SCORE ESCOLHEU • CONTAGEM • C"+
+auto.rx+
+" • SCORE "+
+auto.score.toFixed(1)
 )
 
-:"AUTO • AGUARDANDO CONVERGÊNCIA";
+:"AUTO-SCORE • AGUARDANDO CONVERGÊNCIA";
 
 /* ============================================================
    CONTAGEM
 ============================================================ */
 
-renderStatusContagem(
-seis
-);
+renderStatusContagem();
 
 /* ============================================================
    RESUMO
@@ -6298,7 +6298,7 @@ document
 base.length+
 "/20 • BACKTEST "+
 baseBacktest.length+
-"/200 • CONTAGEM ATIVA • BACKTEST WALK-FORWARD"+
+"/200 • C4/C5/C6 • AUTO-SCORE • BACKTEST WALK-FORWARD"+
 
 (
 df
@@ -6308,7 +6308,7 @@ df.duzia+
 :""
 )+
 
-" • CENTROS: "+
+" • MOTOR: "+
 textoOffset(
 configExibida
 )+
