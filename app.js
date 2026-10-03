@@ -2,64 +2,55 @@
 "use strict";
 
 /* ============================================================
-   ANÁLISE BETA
+   ANÁLISE ALPHA — MOTOR DE CONTAGEM
 
-   2 MOTORES INDEPENDENTES
+   MOTOR NORMAL:
    ------------------------------------------------------------
-   NORMAL:
-   - RX4
-   - RX5
-   - RX6
-   - SEM OFFSET GLOBAL
+   - CONTAGEM DE CARTAS / PÓS-GATILHO.
+   - USA ATÉ 200 GIROS DO HISTÓRICO.
+   - CONVERTE CADA NÚMERO DA ROLETA EM CARTA.
+   - A ATÉ 5 = +1.
+   - 6 ATÉ 9 = 0.
+   - 10 / J / Q / K = -1.
+   - ZERO = NEUTRO.
+   - CALCULA A CONTAGEM ACUMULADA GIRO A GIRO.
+   - A CONTAGEM ATUAL É O GATILHO.
+   - PROCURA NO PASSADO TODAS AS OCORRÊNCIAS DO MESMO GATILHO.
+   - PARA CADA OCORRÊNCIA, ANALISA OS 3 GIROS SEGUINTES.
+   - 1º GIRO = PESO 3.
+   - 2º GIRO = PESO 2.
+   - 3º GIRO = PESO 1.
+   - OS RESULTADOS SÃO PROJETADOS NA POSIÇÃO FÍSICA DA ROLETA.
+   - CADA ALVO REPRESENTA 2 VIZINHOS + ALVO + 2 VIZINHOS.
+   - A SELEÇÃO DOS 5 ALVOS É FEITA EM CONJUNTO.
+   - OS 5 BLOCOS NÃO PODEM TER NENHUM NÚMERO REPETIDO.
+   - 5 ALVOS = 25 NÚMEROS ÚNICOS.
+   - NÃO USA FREQUÊNCIA GERAL DA ROLETA.
 
-   DINÂMICO:
-   - RX4
-   - RX5
-   - RX6
-   - OFFSET GLOBAL -2 / -1 / 0 / +1 / +2
+   MOTOR DINÂMICO:
+   ------------------------------------------------------------
+   - PRESERVADO.
+   - RX4 / RX5 / RX6.
+   - OFFSET GLOBAL -2 / -1 / 0 / +1 / +2.
 
    AUTO:
-   - ÚNICO
-   - COMPARA OS 6 CANDIDATOS
-   - ESCOLHE UMA ÚNICA JOGADA
-
-   LINHAS REAIS:
-   - AUTO
-   - NORMAL RX4
-   - NORMAL RX5
-   - NORMAL RX6
-   - DINÂMICO RX4
-   - DINÂMICO RX5
-   - DINÂMICO RX6
-
-   SELEÇÃO MANUAL:
-   - AUTO
-   - NORMAL 4 / 5 / 6
-   - DINÂMICO 4 / 5 / 6
+   ------------------------------------------------------------
+   - COMPARA OS CANDIDATOS.
+   - NORMAL / PÓS-GATILHO.
+   - DINÂMICO RX4 / RX5 / RX6.
+   - ESCOLHE UMA ÚNICA JOGADA.
 
    G1:
-   - CADA LINHA POSSUI SEU PRÓPRIO G1
-   - GREEN DE PRIMEIRA = G
-   - PRIMEIRO ERRO NÃO É LOSS
-   - PRIMEIRO ERRO CONGELA A JOGADA DAQUELA LINHA
-   - PRÓXIMO RESULTADO VALIDA O G1 DA MESMA JOGADA
-   - ACERTO NO G1 = G1
-   - ERRO NO G1 = LOSS
-   - APÓS G1 OU LOSS A LINHA LIBERA NOVA JOGADA
+   ------------------------------------------------------------
+   - CADA LINHA POSSUI SEU PRÓPRIO G1.
+   - GREEN DE PRIMEIRA = G.
+   - PRIMEIRO ERRO NÃO É LOSS.
+   - PRIMEIRO ERRO CONGELA A JOGADA.
+   - PRÓXIMO RESULTADO VALIDA O G1.
+   - ACERTO G1 = G1.
+   - ERRO G1 = LOSS.
 
-   AUTO:
-   - POSSUI SUA PRÓPRIA VALIDAÇÃO
-   - SEGUE EXATAMENTE A JOGADA ESCOLHIDA PELO AUTO
-   - SE ENTRAR EM G1, CONGELA A JOGADA ESCOLHIDA PELO AUTO
-
-   CORREÇÃO VISUAL:
-   - SEM JOGADA = —
-   - GREEN PRIMEIRA = G
-   - AGUARDANDO G1 = …
-   - GREEN NO G1 = G1
-   - LOSS SOMENTE APÓS ERRO NO G1 = L
 ============================================================ */
-
 
 /* ============================================================
    STORAGE
@@ -68,24 +59,27 @@
 const STORAGE_KEY =
 "ANALISADOR_069_IDS_CORRESPONDENTES_V1";
 
+const STORAGE_HISTORICO_COMPLETO =
+"ANALISE_BETA_HISTORICO_COMPLETO_200_V1";
+
 const STORAGE_ENGINE =
-"ANALISE_BETA_MOTOR_DUPLO_INDEPENDENTE_V1";
+"ANALISE_BETA_MOTOR_CONTAGEM_V1";
 
 const STORAGE_DUPLAS =
-"ANALISE_BETA_DUPLAS_VISUAIS_V1";
+"ANALISE_BETA_DUPLAS_CONTAGEM_V1";
 
 const STORAGE_FREEZE =
-"ANALISE_BETA_JOGADA_CONGELADA_V1";
+"ANALISE_BETA_JOGADA_CONGELADA_CONTAGEM_V1";
 
 const STORAGE_OFFSET =
 "ANALISADOR_069_OFFSET_GLOBAL_CENTROS_V2";
-
 
 /* ============================================================
    CONSTANTES
 ============================================================ */
 
 const MAX_HISTORICO = 20;
+const MAX_HISTORICO_BACKTEST = 200;
 const JANELA_MOMENTO = 14;
 const MAX_TIMELINE = 300;
 
@@ -97,6 +91,31 @@ const PESO_MOMENTO = .34;
 const MAX_GIRADA = 2;
 const PESO_DUZIA_FISICA = .16;
 
+/* ============================================================
+   CONTAGEM — PARÂMETROS
+============================================================ */
+
+const CONTAGEM_MINIMA = {
+4:2.15,
+5:2.45,
+6:2.75
+};
+
+const CONVERGENCIA_MINIMA = {
+4:.57,
+5:.59,
+6:.61
+};
+
+const DIFERENCA_MINIMA = {
+4:.28,
+5:.31,
+6:.34
+};
+
+const PESO_CONTAGEM_RECENTE = 1.35;
+const PESO_CONTAGEM_TOTAL = .65;
+const PESO_CONTAGEM_MOMENTO = .70;
 
 /* ============================================================
    ROLETA EUROPEIA
@@ -113,7 +132,6 @@ const vermelhos = new Set([
 1,3,5,7,9,12,14,16,18,
 19,21,23,25,27,30,32,34,36
 ]);
-
 
 /* ============================================================
    REGIÕES
@@ -139,7 +157,6 @@ TIERS:new Set([
 
 };
 
-
 /* ============================================================
    DÚZIAS
 ============================================================ */
@@ -159,7 +176,6 @@ return 0;
 
 }
 
-
 /* ============================================================
    MAPA FÍSICO DAS DÚZIAS
 ============================================================ */
@@ -167,51 +183,21 @@ return 0;
 const MAPA_DUZIA_FISICA = {
 
 1:new Map([
-[3,1.00],
-[12,1.00],
-[7,.95],
-[4,.92],
-[2,.92],
-[11,.82],
-[8,.86],
-[5,.86],
-[6,.40],
-[1,.36],
-[9,.36],
-[10,.58]
+[3,1.00],[12,1.00],[7,.95],[4,.92],[2,.92],[11,.82],
+[8,.86],[5,.86],[6,.40],[1,.36],[9,.36],[10,.58]
 ]),
 
 2:new Map([
-[15,1.00],
-[19,1.00],
-[21,.98],
-[17,.70],
-[13,.72],
-[23,.96],
-[24,.94],
-[16,.94],
-[14,.88],
-[20,.88],
-[18,.92]
+[15,1.00],[19,1.00],[21,.98],[17,.70],[13,.72],[23,.96],
+[24,.94],[16,.94],[14,.88],[20,.88],[18,.92]
 ]),
 
 3:new Map([
-[29,1.00],
-[30,1.00],
-[32,.96],
-[25,.94],
-[27,.88],
-[28,.92],
-[26,.80],
-[35,.72],
-[36,.68],
-[34,.64],
-[33,.42],
-[31,.40]
+[29,1.00],[30,1.00],[32,.96],[25,.94],[27,.88],[28,.92],
+[26,.80],[35,.72],[36,.68],[34,.64],[33,.42],[31,.40]
 ])
 
 };
-
 
 /* ============================================================
    IDS
@@ -235,7 +221,6 @@ const ESPECIAIS = {
 2:[9]
 };
 
-
 /* ============================================================
    UTILIDADES
 ============================================================ */
@@ -249,13 +234,20 @@ return base.slice(-MAX_HISTORICO);
 
 }
 
+function limitarBacktest(base){
+
+if(!Array.isArray(base))
+return [];
+
+return base.slice(-MAX_HISTORICO_BACKTEST);
+
+}
 
 function indice(n){
 
 return track.indexOf(n);
 
 }
-
 
 function numeroOffset(centro,offset){
 
@@ -269,7 +261,6 @@ return track[
 ];
 
 }
-
 
 function setor(centro,qtd){
 
@@ -292,13 +283,11 @@ return r;
 
 }
 
-
 function vizinhos(numero,qtd=1){
 
 return setor(numero,qtd);
 
 }
-
 
 function distanciaRoda(a,b){
 
@@ -317,7 +306,6 @@ d,
 
 }
 
-
 function deltaRoda(centro,numero){
 
 const a=indice(centro);
@@ -335,13 +323,11 @@ return d;
 
 }
 
-
 function terminal(n){
 
 return n%10;
 
 }
-
 
 function terminalAnterior(t){
 
@@ -349,13 +335,11 @@ return (t+9)%10;
 
 }
 
-
 function terminalSeguinte(t){
 
 return (t+1)%10;
 
 }
-
 
 /* ============================================================
    COR / REGIÃO
@@ -379,7 +363,6 @@ return null;
 
 }
 
-
 function tipoCor(n){
 
 if(n===0)
@@ -391,7 +374,6 @@ return vermelhos.has(n)
 
 }
 
-
 function corRoleta(n){
 
 if(n===0)
@@ -402,7 +384,6 @@ return vermelhos.has(n)
 :"#181818";
 
 }
-
 
 /* ============================================================
    IDS / FAMÍLIAS
@@ -418,7 +399,6 @@ vizinhos(base,1)
 );
 
 });
-
 
 function familia(id){
 
@@ -449,7 +429,6 @@ return 9;
 return null;
 
 }
-
 
 function idsQueBatem(numero){
 
@@ -485,7 +464,6 @@ return ids;
 
 }
 
-
 function eventoNumero(numero){
 
 const fs=new Set(
@@ -506,14 +484,57 @@ return (
 
 }
 
-
 /* ============================================================
    HISTÓRICO
 ============================================================ */
 
+function carregarHistoricoCompleto(){
+
+try{
+
+const raw=
+localStorage.getItem(
+STORAGE_HISTORICO_COMPLETO
+);
+
+if(!raw)
+return [];
+
+const arr=
+JSON.parse(raw);
+
+if(!Array.isArray(arr))
+return [];
+
+return limitarBacktest(
+
+arr
+.map(Number)
+.filter(n=>
+Number.isInteger(n) &&
+n>=0 &&
+n<=36
+)
+
+);
+
+}catch(e){
+
+return [];
+
+}
+
+}
+
 function carregarHistorico(){
 
 try{
+
+const completo=
+carregarHistoricoCompleto();
+
+if(completo.length)
+return completo.slice(-MAX_HISTORICO);
 
 const raw=
 localStorage.getItem(
@@ -549,13 +570,24 @@ return [];
 
 }
 
+let historicoCompleto=
+carregarHistoricoCompleto();
 
 let historico=
 carregarHistorico();
 
+if(
+!historicoCompleto.length &&
+historico.length
+){
+
+historicoCompleto=
+historico.slice();
+
+}
 
 /* ============================================================
-   TIMELINES INDEPENDENTES
+   TIMELINES
 ============================================================ */
 
 function timelinesVazias(){
@@ -580,7 +612,6 @@ DINAMICO:{
 
 }
 
-
 function pendentesVazios(){
 
 return {
@@ -603,12 +634,6 @@ DINAMICO:{
 
 }
 
-
-/* ============================================================
-   FREEZES G1 INDEPENDENTES
-   CADA UMA DAS 7 LINHAS TEM SEU PRÓPRIO CICLO
-============================================================ */
-
 function freezesVazios(){
 
 return {
@@ -630,7 +655,6 @@ DINAMICO:{
 };
 
 }
-
 
 /* ============================================================
    ESTADO
@@ -655,7 +679,6 @@ freezesVazios()
 
 };
 
-
 function carregarEstado(){
 
 try{
@@ -671,13 +694,11 @@ return;
 const x=
 JSON.parse(raw);
 
-
 if(
 x.modo==="AUTO" ||
 x.modo==="MANUAL"
 )
 estado.modo=x.modo;
-
 
 if(
 x.motorManual==="NORMAL" ||
@@ -685,24 +706,16 @@ x.motorManual==="DINAMICO"
 )
 estado.motorManual=x.motorManual;
 
-
 if(
 RX_LIST.includes(x.manualRX)
 )
 estado.manualRX=x.manualRX;
 
-
 if(x.timelines){
 
-if(
-Array.isArray(
-x.timelines.AUTO
-)
-)
+if(Array.isArray(x.timelines.AUTO))
 estado.timelines.AUTO=
-x.timelines.AUTO
-.slice(-MAX_TIMELINE);
-
+x.timelines.AUTO.slice(-MAX_TIMELINE);
 
 ["NORMAL","DINAMICO"]
 .forEach(motor=>{
@@ -712,24 +725,15 @@ return;
 
 RX_LIST.forEach(rx=>{
 
-if(
-Array.isArray(
-x.timelines[motor][rx]
-)
-){
-
+if(Array.isArray(x.timelines[motor][rx]))
 estado.timelines[motor][rx]=
-x.timelines[motor][rx]
-.slice(-MAX_TIMELINE);
-
-}
+x.timelines[motor][rx].slice(-MAX_TIMELINE);
 
 });
 
 });
 
 }
-
 
 if(x.pendentes){
 
@@ -741,7 +745,6 @@ x.pendentes,
 )
 estado.pendentes.AUTO=
 x.pendentes.AUTO;
-
 
 ["NORMAL","DINAMICO"]
 .forEach(motor=>{
@@ -766,7 +769,6 @@ x.pendentes[motor][rx];
 
 }
 
-
 if(x.freezes){
 
 if(
@@ -777,7 +779,6 @@ x.freezes,
 )
 estado.freezes.AUTO=
 x.freezes.AUTO;
-
 
 ["NORMAL","DINAMICO"]
 .forEach(motor=>{
@@ -806,14 +807,17 @@ x.freezes[motor][rx];
 
 }
 
-
 carregarEstado();
-
 
 function salvarHistorico(){
 
 historico=
 limitar35(historico);
+
+historicoCompleto=
+limitarBacktest(
+historicoCompleto
+);
 
 try{
 
@@ -822,10 +826,14 @@ STORAGE_KEY,
 JSON.stringify(historico)
 );
 
+localStorage.setItem(
+STORAGE_HISTORICO_COMPLETO,
+JSON.stringify(historicoCompleto)
+);
+
 }catch(e){}
 
 }
-
 
 function salvarEstado(){
 
@@ -840,13 +848,11 @@ JSON.stringify(estado)
 
 }
 
-
 /* ============================================================
-   OFFSET EXCLUSIVO DO MOTOR DINÂMICO
+   OFFSET DINÂMICO
 ============================================================ */
 
 let offsetCentroAtual=0;
-
 
 function carregarOffsetCentro(){
 
@@ -873,7 +879,6 @@ offsetCentroAtual=n;
 
 }
 
-
 function salvarOffsetCentro(){
 
 try{
@@ -887,16 +892,13 @@ String(offsetCentroAtual)
 
 }
 
-
 carregarOffsetCentro();
-
 
 /* ============================================================
    VISUAL
 ============================================================ */
 
 let duplasVisual=[];
-
 
 function carregarDuplasVisual(){
 
@@ -921,7 +923,6 @@ arr.slice(-14);
 
 }
 
-
 function salvarDuplasVisual(){
 
 duplasVisual=
@@ -938,16 +939,13 @@ JSON.stringify(duplasVisual)
 
 }
 
-
 carregarDuplasVisual();
 
-
 /* ============================================================
-   JOGADA VISÍVEL CONGELADA
+   JOGADA CONGELADA
 ============================================================ */
 
 let jogadaCongelada=null;
-
 
 function salvarJogadaCongelada(){
 
@@ -961,7 +959,6 @@ JSON.stringify(jogadaCongelada)
 }catch(e){}
 
 }
-
 
 function carregarJogadaCongelada(){
 
@@ -989,9 +986,7 @@ jogadaCongelada=x;
 
 }
 
-
 carregarJogadaCongelada();
-
 
 /* ============================================================
    TERMINAIS
@@ -1067,25 +1062,19 @@ score
 
 }
 
-
 ranking.sort(
 (a,b)=>
 
 b.score-a.score ||
-
 b.direto5-a.direto5 ||
-
 b.direto-a.direto ||
-
 b.vizinho-a.vizinho
 );
-
 
 const trio=
 ranking
 .slice(0,3)
 .map(x=>x.terminal);
-
 
 let cobertura=0;
 
@@ -1112,7 +1101,6 @@ cobertura++;
 
 });
 
-
 return {
 
 ranking,
@@ -1126,7 +1114,6 @@ janela.length
 };
 
 }
-
 
 function scoreTerminalNumero(
 numero,
@@ -1173,7 +1160,6 @@ return 0;
 
 }
 
-
 /* ============================================================
    CORES
 ============================================================ */
@@ -1198,7 +1184,6 @@ tipoCor(n)
 
 });
 
-
 let alternancias=0;
 
 for(
@@ -1214,7 +1199,6 @@ tipoCor(janela[i-1])
 alternancias++;
 
 }
-
 
 return {
 
@@ -1236,7 +1220,6 @@ janela.length>1
 
 }
 
-
 function scoreCorNumero(
 numero,
 momento
@@ -1257,7 +1240,6 @@ tipoCor(numero);
 let score=
 info.contagem[cor]/
 total;
-
 
 if(
 info.pctAlternancia>=60 &&
@@ -1281,7 +1263,6 @@ score+=.18;
 return score;
 
 }
-
 
 /* ============================================================
    ZONAS
@@ -1309,7 +1290,6 @@ if(z)
 contagem[z]++;
 
 });
-
 
 const transicoes={
 
@@ -1343,7 +1323,6 @@ TIERS:0
 
 };
 
-
 let alternancias=0;
 
 for(
@@ -1367,12 +1346,10 @@ seq[i]
 
 }
 
-
 const atual=
 seq.length
 ?seq[seq.length-1]
 :null;
-
 
 let repeticaoAtual=0;
 
@@ -1394,7 +1371,6 @@ break;
 
 }
 
-
 return {
 
 contagem,
@@ -1410,7 +1386,6 @@ seq.length>1
 };
 
 }
-
 
 function scoreZonaNumero(
 numero,
@@ -1436,7 +1411,6 @@ let score=
 info.contagem[z]/
 total;
 
-
 if(info.atual){
 
 const linha=
@@ -1461,7 +1435,6 @@ score+=
 
 }
 
-
 if(
 z===info.atual &&
 info.repeticaoAtual>=2
@@ -1472,9 +1445,8 @@ return score;
 
 }
 
-
 /* ============================================================
-   CONCENTRAÇÃO FÍSICA DAS DÚZIAS
+   DÚZIAS FÍSICAS
 ============================================================ */
 
 function analisarDuziasFisicas(base){
@@ -1502,7 +1474,6 @@ track.forEach(n=>
 calor.set(n,0)
 );
 
-
 janela.forEach((numero,i)=>{
 
 const d=
@@ -1516,7 +1487,6 @@ const recencia=
 ((i+1)/
 Math.max(1,janela.length))
 *.55;
-
 
 if(d){
 
@@ -1534,7 +1504,6 @@ recencia*
 (.55+.45*estrutural);
 
 }
-
 
 track.forEach(alvo=>{
 
@@ -1564,7 +1533,6 @@ peso=.12;
 else if(dist===5)
 peso=.05;
 
-
 if(peso){
 
 calor.set(
@@ -1579,13 +1547,11 @@ peso*recencia
 
 });
 
-
 const confluencia={
 1:0,
 2:0,
 3:0
 };
-
 
 [1,2,3]
 .forEach(d=>{
@@ -1614,7 +1580,6 @@ pesoTotal
 
 });
 
-
 const maxForca=
 Math.max(
 forca[1],
@@ -1623,7 +1588,6 @@ forca[3],
 .0001
 );
 
-
 const maxConfluencia=
 Math.max(
 confluencia[1],
@@ -1631,7 +1595,6 @@ confluencia[2],
 confluencia[3],
 .0001
 );
-
 
 const ranking=
 
@@ -1671,7 +1634,6 @@ score
 b.score-a.score
 );
 
-
 return {
 
 janela,
@@ -1690,7 +1652,6 @@ ranking[1]||null
 };
 
 }
-
 
 function scoreDuziaFisicaNumero(
 numero,
@@ -1726,10 +1687,8 @@ mapa.has(numero)
 ?mapa.get(numero)
 :.48;
 
-
 const calorAtual=
 analise.calor.get(numero)||0;
-
 
 let maxCalor=0;
 
@@ -1740,12 +1699,10 @@ maxCalor=v;
 
 });
 
-
 const calorNorm=
 maxCalor
 ?calorAtual/maxCalor
 :0;
-
 
 let proximidade=0;
 
@@ -1786,7 +1743,6 @@ proximidade=p;
 
 }
 
-
 return (
 
 item.score*.44+
@@ -1797,7 +1753,6 @@ proximidade*.12
 );
 
 }
-
 
 /* ============================================================
    CORREDORES
@@ -1811,7 +1766,6 @@ limitar35(base)
 
 const ranking=[];
 
-
 track.forEach(centro=>{
 
 let dentro=0;
@@ -1823,7 +1777,6 @@ let esquerda=0;
 let direita=0;
 
 let score=0;
-
 
 janela.forEach(
 (numero,i)=>{
@@ -1848,7 +1801,6 @@ const recencia=
 Math.max(1,janela.length))
 *.50;
 
-
 if(d<=1){
 
 miolo++;
@@ -1866,7 +1818,6 @@ score+=.86*recencia;
 
 }
 
-
 if(delta<0)
 esquerda++;
 
@@ -1874,7 +1825,6 @@ else if(delta>0)
 direita++;
 
 });
-
 
 let perfil="MIOLO";
 
@@ -1889,7 +1839,6 @@ lateral>miolo
 )
 perfil="LATERAL";
 
-
 let direcao=0;
 
 if(
@@ -1901,7 +1850,6 @@ else if(
 esquerda>direita+1
 )
 direcao=-1;
-
 
 ranking.push({
 
@@ -1926,15 +1874,12 @@ score
 
 });
 
-
 ranking.sort(
 (a,b)=>
 
 b.score-a.score ||
-
 b.dentro-a.dentro
 );
-
 
 return {
 
@@ -1950,7 +1895,6 @@ ranking[0]||null
 
 }
 
-
 function scoreCorredorNumero(
 numero,
 momento
@@ -1963,7 +1907,6 @@ if(!fortes.length)
 return 0;
 
 let score=0;
-
 
 fortes.forEach((c,pos)=>{
 
@@ -1986,7 +1929,6 @@ const confianca=
 c.taxa/100;
 
 let local=0;
-
 
 if(c.perfil==="PONTA"){
 
@@ -2037,14 +1979,12 @@ local=.28;
 
 }
 
-
 if(
 c.direcao!==0 &&
 Math.sign(delta)===
 c.direcao
 )
 local*=1.08;
-
 
 score+=
 rankingPeso*
@@ -2053,11 +1993,9 @@ local;
 
 });
 
-
 return score;
 
 }
-
 
 /* ============================================================
    DENSIDADE
@@ -2076,7 +2014,6 @@ track.forEach(n=>
 mapa.set(n,0)
 );
 
-
 janela.forEach((numero,i)=>{
 
 const recencia=
@@ -2084,7 +2021,6 @@ const recencia=
 ((i+1)/
 Math.max(1,janela.length))
 *.50;
-
 
 track.forEach(alvo=>{
 
@@ -2111,7 +2047,6 @@ peso=.20;
 else if(d===4)
 peso=.08;
 
-
 if(peso){
 
 mapa.set(
@@ -2126,7 +2061,6 @@ peso*recencia
 
 });
 
-
 const ranking=
 track
 .map(n=>({
@@ -2137,7 +2071,6 @@ score:mapa.get(n)||0
 (a,b)=>
 b.score-a.score
 );
-
 
 return {
 
@@ -2152,7 +2085,6 @@ ranking.length
 };
 
 }
-
 
 /* ============================================================
    MOMENTO
@@ -2190,7 +2122,6 @@ analisarDuziasFisicas(base)
 
 }
 
-
 function scoreMomentoNumero(
 numero,
 momento
@@ -2225,13 +2156,11 @@ momento.densidade.mapa
 
 );
 
-
 const scoreDuzia=
 scoreDuziaFisicaNumero(
 numero,
 momento
 );
-
 
 return (
 
@@ -2244,7 +2173,6 @@ PESO_DUZIA_FISICA
 
 }
 
-
 function direcaoMomento(
 centro,
 momento
@@ -2252,7 +2180,6 @@ momento
 
 let esquerda=0;
 let direita=0;
-
 
 momento.janela
 .forEach((numero,i)=>{
@@ -2278,18 +2205,15 @@ momento.janela.length
 ))
 *.45;
 
-
 const proximidade=
 Math.max(
 0,
 1-d/8
 );
 
-
 const peso=
 recencia*
 proximidade;
-
 
 if(delta<0)
 esquerda+=peso;
@@ -2299,10 +2223,8 @@ direita+=peso;
 
 });
 
-
 const total=
 esquerda+direita;
-
 
 if(!total){
 
@@ -2312,7 +2234,6 @@ forca:0
 };
 
 }
-
 
 return {
 
@@ -2331,9 +2252,8 @@ total
 
 }
 
-
 /* ============================================================
-   RX
+   RX ORIGINAL — USADO PELO MOTOR DINÂMICO
 ============================================================ */
 
 function construirCache(base){
@@ -2360,7 +2280,6 @@ eventos
 
 }
 
-
 function similaridadeJanelas(
 cache,
 a,
@@ -2373,7 +2292,6 @@ let erro=0;
 
 let a0=0,a6=0,a9=0;
 let b0=0,b6=0,b9=0;
-
 
 for(
 let k=0;
@@ -2390,7 +2308,6 @@ cache.eventos[b+k];
 if(ea===eb)
 iguais++;
 
-
 if(ea&1)a0++;
 if(ea&2)a6++;
 if(ea&4)a9++;
@@ -2398,7 +2315,6 @@ if(ea&4)a9++;
 if(eb&1)b0++;
 if(eb&2)b6++;
 if(eb&4)b9++;
-
 
 erro+=
 Math.abs(a0-b0);
@@ -2411,21 +2327,17 @@ Math.abs(a9-b9);
 
 }
 
-
 const eventos=
 iguais/tamanho*100;
 
-
 const maxErro=
 tamanho*tamanho*3;
-
 
 const forma=
 Math.max(
 0,
 1-erro/maxErro
 )*100;
-
 
 return (
 eventos*.80+
@@ -2434,7 +2346,6 @@ forma*.20
 
 }
 
-
 function analisarRX(
 base,
 rx
@@ -2442,7 +2353,6 @@ rx
 
 base=
 limitar35(base);
-
 
 if(
 base.length<
@@ -2461,7 +2371,6 @@ similaridade:0
 
 }
 
-
 const cache=
 construirCache(base);
 
@@ -2469,7 +2378,6 @@ const atualInicio=
 base.length-rx;
 
 const candidatos=[];
-
 
 for(
 let i=0;
@@ -2484,7 +2392,6 @@ if(
 proximo===undefined
 )
 continue;
-
 
 candidatos.push({
 
@@ -2503,15 +2410,12 @@ rx
 
 }
 
-
 candidatos.sort(
 (a,b)=>
 
 b.similaridade-a.similaridade ||
-
 b.inicio-a.inicio
 );
-
 
 if(!candidatos.length){
 
@@ -2526,7 +2430,6 @@ similaridade:0
 };
 
 }
-
 
 let qtd=
 Math.ceil(
@@ -2546,13 +2449,11 @@ MAX_REPLICAS,
 candidatos.length
 );
 
-
 const replicas=
 candidatos.slice(
 0,
 qtd
 );
-
 
 const contagem=
 new Map();
@@ -2560,7 +2461,6 @@ new Map();
 TODOS_IDS.forEach(
 id=>contagem.set(id,0)
 );
-
 
 function contar(rep){
 
@@ -2578,9 +2478,7 @@ id,
 
 }
 
-
 replicas.forEach(contar);
-
 
 function positivos(){
 
@@ -2593,9 +2491,7 @@ id=>
 
 }
 
-
 let pos=qtd;
-
 
 while(
 positivos()<8 &&
@@ -2612,7 +2508,6 @@ replicas.push(rep);
 contar(rep);
 
 }
-
 
 const rankingIds=
 
@@ -2634,10 +2529,8 @@ x=>x.ocorrencias>0
 (a,b)=>
 
 b.ocorrencias-a.ocorrencias ||
-
 a.ordem-b.ordem
 );
-
 
 return {
 
@@ -2658,9 +2551,8 @@ replicas.length
 
 }
 
-
 /* ============================================================
-   FREQUÊNCIA
+   FREQUÊNCIA RX
 ============================================================ */
 
 function frequenciaReplicas(
@@ -2687,6 +2579,1223 @@ return freq;
 
 }
 
+/* ============================================================
+   CONTAGEM DE CARTAS / PÓS-GATILHO
+============================================================ */
+
+function cartaDoNumero(numero){
+
+if(numero===0)
+return "0";
+
+const valor=
+((numero-1)%13)+1;
+
+if(valor===1)
+return "A";
+
+if(valor>=2 && valor<=10)
+return String(valor);
+
+if(valor===11)
+return "J";
+
+if(valor===12)
+return "Q";
+
+return "K";
+
+}
+
+function valorContagemCarta(numero){
+
+if(numero===0)
+return 0;
+
+const valor=
+((numero-1)%13)+1;
+
+if(valor>=1 && valor<=5)
+return 1;
+
+if(valor>=6 && valor<=9)
+return 0;
+
+return -1;
+
+}
+
+function contagemAcumuladaCartas(base){
+
+let acumulada=0;
+
+return base.map(numero=>{
+
+acumulada+=
+valorContagemCarta(numero);
+
+return acumulada;
+
+});
+
+}
+
+function blocosSemSobreposicao(
+blocos
+){
+
+const usados=
+new Set();
+
+for(const bloco of blocos){
+
+for(const numero of bloco.numeros){
+
+if(usados.has(numero))
+return false;
+
+usados.add(numero);
+
+}
+
+}
+
+return usados.size===
+blocos.length*5;
+
+}
+
+function analisarPosGatilho(base){
+
+base=
+limitarBacktest(base);
+
+if(!base.length){
+
+return {
+
+valido:false,
+contagemAtual:0,
+ocorrencias:0,
+forca:0,
+ranking:[],
+blocos2:[],
+numeros:new Set(),
+pesoTotal:0,
+pesoCapturado:0
+
+};
+
+}
+
+const acumuladas=
+contagemAcumuladaCartas(base);
+
+const contagemAtual=
+acumuladas[
+acumuladas.length-1
+];
+
+const ocorrencias=[];
+
+const pontosResultado=
+new Map();
+
+track.forEach(n=>
+pontosResultado.set(n,0)
+);
+
+let pesoTotal=0;
+
+/*
+   A ocorrência atual não entra.
+   A ocorrência histórica só entra se tiver
+   os 3 giros posteriores completos.
+*/
+
+for(
+let i=0;
+i<acumuladas.length-1;
+i++
+){
+
+if(
+acumuladas[i]!==
+contagemAtual
+)
+continue;
+
+if(
+i+3>=base.length
+)
+continue;
+
+const seguintes=[
+base[i+1],
+base[i+2],
+base[i+3]
+];
+
+const pesos=[
+3,
+2,
+1
+];
+
+ocorrencias.push({
+
+indice:i,
+
+contagem:
+acumuladas[i],
+
+seguintes:
+seguintes.slice()
+
+});
+
+seguintes.forEach(
+(numero,pos)=>{
+
+const peso=
+pesos[pos];
+
+pontosResultado.set(
+numero,
+(pontosResultado.get(numero)||0)+
+peso
+);
+
+pesoTotal+=peso;
+
+});
+
+}
+
+if(!ocorrencias.length){
+
+return {
+
+valido:false,
+
+contagemAtual,
+
+ocorrencias:0,
+
+forca:0,
+
+ranking:[],
+
+blocos2:[],
+
+numeros:new Set(),
+
+pesoTotal:0,
+
+pesoCapturado:0,
+
+acumuladas
+
+};
+
+}
+
+/* ============================================================
+   PONTUA TODOS OS 37 BLOCOS FÍSICOS
+   ALVO = 2 ESQUERDA + ALVO + 2 DIREITA
+============================================================ */
+
+const ranking=
+track.map(centro=>{
+
+const numeros=
+setor(
+centro,
+2
+);
+
+let score=0;
+
+numeros.forEach(numero=>{
+
+score+=
+pontosResultado.get(numero)||0;
+
+});
+
+return {
+
+numero:
+centro,
+
+centro,
+
+qtd:2,
+
+numeros,
+
+score
+
+};
+
+})
+.sort(
+(a,b)=>
+
+b.score-a.score ||
+
+indice(a.centro)-
+indice(b.centro)
+
+);
+
+/* ============================================================
+   SELEÇÃO CONJUNTA DOS 5 ALVOS
+
+   NÃO É GULOSA.
+
+   TESTA AS COMBINAÇÕES POSSÍVEIS DE 5 BLOCOS
+   E DESCARTA AUTOMATICAMENTE QUALQUER COMBINAÇÃO
+   QUE TENHA UM ÚNICO NÚMERO REPETIDO.
+============================================================ */
+
+let melhor=null;
+
+function buscar(
+inicio,
+selecionados,
+usados,
+score
+){
+
+if(
+selecionados.length===5
+){
+
+if(usados.size!==25)
+return;
+
+if(
+!blocosSemSobreposicao(
+selecionados
+)
+)
+return;
+
+if(
+!melhor ||
+score>melhor.score
+){
+
+melhor={
+
+score,
+
+blocos:
+selecionados.map(b=>({
+
+centro:b.centro,
+qtd:2,
+numeros:b.numeros.slice(),
+score:b.score
+
+})),
+
+numeros:
+new Set(usados)
+
+};
+
+}
+
+return;
+
+}
+
+const faltam=
+5-selecionados.length;
+
+if(
+ranking.length-inicio<
+faltam
+)
+return;
+
+for(
+let i=inicio;
+i<ranking.length;
+i++
+){
+
+const candidato=
+ranking[i];
+
+let conflito=false;
+
+for(
+const numero
+of candidato.numeros
+){
+
+if(
+usados.has(numero)
+){
+
+conflito=true;
+break;
+
+}
+
+}
+
+if(conflito)
+continue;
+
+const novosUsados=
+new Set(usados);
+
+candidato.numeros
+.forEach(n=>
+novosUsados.add(n)
+);
+
+buscar(
+i+1,
+[
+...selecionados,
+candidato
+],
+novosUsados,
+score+candidato.score
+);
+
+}
+
+}
+
+buscar(
+0,
+[],
+new Set(),
+0
+);
+
+if(
+!melhor ||
+melhor.blocos.length!==5 ||
+melhor.numeros.size!==25 ||
+!blocosSemSobreposicao(
+melhor.blocos
+)
+){
+
+return {
+
+valido:false,
+
+contagemAtual,
+
+ocorrencias:
+ocorrencias.length,
+
+forca:0,
+
+ranking,
+
+blocos2:[],
+
+numeros:new Set(),
+
+pesoTotal,
+
+pesoCapturado:0,
+
+acumuladas
+
+};
+
+}
+
+/* ============================================================
+   FORÇA
+
+   PESO DOS RESULTADOS PÓS-GATILHO CAPTURADOS
+   PELOS 25 NÚMEROS ÚNICOS /
+   PESO TOTAL DOS RESULTADOS PÓS-GATILHO.
+============================================================ */
+
+let pesoCapturado=0;
+
+pontosResultado
+.forEach((peso,numero)=>{
+
+if(
+melhor.numeros.has(numero)
+)
+pesoCapturado+=peso;
+
+});
+
+const forca=
+pesoTotal
+?pesoCapturado/pesoTotal*100
+:0;
+
+return {
+
+valido:true,
+
+contagemAtual,
+
+ocorrencias:
+ocorrencias.length,
+
+ocorrenciasDetalhadas:
+ocorrencias,
+
+forca,
+
+ranking,
+
+blocos2:
+melhor.blocos,
+
+blocos1:[],
+
+numeros:
+melhor.numeros,
+
+score:
+melhor.score,
+
+pesoTotal,
+
+pesoCapturado,
+
+acumuladas,
+
+pontosResultado
+
+};
+
+}
+
+/* ============================================================
+   GERA JOGADA PÓS-GATILHO
+============================================================ */
+
+function gerarJogadaPosGatilho(
+analise
+){
+
+if(
+!analise ||
+!analise.valido ||
+analise.blocos2.length!==5 ||
+analise.numeros.size!==25
+){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+if(
+!blocosSemSobreposicao(
+analise.blocos2
+)
+){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+return {
+
+valido:true,
+
+blocos2:
+analise.blocos2.map(b=>({
+
+centro:b.centro,
+qtd:2,
+numeros:b.numeros.slice(),
+score:b.score
+
+})),
+
+blocos1:[],
+
+numeros:
+new Set(
+analise.numeros
+),
+
+score:
+analise.score,
+
+posGatilho:
+analise
+
+};
+
+}
+
+/* ============================================================
+   NOVO MOTOR DE CONTAGEM
+   ============================================================
+
+   MANTIDO NO CÓDIGO.
+============================================================ */
+
+function criarMapaZero(){
+
+const mapa=
+new Map();
+
+track.forEach(n=>
+mapa.set(n,0)
+);
+
+return mapa;
+
+}
+
+function adicionarContagemFisica(
+mapa,
+numero,
+peso
+){
+
+track.forEach(alvo=>{
+
+const d=
+distanciaRoda(
+numero,
+alvo
+);
+
+let p=0;
+
+if(d===0)
+p=1.00;
+
+else if(d===1)
+p=.72;
+
+else if(d===2)
+p=.44;
+
+else if(d===3)
+p=.22;
+
+else if(d===4)
+p=.10;
+
+if(p){
+
+mapa.set(
+alvo,
+(mapa.get(alvo)||0)+
+p*peso
+);
+
+}
+
+});
+
+}
+
+/* ============================================================
+   CONTAGEM DE FAMÍLIAS
+============================================================ */
+
+function contagemFamilias(base){
+
+const contagem={
+0:0,
+6:0,
+9:0
+};
+
+base.forEach((numero,i)=>{
+
+const recencia=
+.55+
+((i+1)/
+Math.max(1,base.length))
+*.45;
+
+const ids=
+idsQueBatem(numero);
+
+const familias=
+new Set(
+ids
+.map(familia)
+.filter(x=>x!==null)
+);
+
+familias.forEach(f=>{
+
+contagem[f]+=
+recencia;
+
+});
+
+});
+
+return contagem;
+
+}
+
+/* ============================================================
+   CONTAGEM PRINCIPAL ORIGINAL
+============================================================ */
+
+function analisarContagem(
+base,
+rx
+){
+
+base=
+limitar35(base);
+
+if(
+base.length<
+Math.max(
+8,
+rx+4
+)
+){
+
+return {
+
+valido:false,
+rx,
+convergencia:false,
+forca:0,
+diferenca:0,
+ranking:[],
+mapa:criarMapaZero(),
+familias:{
+0:0,
+6:0,
+9:0
+}
+
+};
+
+}
+
+const momento=
+analisarMomento(base);
+
+const recente=
+base.slice(-rx);
+
+const mapaTotal=
+criarMapaZero();
+
+const mapaRecente=
+criarMapaZero();
+
+base.forEach((numero,i)=>{
+
+const peso=
+.40+
+((i+1)/
+Math.max(1,base.length))
+*.60;
+
+adicionarContagemFisica(
+mapaTotal,
+numero,
+peso
+);
+
+});
+
+recente.forEach((numero,i)=>{
+
+const peso=
+.65+
+((i+1)/
+Math.max(1,recente.length))
+*.70;
+
+adicionarContagemFisica(
+mapaRecente,
+numero,
+peso
+);
+
+});
+
+const maxTotal=
+Math.max(
+...Array.from(
+mapaTotal.values()
+),
+.0001
+);
+
+const maxRecente=
+Math.max(
+...Array.from(
+mapaRecente.values()
+),
+.0001
+);
+
+const ranking=
+track.map(numero=>{
+
+const total=
+(mapaTotal.get(numero)||0)/
+maxTotal;
+
+const recenteScore=
+(mapaRecente.get(numero)||0)/
+maxRecente;
+
+const momentoScore=
+scoreMomentoNumero(
+numero,
+momento
+);
+
+const score=
+
+recenteScore*
+PESO_CONTAGEM_RECENTE+
+
+total*
+PESO_CONTAGEM_TOTAL+
+
+momentoScore*
+PESO_CONTAGEM_MOMENTO;
+
+return {
+
+numero,
+
+total,
+
+recente:
+recenteScore,
+
+momento:
+momentoScore,
+
+score
+
+};
+
+});
+
+ranking.sort(
+(a,b)=>
+b.score-a.score
+);
+
+const primeiro=
+ranking[0];
+
+const segundo=
+ranking[1];
+
+const diferenca=
+primeiro && segundo
+?primeiro.score-segundo.score
+:0;
+
+const fortes=
+ranking.slice(0,6);
+
+let convergentes=0;
+let pesoConvergencia=0;
+
+fortes.forEach((x,i)=>{
+
+const d=
+distanciaRoda(
+primeiro.numero,
+x.numero
+);
+
+if(d<=5){
+
+convergentes++;
+
+pesoConvergencia+=
+1-d/6;
+
+}
+
+});
+
+const taxaConvergencia=
+fortes.length
+?pesoConvergencia/
+fortes.length
+:0;
+
+let fontes=0;
+
+if(primeiro.recente>=.70)
+fontes++;
+
+if(primeiro.total>=.65)
+fontes++;
+
+if(primeiro.momento>=.55)
+fontes++;
+
+const df=
+momento.duziasFisicas;
+
+if(
+scoreDuziaFisicaNumero(
+primeiro.numero,
+momento
+)>=.55
+)
+fontes++;
+
+if(
+scoreCorredorNumero(
+primeiro.numero,
+momento
+)>=.45
+)
+fontes++;
+
+if(
+scoreTerminalNumero(
+primeiro.numero,
+momento
+)>=.40
+)
+fontes++;
+
+const taxaFontes=
+fontes/6;
+
+const convergenciaFinal=
+
+taxaConvergencia*.55+
+taxaFontes*.45;
+
+const forca=
+primeiro
+?primeiro.score
+:0;
+
+const convergencia=
+
+forca>=
+CONTAGEM_MINIMA[rx] &&
+
+convergenciaFinal>=
+CONVERGENCIA_MINIMA[rx] &&
+
+diferenca>=
+DIFERENCA_MINIMA[rx];
+
+return {
+
+valido:true,
+
+rx,
+
+convergencia,
+
+forca,
+
+diferenca,
+
+convergenciaFinal,
+
+taxaConvergencia,
+
+taxaFontes,
+
+fontes,
+
+ranking,
+
+mapa:
+mapaRecente,
+
+mapaTotal,
+
+familias:
+contagemFamilias(base),
+
+momento
+
+};
+
+}
+
+/* ============================================================
+   GERA JOGADA PELA CONTAGEM ORIGINAL
+============================================================ */
+
+function gerarJogadaContagem(
+analise
+){
+
+if(
+!analise ||
+!analise.valido ||
+!analise.convergencia
+){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+const candidatos=
+analise.ranking.slice();
+
+let bloco1=null;
+
+for(const candidato of candidatos){
+
+const numeros=
+setor(
+candidato.numero,
+1
+);
+
+bloco1={
+
+centro:
+candidato.numero,
+
+qtd:1,
+
+numeros,
+
+score:
+candidato.score
+
+};
+
+break;
+
+}
+
+if(!bloco1){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+const usados=
+new Set(
+bloco1.numeros
+);
+
+const blocos2=[];
+
+for(const candidato of candidatos){
+
+if(
+candidato.numero===
+bloco1.centro
+)
+continue;
+
+const numeros=
+setor(
+candidato.numero,
+2
+);
+
+const conflito=
+numeros.some(
+n=>usados.has(n)
+);
+
+if(conflito)
+continue;
+
+blocos2.push({
+
+centro:
+candidato.numero,
+
+qtd:2,
+
+numeros,
+
+score:
+candidato.score
+
+});
+
+numeros.forEach(
+n=>usados.add(n)
+);
+
+if(
+blocos2.length===5
+)
+break;
+
+}
+
+if(
+blocos2.length<5
+){
+
+const extras=
+track.map(numero=>{
+
+const item=
+analise.ranking.find(
+x=>x.numero===numero
+);
+
+return {
+
+numero,
+
+score:
+item
+?item.score
+:0
+
+};
+
+})
+.sort(
+(a,b)=>
+b.score-a.score
+);
+
+for(const candidato of extras){
+
+if(
+blocos2.length===5
+)
+break;
+
+const numeros=
+setor(
+candidato.numero,
+2
+);
+
+const conflito=
+numeros.some(
+n=>usados.has(n)
+);
+
+if(conflito)
+continue;
+
+blocos2.push({
+
+centro:
+candidato.numero,
+
+qtd:2,
+
+numeros,
+
+score:
+candidato.score
+
+});
+
+numeros.forEach(
+n=>usados.add(n)
+);
+
+}
+
+}
+
+if(
+blocos2.length!==5 ||
+usados.size!==28
+){
+
+return {
+
+valido:false,
+blocos2:[],
+blocos1:[],
+numeros:new Set()
+
+};
+
+}
+
+const score=
+
+bloco1.score+
+
+blocos2.reduce(
+(s,b)=>s+b.score,
+0
+);
+
+return {
+
+valido:true,
+
+blocos2,
+
+blocos1:[
+bloco1
+],
+
+numeros:
+usados,
+
+score,
+
+momento:
+analise.momento,
+
+contagem:
+analise
+
+};
+
+}
 
 /* ============================================================
    DIAGNÓSTICO
@@ -2697,7 +3806,6 @@ function diagnosticarLosses(lista){
 if(!Array.isArray(lista))
 lista=[];
 
-
 const validos=
 lista.filter(
 x=>
@@ -2705,9 +3813,7 @@ x=>
 !x.aguardandoG1
 );
 
-
 const losses=[];
-
 
 for(
 let i=validos.length-1;
@@ -2724,7 +3830,6 @@ validos[i]
 
 }
 
-
 if(!losses.length){
 
 return {
@@ -2739,14 +3844,12 @@ forca:0
 
 }
 
-
 const recentes=
 losses.slice(-3);
 
 let fora1=0;
 let esquerda=0;
 let direita=0;
-
 
 recentes.forEach(x=>{
 
@@ -2761,10 +3864,8 @@ direita++;
 
 });
 
-
 let tipo="ISOLADO";
 let forca=.10;
-
 
 if(
 losses.length===1 &&
@@ -2805,7 +3906,6 @@ forca=.60;
 
 }
 
-
 return {
 
 ativo:true,
@@ -2823,9 +3923,8 @@ forca
 
 }
 
-
 /* ============================================================
-   SCORE RX
+   SCORE RX DINÂMICO
 ============================================================ */
 
 function scoreRXPuro(
@@ -2842,7 +3941,6 @@ qtd
 
 let score=0;
 let suporte=0;
-
 
 numeros.forEach(n=>{
 
@@ -2870,7 +3968,6 @@ f*peso;
 
 });
 
-
 return {
 score,
 suporte,
@@ -2878,11 +3975,6 @@ numeros
 };
 
 }
-
-
-/* ============================================================
-   SCORE MOMENTO SETOR
-============================================================ */
 
 function scoreMomentoSetor(
 centro,
@@ -2897,7 +3989,6 @@ qtd
 );
 
 let score=0;
-
 
 numeros.forEach(n=>{
 
@@ -2915,7 +4006,6 @@ peso=1.20;
 else if(d===1)
 peso=1.08;
 
-
 score+=
 scoreMomentoNumero(
 n,
@@ -2925,15 +4015,13 @@ peso;
 
 });
 
-
 return score/
 numeros.length;
 
 }
 
-
 /* ============================================================
-   GIRADA DINÂMICA INTERNA ORIGINAL
+   GIRADA DINÂMICA
 ============================================================ */
 
 function avaliarCentroComGiradas(
@@ -2945,7 +4033,6 @@ diagnostico
 ){
 
 let melhor=null;
-
 
 for(
 let offset=-MAX_GIRADA;
@@ -2959,7 +4046,6 @@ centroOriginal,
 offset
 );
 
-
 const rx=
 scoreRXPuro(
 centro,
@@ -2967,12 +4053,10 @@ qtd,
 freq
 );
 
-
 if(
 rx.suporte<=0
 )
 continue;
-
 
 const momentoScore=
 scoreMomentoSetor(
@@ -2980,7 +4064,6 @@ centro,
 qtd,
 momento
 );
-
 
 const custoGirada=
 Math.abs(offset)*
@@ -2990,16 +4073,13 @@ Math.max(
 rx.suporte
 );
 
-
 const direcao=
 direcaoMomento(
 centroOriginal,
 momento
 );
 
-
 let bonusDirecao=0;
-
 
 if(
 offset!==0 &&
@@ -3015,9 +4095,7 @@ rx.suporte*
 
 }
 
-
 let bonusLoss=0;
-
 
 if(
 diagnostico &&
@@ -3035,7 +4113,6 @@ rx.suporte*
 
 }
 
-
 const scoreFinal=
 
 rx.score+
@@ -3051,7 +4128,6 @@ bonusDirecao+
 bonusLoss-
 
 custoGirada;
-
 
 const item={
 
@@ -3077,7 +4153,6 @@ scoreFinal
 
 };
 
-
 if(
 !melhor ||
 item.score>melhor.score
@@ -3086,11 +4161,9 @@ melhor=item;
 
 }
 
-
 return melhor;
 
 }
-
 
 function gerarCandidatos(
 qtd,
@@ -3101,7 +4174,6 @@ diagnostico
 
 const mapa=
 new Map();
-
 
 track.forEach(
 centroOriginal=>{
@@ -3118,12 +4190,10 @@ diagnostico
 if(!c)
 return;
 
-
 const existente=
 mapa.get(
 c.centro
 );
-
 
 if(
 !existente ||
@@ -3136,7 +4206,6 @@ c
 
 });
 
-
 return Array.from(
 mapa.values()
 )
@@ -3144,9 +4213,7 @@ mapa.values()
 (a,b)=>
 
 b.score-a.score ||
-
 b.suporte-a.suporte ||
-
 Math.abs(a.offset)-
 Math.abs(b.offset)
 
@@ -3154,9 +4221,8 @@ Math.abs(b.offset)
 
 }
 
-
 /* ============================================================
-   MONTA JOGADA
+   MONTA JOGADA DINÂMICA ORIGINAL
 ============================================================ */
 
 function montarJogada(
@@ -3181,20 +4247,16 @@ numeros:new Set()
 
 }
 
-
 base=
 limitar35(base);
 
-
 const momento=
 analisarMomento(base);
-
 
 const freq=
 frequenciaReplicas(
 raioX.replicas
 );
-
 
 const candidatos2=
 gerarCandidatos(
@@ -3204,7 +4266,6 @@ momento,
 diagnostico
 );
 
-
 const candidatos1=
 gerarCandidatos(
 1,
@@ -3213,9 +4274,7 @@ momento,
 diagnostico
 );
 
-
 let melhor=null;
-
 
 for(const um of candidatos1){
 
@@ -3228,7 +4287,6 @@ const dois=[];
 
 let score=
 um.score;
-
 
 for(
 const candidato
@@ -3244,7 +4302,6 @@ n=>usados.has(n)
 if(conflito)
 continue;
 
-
 dois.push(
 candidato
 );
@@ -3252,12 +4309,10 @@ candidato
 score+=
 candidato.score;
 
-
 candidato.numeros
 .forEach(
 n=>usados.add(n)
 );
-
 
 if(
 dois.length===5
@@ -3265,7 +4320,6 @@ dois.length===5
 break;
 
 }
-
 
 if(
 dois.length===5 &&
@@ -3299,7 +4353,6 @@ momento
 
 }
 
-
 return melhor || {
 
 valido:false,
@@ -3316,7 +4369,6 @@ momento
 
 }
 
-
 /* ============================================================
    OFFSET GLOBAL
 ============================================================ */
@@ -3332,10 +4384,8 @@ if(
 )
 return jogada;
 
-
 if(!offset)
 return jogada;
-
 
 const blocos2=
 jogada.blocos2
@@ -3366,7 +4416,6 @@ novoCentro,
 
 });
 
-
 const blocos1=
 jogada.blocos1
 .map(b=>{
@@ -3396,10 +4445,8 @@ novoCentro,
 
 });
 
-
 const numeros=
 new Set();
-
 
 blocos2.forEach(b=>
 b.numeros.forEach(
@@ -3407,13 +4454,11 @@ n=>numeros.add(n)
 )
 );
 
-
 blocos1.forEach(b=>
 b.numeros.forEach(
 n=>numeros.add(n)
 )
 );
-
 
 return Object.assign(
 {},
@@ -3427,9 +4472,8 @@ numeros
 
 }
 
-
 /* ============================================================
-   MOTOR NORMAL
+   MOTOR NORMAL — CONTAGEM DE CARTAS / PÓS-GATILHO
 ============================================================ */
 
 function gerarConfigNormal(
@@ -3439,38 +4483,47 @@ diagnostico=null
 ){
 
 base=
-limitar35(base);
+limitarBacktest(base);
 
-
-const raioX=
-analisarRX(
-base,
-rxTam
+const posGatilho=
+analisarPosGatilho(
+base
 );
 
-
-if(!raioX.valido){
+if(
+!posGatilho.valido
+){
 
 return {
 
 valido:false,
+
 motor:"NORMAL",
+
 rx:rxTam,
+
 usarOffset:false,
-offsetAplicado:0
+
+offsetAplicado:0,
+
+posGatilho,
+
+contagem:
+posGatilho,
+
+convergencia:false,
+
+similaridade:
+posGatilho.forca||0
 
 };
 
 }
 
-
 const jogada=
-montarJogada(
-raioX,
-base,
-diagnostico
+gerarJogadaPosGatilho(
+posGatilho
 );
-
 
 return {
 
@@ -3486,17 +4539,22 @@ usarOffset:false,
 
 offsetAplicado:0,
 
-raioX,
+posGatilho,
+
+contagem:
+posGatilho,
+
+convergencia:
+jogada.valido,
 
 jogada,
 
 similaridade:
-raioX.similaridade
+posGatilho.forca
 
 };
 
 }
-
 
 /* ============================================================
    MOTOR DINÂMICO
@@ -3512,13 +4570,11 @@ offset=offsetCentroAtual
 base=
 limitar35(base);
 
-
 const raioX=
 analisarRX(
 base,
 rxTam
 );
-
 
 if(!raioX.valido){
 
@@ -3534,7 +4590,6 @@ offsetAplicado:offset
 
 }
 
-
 let jogada=
 montarJogada(
 raioX,
@@ -3542,13 +4597,11 @@ base,
 diagnostico
 );
 
-
 jogada=
 aplicarOffsetGlobalNaJogada(
 jogada,
 offset
 );
-
 
 return {
 
@@ -3576,7 +4629,6 @@ raioX.similaridade
 
 }
 
-
 /* ============================================================
    CLASSIFICAÇÃO
 ============================================================ */
@@ -3601,14 +4653,12 @@ lado:0
 
 }
 
-
 const blocos=[
 
 ...(jogada.blocos2||[]),
 ...(jogada.blocos1||[])
 
 ];
-
 
 for(const b of blocos){
 
@@ -3647,9 +4697,7 @@ numero
 
 }
 
-
 let melhor=null;
-
 
 blocos.forEach(b=>{
 
@@ -3661,7 +4709,6 @@ b.centro
 
 const gap=
 d-b.qtd;
-
 
 if(
 gap>0 &&
@@ -3689,7 +4736,6 @@ numero
 
 });
 
-
 if(!melhor){
 
 return {
@@ -3701,7 +4747,6 @@ lado:0
 };
 
 }
-
 
 return {
 
@@ -3721,17 +4766,14 @@ melhor.lado
 
 }
 
-
 /* ============================================================
    STATS
-   AGUARDANDO G1 NÃO É RESULTADO VALIDADO
 ============================================================ */
 
 function statsTimeline(lista){
 
 if(!Array.isArray(lista))
 lista=[];
-
 
 function validos(arr){
 
@@ -3742,7 +4784,6 @@ x=>
 );
 
 }
-
 
 function taxa(
 arr,
@@ -3766,13 +4807,10 @@ v.length*
 
 }
 
-
 const todosValidos=
 validos(lista);
 
-
 let loss=0;
-
 
 for(
 let i=lista.length-1;
@@ -3795,7 +4833,6 @@ break;
 loss++;
 
 }
-
 
 return {
 
@@ -3824,10 +4861,10 @@ lista
 
 }
 
-
 /* ============================================================
-   BACKTEST NORMAL
-   MOTOR ORIGINAL PRESERVADO
+   BACKTEST NORMAL — PÓS-GATILHO
+   ATÉ 200 GIROS
+   SEM OLHAR O FUTURO
 ============================================================ */
 
 function backtestNormal(
@@ -3836,24 +4873,17 @@ rxTam
 ){
 
 base=
-limitar35(base);
+limitarBacktest(base);
 
 const timeline=[];
 
-
-const minimo=
-Math.max(
-14,
-rxTam*2+4
-);
-
+const minimo=4;
 
 const inicio=
-Math.max(
+Math.min(
 minimo,
-base.length-20
+base.length
 );
-
 
 for(
 let i=inicio;
@@ -3864,12 +4894,10 @@ i++
 const passado=
 base.slice(0,i);
 
-
 const diag=
 diagnosticarLosses(
 timeline
 );
-
 
 const cfg=
 gerarConfigNormal(
@@ -3877,7 +4905,6 @@ passado,
 rxTam,
 diag
 );
-
 
 if(!cfg.valido){
 
@@ -3900,17 +4927,14 @@ continue;
 
 }
 
-
 const resultado=
 base[i];
-
 
 const r=
 classificarJogada(
 resultado,
 cfg.jogada
 );
-
 
 timeline.push({
 
@@ -3928,17 +4952,15 @@ lado:r.lado
 
 }
 
-
 return statsTimeline(
 timeline
 );
 
 }
 
-
 /* ============================================================
    BACKTEST DINÂMICO
-   MOTOR ORIGINAL PRESERVADO
+   ATÉ 200 GIROS
 ============================================================ */
 
 function backtestDinamico(
@@ -3948,10 +4970,9 @@ offsetAtual
 ){
 
 base=
-limitar35(base);
+limitarBacktest(base);
 
 const timeline=[];
-
 
 const minimo=
 Math.max(
@@ -3959,13 +4980,11 @@ Math.max(
 rxTam*2+4
 );
 
-
 const inicio=
-Math.max(
+Math.min(
 minimo,
-base.length-20
+base.length
 );
-
 
 for(
 let i=inicio;
@@ -3973,15 +4992,18 @@ i<base.length;
 i++
 ){
 
-const passado=
+const passadoCompleto=
 base.slice(0,i);
 
+const passado=
+passadoCompleto.slice(
+-MAX_HISTORICO
+);
 
 const diag=
 diagnosticarLosses(
 timeline
 );
-
 
 const cfg=
 gerarConfigDinamico(
@@ -3990,7 +5012,6 @@ rxTam,
 diag,
 offsetAtual
 );
-
 
 if(!cfg.valido){
 
@@ -4013,17 +5034,14 @@ continue;
 
 }
 
-
 const resultado=
 base[i];
-
 
 const r=
 classificarJogada(
 resultado,
 cfg.jogada
 );
-
 
 timeline.push({
 
@@ -4041,13 +5059,11 @@ lado:r.lado
 
 }
 
-
 return statsTimeline(
 timeline
 );
 
 }
-
 
 /* ============================================================
    SCORE
@@ -4065,7 +5081,6 @@ if(
 )
 return -Infinity;
 
-
 let score=
 
 bt.taxa5*.42+
@@ -4075,7 +5090,6 @@ bt.taxa10*.32+
 bt.taxa20*.20+
 
 cfg.similaridade*.06;
-
 
 if(
 bt.lossSeguidos===1
@@ -4091,7 +5105,6 @@ validos[
 validos.length-1
 ];
 
-
 if(
 ultimo &&
 ultimo.tipo==="FORA1"
@@ -4102,7 +5115,6 @@ else
 score-=3;
 
 }
-
 
 if(
 live &&
@@ -4115,55 +5127,48 @@ live.taxa20*.025;
 
 }
 
-
 return score;
 
 }
 
-
 /* ============================================================
-   CANDIDATO NORMAL
+   CANDIDATO NORMAL — PÓS-GATILHO
 ============================================================ */
 
 function analisarNormal(
 base,
-rx
+rx,
+baseBacktest=base
 ){
 
 const timeline=
 estado.timelines.NORMAL[rx];
-
 
 const diagnostico=
 diagnosticarLosses(
 timeline
 );
 
-
 const live=
 statsTimeline(
 timeline
 );
 
-
 const cfg=
 gerarConfigNormal(
-base,
+baseBacktest,
 rx,
 diagnostico
 );
 
-
 if(!cfg.valido)
 return null;
 
-
 const bt=
 backtestNormal(
-base,
+baseBacktest,
 rx
 );
-
 
 return Object.assign(
 {},
@@ -4186,31 +5191,28 @@ live
 
 }
 
-
 /* ============================================================
    CANDIDATO DINÂMICO
 ============================================================ */
 
 function analisarDinamico(
 base,
-rx
+rx,
+baseBacktest=base
 ){
 
 const timeline=
 estado.timelines.DINAMICO[rx];
-
 
 const diagnostico=
 diagnosticarLosses(
 timeline
 );
 
-
 const live=
 statsTimeline(
 timeline
 );
-
 
 const cfg=
 gerarConfigDinamico(
@@ -4220,18 +5222,15 @@ diagnostico,
 offsetCentroAtual
 );
 
-
 if(!cfg.valido)
 return null;
 
-
 const bt=
 backtestDinamico(
-base,
+baseBacktest,
 rx,
 offsetCentroAtual
 );
-
 
 return Object.assign(
 {},
@@ -4254,36 +5253,35 @@ live
 
 }
 
-
 /* ============================================================
-   CALCULA OS 6 CANDIDATOS
+   CALCULA OS 6
 ============================================================ */
 
 function calcularSeis(
-base
+base,
+baseBacktest=base
 ){
 
 const normal={};
 const dinamico={};
-
 
 RX_LIST.forEach(rx=>{
 
 normal[rx]=
 analisarNormal(
 base,
-rx
+rx,
+baseBacktest
 );
-
 
 dinamico[rx]=
 analisarDinamico(
 base,
-rx
+rx,
+baseBacktest
 );
 
 });
-
 
 return {
 normal,
@@ -4292,9 +5290,8 @@ dinamico
 
 }
 
-
 /* ============================================================
-   AUTO ÚNICO
+   AUTO
 ============================================================ */
 
 function escolherAuto(
@@ -4302,7 +5299,6 @@ seis
 ){
 
 const candidatos=[];
-
 
 RX_LIST.forEach(rx=>{
 
@@ -4314,7 +5310,6 @@ candidatos.push(
 seis.normal[rx]
 );
 
-
 if(
 seis.dinamico[rx] &&
 seis.dinamico[rx].valido
@@ -4325,10 +5320,8 @@ seis.dinamico[rx]
 
 });
 
-
 if(!candidatos.length)
 return null;
-
 
 candidatos.sort(
 (a,b)=>
@@ -4348,11 +5341,9 @@ b.similaridade-
 a.similaridade
 );
 
-
 return candidatos[0];
 
 }
-
 
 /* ============================================================
    CONFIGURAÇÃO MANUAL
@@ -4369,17 +5360,11 @@ return seis.dinamico[
 estado.manualRX
 ]||null;
 
-
 return seis.normal[
 estado.manualRX
 ]||null;
 
 }
-
-
-/* ============================================================
-   CONFIGURAÇÃO ATIVA
-============================================================ */
 
 function configAtiva(
 seis,
@@ -4397,7 +5382,6 @@ seis
 
 }
 
-
 /* ============================================================
    SNAPSHOT
 ============================================================ */
@@ -4412,7 +5396,6 @@ historico.join(",")
 
 }
 
-
 function snapshot(config){
 
 if(
@@ -4422,7 +5405,6 @@ if(
 !config.jogada.valido
 )
 return null;
-
 
 return {
 
@@ -4461,16 +5443,14 @@ config.jogada.blocos1[0]
 
 }
 
-
 /* ============================================================
-   CONVERTE SNAPSHOT EM JOGADA
+   SNAPSHOT -> JOGADA
 ============================================================ */
 
 function jogadaDeSnapshot(p){
 
 if(!p)
 return null;
-
 
 const blocos2=
 (p.centros2||[])
@@ -4481,7 +5461,6 @@ qtd:2,
 numeros:setor(c,2)
 
 }));
-
 
 const blocos1=
 p.centro1!==null &&
@@ -4500,10 +5479,8 @@ p.centro1,
 
 :[];
 
-
 const numeros=
 new Set();
-
 
 blocos2.forEach(b=>
 b.numeros.forEach(
@@ -4511,13 +5488,11 @@ n=>numeros.add(n)
 )
 );
 
-
 blocos1.forEach(b=>
 b.numeros.forEach(
 n=>numeros.add(n)
 )
 );
-
 
 return {
 
@@ -4529,7 +5504,6 @@ numeros
 };
 
 }
-
 
 function classificarSnapshot(
 numero,
@@ -4548,7 +5522,6 @@ lado:0
 
 }
 
-
 return classificarJogada(
 numero,
 jogadaDeSnapshot(p)
@@ -4556,13 +5529,8 @@ jogadaDeSnapshot(p)
 
 }
 
-
 /* ============================================================
-   PENDENTES — 7 SNAPSHOTS
-
-   IMPORTANTE:
-   SE UMA LINHA ESTIVER EM G1, NÃO TROCA O SNAPSHOT DELA.
-   AS OUTRAS LINHAS CONTINUAM NORMALMENTE.
+   PENDENTES
 ============================================================ */
 
 function garantirPendentes(
@@ -4572,7 +5540,6 @@ auto
 
 const sig=
 assinatura();
-
 
 if(
 !estado.freezes.AUTO &&
@@ -4586,7 +5553,6 @@ estado.pendentes.AUTO=
 snapshot(auto);
 
 }
-
 
 RX_LIST.forEach(rx=>{
 
@@ -4605,7 +5571,6 @@ seis.normal[rx]
 
 }
 
-
 if(
 !estado.freezes.DINAMICO[rx] &&
 (
@@ -4623,47 +5588,12 @@ seis.dinamico[rx]
 
 });
 
-
 salvarEstado();
 
 }
 
-
 /* ============================================================
-   VALIDAÇÃO G1 INDEPENDENTE POR LINHA
-
-   REGRA:
-   ------------------------------------------------------------
-   1) GREEN PRIMEIRA:
-      GRAVA G
-
-   2) PRIMEIRO ERRO:
-      NÃO GRAVA LOSS
-      CRIA UM ÚNICO SLOT AGUARDANDO G1
-      CONGELA EXATAMENTE A JOGADA DA LINHA
-
-   3) PRÓXIMO RESULTADO:
-      USA EXATAMENTE A JOGADA CONGELADA
-
-      ACERTO:
-      O MESMO SLOT VIRA G1
-
-      ERRO:
-      O MESMO SLOT VIRA LOSS
-
-   NUNCA EXISTE:
-   L -> G1
-
-   EXISTE:
-   G
-
-   OU:
-
-   ... -> G1
-
-   OU:
-
-   ... -> L
+   G1
 ============================================================ */
 
 function avaliarLinhaComG1(
@@ -4677,11 +5607,6 @@ sig
 if(!Array.isArray(lista))
 lista=[];
 
-
-/* ============================================================
-   LINHA JÁ ESTÁ AGUARDANDO G1
-============================================================ */
-
 if(freeze){
 
 const r=
@@ -4690,9 +5615,7 @@ numero,
 freeze
 );
 
-
 let indicePendente=-1;
-
 
 for(
 let i=lista.length-1;
@@ -4711,7 +5634,6 @@ break;
 }
 
 }
-
 
 const finalizado={
 
@@ -4759,7 +5681,6 @@ Date.now()
 
 };
 
-
 if(indicePendente>=0){
 
 lista[indicePendente]=
@@ -4777,7 +5698,6 @@ finalizado
 
 }
 
-
 return {
 
 lista:
@@ -4792,11 +5712,6 @@ pendente:null
 };
 
 }
-
-
-/* ============================================================
-   SEM SNAPSHOT VÁLIDO
-============================================================ */
 
 if(
 !p ||
@@ -4825,7 +5740,6 @@ hora:Date.now()
 
 });
 
-
 return {
 
 lista:
@@ -4841,21 +5755,11 @@ pendente:null
 
 }
 
-
-/* ============================================================
-   PRIMEIRA ENTRADA
-============================================================ */
-
 const r=
 classificarSnapshot(
 numero,
 p
 );
-
-
-/* ============================================================
-   GREEN DE PRIMEIRA
-============================================================ */
 
 if(r.green){
 
@@ -4881,7 +5785,6 @@ hora:Date.now()
 
 });
 
-
 return {
 
 lista:
@@ -4896,15 +5799,6 @@ pendente:null
 };
 
 }
-
-
-/* ============================================================
-   PRIMEIRO ERRO
-
-   NÃO É LOSS.
-   FICA AGUARDANDO G1.
-   A JOGADA DA LINHA É CONGELADA.
-============================================================ */
 
 lista.push({
 
@@ -4932,7 +5826,6 @@ hora:Date.now()
 
 });
 
-
 return {
 
 lista:
@@ -4951,9 +5844,8 @@ pendente:null
 
 }
 
-
 /* ============================================================
-   AVALIA AS 7 LINHAS INDEPENDENTEMENTE
+   AVALIA 7 LINHAS
 ============================================================ */
 
 function avaliarPendentes(
@@ -4962,11 +5854,6 @@ numero
 
 const sig=
 assinatura();
-
-
-/* ============================================================
-   AUTO
-============================================================ */
 
 const autoResultado=
 avaliarLinhaComG1(
@@ -4983,7 +5870,6 @@ sig
 
 );
 
-
 estado.timelines.AUTO=
 autoResultado.lista;
 
@@ -4993,13 +5879,7 @@ autoResultado.freeze;
 estado.pendentes.AUTO=
 autoResultado.pendente;
 
-
-/* ============================================================
-   NORMAL / DINÂMICO
-============================================================ */
-
 RX_LIST.forEach(rx=>{
-
 
 const normalResultado=
 avaliarLinhaComG1(
@@ -5016,7 +5896,6 @@ sig
 
 );
 
-
 estado.timelines.NORMAL[rx]=
 normalResultado.lista;
 
@@ -5025,8 +5904,6 @@ normalResultado.freeze;
 
 estado.pendentes.NORMAL[rx]=
 normalResultado.pendente;
-
-
 
 const dinamicoResultado=
 avaliarLinhaComG1(
@@ -5043,7 +5920,6 @@ sig
 
 );
 
-
 estado.timelines.DINAMICO[rx]=
 dinamicoResultado.lista;
 
@@ -5055,14 +5931,12 @@ dinamicoResultado.pendente;
 
 });
 
-
 salvarEstado();
 
 }
 
-
 /* ============================================================
-   ENCONTRA BATIDA DO MOTOR DINÂMICO
+   OFFSET DINÂMICO
 ============================================================ */
 
 function encontrarBatidaGlobal(
@@ -5078,7 +5952,6 @@ if(
 )
 return null;
 
-
 const blocos=[
 
 ...(config.jogada.blocos2||[]),
@@ -5086,9 +5959,7 @@ const blocos=[
 
 ];
 
-
 let melhor=null;
-
 
 for(const bloco of blocos){
 
@@ -5097,19 +5968,16 @@ if(
 )
 continue;
 
-
 const delta=
 deltaRoda(
 bloco.centro,
 numero
 );
 
-
 if(
 Math.abs(delta)>bloco.qtd
 )
 continue;
-
 
 const candidato={
 
@@ -5125,7 +5993,6 @@ bloco.qtd
 
 };
 
-
 if(
 !melhor ||
 Math.abs(delta)<
@@ -5135,15 +6002,9 @@ melhor=candidato;
 
 }
 
-
 return melhor;
 
 }
-
-
-/* ============================================================
-   MELHOR DINÂMICO
-============================================================ */
 
 function melhorDinamico(
 seis
@@ -5160,7 +6021,6 @@ estado.manualRX
 
 }
 
-
 const candidatos=
 RX_LIST
 .map(rx=>
@@ -5171,10 +6031,8 @@ x &&
 x.valido
 );
 
-
 if(!candidatos.length)
 return null;
-
 
 candidatos.sort(
 (a,b)=>
@@ -5191,15 +6049,9 @@ b.similaridade-
 a.similaridade
 );
 
-
 return candidatos[0];
 
 }
-
-
-/* ============================================================
-   ATUALIZA OFFSET
-============================================================ */
 
 function atualizarOffsetGlobal(
 numero,
@@ -5213,17 +6065,14 @@ if(
 )
 return;
 
-
 const batida=
 encontrarBatidaGlobal(
 numero,
 configDinamica
 );
 
-
 if(!batida)
 return;
-
 
 offsetCentroAtual=
 Math.max(
@@ -5234,11 +6083,9 @@ batida.delta
 )
 );
 
-
 salvarOffsetCentro();
 
 }
-
 
 /* ============================================================
    COPIA JOGADA
@@ -5255,7 +6102,6 @@ if(
 !config.jogada.valido
 )
 return null;
-
 
 return {
 
@@ -5307,7 +6153,6 @@ numeros:b.numeros.slice()
 
 }
 
-
 /* ============================================================
    VISUAL G1
 ============================================================ */
@@ -5319,7 +6164,6 @@ estado.modo==="AUTO"
 )
 return "AUTO";
 
-
 return (
 estado.motorManual+
 "_"+
@@ -5327,7 +6171,6 @@ estado.manualRX
 );
 
 }
-
 
 function ultimoVisualEsperaG1(){
 
@@ -5346,7 +6189,6 @@ ultimo.fase==="ESPERA_G1"
 
 }
 
-
 /* ============================================================
    INSERIR NÚMERO
 ============================================================ */
@@ -5358,18 +6200,21 @@ numero
 const baseAntes=
 historico.slice(-20);
 
+const baseBacktestAntes=
+historicoCompleto.slice(
+-MAX_HISTORICO_BACKTEST
+);
 
 const seisAntes=
 calcularSeis(
-baseAntes
+baseAntes,
+baseBacktestAntes
 );
-
 
 const autoAntes=
 escolherAuto(
 seisAntes
 );
-
 
 const ativaAntes=
 configAtiva(
@@ -5377,48 +6222,42 @@ seisAntes,
 autoAntes
 );
 
-
 const configAntes=
 jogadaCongelada ||
 ativaAntes;
-
 
 const dinamicaAntes=
 melhorDinamico(
 seisAntes
 );
 
-
 const eraG1=
 ultimoVisualEsperaG1();
-
 
 avaliarPendentes(
 numero
 );
-
 
 atualizarOffsetGlobal(
 numero,
 dinamicaAntes
 );
 
-
-historico.push(
+historicoCompleto.push(
 numero
 );
 
+historicoCompleto=
+historicoCompleto.slice(
+-MAX_HISTORICO_BACKTEST
+);
 
 historico=
-historico.slice(-20);
-
+historicoCompleto.slice(
+-MAX_HISTORICO
+);
 
 salvarHistorico();
-
-
-/* ============================================================
-   VISUAL PRINCIPAL — G1
-============================================================ */
 
 if(eraG1){
 
@@ -5427,13 +6266,11 @@ duplasVisual[
 duplasVisual.length-1
 ];
 
-
 ultima.g1=
 numero;
 
 ultima.fase=
 "FINALIZADO";
-
 
 if(
 jogadaCongelada &&
@@ -5446,12 +6283,8 @@ numero,
 jogadaCongelada.jogada
 );
 
-
 ultima.g1Green=
 r.green;
-
-
-/* RESULTADO FINAL DA JOGADA */
 
 ultima.green=
 r.green;
@@ -5464,20 +6297,15 @@ ultima.green=null;
 
 }
 
-
 jogadaCongelada=null;
-
 
 salvarJogadaCongelada();
 
 salvarDuplasVisual();
 
-
 }else{
 
-
 let resultadoAtivo=null;
-
 
 if(
 configAntes &&
@@ -5492,7 +6320,6 @@ configAntes.jogada
 );
 
 }
-
 
 const entrada={
 
@@ -5539,15 +6366,12 @@ configAntes
 
 };
 
-
 duplasVisual.push(
 entrada
 );
 
-
 duplasVisual=
 duplasVisual.slice(-14);
-
 
 if(
 resultadoAtivo &&
@@ -5565,18 +6389,15 @@ jogadaCongelada=null;
 
 }
 
-
 salvarJogadaCongelada();
 
 salvarDuplasVisual();
 
 }
 
-
 render();
 
 }
-
 
 /* ============================================================
    HISTÓRICO MANUAL
@@ -5594,10 +6415,9 @@ return [];
 
 return encontrados
 .map(Number)
-.slice(-20);
+.slice(-MAX_HISTORICO_BACKTEST);
 
 }
-
 
 function resetarEstadoAnalise(){
 
@@ -5616,7 +6436,6 @@ jogadaCongelada=null;
 
 offsetCentroAtual=0;
 
-
 salvarOffsetCentro();
 
 salvarJogadaCongelada();
@@ -5627,7 +6446,6 @@ salvarEstado();
 
 }
 
-
 function inserirHistorico(){
 
 const campo=
@@ -5635,34 +6453,33 @@ document.getElementById(
 "entradaHistorico"
 );
 
-
 const numeros=
 extrairNumeros(
 campo.value
 );
 
-
 if(!numeros.length)
 return;
 
+historicoCompleto=
+numeros.slice(
+-MAX_HISTORICO_BACKTEST
+);
 
 historico=
-numeros.slice(-20);
-
+historicoCompleto.slice(
+-MAX_HISTORICO
+);
 
 resetarEstadoAnalise();
 
-
 salvarHistorico();
 
-
 campo.value="";
-
 
 render();
 
 }
-
 
 /* ============================================================
    APAGAR
@@ -5670,23 +6487,23 @@ render();
 
 function apagarUltimo(){
 
-if(!historico.length)
+if(!historicoCompleto.length)
 return;
 
+historicoCompleto.pop();
 
-historico.pop();
-
+historico=
+historicoCompleto.slice(
+-MAX_HISTORICO
+);
 
 resetarEstadoAnalise();
 
-
 salvarHistorico();
-
 
 render();
 
 }
-
 
 function apagarTudo(){
 
@@ -5697,27 +6514,23 @@ if(
 )
 return;
 
-
 historico=[];
 
+historicoCompleto=[];
 
 resetarEstadoAnalise();
 
-
 salvarHistorico();
-
 
 render();
 
 }
-
 
 /* ============================================================
    INTERFACE
 ============================================================ */
 
 document.body.innerHTML="";
-
 
 document.body.style.cssText=
 
@@ -5726,24 +6539,18 @@ document.body.style.cssText=
 "color:#fff;"+
 "font-family:Arial,sans-serif;";
 
-
 const app=
 document.createElement(
 "div"
 );
 
-
 app.innerHTML=`
 
 <style>
 
-*{
-box-sizing:border-box
-}
+*{box-sizing:border-box}
 
-body{
-background:#101010
-}
+body{background:#101010}
 
 .app{
 max-width:900px;
@@ -5803,17 +6610,10 @@ border-radius:7px;
 padding:7px 10px
 }
 
-.btn.verde{
-background:#17643b
-}
+.btn.verde{background:#17643b}
+.btn.red{background:#762832}
 
-.btn.red{
-background:#762832
-}
-
-.seletorGrupo{
-margin-top:7px
-}
+.seletorGrupo{margin-top:7px}
 
 .seletorTitulo{
 font-size:8px;
@@ -5870,9 +6670,7 @@ color:#777;
 font-weight:900
 }
 
-.card strong{
-font-size:13px
-}
+.card strong{font-size:13px}
 
 .origemAuto{
 margin-top:6px;
@@ -5884,6 +6682,27 @@ font-size:9px;
 font-weight:900;
 text-align:center;
 color:#00e5ff
+}
+
+.contagemBox{
+margin-top:6px;
+padding:7px;
+background:#111;
+border:1px solid #555;
+border-radius:7px;
+font-size:8px;
+font-weight:900;
+text-align:center
+}
+
+.contagemBox.ativa{
+border-color:#00e676;
+color:#00e676
+}
+
+.contagemBox.espera{
+border-color:#ffc107;
+color:#ffc107
 }
 
 .trio{
@@ -5916,17 +6735,9 @@ font-weight:900;
 background:#202020
 }
 
-.terminal.primeiro{
-border:1px solid #00e676
-}
-
-.terminal.segundo{
-border:1px solid #00b0ff
-}
-
-.terminal.terceiro{
-border:1px solid #ffc107
-}
+.terminal.primeiro{border:1px solid #00e676}
+.terminal.segundo{border:1px solid #00b0ff}
+.terminal.terceiro{border:1px solid #ffc107}
 
 .terminal small{
 display:block;
@@ -5976,18 +6787,9 @@ font-weight:900;
 color:#fff
 }
 
-.gl.green{
-background:#00994d
-}
-
-.gl.loss{
-background:#c62828
-}
-
-.gl.g1{
-background:#ffc107;
-color:#111
-}
+.gl.green{background:#00994d}
+.gl.loss{background:#c62828}
+.gl.g1{background:#ffc107;color:#111}
 
 .gl.wait{
 background:#4a3510;
@@ -6007,9 +6809,7 @@ font-size:8px;
 font-weight:900
 }
 
-.taxaTL{
-text-align:right
-}
+.taxaTL{text-align:right}
 
 .duplas14{
 display:grid;
@@ -6140,9 +6940,7 @@ padding:6px;
 text-align:center
 }
 
-.duziaCard.forte{
-border-color:#00e676
-}
+.duziaCard.forte{border-color:#00e676}
 
 .duziaCard small{
 display:block;
@@ -6151,9 +6949,7 @@ color:#888;
 font-weight:900
 }
 
-.duziaCard strong{
-font-size:14px
-}
+.duziaCard strong{font-size:14px}
 
 .duziaCard span{
 display:block;
@@ -6211,9 +7007,7 @@ padding:7px;
 text-align:center
 }
 
-.bloco.um{
-border-color:#ffc107
-}
+.bloco.um{border-color:#ffc107}
 
 .bloco small{
 font-size:7px;
@@ -6247,9 +7041,7 @@ border-radius:6px;
 color:#fff
 }
 
-.zero{
-grid-column:span 6
-}
+.zero{grid-column:span 6}
 
 .status{
 font-size:9px;
@@ -6276,17 +7068,15 @@ grid-template-columns:70px 1fr 36px
 
 </style>
 
-
 <div class="app">
 
-<h2>ANÁLISE BETA</h2>
-
+<h2>ANÁLISE ALPHA</h2>
 
 <div class="painel">
 
 <textarea
 id="entradaHistorico"
-placeholder="Cole o histórico — últimos 20"
+placeholder="Cole o histórico — até 200 para backtest e pós-gatilho"
 ></textarea>
 
 <div class="botoes">
@@ -6319,7 +7109,6 @@ PRONTO
 
 </div>
 
-
 <div class="painel">
 
 <div class="seletorGrupo">
@@ -6340,11 +7129,10 @@ AUTO
 
 </div>
 
-
 <div class="seletorGrupo">
 
 <div class="seletorTitulo">
-NORMAL
+NORMAL • CONTAGEM DE CARTAS / PÓS-GATILHO
 </div>
 
 <div class="modos">
@@ -6352,25 +7140,24 @@ NORMAL
 <button
 id="btnN4"
 class="modo">
-RX4
+C4
 </button>
 
 <button
 id="btnN5"
 class="modo">
-RX5
+C5
 </button>
 
 <button
 id="btnN6"
 class="modo">
-RX6
+C6
 </button>
 
 </div>
 
 </div>
-
 
 <div class="seletorGrupo">
 
@@ -6402,31 +7189,32 @@ RX6
 
 </div>
 
-
 <div
 id="origemAuto"
 class="origemAuto">
 AUTO
 </div>
 
+<div
+id="contagemStatus"
+class="contagemBox">
+CONTAGEM DE CARTAS • AGUARDANDO
+</div>
 
 <div
 id="resumo"
 class="resumo">
 </div>
 
-
 <div
 id="trio"
 class="trio">
 </div>
 
-
 <div
 id="duzias"
 class="duziasBox">
 </div>
-
 
 <div class="timelineSecao">
 
@@ -6441,11 +7229,10 @@ class="timelineRow">
 
 </div>
 
-
 <div class="timelineSecao">
 
 <div class="timelineTituloGrupo">
-MOTOR NORMAL
+MOTOR NORMAL • PÓS-GATILHO
 </div>
 
 <div
@@ -6464,7 +7251,6 @@ class="timelineRow">
 </div>
 
 </div>
-
 
 <div class="timelineSecao">
 
@@ -6491,7 +7277,6 @@ class="timelineRow">
 
 </div>
 
-
 <div class="painel">
 
 <div class="titulo">
@@ -6505,7 +7290,6 @@ class="duplas14">
 
 </div>
 
-
 <div class="painel">
 
 <div class="titulo">
@@ -6516,7 +7300,6 @@ JOGADA
 </div>
 
 </div>
-
 
 <div class="painel">
 
@@ -6535,11 +7318,9 @@ class="teclado">
 
 `;
 
-
 document.body.appendChild(
 app
 );
-
 
 /* ============================================================
    BOTÕES
@@ -6550,18 +7331,15 @@ document
 .onclick=
 inserirHistorico;
 
-
 document
 .getElementById("apagar")
 .onclick=
 apagarUltimo;
 
-
 document
 .getElementById("limpar")
 .onclick=
 apagarTudo;
-
 
 function selecionarAuto(){
 
@@ -6576,7 +7354,6 @@ salvarEstado();
 render();
 
 }
-
 
 function selecionarManual(
 motor,
@@ -6599,12 +7376,10 @@ render();
 
 }
 
-
 document
 .getElementById("btnAUTO")
 .onclick=
 selecionarAuto;
-
 
 RX_LIST.forEach(rx=>{
 
@@ -6621,7 +7396,6 @@ rx
 
 };
 
-
 document
 .getElementById(
 "btnD"+rx
@@ -6637,7 +7411,6 @@ rx
 
 });
 
-
 /* ============================================================
    TECLADO
 ============================================================ */
@@ -6646,7 +7419,6 @@ const teclado=
 document.getElementById(
 "teclado"
 );
-
 
 for(
 let n=1;
@@ -6674,7 +7446,6 @@ teclado.appendChild(b);
 
 }
 
-
 const zero=
 document.createElement(
 "button"
@@ -6695,23 +7466,13 @@ teclado.appendChild(
 zero
 );
 
-
 /* ============================================================
    TIMELINE VISUAL
-
-   A TIMELINE JÁ RECEBE O CICLO CONSOLIDADO:
-   - G
-   - ESPERA G1
-   - G1
-   - L
-
-   O PRIMEIRO ERRO NUNCA APARECE COMO LOSS.
 ============================================================ */
 
 function prepararTimelineVisual(lista){
 
 const saida=[];
-
 
 (lista||[]).forEach(x=>{
 
@@ -6726,7 +7487,6 @@ return;
 
 }
 
-
 if(
 x.aguardandoG1===true ||
 x.fase==="ESPERA_G1"
@@ -6740,7 +7500,6 @@ resultado:x.resultado
 return;
 
 }
-
 
 if(
 x.fase==="G1" &&
@@ -6760,7 +7519,6 @@ return;
 
 }
 
-
 if(x.green===true){
 
 saida.push({
@@ -6771,7 +7529,6 @@ resultado:x.resultado
 return;
 
 }
-
 
 saida.push({
 tipo:"LOSS",
@@ -6784,11 +7541,9 @@ x.resultadoG1!==null
 
 });
 
-
 return saida;
 
 }
-
 
 function taxaTimelineVisual(lista,qtd=20){
 
@@ -6817,7 +7572,6 @@ visual.length*
 
 }
 
-
 function renderTimeline(
 id,
 nome,
@@ -6830,13 +7584,11 @@ lista||[]
 )
 .slice(-20);
 
-
 const taxa=
 taxaTimelineVisual(
 lista||[],
 20
 );
-
 
 document
 .getElementById(id)
@@ -6858,7 +7610,6 @@ return (
 
 }
 
-
 if(x.tipo==="WAIT"){
 
 return (
@@ -6866,7 +7617,6 @@ return (
 );
 
 }
-
 
 if(x.tipo==="GREEN"){
 
@@ -6876,7 +7626,6 @@ return (
 
 }
 
-
 if(x.tipo==="G1"){
 
 return (
@@ -6884,7 +7633,6 @@ return (
 );
 
 }
-
 
 return (
 '<span class="gl loss">L</span>'
@@ -6909,7 +7657,6 @@ x.tipo!=="WAIT"
 
 }
 
-
 /* ============================================================
    TERMINAIS
 ============================================================ */
@@ -6922,7 +7669,6 @@ const itens=
 momento.terminais
 .ranking
 .slice(0,3);
-
 
 document
 .getElementById(
@@ -6965,7 +7711,6 @@ x.score.toFixed(1)+
 
 }
 
-
 /* ============================================================
    DÚZIAS
 ============================================================ */
@@ -6978,7 +7723,6 @@ const ranking=
 momento
 .duziasFisicas
 .ranking;
-
 
 document
 .getElementById(
@@ -7023,7 +7767,6 @@ x.contagem+
 
 }
 
-
 /* ============================================================
    REGIÕES VISUAIS
 ============================================================ */
@@ -7042,7 +7785,6 @@ return ordem[nome]!==undefined
 :99;
 
 }
-
 
 function htmlBlocoJogada(
 b,
@@ -7077,7 +7819,6 @@ b.numeros.join(" • ")+
 
 }
 
-
 function renderJogada(
 config,
 congelada=false
@@ -7088,7 +7829,6 @@ document.getElementById(
 "jogada"
 );
 
-
 if(
 !config ||
 !config.valido ||
@@ -7097,15 +7837,13 @@ if(
 ){
 
 area.innerHTML=
-'<div style="color:#777">AGUARDANDO DADOS</div>';
+'<div style="color:#777">AGUARDANDO GATILHO HISTÓRICO</div>';
 
 return;
 
 }
 
-
 const todos=[];
-
 
 config.jogada
 .blocos2
@@ -7123,7 +7861,6 @@ regiao(b.centro)||
 
 });
 
-
 config.jogada
 .blocos1
 .forEach(b=>{
@@ -7139,7 +7876,6 @@ regiao(b.centro)||
 });
 
 });
-
 
 todos.sort(
 (a,b)=>{
@@ -7164,9 +7900,7 @@ indice(b.bloco.centro)
 
 });
 
-
 const grupos=[];
-
 
 todos.forEach(item=>{
 
@@ -7174,7 +7908,6 @@ let grupo=
 grupos.find(
 g=>g.nome===item.regiao
 );
-
 
 if(!grupo){
 
@@ -7187,11 +7920,33 @@ grupos.push(grupo);
 
 }
 
-
 grupo.itens.push(item);
 
 });
 
+let infoPos="";
+
+if(
+config.motor==="NORMAL" &&
+config.posGatilho
+){
+
+const sinal=
+config.posGatilho.contagemAtual>0
+?"+"
+:"";
+
+infoPos=
+" • CONTAGEM "+
+sinal+
+config.posGatilho.contagemAtual+
+" • OCORRÊNCIAS "+
+config.posGatilho.ocorrencias+
+" • FORÇA "+
+config.posGatilho.forca.toFixed(0)+
+"% • COBERTURA 25/37";
+
+}
 
 area.innerHTML=
 
@@ -7210,11 +7965,16 @@ congelada
 (
 config.motor==="DINAMICO"
 ?"DINÂMICO"
-:"NORMAL"
+:"PÓS-GATILHO"
 )+
 
-' • RX'+
-config.rx+
+(
+config.motor==="DINAMICO"
+?" • RX"+config.rx
+:""
+)+
+
+infoPos+
 
 '</div>'+
 
@@ -7248,12 +8008,8 @@ item.um
 
 }
 
-
 /* ============================================================
    ÚLTIMAS 14
-
-   MESMA REGRA:
-   PRIMEIRO ERRO NÃO É LOSS.
 ============================================================ */
 
 function renderUltimos14(){
@@ -7263,18 +8019,14 @@ document.getElementById(
 "ultimos14"
 );
 
-
 const lista=
 duplasVisual.slice(-14);
-
 
 area.innerHTML=
 lista.map(d=>{
 
-
 let classe="loss";
 let texto="L";
-
 
 if(d.semJogada===true){
 
@@ -7316,7 +8068,6 @@ classe="loss";
 texto="L";
 
 }
-
 
 return (
 
@@ -7360,7 +8111,6 @@ d.g1!==undefined
 
 }
 
-
 /* ============================================================
    TEXTO OFFSET
 ============================================================ */
@@ -7375,16 +8125,13 @@ if(
 )
 return "—";
 
-
 if(
 config.motor!=="DINAMICO"
 )
-return "NORMAL";
-
+return "PÓS-GATILHO";
 
 const o=
 config.offsetAplicado||0;
-
 
 if(o===-2)
 return "V2 ESQUERDA • TODOS -2";
@@ -7402,6 +8149,62 @@ return "ALVO";
 
 }
 
+/* ============================================================
+   STATUS CONTAGEM DE CARTAS / PÓS-GATILHO
+============================================================ */
+
+function renderStatusContagem(
+seis
+){
+
+const area=
+document.getElementById(
+"contagemStatus"
+);
+
+const analise=
+analisarPosGatilho(
+historicoCompleto
+);
+
+const sinal=
+analise.contagemAtual>0
+?"+"
+:"";
+
+if(!analise.valido){
+
+area.className=
+"contagemBox espera";
+
+area.textContent=
+
+"CONTAGEM ATUAL: "+
+sinal+
+analise.contagemAtual+
+" • OCORRÊNCIAS HISTÓRICAS: "+
+analise.ocorrencias+
+" • AGUARDANDO PÓS-GATILHO";
+
+return;
+
+}
+
+area.className=
+"contagemBox ativa";
+
+area.textContent=
+
+"CONTAGEM ATUAL: "+
+sinal+
+analise.contagemAtual+
+" • OCORRÊNCIAS HISTÓRICAS: "+
+analise.ocorrencias+
+" • FORÇA: "+
+analise.forca.toFixed(0)+
+"% • 5 ALVOS • 25 NÚMEROS ÚNICOS";
+
+}
 
 /* ============================================================
    RENDER
@@ -7409,49 +8212,52 @@ return "ALVO";
 
 function render(){
 
-historico=
-historico.slice(-20);
+historicoCompleto=
+historicoCompleto.slice(
+-MAX_HISTORICO_BACKTEST
+);
 
+historico=
+historicoCompleto.slice(
+-MAX_HISTORICO
+);
 
 salvarHistorico();
-
 
 const base=
 historico.slice(-20);
 
+const baseBacktest=
+historicoCompleto.slice(
+-MAX_HISTORICO_BACKTEST
+);
 
 const momento=
 analisarMomento(
 base
 );
 
-
 const seis=
 calcularSeis(
-base
+base,
+baseBacktest
 );
-
 
 const auto=
 escolherAuto(
 seis
 );
 
-
 garantirPendentes(
 seis,
 auto
 );
-
 
 const ativa=
 configAtiva(
 seis,
 auto
 );
-
-
-/* BOTÕES */
 
 [
 "btnAUTO",
@@ -7472,7 +8278,6 @@ document
 
 });
 
-
 if(
 estado.modo==="AUTO"
 ){
@@ -7492,7 +8297,6 @@ estado.motorManual==="NORMAL"
 ?"btnN"+estado.manualRX
 :"btnD"+estado.manualRX;
 
-
 document
 .getElementById(id)
 .classList.add(
@@ -7501,8 +8305,9 @@ document
 
 }
 
-
-/* ORIGEM AUTO */
+/* ============================================================
+   AUTO
+============================================================ */
 
 document
 .getElementById(
@@ -7517,22 +8322,33 @@ auto
 (
 auto.motor==="DINAMICO"
 ?"DINÂMICO"
-:"NORMAL"
+:"PÓS-GATILHO"
 )+
-" • RX"+
-auto.rx
+(
+auto.motor==="DINAMICO"
+?" • RX"+auto.rx
+:""
+)
 )
 
 :"AUTO • AGUARDANDO";
 
+/* ============================================================
+   CONTAGEM
+============================================================ */
 
-/* RESUMO */
+renderStatusContagem(
+seis
+);
+
+/* ============================================================
+   RESUMO
+============================================================ */
 
 const liveAuto=
 statsTimeline(
 estado.timelines.AUTO
 );
-
 
 document
 .getElementById(
@@ -7584,8 +8400,9 @@ liveAuto.total
 '</strong>'+
 '</div>';
 
-
-/* TERMINAIS / DÚZIAS */
+/* ============================================================
+   TERMINAIS / DÚZIAS
+============================================================ */
 
 renderTrio(
 momento
@@ -7595,9 +8412,8 @@ renderDuzias(
 momento
 );
 
-
 /* ============================================================
-   7 LINHAS INDEPENDENTES
+   TIMELINES
 ============================================================ */
 
 renderTimeline(
@@ -7606,25 +8422,23 @@ renderTimeline(
 estado.timelines.AUTO
 );
 
-
 renderTimeline(
 "timelineN4",
-"RX4",
+"C4",
 estado.timelines.NORMAL[4]
 );
 
 renderTimeline(
 "timelineN5",
-"RX5",
+"C5",
 estado.timelines.NORMAL[5]
 );
 
 renderTimeline(
 "timelineN6",
-"RX6",
+"C6",
 estado.timelines.NORMAL[6]
 );
-
 
 renderTimeline(
 "timelineD4",
@@ -7644,30 +8458,39 @@ renderTimeline(
 estado.timelines.DINAMICO[6]
 );
 
-
-/* VISUAL */
+/* ============================================================
+   VISUAL
+============================================================ */
 
 renderUltimos14();
-
 
 const configExibida=
 jogadaCongelada ||
 ativa;
-
 
 renderJogada(
 configExibida,
 !!jogadaCongelada
 );
 
-
-/* STATUS */
+/* ============================================================
+   STATUS
+============================================================ */
 
 const df=
 momento
 .duziasFisicas
 .dominante;
 
+const pos=
+analisarPosGatilho(
+baseBacktest
+);
+
+const sinalPos=
+pos.contagemAtual>0
+?"+"
+:"";
 
 document
 .getElementById(
@@ -7676,7 +8499,14 @@ document
 .textContent=
 
 base.length+
-"/20 • MOMENTO 14 • 20×14 ATIVO"+
+"/20 • HISTÓRICO "+
+baseBacktest.length+
+"/200 • ALPHA • CONTAGEM "+
+sinalPos+
+pos.contagemAtual+
+" • OCORRÊNCIAS "+
+pos.ocorrencias+
+" • BACKTEST WALK-FORWARD"+
 
 (
 df
@@ -7698,7 +8528,6 @@ jogadaCongelada
 );
 
 }
-
 
 /* ============================================================
    START
