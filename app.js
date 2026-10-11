@@ -3,37 +3,45 @@
 "use strict";
 
 /*
- ANÁLISE BETA V4.5
+ ANÁLISE BETA V4.6
 
- ALTERAÇÕES DESTA VERSÃO:
- - Retirado RESULTADOS DA JOGADA
- - LINHAS DO TEMPO acima da jogada
- - JOGADA ATUAL acima do teclado
- - Últimas 14 jogadas compactas
- - WIN, GALE e LOSS na horizontal
- - Sem quadro duplicado de centros
+ ORDEM DA TELA:
+ 1. INSERIR HISTÓRICO
+ 2. AUTO • 12 CANDIDATOS
+ 3. LINHAS DO TEMPO
+ 4. JOGADA ATUAL
+ 5. ÚLTIMAS 14 JOGADAS
+ 6. TECLADO DE RESULTADOS
+ 7. JOGADOR VIRTUAL
+
+ 6 CENTROS:
+ 5 CENTROS COM 2 VIZINHOS
+ 1 CENTRO COM 1 VIZINHO
+
+ 28 NÚMEROS COBERTOS
+ SEM SOBREPOSIÇÃO
 
  MANTIDOS:
  - 12 motores
  - Ranking AUTO
  - Ranking GEOMETRIA
- - Desempenho por posição
  - AUTO fixo 1º a 4º
  - AUTO 2º ⇄ 3º
  - AUTO MELHORES 2
  - AUTO UNIÃO
  - G1 normal
  - GALE 2ª RODADA
- - Ajuste fino
+ - G1 AJUSTE FINO
  - Jogador Virtual
- - Percentuais e estatísticas
+ - WIN / LOSS
+ - Histórico compacto
  - Persistência
- - 6 centros / 28 números
 */
 
-const KEY="ANALISE_BETA_V45";
+const KEY="ANALISE_BETA_V46";
 
 const OLD=[
+"ANALISE_BETA_V45",
 "ANALISE_BETA_V44",
 "ANALISE_BETA_V43",
 "ANALISE_BETA_V42",
@@ -48,7 +56,9 @@ const W=[
 7,28,12,35,3,26,0
 ];
 
-const INDEX=new Map(W.map((n,i)=>[n,i]));
+const INDEX=new Map(
+W.map((n,i)=>[n,i])
+);
 
 const MOTORS=[
 "NORMAL",
@@ -100,13 +110,19 @@ numbers:[0]
 ];
 
 const $=id=>document.getElementById(id);
+
 const mod=n=>(n%37+37)%37;
+
 const idx=n=>INDEX.get(n)??-1;
 
 function dist(a,b){
-const x=idx(a),y=idx(b);
+const x=idx(a);
+const y=idx(b);
+
 if(x<0||y<0)return 99;
+
 const d=Math.abs(x-y);
+
 return Math.min(d,37-d);
 }
 
@@ -150,45 +166,61 @@ function matrix(f){
 return Object.fromEntries(
 MOTORS.map(m=>[
 m,
-Object.fromEntries(RX.map(r=>[r,f()]))
+Object.fromEntries(
+RX.map(r=>[r,f()])
+)
 ])
 );
 }
 
+/* ESTADO */
+
 function fresh(){
 return {
 history:[],
+
 rank:3,
 alternate:false,
 nextRank:3,
+
 best2:false,
 bestTurn:0,
+
 union:false,
+
 fineG1:false,
 galeSecond:false,
+
 mode:"AUTO",
 manual:"NORMAL",
 rx:4,
+
 seen:0,
+
 positionRecords:[],
 geometryRecords:[],
+
 lines:{
 AUTO:[],
 UNION:[],
 ...matrix(()=>[])
 },
+
 pending:{
 AUTO:null,
 UNION:null,
 ...matrix(()=>null)
 },
+
 frozen:{
 AUTO:null,
 UNION:null,
 ...matrix(()=>null)
 },
+
 cards:[],
 audit:null,
+
 openCandidates:false,
 openLines:false,
 openVirtual:true
@@ -215,19 +247,31 @@ if(!raw)return;
 const a=JSON.parse(raw);
 
 s.history=clean(a.history);
+
 s.rank=[1,2,3,4].includes(+a.rank)
 ?+a.rank:3;
+
 s.alternate=!!a.alternate;
+
 s.nextRank=[2,3].includes(+a.nextRank)
 ?+a.nextRank:3;
+
 s.best2=!!a.best2;
+
 s.bestTurn=+a.bestTurn===1?1:0;
+
 s.union=!!a.union;
+
 s.fineG1=!!a.fineG1;
+
 s.galeSecond=!!a.galeSecond;
+
 s.mode=a.mode||"AUTO";
+
 s.manual=a.manual||"NORMAL";
+
 s.rx=+a.rx||4;
+
 s.seen=+a.seen||0;
 
 s.positionRecords=
@@ -244,7 +288,8 @@ s.openVirtual=a.openVirtual??true;
 
 if(a.lines){
 for(const name of ["AUTO","UNION"]){
-s.lines[name]=Array.isArray(a.lines[name])
+s.lines[name]=
+Array.isArray(a.lines[name])
 ?a.lines[name].slice(-20):[];
 }
 
@@ -264,7 +309,8 @@ s.pending[name]=a.pending[name]||null;
 
 for(const m of MOTORS){
 for(const r of RX){
-s.pending[m][r]=a.pending[m]?.[r]||null;
+s.pending[m][r]=
+a.pending[m]?.[r]||null;
 }
 }
 }
@@ -276,12 +322,14 @@ s.frozen[name]=a.frozen[name]||null;
 
 for(const m of MOTORS){
 for(const r of RX){
-s.frozen[m][r]=a.frozen[m]?.[r]||null;
+s.frozen[m][r]=
+a.frozen[m]?.[r]||null;
 }
 }
 }
 
-s.cards=Array.isArray(a.cards)
+s.cards=
+Array.isArray(a.cards)
 ?a.cards.slice(-14):[];
 
 s.audit=a.audit||null;
@@ -293,7 +341,10 @@ console.warn("Erro ao carregar:",e);
 
 function save(){
 try{
-localStorage.setItem(KEY,JSON.stringify(s));
+localStorage.setItem(
+KEY,
+JSON.stringify(s)
+);
 }catch(e){
 console.warn("Erro ao salvar:",e);
 }
@@ -313,6 +364,7 @@ const wins=v.filter(x=>x.hit).length;
 
 function rate(n){
 const a=v.slice(-n);
+
 return a.length
 ?100*a.filter(x=>x.hit).length/a.length
 :0;
@@ -320,7 +372,11 @@ return a.length
 
 let consecutiveLosses=0;
 
-for(let i=v.length-1;i>=0&&!v[i].hit;i--){
+for(
+let i=v.length-1;
+i>=0&&!v[i].hit;
+i--
+){
 consecutiveLosses++;
 }
 
@@ -328,9 +384,14 @@ return {
 n:v.length,
 wins,
 losses:v.length-wins,
-rate:v.length?100*wins/v.length:null,
+
+rate:v.length
+?100*wins/v.length
+:null,
+
 r10:rate(10),
 r20:rate(20),
+
 consecutiveLosses
 };
 }
@@ -339,20 +400,30 @@ consecutiveLosses
 
 function heat(history,r){
 const v=new Float64Array(37);
-const decay={4:.78,5:.82,6:.86}[r];
+
+const decay={
+4:.78,
+5:.82,
+6:.86
+}[r];
+
 let weight=1;
 
 for(let i=history.length-1;i>=0;i--){
 for(let j=0;j<37;j++){
 const d=dist(history[i],W[j]);
+
 if(d<=4){
-v[j]+=[1,.72,.44,.22,.1][d]*weight;
+v[j]+=
+[1,.72,.44,.22,.1][d]*weight;
 }
 }
+
 weight*=decay;
 }
 
 const max=Math.max(.001,...v);
+
 return v.map(x=>x/max);
 }
 
@@ -371,7 +442,9 @@ for(let k=0;k<r;k++){
 score+=
 (dozen(history[i+k])===dozen(current[k])
 ?.7:0)
-+.3*(1-dist(history[i+k],current[k])/19);
++.3*(
+1-dist(history[i+k],current[k])/19
+);
 }
 
 samples.push({
@@ -382,12 +455,16 @@ index:i
 }
 
 samples.sort((a,b)=>
-b.score-a.score||b.index-a.index
+b.score-a.score||
+b.index-a.index
 );
 
 const chosen=samples.slice(
 0,
-Math.max(4,Math.ceil(samples.length*.3))
+Math.max(
+4,
+Math.ceil(samples.length*.3)
+)
 );
 
 const out=new Float64Array(37);
@@ -395,8 +472,10 @@ const out=new Float64Array(37);
 for(const x of chosen){
 for(let j=0;j<37;j++){
 const d=dist(x.n,W[j]);
+
 if(d<=3){
-out[j]+=[1,.7,.42,.18][d]*
+out[j]+=
+[1,.7,.42,.18][d]*
 (.4+.6*x.score);
 }
 }
@@ -406,9 +485,11 @@ const max=Math.max(.001,...out);
 
 return {
 values:out.map(x=>x/max),
+
 similarity:
-chosen.reduce((t,x)=>t+x.score,0)/
-Math.max(1,chosen.length)*100
+chosen.reduce(
+(t,x)=>t+x.score,0
+)/Math.max(1,chosen.length)*100
 };
 }
 
@@ -416,21 +497,29 @@ Math.max(1,chosen.length)*100
 
 function scores(history,m,r){
 const recent=heat(history,r);
-const rx=m.startsWith("RX")
-?rxMatch(history,r):null;
 
-if(m.startsWith("RX")&&!rx)return null;
+const rx=m.startsWith("RX")
+?rxMatch(history,r)
+:null;
+
+if(m.startsWith("RX")&&!rx){
+return null;
+}
 
 const out=new Float64Array(37);
 
 for(let j=0;j<37;j++){
 const n=W[j];
 const z=r-3;
+
 let near=0;
 
 for(const h of history){
 const d=dist(n,h);
-near+=d<=3?[1,.72,.4,.15][d]:0;
+
+near+=d<=3
+?[1,.72,.4,.15][d]
+:0;
 }
 
 let score=
@@ -439,15 +528,19 @@ recent[j]*.48+
 near/Math.max(1,history.length)*.6;
 
 if(m.startsWith("RX")){
-score=score*.72+rx.values[j]*.7;
+score=
+score*.72+
+rx.values[j]*.7;
 }
 
 if(m.includes("DINAMICO")){
 const a=history.slice(-r);
+
 let v=0;
 
 for(let i=0;i<a.length;i++){
 const d=dist(n,a[i]);
+
 v+=(i+1)/a.length*
 (d<=5?(6-d)/6:0);
 }
@@ -466,14 +559,23 @@ similarity:rx?.similarity||0
 
 /* GEOMETRIA */
 
-function makePlay(centers5,center3,score=0){
+function makePlay(
+centers5,
+center3,
+score=0
+){
 if(
 !Array.isArray(centers5)||
 centers5.length!==5||
 !W.includes(center3)||
 centers5.some(n=>!W.includes(n))||
-new Set([...centers5,center3]).size!==6
-)return null;
+new Set([
+...centers5,
+center3
+]).size!==6
+){
+return null;
+}
 
 const blocks=[
 ...centers5.map(c=>({
@@ -481,6 +583,7 @@ center:c,
 r:2,
 nums:neigh(c,2)
 })),
+
 {
 center:center3,
 r:1,
@@ -492,27 +595,33 @@ const numbers=new Set(
 blocks.flatMap(b=>b.nums)
 );
 
-if(numbers.size!==28)return null;
+if(numbers.size!==28){
+return null;
+}
 
 for(let i=0;i<37;i++){
 if(
 !numbers.has(W[i])&&
 numbers.has(W[mod(i-1)])&&
 numbers.has(W[mod(i+1)])
-)return null;
+){
+return null;
+}
 }
 
 return {
 valid:true,
+
 centers5:[...centers5],
 center3,
+
 blocks,
 numbers,
 score
 };
 }
 
-/* OTIMIZADOR */
+/* OTIMIZADOR GEOMÉTRICO */
 
 function optimize(weights,exact=false){
 const p5=new Float64Array(37);
@@ -522,13 +631,23 @@ for(let c=0;c<37;c++){
 for(let d=-2;d<=2;d++){
 const factor=exact
 ?1
-:d===0?1.22:Math.abs(d)===1?1.08:1;
-p5[c]+=weights[mod(c+d)]*factor;
+:d===0
+?1.22
+:Math.abs(d)===1
+?1.08
+:1;
+
+p5[c]+=
+weights[mod(c+d)]*factor;
 }
 
 for(let d=-1;d<=1;d++){
-const factor=exact?1:d===0?1.22:1;
-p3[c]+=weights[mod(c+d)]*factor;
+const factor=exact
+?1
+:d===0?1.22:1;
+
+p3[c]+=
+weights[mod(c+d)]*factor;
 }
 }
 
@@ -537,59 +656,89 @@ let best=null;
 for(let start=0;start<37;start++){
 for(let short=0;short<6;short++){
 const sizes=[5,5,5,5,5,5];
+
 sizes[short]=3;
+
 const memo=new Map();
 
 function solve(k,g){
 if(k===6){
-return g===9?{score:0,gaps:[]}:null;
+return g===9
+?{score:0,gaps:[]}
+:null;
 }
 
 const key=k+"|"+g;
-if(memo.has(key))return memo.get(key);
+
+if(memo.has(key)){
+return memo.get(key);
+}
 
 let used=0;
-for(let i=0;i<k;i++)used+=sizes[i];
+
+for(let i=0;i<k;i++){
+used+=sizes[i];
+}
 
 const center=mod(
-start+used+g+Math.floor(sizes[k]/2)
+start+
+used+
+g+
+Math.floor(sizes[k]/2)
 );
 
 const value=sizes[k]===3
-?p3[center]:p5[center];
+?p3[center]
+:p5[center];
 
 let winner=null;
 
 for(let gap=0;gap<=9-g;gap++){
 if(gap===1)continue;
 
-const next=solve(k+1,g+gap);
+const next=solve(
+k+1,
+g+gap
+);
+
 if(!next)continue;
 
 const score=value+next.score;
 
-if(!winner||score>winner.score){
+if(
+!winner||
+score>winner.score
+){
 winner={
 score,
-gaps:[gap,...next.gaps]
+gaps:[
+gap,
+...next.gaps
+]
 };
 }
 }
 
 memo.set(key,winner);
+
 return winner;
 }
 
 const result=solve(0,0);
+
 if(!result)continue;
 
 let cursor=start;
+
 const centers5=[];
 let center3=null;
 
 for(let k=0;k<6;k++){
 const center=W[
-mod(cursor+Math.floor(sizes[k]/2))
+mod(
+cursor+
+Math.floor(sizes[k]/2)
+)
 ];
 
 if(sizes[k]===3){
@@ -598,14 +747,21 @@ center3=center;
 centers5.push(center);
 }
 
-cursor+=sizes[k]+result.gaps[k];
+cursor+=
+sizes[k]+result.gaps[k];
 }
 
 const candidate=makePlay(
-centers5,center3,result.score
+centers5,
+center3,
+result.score
 );
 
-if(candidate&&(!best||candidate.score>best.score)){
+if(
+candidate&&
+(!best||
+candidate.score>best.score)
+){
 best=candidate;
 }
 }
@@ -624,16 +780,22 @@ function performance(records){
 const arr=[];
 
 for(let p=1;p<=12;p++){
-const items=records.filter(x=>x.position===p);
+const items=records.filter(x=>
+x.position===p
+);
+
 if(!items.length)continue;
 
-const wins=items.filter(x=>x.hit).length;
+const wins=items.filter(x=>
+x.hit
+).length;
 
 arr.push({
 position:p,
 total:items.length,
 wins,
-rate:100*wins/items.length
+rate:
+100*wins/items.length
 });
 }
 
@@ -645,23 +807,33 @@ a.position-b.position
 }
 
 function autoPerformance(){
-return performance(s.positionRecords);
+return performance(
+s.positionRecords
+);
 }
 
 function geoPerformance(){
-return performance(s.geometryRecords);
+return performance(
+s.geometryRecords
+);
 }
 
 function currentRank(){
 if(s.best2){
-const top=autoPerformance().slice(0,2);
+const top=
+autoPerformance().slice(0,2);
+
 return top[s.bestTurn]?.position??
-top[0]?.position??3;
-}
-return s.alternate?s.nextRank:s.rank;
+top[0]?.position??
+3;
 }
 
-/* RANKING DOS 12 MOTORES */
+return s.alternate
+?s.nextRank
+:s.rank;
+}
+
+/* 12 MOTORES */
 
 let cacheKey=null;
 let cache=null;
@@ -672,15 +844,26 @@ cache=null;
 }
 
 function calculate(){
-const key=s.history.join(",")+"|"+
-MOTORS.flatMap(m=>RX.map(r=>{
-const t=stats(s.lines[m][r]);
-return [
-t.n,t.r10,t.r20,t.consecutiveLosses
-].join(":");
-})).join("|");
+const key=
+s.history.join(",")+"|"+
+MOTORS.flatMap(m=>
+RX.map(r=>{
+const t=stats(
+s.lines[m][r]
+);
 
-if(cacheKey===key&&cache)return cache;
+return [
+t.n,
+t.r10,
+t.r20,
+t.consecutiveLosses
+].join(":");
+})
+).join("|");
+
+if(cacheKey===key&&cache){
+return cache;
+}
 
 const configs=matrix(()=>null);
 const ranking=[];
@@ -691,15 +874,25 @@ const minimum=m.startsWith("RX")
 ?Math.max(14,r*2+4)
 :Math.max(8,r+4);
 
-if(s.history.length<minimum)continue;
+if(s.history.length<minimum){
+continue;
+}
 
-const v=scores(s.history,m,r);
+const v=scores(
+s.history,
+m,
+r
+);
+
 if(!v)continue;
 
 const play=geometry(v.out);
+
 if(!play)continue;
 
-const t=stats(s.lines[m][r]);
+const t=stats(
+s.lines[m][r]
+);
 
 const autoScore=
 play.score+
@@ -718,6 +911,7 @@ similarity:v.similarity
 };
 
 configs[m][r]=c;
+
 ranking.push(c);
 }
 }
@@ -733,8 +927,8 @@ ranking.forEach((c,i)=>{
 c.rank=i+1;
 });
 
-const geometryRanking=[...ranking].sort(
-(a,b)=>
+const geometryRanking=
+[...ranking].sort((a,b)=>
 b.play.score-a.play.score||
 a.rank-b.rank
 );
@@ -744,17 +938,28 @@ c.geometryRank=i+1;
 });
 
 cacheKey=key;
-cache={configs,ranking,geometryRanking};
+
+cache={
+configs,
+ranking,
+geometryRanking
+};
+
 return cache;
 }
 
 /* AUTO UNIÃO */
 
 function buildUnion(d){
-if(!d.ranking.length)return null;
+if(!d.ranking.length){
+return null;
+}
 
-const autoTop=autoPerformance()[0];
-const geoTop=geoPerformance()[0];
+const autoTop=
+autoPerformance()[0];
+
+const geoTop=
+geoPerformance()[0];
 
 const a=d.ranking[
 (autoTop?.position||1)-1
@@ -773,28 +978,43 @@ const intersection=new Set(
 [...A].filter(n=>B.has(n))
 );
 
-const all=new Set([...A,...B]);
-const weights=new Float64Array(37);
+const all=new Set([
+...A,
+...B
+]);
+
+const weights=
+new Float64Array(37);
 
 for(let i=0;i<37;i++){
 const n=W[i];
+
 weights[i]=all.has(n)
-?1000+(intersection.has(n)?1:0)
+?1000+(
+intersection.has(n)?1:0
+)
 :0;
 }
 
-const play=optimize(weights,true);
+const play=optimize(
+weights,
+true
+);
+
 if(!play)return null;
 
-const covered=[...all].filter(n=>
+const covered=
+[...all].filter(n=>
 play.numbers.has(n)
 );
 
-const missing=[...all].filter(n=>
+const missing=
+[...all].filter(n=>
 !play.numbers.has(n)
 );
 
-const extra=[...play.numbers].filter(n=>
+const extra=
+[...play.numbers].filter(n=>
 !all.has(n)
 );
 
@@ -803,10 +1023,16 @@ valid:true,
 motor:"UNION",
 rx:0,
 play,
-autoPosition:autoTop?.position||1,
-geoPosition:geoTop?.position||1,
+
+autoPosition:
+autoTop?.position||1,
+
+geoPosition:
+geoTop?.position||1,
+
 unionSize:all.size,
 covered:covered.length,
+
 missing,
 extra
 };
@@ -820,11 +1046,19 @@ if(!c?.valid)return null;
 return {
 motor:c.motor,
 rx:c.rx,
+
 rank:c.rank,
 geometryRank:c.geometryRank,
-centers5:[...c.play.centers5],
+
+centers5:[
+...c.play.centers5
+],
+
 center3:c.play.center3,
-history:s.history.join(","),
+
+history:
+s.history.join(","),
+
 unionInfo:c.motor==="UNION"
 ?{
 covered:c.covered,
@@ -837,16 +1071,24 @@ missing:[...c.missing]
 
 function snapPlay(x){
 return x
-?makePlay(x.centers5||[],x.center3)
+?makePlay(
+x.centers5||[],
+x.center3
+)
 :null;
 }
 
 function check(n,play){
-if(!play)return {hit:false};
+if(!play){
+return {hit:false};
+}
 
 for(const b of play.blocks){
 if(b.nums.includes(n)){
-return {hit:true,center:b.center};
+return {
+hit:true,
+center:b.center
+};
 }
 }
 
@@ -857,6 +1099,7 @@ return {hit:false};
 
 function tuneG1(original,miss){
 const base=snapPlay(original);
+
 if(!base)return original;
 
 const candidates=[];
@@ -864,37 +1107,60 @@ const candidates=[];
 function add(p,type,shift){
 if(!p)return;
 
-const moved=p.blocks.reduce(
+const moved=
+p.blocks.reduce(
 (sum,b,i)=>
 sum+dist(
 b.center,
 base.blocks[i].center
-),0
+),
+0
 );
 
 candidates.push({
-p,type,shift,moved
+p,
+type,
+shift,
+moved
 });
 }
 
 for(const b of base.blocks){
 for(const shift of [-2,-1,1,2]){
-const nc=W[mod(idx(b.center)+shift)];
-const centers=base.centers5.slice();
+const nc=W[
+mod(
+idx(b.center)+shift
+)
+];
+
+const centers=
+base.centers5.slice();
+
 let short=base.center3;
 
 if(b.r===1){
 short=nc;
 }else{
-centers[centers.indexOf(b.center)]=nc;
+centers[
+centers.indexOf(b.center)
+]=nc;
 }
 
-add(makePlay(centers,short),"SETOR",shift);
+add(
+makePlay(
+centers,
+short
+),
+"SETOR",
+shift
+);
 }
 }
 
 for(const shift of [-2,-1,1,2]){
-const move=c=>W[mod(idx(c)+shift)];
+const move=c=>W[
+mod(idx(c)+shift)
+];
 
 add(
 makePlay(
@@ -908,7 +1174,8 @@ shift
 
 candidates.sort((a,b)=>
 a.moved-b.moved||
-Math.abs(a.shift)-Math.abs(b.shift)
+Math.abs(a.shift)-
+Math.abs(b.shift)
 );
 
 const chosen=candidates[0];
@@ -916,14 +1183,23 @@ const chosen=candidates[0];
 if(!chosen){
 return {
 ...original,
-g1:{type:"ORIGINAL",shift:0,miss}
+g1:{
+type:"ORIGINAL",
+shift:0,
+miss
+}
 };
 }
 
 return {
 ...original,
-centers5:chosen.p.centers5,
-center3:chosen.p.center3,
+
+centers5:
+chosen.p.centers5,
+
+center3:
+chosen.p.center3,
+
 g1:{
 type:chosen.type,
 shift:chosen.shift,
@@ -935,14 +1211,20 @@ miss
 /* SELEÇÃO */
 
 function autoSelected(d){
-return d.ranking[currentRank()-1]||
-d.ranking[d.ranking.length-1]||
+return d.ranking[
+currentRank()-1
+]||
+d.ranking[
+d.ranking.length-1
+]||
 null;
 }
 
 function selected(d){
 if(s.mode==="MANUAL"){
-return d.configs[s.manual]?.[s.rx]||null;
+return d.configs[
+s.manual
+]?.[s.rx]||null;
 }
 
 return s.union
@@ -951,7 +1233,9 @@ return s.union
 }
 
 function activeName(){
-return s.union?"UNION":"AUTO";
+return s.union
+?"UNION"
+:"AUTO";
 }
 
 function activePending(){
@@ -975,20 +1259,25 @@ return s.mode==="MANUAL"
 /* PREPARAR JOGADAS */
 
 function prepare(d){
-const key=s.history.join(",");
+const key=
+s.history.join(",");
 
 if(
 !s.frozen.AUTO&&
 s.pending.AUTO?.history!==key
 ){
-s.pending.AUTO=snapshot(autoSelected(d));
+s.pending.AUTO=snapshot(
+autoSelected(d)
+);
 }
 
 if(
 !s.frozen.UNION&&
 s.pending.UNION?.history!==key
 ){
-s.pending.UNION=snapshot(buildUnion(d));
+s.pending.UNION=snapshot(
+buildUnion(d)
+);
 }
 
 for(const m of MOTORS){
@@ -997,7 +1286,9 @@ if(
 !s.frozen[m][r]&&
 s.pending[m][r]?.history!==key
 ){
-s.pending[m][r]=snapshot(d.configs[m][r]);
+s.pending[m][r]=snapshot(
+d.configs[m][r]
+);
 }
 }
 }
@@ -1005,35 +1296,64 @@ s.pending[m][r]=snapshot(d.configs[m][r]);
 
 /* GALE NORMAL E SEGUNDA RODADA */
 
-function evaluate(n,p,freeze,line,key){
+function evaluate(
+n,
+p,
+freeze,
+line,
+key
+){
 line=line.slice(-20);
 
 if(freeze){
-if((freeze.skipRemaining||0)>0){
+if(
+(freeze.skipRemaining||0)>0
+){
 return {
 line,
+
 freeze:{
 ...freeze,
-skipRemaining:freeze.skipRemaining-1,
-skipped:[...(freeze.skipped||[]),n]
+
+skipRemaining:
+freeze.skipRemaining-1,
+
+skipped:[
+...(freeze.skipped||[]),
+n
+]
 },
+
 pending:null,
 done:false,
 skipped:true
 };
 }
 
-const hit=check(n,snapPlay(freeze)).hit;
-const i=line.findLastIndex(x=>x.wait);
+const hit=check(
+n,
+snapPlay(freeze)
+).hit;
+
+const i=line.findLastIndex(
+x=>x.wait
+);
 
 const result={
 n:line[i]?.n??n,
 hit,
 wait:false,
 gale:n,
-skipped:freeze.skipped||[],
-phase:hit?"GALE":"LOSS",
-galeSecond:!!freeze.galeSecond
+
+skipped:
+freeze.skipped||[],
+
+phase:hit
+?"GALE"
+:"LOSS",
+
+galeSecond:
+!!freeze.galeSecond
 };
 
 if(i>=0){
@@ -1052,7 +1372,10 @@ phase:result.phase
 };
 }
 
-if(!p||p.history!==key){
+if(
+!p||
+p.history!==key
+){
 line.push({
 n,
 sem:true,
@@ -1067,7 +1390,10 @@ done:false
 };
 }
 
-const hit=check(n,snapPlay(p)).hit;
+const hit=check(
+n,
+snapPlay(p)
+).hit;
 
 if(hit){
 line.push({
@@ -1096,17 +1422,28 @@ const adjusted=s.fineG1
 ?tuneG1(p,n)
 :{
 ...p,
-g1:{type:"ORIGINAL",shift:0,miss:n}
+g1:{
+type:"ORIGINAL",
+shift:0,
+miss:n
+}
 };
 
 return {
 line:line.slice(-20),
+
 freeze:{
 ...adjusted,
-skipRemaining:s.galeSecond?1:0,
+
+skipRemaining:
+s.galeSecond?1:0,
+
 skipped:[],
-galeSecond:s.galeSecond
+
+galeSecond:
+s.galeSecond
 },
+
 pending:null,
 done:false,
 phase:"AGUARDANDO"
@@ -1114,7 +1451,8 @@ phase:"AGUARDANDO"
 }
 
 function updateLane(n,name){
-const key=s.history.join(",");
+const key=
+s.history.join(",");
 
 const a=evaluate(
 n,
@@ -1132,23 +1470,30 @@ return a;
 }
 
 function updateAll(n){
-const auto=updateLane(n,"AUTO");
-const union=updateLane(n,"UNION");
+const auto=
+updateLane(n,"AUTO");
+
+const union=
+updateLane(n,"UNION");
 
 if(auto.done){
 if(s.alternate){
-s.nextRank=s.nextRank===3?2:3;
+s.nextRank=
+s.nextRank===3?2:3;
+
 s.rank=s.nextRank;
 }
 
 if(s.best2){
-s.bestTurn=1-s.bestTurn;
+s.bestTurn=
+1-s.bestTurn;
 }
 }
 
 for(const m of MOTORS){
 for(const r of RX){
-const key=s.history.join(",");
+const key=
+s.history.join(",");
 
 const a=evaluate(
 n,
@@ -1164,34 +1509,54 @@ s.frozen[m][r]=a.freeze;
 }
 }
 
-return {auto,union};
+return {
+auto,
+union
+};
 }
 
 /* INSERIR NÚMERO */
 
 function addNumber(n){
-if(!Number.isInteger(n)||n<0||n>36)return;
+if(
+!Number.isInteger(n)||
+n<0||
+n>36
+){
+return;
+}
 
 const d=calculate();
+
 prepare(d);
 
-const original=activePending();
-const frozen=activeFrozen();
+const original=
+activePending();
+
+const frozen=
+activeFrozen();
+
 const wasGale=!!frozen;
 
-const skipped=wasGale&&
+const skipped=
+wasGale&&
 (frozen.skipRemaining||0)>0;
 
 const result=check(
 n,
-snapPlay(wasGale?frozen:original)
+snapPlay(
+wasGale?frozen:original
+)
 );
 
 s.seen++;
 
 if(!s.frozen.AUTO){
 for(const c of d.ranking){
-const hit=check(n,c.play).hit;
+const hit=check(
+n,
+c.play
+).hit;
 
 s.positionRecords.push({
 position:c.rank,
@@ -1216,7 +1581,10 @@ updateAll(n);
 if(skipped){
 const last=s.cards.at(-1);
 
-if(last&&last.phase==="AGUARDANDO"){
+if(
+last&&
+last.phase==="AGUARDANDO"
+){
 last.skipped=[
 ...(last.skipped||[]),
 n
@@ -1225,27 +1593,38 @@ n
 
 s.audit={
 title:"GALE 2ª RODADA",
+
 text:
 "Número "+n+
-" ignorado para WIN/LOSS. "+
-"Jogada permanece congelada. "+
-"O próximo número decide."
+" ignorado para WIN/LOSS."+
+" Jogada permanece congelada."+
+" O próximo número decide."
 };
 
 }else if(wasGale){
 const last=s.cards.at(-1);
 
-if(last&&last.phase==="AGUARDANDO"){
+if(
+last&&
+last.phase==="AGUARDANDO"
+){
 last.gale=n;
 last.hit=result.hit;
-last.phase=result.hit?"GALE":"LOSS";
+
+last.phase=result.hit
+?"GALE"
+:"LOSS";
 }
 
 s.audit={
-title:result.hit?"WIN NO GALE":"LOSS",
+title:result.hit
+?"WIN NO GALE"
+:"LOSS",
+
 text:
 "Resultado "+n+
-" • "+(result.hit?"WIN":"LOSS")+
+" • "+
+(result.hit?"WIN":"LOSS")+
 " • Jogada encerrada."
 };
 
@@ -1254,9 +1633,13 @@ s.cards.push({
 n,
 hit:result.hit,
 sem:!original,
+
 phase:!original
 ?"SEM"
-:result.hit?"WIN":"AGUARDANDO",
+:result.hit
+?"WIN"
+:"AGUARDANDO",
+
 skipped:[]
 });
 
@@ -1270,8 +1653,10 @@ title:!original
 text:!original
 ?"Não existe configuração válida."
 :result.hit
-?"Número "+n+" coberto na entrada."
-:"Número "+n+" não coberto. "+
+?"Número "+n+
+" coberto na entrada."
+:"Número "+n+
+" não coberto. "+
 (s.galeSecond
 ?"Próxima rodada ignorada."
 :"Próxima rodada decide.")
@@ -1279,7 +1664,11 @@ text:!original
 }
 
 s.cards=s.cards.slice(-14);
-s.history=clean([...s.history,n]);
+
+s.history=clean([
+...s.history,
+n
+]);
 
 invalidate();
 save();
@@ -1292,13 +1681,17 @@ function resetResults(){
 const a=fresh();
 
 s.seen=0;
+
 s.positionRecords=[];
 s.geometryRecords=[];
+
 s.lines=a.lines;
 s.pending=a.pending;
 s.frozen=a.frozen;
+
 s.cards=[];
 s.audit=null;
+
 s.nextRank=3;
 s.bestTurn=0;
 
@@ -1307,9 +1700,11 @@ invalidate();
 
 function setRank(n){
 s.rank=n;
+
 s.alternate=false;
 s.best2=false;
 s.union=false;
+
 s.mode="AUTO";
 
 if(!s.frozen.AUTO){
@@ -1323,8 +1718,10 @@ render();
 
 function toggleAlternate(){
 s.alternate=!s.alternate;
+
 s.best2=false;
 s.union=false;
+
 s.mode="AUTO";
 
 if(s.alternate){
@@ -1339,8 +1736,10 @@ render();
 
 function toggleBest2(){
 s.best2=!s.best2;
+
 s.alternate=false;
 s.union=false;
+
 s.mode="AUTO";
 s.bestTurn=0;
 
@@ -1366,18 +1765,22 @@ render();
 
 function toggleFine(){
 s.fineG1=!s.fineG1;
+
 save();
 render();
 }
 
 function toggleSecond(){
 s.galeSecond=!s.galeSecond;
+
 save();
 render();
 }
 
 function setMode(m,r){
-s.mode=m==="AUTO"?"AUTO":"MANUAL";
+s.mode=m==="AUTO"
+?"AUTO"
+:"MANUAL";
 
 if(m!=="AUTO"){
 s.manual=m;
@@ -1391,12 +1794,16 @@ render();
 function insert(){
 const nums=(
 $("inputHistory").value.match(/\d+/g)||[]
-).map(Number).filter(n=>n>=0&&n<=36);
+)
+.map(Number)
+.filter(n=>n>=0&&n<=36);
 
 if(!nums.length)return;
 
 s.history=clean(nums);
+
 resetResults();
+
 $("inputHistory").value="";
 
 save();
@@ -1407,6 +1814,7 @@ function undo(){
 if(!s.history.length)return;
 
 s.history.pop();
+
 resetResults();
 
 save();
@@ -1414,11 +1822,16 @@ render();
 }
 
 function clear(){
-if(!confirm("Apagar histórico e estatísticas?")){
+if(
+!confirm(
+"Apagar histórico e estatísticas?"
+)
+){
 return;
 }
 
 s.history=[];
+
 resetResults();
 
 save();
@@ -1428,7 +1841,9 @@ render();
 /* ESTILO */
 
 const css=`
-*{box-sizing:border-box}
+*{
+box-sizing:border-box
+}
 
 body{
 margin:0;
@@ -1470,7 +1885,9 @@ font-weight:bold;
 cursor:pointer
 }
 
-.hidden{display:none!important}
+.hidden{
+display:none!important
+}
 
 .row{
 display:flex;
@@ -1523,7 +1940,7 @@ font-weight:bold;
 margin:10px 0
 }
 
-/* SEIS CENTROS */
+/* JOGADA ATUAL */
 
 .grid6{
 display:grid;
@@ -1597,21 +2014,24 @@ font-size:8px;
 background:#555
 }
 
-.mark.good{background:#009d55}
-.mark.bad{background:#b82b39}
+.mark.good{
+background:#009d55
+}
+
+.mark.bad{
+background:#b82b39
+}
 
 .mark.gale{
 background:#ffcc22;
 color:#111
 }
 
-.mark.wait{background:#6c5818}
+.mark.wait{
+background:#6c5818
+}
 
-/*
- ÚLTIMAS 14 JOGADAS:
- PEQUENAS, HORIZONTAIS,
- NÚMEROS DO MESMO TAMANHO.
-*/
+/* ÚLTIMAS 14 JOGADAS */
 
 .history{
 display:flex;
@@ -1756,14 +2176,16 @@ padding:3px 5px
 }
 `;
 
-/* INTERFACE — ORDEM CORRIGIDA */
+/* INTERFACE */
 
 document.body.innerHTML=`
 <style>${css}</style>
 
 <main class="app">
 
-<h2>ANÁLISE BETA V4.5</h2>
+<h2>ANÁLISE BETA V4.6</h2>
+
+<!-- 1. INSERIR HISTÓRICO -->
 
 <section class="panel">
 
@@ -1773,14 +2195,24 @@ placeholder="Cole os últimos 20 números"
 ></textarea>
 
 <div class="row">
-<button class="btn" id="insert">INSERIR</button>
-<button class="btn" id="undo">APAGAR ÚLTIMO</button>
-<button class="btn" id="clear">APAGAR TUDO</button>
+<button class="btn" id="insert">
+INSERIR
+</button>
+
+<button class="btn" id="undo">
+APAGAR ÚLTIMO
+</button>
+
+<button class="btn" id="clear">
+APAGAR TUDO
+</button>
 </div>
 
 <div class="small" id="status"></div>
 
 </section>
+
+<!-- 2. AUTO CANDIDATOS -->
 
 <section class="panel">
 
@@ -1790,11 +2222,16 @@ AUTO • 12 CANDIDATOS
 </button>
 
 <div class="row">
-<button class="btn" id="auto">AUTO</button>
+<button class="btn" id="auto">
+AUTO
+</button>
+
 <div class="accent" id="autoLabel"></div>
 </div>
 
-<div class="small">POSIÇÃO FIXA AUTO</div>
+<div class="small">
+POSIÇÃO FIXA AUTO
+</div>
 
 <div class="rankButtons" id="rankButtons"></div>
 
@@ -1828,29 +2265,23 @@ GALE 2ª RODADA
 
 <div id="motorButtons"></div>
 
-<div class="accent">RANKING AUTO</div>
+<div class="accent">
+RANKING AUTO
+</div>
+
 <div id="candidates"></div>
 
-<div class="accent">RANKING GEOMETRIA</div>
+<div class="accent">
+RANKING GEOMETRIA
+</div>
+
 <div id="geometryRanking"></div>
 
 </div>
 
 </section>
 
-<!-- ÚLTIMAS 14 JOGADAS COMPACTAS -->
-
-<section class="panel">
-
-<div class="accent">
-ÚLTIMAS 14 JOGADAS
-</div>
-
-<div class="history" id="cards"></div>
-
-</section>
-
-<!-- LINHAS DO TEMPO ACIMA DA JOGADA -->
+<!-- 3. LINHAS DO TEMPO -->
 
 <section class="panel">
 
@@ -1868,7 +2299,7 @@ LINHAS DO TEMPO
 
 </section>
 
-<!-- JOGADA IMEDIATAMENTE ACIMA DO TECLADO -->
+<!-- 4. JOGADA ATUAL -->
 
 <section class="panel">
 
@@ -1886,7 +2317,19 @@ JOGADA ATUAL
 
 </section>
 
-<!-- TECLADO -->
+<!-- 5. ÚLTIMAS 14 JOGADAS -->
+
+<section class="panel">
+
+<div class="accent">
+ÚLTIMAS 14 JOGADAS
+</div>
+
+<div class="history" id="cards"></div>
+
+</section>
+
+<!-- 6. TECLADO -->
 
 <section class="panel">
 
@@ -1898,7 +2341,7 @@ TECLADO DE RESULTADOS
 
 </section>
 
-<!-- JOGADOR VIRTUAL PRESERVADO -->
+<!-- 7. JOGADOR VIRTUAL -->
 
 <section class="panel">
 
@@ -1952,68 +2395,110 @@ $("insert").onclick=insert;
 $("undo").onclick=undo;
 $("clear").onclick=clear;
 
-$("alternate").onclick=toggleAlternate;
-$("best2").onclick=toggleBest2;
-$("union").onclick=toggleUnion;
-$("fine").onclick=toggleFine;
-$("second").onclick=toggleSecond;
+$("alternate").onclick=
+toggleAlternate;
 
-$("auto").onclick=()=>setMode("AUTO");
+$("best2").onclick=
+toggleBest2;
+
+$("union").onclick=
+toggleUnion;
+
+$("fine").onclick=
+toggleFine;
+
+$("second").onclick=
+toggleSecond;
+
+$("auto").onclick=()=>
+setMode("AUTO");
 
 $("toggleCandidates").onclick=()=>{
-s.openCandidates=!s.openCandidates;
+s.openCandidates=
+!s.openCandidates;
+
 save();
 render();
 };
 
 $("toggleLines").onclick=()=>{
 s.openLines=!s.openLines;
+
 save();
 render();
 };
 
 $("toggleVirtual").onclick=()=>{
-s.openVirtual=!s.openVirtual;
+s.openVirtual=
+!s.openVirtual;
+
 save();
 render();
 };
 
-/* TECLADO NORMAL */
+/* TECLADO */
 
 for(let n=1;n<=36;n++){
-const b=document.createElement("button");
+const b=document.createElement(
+"button"
+);
+
 b.className="key";
+
 b.textContent=n;
+
 b.style.background=color(n);
+
 b.onclick=()=>addNumber(n);
+
 $("keys").appendChild(b);
 }
 
-const zero=document.createElement("button");
+const zero=document.createElement(
+"button"
+);
+
 zero.className="key zero";
+
 zero.textContent="0";
+
 zero.style.background=color(0);
+
 zero.onclick=()=>addNumber(0);
+
 $("keys").appendChild(zero);
 
 /* POSIÇÕES AUTO */
 
 for(let n=1;n<=4;n++){
-const b=document.createElement("button");
+const b=document.createElement(
+"button"
+);
+
 b.className="btn";
+
 b.id="rank"+n;
+
 b.textContent=n+"º";
+
 b.onclick=()=>setRank(n);
+
 $("rankButtons").appendChild(b);
 }
 
 /* MOTORES */
 
 for(const m of MOTORS){
-const div=document.createElement("div");
+const div=document.createElement(
+"div"
+);
+
 div.className="row";
 
-const title=document.createElement("strong");
+const title=document.createElement(
+"strong"
+);
+
 title.className="small";
 title.style.width="100%";
 title.textContent=LABEL[m];
@@ -2021,18 +2506,25 @@ title.textContent=LABEL[m];
 div.appendChild(title);
 
 for(const r of RX){
-const b=document.createElement("button");
+const b=document.createElement(
+"button"
+);
+
 b.className="btn";
+
 b.id="motor"+m+r;
+
 b.textContent="C"+r;
+
 b.onclick=()=>setMode(m,r);
+
 div.appendChild(b);
 }
 
 $("motorButtons").appendChild(div);
 }
 
-/* ORDEM DOS SEIS CENTROS */
+/* ORDENAÇÃO DOS 6 CENTROS */
 
 function orderedCenterBlocks(play){
 if(!play)return [];
@@ -2067,13 +2559,15 @@ const cls=
 x.sem?""
 :x.wait?"wait"
 :x.phase==="GALE"?"gale"
-:x.hit?"good":"bad";
+:x.hit?"good"
+:"bad";
 
 const label=
 x.sem?"—"
 :x.wait?"…"
 :x.phase==="GALE"?"G"
-:x.hit?"W":"L";
+:x.hit?"W"
+:"L";
 
 return `
 <span class="mark ${cls}">
@@ -2084,9 +2578,19 @@ ${label}
 
 return `
 <div class="line">
+
 <b>${name}</b>
-<div class="marks">${marks}</div>
-<b>${t.n?Math.round(t.r20)+"%":"—"}</b>
+
+<div class="marks">
+${marks}
+</div>
+
+<b>
+${t.n
+?Math.round(t.r20)+"%"
+:"—"}
+</b>
+
 </div>
 `;
 }
@@ -2100,53 +2604,58 @@ return '<div class="small">Aguardando resultados.</div>';
 
 return items.slice(0,2).map((x,i)=>`
 <div class="positionCard">
-<small>${i+1}º DESEMPENHO ${type}</small>
-<strong>${x.position}ª POSIÇÃO</strong>
-${pct(x.rate)}
-<small style="display:block">
-${x.wins} WIN / ${x.total} observações
+
+<small>
+${i+1}º DESEMPENHO ${type}
 </small>
+
+<strong>
+${x.position}ª POSIÇÃO
+</strong>
+
+${pct(x.rate)}
+
+<small style="display:block">
+${x.wins} WIN /
+${x.total} observações
+</small>
+
 </div>
 `).join("");
 }
 
 function motorPerformanceHtml(d){
 return d.ranking.map(c=>{
-const t=stats(s.lines[c.motor][c.rx]);
+const t=stats(
+s.lines[c.motor][c.rx]
+);
 
 return `
 <div class="candidate">
+
 <b>${c.rank}º AUTO</b>
+
 • ${LABEL[c.motor]} C${c.rx}
+
 • GEOMETRIA ${c.geometryRank}º
+
 • WIN ${t.wins}
+
 • LOSS ${t.losses}
+
 • ${pct(t.rate)}
+
 </div>
 `;
 }).join("")||
 '<div class="small">Aguardando motores.</div>';
 }
 
-/*
- ÚLTIMAS 14 JOGADAS
-
- Todos os números usam o mesmo
- tamanho de fonte.
-
- Exibição horizontal:
-
- WIN 18
- GALE 18 → 22
- LOSS 18 → 22
-
- No gale de segunda rodada,
- a rodada ignorada não entra
- como resultado de acerto/erro.
-*/
+/* ÚLTIMAS 14 JOGADAS */
 
 function renderCards(){
-$("cards").innerHTML=s.cards.map(x=>{
+$("cards").innerHTML=
+s.cards.map(x=>{
 let border="#777";
 let content="";
 
@@ -2213,14 +2722,17 @@ el.scrollLeft=el.scrollWidth;
 }
 }
 
-/* RENDERIZAÇÃO */
+/* RENDER */
 
 function render(){
 const d=calculate();
+
 prepare(d);
 
 const u=buildUnion(d);
+
 const cfg=selected(d);
+
 const freeze=activeFrozen();
 
 const play=freeze
@@ -2228,8 +2740,10 @@ const play=freeze
 :cfg?.play;
 
 $("status").textContent=
-s.history.length+"/20 números • "+
-d.ranking.length+"/12 motores • "+
+s.history.length+
+"/20 números • "+
+d.ranking.length+
+"/12 motores • "+
 "28 cobertos / 9 descobertos";
 
 $("autoLabel").textContent=
@@ -2243,34 +2757,43 @@ s.mode==="MANUAL"
 :"AGUARDANDO MOTORES";
 
 $("auto").classList.toggle(
-"selected",s.mode==="AUTO"
+"selected",
+s.mode==="AUTO"
 );
 
 $("alternate").classList.toggle(
-"selected",s.alternate
+"selected",
+s.alternate
 );
 
 $("best2").classList.toggle(
-"selected",s.best2
+"selected",
+s.best2
 );
 
 $("union").classList.toggle(
-"selected",s.union
+"selected",
+s.union
 );
 
 $("fine").classList.toggle(
-"selected",s.fineG1
+"selected",
+s.fineG1
 );
 
 $("second").classList.toggle(
-"selected",s.galeSecond
+"selected",
+s.galeSecond
 );
 
 for(let n=1;n<=4;n++){
 $("rank"+n).classList.toggle(
 "selected",
-!s.union&&!s.best2&&
-!s.alternate&&s.rank===n
+
+!s.union&&
+!s.best2&&
+!s.alternate&&
+s.rank===n
 );
 }
 
@@ -2278,8 +2801,10 @@ for(const m of MOTORS){
 for(const r of RX){
 $("motor"+m+r).classList.toggle(
 "selected",
+
 s.mode==="MANUAL"&&
-s.manual===m&&s.rx===r
+s.manual===m&&
+s.rx===r
 );
 }
 }
@@ -2302,7 +2827,8 @@ $("modeInfo").textContent=
 :"AJUSTE FINO DESLIGADO");
 
 $("candidatePanel").classList.toggle(
-"hidden",!s.openCandidates
+"hidden",
+!s.openCandidates
 );
 
 $("arrowCandidates").textContent=
@@ -2311,42 +2837,68 @@ s.openCandidates?"−":"+";
 $("candidates").innerHTML=
 d.ranking.map(c=>`
 <div class="candidate">
+
 <b>${c.rank}º AUTO</b>
+
 • ${LABEL[c.motor]} C${c.rx}
+
 • SCORE ${fmt(c.autoScore)}
+
 </div>
 `).join("");
 
 $("geometryRanking").innerHTML=
 d.geometryRanking.map(c=>`
 <div class="candidate">
+
 <b>${c.geometryRank}º GEOMETRIA</b>
+
 • ${LABEL[c.motor]} C${c.rx}
+
 • PESO ${fmt(c.play.score)}
+
 • AUTO ${c.rank}º
+
 </div>
 `).join("");
 
 /* LINHAS DO TEMPO */
 
-const ta=stats(s.lines.AUTO);
-const tu=stats(s.lines.UNION);
+const ta=stats(
+s.lines.AUTO
+);
+
+const tu=stats(
+s.lines.UNION
+);
 
 $("autoSummary").textContent=
-"AUTO: "+ta.wins+" WIN / "+
-ta.losses+" LOSS • "+pct(ta.rate)+
-" | UNIÃO: "+tu.wins+" WIN / "+
-tu.losses+" LOSS • "+pct(tu.rate)+
-" | VISTOS: "+s.seen;
+"AUTO: "+
+ta.wins+" WIN / "+
+ta.losses+" LOSS • "+
+pct(ta.rate)+
+" | UNIÃO: "+
+tu.wins+" WIN / "+
+tu.losses+" LOSS • "+
+pct(tu.rate)+
+" | VISTOS: "+
+s.seen;
 
 $("autoLine").innerHTML=
-lineHtml("AUTO",s.lines.AUTO);
+lineHtml(
+"AUTO",
+s.lines.AUTO
+);
 
 $("unionLine").innerHTML=
-lineHtml("UNIÃO",s.lines.UNION);
+lineHtml(
+"UNIÃO",
+s.lines.UNION
+);
 
 $("otherLines").classList.toggle(
-"hidden",!s.openLines
+"hidden",
+!s.openLines
 );
 
 $("arrowLines").textContent=
@@ -2354,9 +2906,14 @@ s.openLines?"−":"+";
 
 $("otherLines").innerHTML=
 MOTORS.map(m=>
-'<div class="small">'+LABEL[m]+"</div>"+
+'<div class="small">'+
+LABEL[m]+
+"</div>"+
 RX.map(r=>
-lineHtml("C"+r,s.lines[m][r])
+lineHtml(
+"C"+r,
+s.lines[m][r]
+)
 ).join("")
 ).join("");
 
@@ -2373,13 +2930,20 @@ $("playLabel").textContent=freeze
 ?"JOGADA • "+LABEL[cfg.motor]+" C"+cfg.rx
 :"AGUARDANDO JOGADA";
 
-const ordered=orderedCenterBlocks(play);
+const ordered=
+orderedCenterBlocks(play);
 
 $("play").innerHTML=
 ordered.map(b=>`
 <div
-class="center ${b.r===1?"short":""}"
-title="${b.sector} • ${b.nums.join(", ")}"
+class="center ${
+b.r===1?"short":""
+}"
+title="${
+b.sector
+} • ${
+b.nums.join(", ")
+}"
 >
 ${b.center}
 </div>
@@ -2393,17 +2957,23 @@ $("g1Info").textContent=freeze
 )
 :"AZUL: 2 VIZINHOS • AMARELO: 1 VIZINHO";
 
-/* ÚLTIMAS 14 — COMPACTAS */
+/* ÚLTIMAS 14 */
 
 renderCards();
 
 /* JOGADOR VIRTUAL */
 
 $("autoPerformance").innerHTML=
-performanceHtml(autoPerformance(),"AUTO");
+performanceHtml(
+autoPerformance(),
+"AUTO"
+);
 
 $("geoPerformance").innerHTML=
-performanceHtml(geoPerformance(),"GEOMETRIA");
+performanceHtml(
+geoPerformance(),
+"GEOMETRIA"
+);
 
 $("motorPerformance").innerHTML=
 motorPerformanceHtml(d);
@@ -2435,11 +3005,14 @@ COBERTURA FINAL:
 :"Aguardando configuração da união.";
 
 $("audit").textContent=s.audit
-?s.audit.title+" — "+s.audit.text
+?s.audit.title+
+" — "+
+s.audit.text
 :"Aguardando resultado.";
 
 $("virtualContent").classList.toggle(
-"hidden",!s.openVirtual
+"hidden",
+!s.openVirtual
 );
 
 $("arrowVirtual").textContent=
