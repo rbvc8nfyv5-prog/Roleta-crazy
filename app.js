@@ -3,15 +3,15 @@
 "use strict";
 
 /*
- ANÁLISE BETA V4.4
+ ANÁLISE BETA V4.5
 
- CORREÇÃO:
- Removido exclusivamente o quadro
- "CENTROS PARA JOGAR — ORDEM CORRETA".
-
- O quadro "JOGADA ATUAL" permanece
- com os seis centros organizados por:
- TIERS → ÓRFÃOS → VOISINS → ZERO.
+ ALTERAÇÕES DESTA VERSÃO:
+ - Retirado RESULTADOS DA JOGADA
+ - LINHAS DO TEMPO acima da jogada
+ - JOGADA ATUAL acima do teclado
+ - Últimas 14 jogadas compactas
+ - WIN, GALE e LOSS na horizontal
+ - Sem quadro duplicado de centros
 
  MANTIDOS:
  - 12 motores
@@ -26,21 +26,19 @@
  - GALE 2ª RODADA
  - Ajuste fino
  - Jogador Virtual
- - WIN / LOSS / percentual
- - Últimas 14 jogadas
- - Linhas do tempo
+ - Percentuais e estatísticas
  - Persistência
+ - 6 centros / 28 números
 */
 
-const KEY="ANALISE_BETA_V44";
+const KEY="ANALISE_BETA_V45";
 
 const OLD=[
+"ANALISE_BETA_V44",
 "ANALISE_BETA_V43",
 "ANALISE_BETA_V42",
 "ANALISE_BETA_V41",
-"ANALISE_BETA_V40_UNIAO",
-"ANALISE_BETA_V37_GEOMETRIA",
-"ANALISE_BETA_V36"
+"ANALISE_BETA_V40_UNIAO"
 ];
 
 const W=[
@@ -249,6 +247,7 @@ for(const name of ["AUTO","UNION"]){
 s.lines[name]=Array.isArray(a.lines[name])
 ?a.lines[name].slice(-20):[];
 }
+
 for(const m of MOTORS){
 for(const r of RX){
 s.lines[m][r]=
@@ -262,6 +261,7 @@ if(a.pending){
 for(const name of ["AUTO","UNION"]){
 s.pending[name]=a.pending[name]||null;
 }
+
 for(const m of MOTORS){
 for(const r of RX){
 s.pending[m][r]=a.pending[m]?.[r]||null;
@@ -273,6 +273,7 @@ if(a.frozen){
 for(const name of ["AUTO","UNION"]){
 s.frozen[name]=a.frozen[name]||null;
 }
+
 for(const m of MOTORS){
 for(const r of RX){
 s.frozen[m][r]=a.frozen[m]?.[r]||null;
@@ -282,6 +283,7 @@ s.frozen[m][r]=a.frozen[m]?.[r]||null;
 
 s.cards=Array.isArray(a.cards)
 ?a.cards.slice(-14):[];
+
 s.audit=a.audit||null;
 
 }catch(e){
@@ -1001,7 +1003,7 @@ s.pending[m][r]=snapshot(d.configs[m][r]);
 }
 }
 
-/* GALE */
+/* GALE NORMAL E SEGUNDA RODADA */
 
 function evaluate(n,p,freeze,line,key){
 line=line.slice(-20);
@@ -1521,14 +1523,13 @@ font-weight:bold;
 margin:10px 0
 }
 
-/*
- ÚNICO QUADRO DOS SEIS CENTROS
-*/
+/* SEIS CENTROS */
 
 .grid6{
 display:grid;
 grid-template-columns:repeat(6,1fr);
-gap:5px
+gap:5px;
+margin:8px 0
 }
 
 .center{
@@ -1606,50 +1607,57 @@ color:#111
 
 .mark.wait{background:#6c5818}
 
-/* ÚLTIMAS JOGADAS */
+/*
+ ÚLTIMAS 14 JOGADAS:
+ PEQUENAS, HORIZONTAIS,
+ NÚMEROS DO MESMO TAMANHO.
+*/
 
 .history{
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:5px
+display:flex;
+flex-direction:row;
+flex-wrap:nowrap;
+gap:4px;
+overflow-x:auto;
+padding:5px 0;
+scrollbar-width:thin
 }
 
-.history span{
-padding:9px 2px;
-text-align:center;
-border-radius:6px;
-border:2px solid #555;
+.historyItem{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+flex-direction:row;
+gap:4px;
+flex:0 0 auto;
+height:30px;
+min-width:47px;
+padding:4px 7px;
+border:1px solid #777;
+border-radius:5px;
+background:#202632;
+color:white;
+font-size:12px;
+font-weight:bold;
+white-space:nowrap
+}
+
+.historyItem .resultNumber{
 font-size:12px;
 font-weight:bold
 }
 
-/* ESTATÍSTICAS */
-
-.metrics{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:6px;
-margin:10px 0
+.historyItem .resultLabel{
+font-size:10px;
+font-weight:bold
 }
 
-.metric{
-background:#111b25;
-border:1px solid #3a5368;
-border-radius:8px;
-padding:10px 4px;
-text-align:center
+.historyItem .arrow{
+font-size:10px;
+opacity:.8
 }
 
-.metric strong{
-display:block;
-font-size:21px;
-color:#00dcff
-}
-
-.metric small{
-font-size:9px;
-color:#b4bfce
-}
+/* JOGADOR VIRTUAL */
 
 .positionBox{
 display:grid;
@@ -1733,14 +1741,6 @@ border-radius:8px
 }
 
 @media(max-width:600px){
-.history{
-grid-template-columns:repeat(4,1fr)
-}
-
-.metrics{
-grid-template-columns:repeat(2,1fr)
-}
-
 .center{
 font-size:19px
 }
@@ -1748,17 +1748,22 @@ font-size:19px
 .mark{
 min-width:14px
 }
+
+.historyItem{
+height:28px;
+padding:3px 5px
+}
 }
 `;
 
-/* INTERFACE */
+/* INTERFACE — ORDEM CORRIGIDA */
 
 document.body.innerHTML=`
 <style>${css}</style>
 
 <main class="app">
 
-<h2>ANÁLISE BETA V4.4</h2>
+<h2>ANÁLISE BETA V4.5</h2>
 
 <section class="panel">
 
@@ -1833,33 +1838,19 @@ GALE 2ª RODADA
 
 </section>
 
-<!-- QUADRO ÚNICO DOS SEIS CENTROS -->
-
-<section class="panel">
-
-<div class="accent" id="playLabel">
-JOGADA ATUAL
-</div>
-
-<div class="small">
-6 CENTROS • TIERS → ÓRFÃOS → VOISINS → ZERO
-</div>
-
-<div class="grid6" id="play"></div>
-
-<div class="small" id="g1Info"></div>
-
-</section>
+<!-- ÚLTIMAS 14 JOGADAS COMPACTAS -->
 
 <section class="panel">
 
 <div class="accent">
-RESULTADOS DA JOGADA
+ÚLTIMAS 14 JOGADAS
 </div>
 
-<div class="metrics" id="metrics"></div>
+<div class="history" id="cards"></div>
 
 </section>
+
+<!-- LINHAS DO TEMPO ACIMA DA JOGADA -->
 
 <section class="panel">
 
@@ -1877,15 +1868,25 @@ LINHAS DO TEMPO
 
 </section>
 
+<!-- JOGADA IMEDIATAMENTE ACIMA DO TECLADO -->
+
 <section class="panel">
 
-<div class="accent">
-ÚLTIMAS 14 JOGADAS
+<div class="accent" id="playLabel">
+JOGADA ATUAL
 </div>
 
-<div class="history" id="cards"></div>
+<div class="small">
+6 CENTROS • TIERS → ÓRFÃOS → VOISINS → ZERO
+</div>
+
+<div class="grid6" id="play"></div>
+
+<div class="small" id="g1Info"></div>
 
 </section>
+
+<!-- TECLADO -->
 
 <section class="panel">
 
@@ -1896,6 +1897,8 @@ TECLADO DE RESULTADOS
 <div class="keys" id="keys"></div>
 
 </section>
+
+<!-- JOGADOR VIRTUAL PRESERVADO -->
 
 <section class="panel">
 
@@ -1975,7 +1978,7 @@ save();
 render();
 };
 
-/* TECLADO */
+/* TECLADO NORMAL */
 
 for(let n=1;n<=36;n++){
 const b=document.createElement("button");
@@ -2029,12 +2032,7 @@ div.appendChild(b);
 $("motorButtons").appendChild(div);
 }
 
-/*
- ORDENAÇÃO DOS SEIS CENTROS
-
- Esta função apenas ordena.
- Não altera a jogada.
-*/
+/* ORDEM DOS SEIS CENTROS */
 
 function orderedCenterBlocks(play){
 if(!play)return [];
@@ -2112,30 +2110,6 @@ ${x.wins} WIN / ${x.total} observações
 `).join("");
 }
 
-function metricsHtml(t){
-return `
-<div class="metric">
-<strong>${t.wins}</strong>
-<small>WIN TOTAL</small>
-</div>
-
-<div class="metric">
-<strong>${t.losses}</strong>
-<small>LOSS REAL</small>
-</div>
-
-<div class="metric">
-<strong>${pct(t.rate)}</strong>
-<small>ASSERTIVIDADE</small>
-</div>
-
-<div class="metric">
-<strong>${t.n}</strong>
-<small>CONCLUÍDAS</small>
-</div>
-`;
-}
-
 function motorPerformanceHtml(d){
 return d.ranking.map(c=>{
 const t=stats(s.lines[c.motor][c.rx]);
@@ -2154,7 +2128,92 @@ return `
 '<div class="small">Aguardando motores.</div>';
 }
 
-/* ATUALIZAÇÃO DA TELA */
+/*
+ ÚLTIMAS 14 JOGADAS
+
+ Todos os números usam o mesmo
+ tamanho de fonte.
+
+ Exibição horizontal:
+
+ WIN 18
+ GALE 18 → 22
+ LOSS 18 → 22
+
+ No gale de segunda rodada,
+ a rodada ignorada não entra
+ como resultado de acerto/erro.
+*/
+
+function renderCards(){
+$("cards").innerHTML=s.cards.map(x=>{
+let border="#777";
+let content="";
+
+if(x.phase==="WIN"){
+border="#00bd68";
+
+content=`
+<span class="resultLabel">WIN</span>
+<span class="resultNumber">${x.n}</span>
+`;
+}
+
+else if(x.phase==="GALE"){
+border="#ffcc22";
+
+content=`
+<span class="resultLabel">GALE</span>
+<span class="resultNumber">${x.n}</span>
+<span class="arrow">→</span>
+<span class="resultNumber">${x.gale}</span>
+`;
+}
+
+else if(x.phase==="LOSS"){
+border="#f04a5d";
+
+content=`
+<span class="resultLabel">LOSS</span>
+<span class="resultNumber">${x.n}</span>
+<span class="arrow">→</span>
+<span class="resultNumber">${x.gale}</span>
+`;
+}
+
+else if(x.phase==="AGUARDANDO"){
+border="#ffcc22";
+
+content=`
+<span class="resultLabel">GALE</span>
+<span class="resultNumber">${x.n}</span>
+`;
+}
+
+else{
+content=`
+<span class="resultNumber">${x.n}</span>
+`;
+}
+
+return `
+<div
+class="historyItem"
+style="border-color:${border}"
+>
+${content}
+</div>
+`;
+}).join("");
+
+const el=$("cards");
+
+if(el){
+el.scrollLeft=el.scrollWidth;
+}
+}
+
+/* RENDERIZAÇÃO */
 
 function render(){
 const d=calculate();
@@ -2167,8 +2226,6 @@ const freeze=activeFrozen();
 const play=freeze
 ?snapPlay(freeze)
 :cfg?.play;
-
-const t=stats(activeLines());
 
 $("status").textContent=
 s.history.length+"/20 números • "+
@@ -2270,47 +2327,7 @@ d.geometryRanking.map(c=>`
 </div>
 `).join("");
 
-/*
- QUADRO ÚNICO DA JOGADA
-
- Apenas os seis centros.
- Ordenados por setor.
-*/
-
-$("playLabel").textContent=freeze
-?"GALE CONGELADO • "+
-(freeze.motor==="UNION"
-?"AUTO UNIÃO"
-:LABEL[freeze.motor]+" C"+freeze.rx)
-:s.union&&s.mode==="AUTO"
-?"JOGADA AUTO UNIÃO"
-:cfg
-?"JOGADA • "+LABEL[cfg.motor]+" C"+cfg.rx
-:"AGUARDANDO JOGADA";
-
-const ordered=orderedCenterBlocks(play);
-
-$("play").innerHTML=
-ordered.map(b=>`
-<div
-class="center ${b.r===1?"short":""}"
-title="${b.sector} • ${b.nums.join(", ")}"
->
-${b.center}
-</div>
-`).join("");
-
-$("g1Info").textContent=freeze
-?(
-(freeze.skipRemaining||0)>0
-?"GALE CONGELADO • PRÓXIMO RESULTADO IGNORADO"
-:"GALE CONGELADO • PRÓXIMO RESULTADO DECIDE"
-)
-:"AZUL: 2 VIZINHOS • AMARELO: 1 VIZINHO";
-
-/* RESULTADOS */
-
-$("metrics").innerHTML=metricsHtml(t);
+/* LINHAS DO TEMPO */
 
 const ta=stats(s.lines.AUTO);
 const tu=stats(s.lines.UNION);
@@ -2343,44 +2360,42 @@ lineHtml("C"+r,s.lines[m][r])
 ).join("")
 ).join("");
 
-/* ÚLTIMAS 14 JOGADAS */
+/* JOGADA ATUAL */
 
-$("cards").innerHTML=s.cards.map(x=>{
-const border=
-x.phase==="GALE"?"#ffcc22"
-:x.hit?"#00bd68"
-:x.phase==="LOSS"?"#f04a5d"
-:"#777";
+$("playLabel").textContent=freeze
+?"GALE CONGELADO • "+
+(freeze.motor==="UNION"
+?"AUTO UNIÃO"
+:LABEL[freeze.motor]+" C"+freeze.rx)
+:s.union&&s.mode==="AUTO"
+?"JOGADA AUTO UNIÃO"
+:cfg
+?"JOGADA • "+LABEL[cfg.motor]+" C"+cfg.rx
+:"AGUARDANDO JOGADA";
 
-const label=
-x.phase==="GALE"?"WIN G"
-:x.phase==="WIN"?"WIN"
-:x.phase==="LOSS"?"LOSS"
-:x.phase==="AGUARDANDO"?"GALE..."
-:"SEM";
+const ordered=orderedCenterBlocks(play);
 
-return `
-<span style="
-background:${color(x.n)};
-border-color:${border}
-">
-${x.n}
+$("play").innerHTML=
+ordered.map(b=>`
+<div
+class="center ${b.r===1?"short":""}"
+title="${b.sector} • ${b.nums.join(", ")}"
+>
+${b.center}
+</div>
+`).join("");
 
-<small style="display:block">
-${label}
-</small>
+$("g1Info").textContent=freeze
+?(
+(freeze.skipRemaining||0)>0
+?"GALE CONGELADO • PRÓXIMO RESULTADO IGNORADO"
+:"GALE CONGELADO • PRÓXIMO RESULTADO DECIDE"
+)
+:"AZUL: 2 VIZINHOS • AMARELO: 1 VIZINHO";
 
-${x.gale!=null
-?'<small style="display:block">G: '+x.gale+'</small>'
-:""}
+/* ÚLTIMAS 14 — COMPACTAS */
 
-${x.skipped?.length
-?'<small style="display:block">P: '+x.skipped.join(",")+'</small>'
-:""}
-
-</span>
-`;
-}).join("");
+renderCards();
 
 /* JOGADOR VIRTUAL */
 
