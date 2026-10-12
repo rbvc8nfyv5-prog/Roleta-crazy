@@ -5,24 +5,25 @@
 /*
  ANÁLISE BETA V4.9
 
- BASE: V4.8 ENVIADA PELO USUÁRIO.
+ BASE ORIGINAL: V4.8
 
  INCLUSÕES:
- 1. BOTÃO 2ª CASA:
-    - PULA UMA CASA ANTES DE VALIDAR A ENTRADA.
-    - PULA UMA CASA ANTES DE VALIDAR O GALE.
-    - TODOS OS NÚMEROS CONTINUAM NO HISTÓRICO
-      E NA ANÁLISE DOS MOTORES.
-    - A JOGADA ORIGINAL FICA CONGELADA
-      DURANTE A CASA PULADA.
+ - BOTÃO 2ª CASA
+ - RESULTADO GERAL EXPANSÍVEL
 
- 2. RESULTADO GERAL:
-    - PAINEL EXPANSÍVEL ABAIXO DO JOGADOR VIRTUAL.
-    - TOTAL DE JOGADAS ENCERRADAS.
-    - GREEN, RED E PORCENTAGENS.
-    - CONTAGEM ACUMULADA, SEM LIMITE DE 14 OU 20.
+ REGRA DA 2ª CASA:
 
- DEMAIS ESTRUTURAS DA V4.8 PRESERVADAS.
+ 1. NÚMERO INSERIDO GERA A JOGADA.
+ 2. NÚMERO SEGUINTE ENTRA NO HISTÓRICO,
+    MAS NÃO VALIDA WIN OU LOSS.
+ 3. PRÓXIMO NÚMERO VALIDA A JOGADA
+    QUE FICOU CONGELADA.
+ 4. GREEN ENCERRA O CICLO.
+ 5. ERRO INICIA GALE.
+ 6. GALE TAMBÉM PULA UMA CASA.
+ 7. APÓS ENCERRAR, COMEÇA NOVO CICLO.
+
+ TODOS OS NÚMEROS ALIMENTAM OS MOTORES.
 */
 
 const KEY="ANALISE_BETA_V49";
@@ -165,7 +166,7 @@ Object.fromEntries(RX.map(r=>[r,f()]))
 );
 }
 
-function emptyTotals(){
+function emptyGeneral(){
 return {
 analyzed:0,
 green:0,
@@ -197,7 +198,6 @@ allTurn:0,
 fineG1:false,
 galeSecond:false,
 
-/* NOVO: 2ª CASA */
 secondHouse:false,
 
 mode:"AUTO",
@@ -228,20 +228,23 @@ UNION:null,
 },
 
 /*
- NOVO:
- JOGADAS AGUARDANDO A SEGUNDA CASA.
+ CICLO DA SEGUNDA CASA:
+
+ null = PRONTO PARA NOVA ENTRADA
+ ARMADO = JOGADA GERADA
+ PULAR = AGUARDANDO CASA INTERMEDIÁRIA
+ VALIDAR = PRÓXIMO NÚMERO DECIDE
+
+ O ESTADO É INDEPENDENTE POR MOTOR.
 */
-entryWait:{
+
+secondCycle:{
 AUTO:null,
 UNION:null,
 ...matrix(()=>null)
 },
 
-/*
- NOVO:
- ESTATÍSTICAS GERAIS ACUMULADAS.
-*/
-general:emptyTotals(),
+general:emptyGeneral(),
 
 cards:[],
 audit:null,
@@ -249,8 +252,6 @@ audit:null,
 openCandidates:false,
 openLines:false,
 openVirtual:true,
-
-/* NOVO: PAINEL EXPANSÍVEL */
 openGeneral:false
 };
 }
@@ -306,8 +307,6 @@ s.allTurn=Number.isInteger(+a.allTurn)
 
 s.fineG1=!!a.fineG1;
 s.galeSecond=!!a.galeSecond;
-
-/* NOVO */
 s.secondHouse=!!a.secondHouse;
 
 s.mode=a.mode||"AUTO";
@@ -327,20 +326,13 @@ Array.isArray(a.geometryRecords)
 s.openCandidates=!!a.openCandidates;
 s.openLines=!!a.openLines;
 s.openVirtual=a.openVirtual??true;
-
-/* NOVO */
 s.openGeneral=!!a.openGeneral;
 
 if(a.general){
 s.general={
-analyzed:
-Math.max(0,+a.general.analyzed||0),
-
-green:
-Math.max(0,+a.general.green||0),
-
-red:
-Math.max(0,+a.general.red||0)
+analyzed:Math.max(0,+a.general.analyzed||0),
+green:Math.max(0,+a.general.green||0),
+red:Math.max(0,+a.general.red||0)
 };
 }
 
@@ -386,18 +378,50 @@ a.frozen[m]?.[r]||null;
 }
 }
 
-/* NOVO: RESTAURAR 2ª CASA PENDENTE */
-
-if(a.entryWait){
+if(a.secondCycle){
 for(const name of ["AUTO","UNION"]){
-s.entryWait[name]=
-a.entryWait[name]||null;
+s.secondCycle[name]=
+a.secondCycle[name]||null;
 }
 
 for(const m of MOTORS){
 for(const r of RX){
-s.entryWait[m][r]=
-a.entryWait[m]?.[r]||null;
+s.secondCycle[m][r]=
+a.secondCycle[m]?.[r]||null;
+}
+}
+}
+
+/*
+ COMPATIBILIDADE COM V4.9 ANTERIOR,
+ CASO EXISTA ESTADO DE ENTRADA
+ AGUARDANDO A SEGUNDA CASA.
+*/
+
+if(a.entryWait){
+for(const name of ["AUTO","UNION"]){
+const x=a.entryWait[name];
+
+if(x?.play){
+s.secondCycle[name]={
+stage:"VALIDAR",
+play:x.play,
+skipped:x.skipped||[]
+};
+}
+}
+
+for(const m of MOTORS){
+for(const r of RX){
+const x=a.entryWait[m]?.[r];
+
+if(x?.play){
+s.secondCycle[m][r]={
+stage:"VALIDAR",
+play:x.play,
+skipped:x.skipped||[]
+};
+}
 }
 }
 }
@@ -1398,10 +1422,10 @@ return s.mode==="MANUAL"
 :s.frozen.AUTO;
 }
 
-function activeEntryWait(){
+function activeCycle(){
 return s.mode==="MANUAL"
-?s.entryWait[s.manual][s.rx]
-:s.entryWait.AUTO;
+?s.secondCycle[s.manual][s.rx]
+:s.secondCycle.AUTO;
 }
 
 function activeLines(){
@@ -1418,7 +1442,7 @@ s.history.join(",");
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO&&
+!s.secondCycle.AUTO&&
 s.pending.AUTO?.history!==key
 ){
 s.pending.AUTO=snapshot(
@@ -1428,7 +1452,7 @@ autoSelected(d)
 
 if(
 !s.frozen.UNION&&
-!s.entryWait.UNION&&
+!s.secondCycle.UNION&&
 s.pending.UNION?.history!==key
 ){
 s.pending.UNION=snapshot(
@@ -1440,7 +1464,7 @@ for(const m of MOTORS){
 for(const r of RX){
 if(
 !s.frozen[m][r]&&
-!s.entryWait[m][r]&&
+!s.secondCycle[m][r]&&
 s.pending[m][r]?.history!==key
 ){
 s.pending[m][r]=snapshot(
@@ -1452,19 +1476,15 @@ d.configs[m][r]
 }
 
 /*
- NOVO: VALIDAÇÃO COM 2ª CASA.
+ AVALIAÇÃO
 
- 2ª CASA DESLIGADA:
- - ENTRADA NO PRÓXIMO NÚMERO.
- - GALE CONFORME CONFIGURAÇÃO ANTERIOR.
+ QUANDO 2ª CASA ESTÁ ATIVA:
+ - O SNAPSHOT É ARMADO APÓS O START.
+ - A CASA INTERMEDIÁRIA É PULADA.
+ - A CASA SEGUINTE VALIDA.
+ - GALE REPETE O SALTO DE UMA CASA.
 
- 2ª CASA LIGADA:
- - PRIMEIRO NÚMERO DA ENTRADA É PULADO.
- - SEGUNDO NÚMERO VALIDA A ENTRADA.
- - SE ERRAR, PRIMEIRO NÚMERO DO GALE É PULADO.
- - SEGUNDO NÚMERO VALIDA O GALE.
-
- A JOGADA É CONGELADA DURANTE AS CASAS PULADAS.
+ A CASA PULADA NÃO MUDA O SNAPSHOT.
 */
 
 function evaluate(
@@ -1473,7 +1493,7 @@ p,
 freeze,
 line,
 key,
-entryWait
+cycle
 ){
 line=line.slice(-20);
 
@@ -1498,7 +1518,7 @@ n
 ]
 },
 
-entryWait:null,
+cycle:null,
 pending:null,
 done:false,
 skipped:true,
@@ -1541,7 +1561,7 @@ line.push(result);
 return {
 line:line.slice(-20),
 freeze:null,
-entryWait:null,
+cycle:null,
 pending:null,
 done:true,
 hit,
@@ -1551,13 +1571,41 @@ stage:"GALE_RESULT"
 }
 
 /*
- SEGUNDA CASA DA ENTRADA:
- VALIDAR O NÚMERO ATUAL USANDO
- O SNAPSHOT GUARDADO ANTES DA CASA PULADA.
+ 2ª CASA:
+ PRIMEIRO RESULTADO APÓS O START
+ NÃO É VALIDADO.
 */
 
-if(entryWait){
-const original=entryWait.play;
+if(cycle?.stage==="PULAR"){
+return {
+line,
+
+freeze:null,
+
+cycle:{
+...cycle,
+stage:"VALIDAR",
+
+skipped:[
+...(cycle.skipped||[]),
+n
+]
+},
+
+pending:null,
+done:false,
+skipped:true,
+stage:"ENTRY_SKIP"
+};
+}
+
+/*
+ SEGUNDO RESULTADO APÓS O START:
+ VALIDA A JOGADA CONGELADA.
+*/
+
+if(cycle?.stage==="VALIDAR"){
+const original=cycle.play;
 
 const hit=check(
 n,
@@ -1571,20 +1619,21 @@ hit:true,
 phase:"WIN",
 
 entrySkipped:
-entryWait.skipped
+cycle.skipped||[]
 });
 
 return {
 line:line.slice(-20),
 freeze:null,
-entryWait:null,
+cycle:null,
 pending:null,
 done:true,
 hit:true,
 phase:"WIN",
 stage:"ENTRY_RESULT",
+
 entrySkipped:
-entryWait.skipped
+cycle.skipped||[]
 };
 }
 
@@ -1594,7 +1643,7 @@ wait:true,
 phase:"AGUARDANDO",
 
 entrySkipped:
-entryWait.skipped
+cycle.skipped||[]
 });
 
 const adjusted=s.fineG1
@@ -1608,37 +1657,36 @@ miss:n
 }
 };
 
-/*
- 2ª CASA SEMPRE PULA UMA CASA NO GALE.
- SE A OPÇÃO ANTIGA GALE 2ª RODADA TAMBÉM
- ESTIVER LIGADA, NÃO PULA DUAS VEZES.
-*/
-
 return {
 line:line.slice(-20),
 
 freeze:{
 ...adjusted,
 
+/*
+ PULA UMA CASA NO GALE.
+ NÃO ACUMULA COM O BOTÃO
+ GALE 2ª RODADA.
+*/
 skipRemaining:1,
 
 skipped:[],
-
 galeSecond:true
 },
 
-entryWait:null,
+cycle:null,
 pending:null,
 done:false,
 phase:"AGUARDANDO",
 stage:"ENTRY_RESULT",
 hit:false,
+
 entrySkipped:
-entryWait.skipped
+cycle.skipped||[]
 };
 }
 
-/* SEM JOGADA VÁLIDA */
+/* SEM CONFIGURAÇÃO */
 
 if(
 !p||
@@ -1653,35 +1701,10 @@ phase:"SEM"
 return {
 line:line.slice(-20),
 freeze:null,
-entryWait:null,
+cycle:null,
 pending:null,
 done:false,
 stage:"SEM"
-};
-}
-
-/*
- NOVO:
- PULAR A PRIMEIRA CASA DA ENTRADA.
-*/
-
-if(s.secondHouse){
-return {
-line,
-
-freeze:null,
-
-entryWait:{
-play:{
-...p
-},
-skipped:[n]
-},
-
-pending:null,
-done:false,
-skipped:true,
-stage:"ENTRY_SKIP"
 };
 }
 
@@ -1702,7 +1725,7 @@ phase:"WIN"
 return {
 line:line.slice(-20),
 freeze:null,
-entryWait:null,
+cycle:null,
 pending:null,
 done:true,
 hit:true,
@@ -1743,7 +1766,7 @@ galeSecond:
 s.galeSecond
 },
 
-entryWait:null,
+cycle:null,
 pending:null,
 done:false,
 phase:"AGUARDANDO",
@@ -1751,6 +1774,68 @@ stage:"ENTRY_RESULT",
 hit:false
 };
 }
+
+/*
+ O START DA 2ª CASA É PREPARADO
+ DEPOIS QUE O NÚMERO ENTRA
+ NO HISTÓRICO E OS MOTORES
+ RECALCULAM A JOGADA.
+*/
+
+function armSecondHouse(d){
+if(!s.secondHouse)return;
+
+function arm(name,c){
+if(
+s.frozen[name]||
+s.secondCycle[name]
+){
+return;
+}
+
+const p=snapshot(c);
+
+if(!p)return;
+
+s.secondCycle[name]={
+stage:"PULAR",
+play:p,
+skipped:[]
+};
+
+s.pending[name]=null;
+}
+
+arm("AUTO",autoSelected(d));
+arm("UNION",buildUnion(d));
+
+for(const m of MOTORS){
+for(const r of RX){
+if(
+s.frozen[m][r]||
+s.secondCycle[m][r]
+){
+continue;
+}
+
+const p=snapshot(
+d.configs[m][r]
+);
+
+if(!p)continue;
+
+s.secondCycle[m][r]={
+stage:"PULAR",
+play:p,
+skipped:[]
+};
+
+s.pending[m][r]=null;
+}
+}
+}
+
+/* ATUALIZAR UMA LINHA */
 
 function updateLane(n,name){
 const key=
@@ -1762,13 +1847,13 @@ s.pending[name],
 s.frozen[name],
 s.lines[name],
 key,
-s.entryWait[name]
+s.secondCycle[name]
 );
 
 s.lines[name]=a.line;
 s.pending[name]=a.pending;
 s.frozen[name]=a.freeze;
-s.entryWait[name]=a.entryWait;
+s.secondCycle[name]=a.cycle;
 
 return a;
 }
@@ -1822,13 +1907,13 @@ s.pending[m][r],
 s.frozen[m][r],
 s.lines[m][r],
 key,
-s.entryWait[m][r]
+s.secondCycle[m][r]
 );
 
 s.lines[m][r]=a.line;
 s.pending[m][r]=a.pending;
 s.frozen[m][r]=a.freeze;
-s.entryWait[m][r]=a.entryWait;
+s.secondCycle[m][r]=a.cycle;
 
 manual[m][r]=a;
 }
@@ -1841,7 +1926,7 @@ manual
 };
 }
 
-/* NOVO: RESULTADO GERAL ACUMULADO */
+/* RESULTADO GERAL */
 
 function registerGeneral(result){
 if(
@@ -1875,37 +1960,34 @@ const d=calculate();
 
 prepare(d);
 
-/*
- GUARDAR QUAL MODO ESTAVA ATIVO
- ANTES DE ATUALIZAR OS MOTORES.
-*/
-
 const selectedMode=s.mode;
 const selectedMotor=s.manual;
 const selectedRx=s.rx;
 
-const original=
-activePending();
-
-const frozen=
-activeFrozen();
-
-const entryWait=
-activeEntryWait();
+const original=activePending();
+const frozen=activeFrozen();
+const cycle=activeCycle();
 
 const wasGale=!!frozen;
+const wasCycle=!!cycle;
 
-const wasEntryWait=!!entryWait;
+/*
+ IDENTIFICA O START:
+ COM 2ª CASA ATIVA, SE NÃO HÁ
+ CICLO OU GALE PENDENTE,
+ O NÚMERO ATUAL SERÁ O START.
+*/
 
-const skipped=
-wasGale&&
-(frozen.skipRemaining||0)>0;
+const isSecondStart=
+s.secondHouse&&
+!wasGale&&
+!wasCycle;
 
 s.seen++;
 
 /*
- MANTER ANÁLISE DOS NÚMEROS DIGITADOS,
- INCLUSIVE AS CASAS PULADAS.
+ TODOS OS NÚMEROS ALIMENTAM
+ AS ESTATÍSTICAS DOS MOTORES.
 */
 
 if(!s.frozen.AUTO){
@@ -1933,7 +2015,58 @@ s.geometryRecords=
 s.geometryRecords.slice(-2400);
 }
 
-/* ATUALIZAR TODAS AS ESTRATÉGIAS */
+/*
+ SE FOR START DA 2ª CASA,
+ NÃO VALIDA O NÚMERO.
+ PRIMEIRO ATUALIZA O HISTÓRICO,
+ DEPOIS GERA A JOGADA.
+*/
+
+if(isSecondStart){
+
+s.history=clean([
+...s.history,
+n
+]);
+
+invalidate();
+
+const next=calculate();
+
+armSecondHouse(next);
+
+const armed=activeCycle();
+
+s.cards.push({
+n,
+phase:armed?"START":"SEM",
+skipped:[]
+});
+
+s.audit={
+title:armed
+?"2ª CASA — START"
+:"AGUARDANDO MOTORES",
+
+text:armed
+?"Número "+n+
+" registrado. Jogada gerada e congelada. "+
+"O próximo número será ignorado e "+
+"o seguinte validará a entrada."
+:"Número "+n+
+" registrado. Ainda não existe "+
+"configuração válida para gerar a jogada."
+};
+
+s.cards=s.cards.slice(-14);
+
+save();
+render();
+
+return;
+}
+
+/* AVALIAR TODOS OS MOTORES */
 
 const updates=updateAll(n);
 
@@ -1941,53 +2074,53 @@ const result=selectedMode==="MANUAL"
 ?updates.manual[selectedMotor][selectedRx]
 :updates.auto;
 
-/*
- REGISTRO GERAL:
- SOMENTE A JOGADA ATIVA ENCERRADA.
- NÃO SOMAR TODOS OS 12 MOTORES.
-*/
-
 registerGeneral(result);
 
-/* CARTÕES DAS ÚLTIMAS 14 */
+/*
+ CARTÕES:
+ O START FICA NO TOPO.
+ CASA PULADA E VALIDAÇÃO
+ APARECEM NO MESMO QUADRO.
+*/
 
 if(result.stage==="ENTRY_SKIP"){
-
-/*
- PRIMEIRO NÚMERO PULADO.
- APARECE NO QUADRO, MAS NÃO É
- CONSIDERADO WIN OU LOSS.
-*/
-
-s.cards.push({
-n,
-phase:"ENTRADA_ESPERA",
-entrySkipped:[n],
-skipped:[]
-});
-
-s.audit={
-title:"2ª CASA — ENTRADA",
-
-text:
-"Número "+n+
-" registrado e analisado. "+
-"Entrada congelada. "+
-"O próximo número valida a jogada."
-};
-
-}else if(result.stage==="ENTRY_RESULT"&&wasEntryWait){
-
-/*
- SEGUNDO NÚMERO:
- VALIDA A JOGADA CONGELADA.
-*/
 
 const last=s.cards.at(-1);
 
 if(
 last&&
-last.phase==="ENTRADA_ESPERA"
+(last.phase==="START"||
+last.phase==="ENTRADA_ESPERA")
+){
+last.phase="ENTRADA_ESPERA";
+
+last.entrySkipped=[
+...(last.entrySkipped||[]),
+n
+];
+}
+
+s.audit={
+title:"2ª CASA — PULADA",
+
+text:
+"Número "+n+
+" registrado e analisado. "+
+"Não conta como WIN ou LOSS. "+
+"O próximo número valida a jogada congelada."
+};
+
+}else if(
+result.stage==="ENTRY_RESULT"&&
+wasCycle
+){
+
+const last=s.cards.at(-1);
+
+if(
+last&&
+(last.phase==="ENTRADA_ESPERA"||
+last.phase==="START")
 ){
 
 last.entryResult=n;
@@ -2016,15 +2149,17 @@ skipped:[]
 s.audit={
 title:result.hit
 ?"WIN NA 2ª CASA"
-:"GALE — 2ª CASA",
+:"GALE — AGUARDANDO",
 
 text:
 "Resultado "+n+
 " • "+
 (result.hit
-?"WIN na entrada."
+?"GREEN. Ciclo encerrado. "+
+"O próximo número inicia outro START."
 :"Entrada não coberta. "+
-"Uma casa será pulada antes do Gale.")
+"O próximo número será pulado "+
+"antes de validar o Gale.")
 };
 
 }else if(result.stage==="GALE_SKIP"){
@@ -2046,8 +2181,8 @@ title:"GALE — CASA PULADA",
 
 text:
 "Número "+n+
-" registrado e analisado, "+
-"mas não valida o Gale. "+
+" registrado e analisado. "+
+"Não valida o Gale. "+
 "O próximo número decide."
 };
 
@@ -2075,17 +2210,15 @@ title:result.hit
 text:
 "Resultado "+n+
 " • "+
-(result.hit?"WIN":"LOSS")+
-" • Jogada encerrada."
+(result.hit?"GREEN":"RED")+
+" • Ciclo encerrado. "+
+"O próximo número inicia outra jogada."
 };
 
 }else if(result.stage==="ENTRY_RESULT"){
 
-/* COMPORTAMENTO ORIGINAL DA V4.8 */
-
 s.cards.push({
 n,
-
 hit:!!result.hit,
 
 phase:result.hit
@@ -2131,8 +2264,9 @@ text:
 s.cards=s.cards.slice(-14);
 
 /*
- TODOS OS NÚMEROS DIGITADOS
- PERMANECEM NO HISTÓRICO.
+ TODOS OS RESULTADOS DIGITADOS,
+ INCLUSIVE OS PULADOS,
+ ENTRAM NO HISTÓRICO.
 */
 
 s.history=clean([
@@ -2141,6 +2275,18 @@ n
 ]);
 
 invalidate();
+
+/*
+ QUANDO A 2ª CASA ESTÁ ATIVA,
+ APÓS ENCERRAR UM CICLO,
+ O PRÓXIMO NÚMERO SERÁ
+ O START DE UMA NOVA JOGADA.
+
+ NÃO ARMAR OUTRA JOGADA
+ NO MESMO RESULTADO QUE
+ ACABOU DE VALIDAR.
+*/
+
 save();
 render();
 }
@@ -2159,9 +2305,8 @@ s.lines=a.lines;
 s.pending=a.pending;
 s.frozen=a.frozen;
 
-/* NOVO */
-s.entryWait=a.entryWait;
-s.general=emptyTotals();
+s.secondCycle=a.secondCycle;
+s.general=emptyGeneral();
 
 s.cards=[];
 s.audit=null;
@@ -2190,7 +2335,7 @@ s.mode="AUTO";
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2215,7 +2360,7 @@ s.rank=3;
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2236,7 +2381,7 @@ s.bestTurn=0;
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2256,7 +2401,7 @@ s.mode="AUTO";
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2277,7 +2422,7 @@ s.geoBestTurn=0;
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2302,7 +2447,7 @@ s.geoBestTurn=0;
 
 if(
 !s.frozen.AUTO&&
-!s.entryWait.AUTO
+!s.secondCycle.AUTO
 ){
 s.pending.AUTO=null;
 }
@@ -2326,15 +2471,18 @@ save();
 render();
 }
 
-/* NOVO: BOTÃO 2ª CASA */
+/* BOTÃO 2ª CASA */
 
 function toggleSecondHouse(){
 s.secondHouse=!s.secondHouse;
 
 /*
- JOGADAS JÁ CONGELADAS CONTINUAM
- ATÉ A VALIDAÇÃO. O NOVO ESTADO
- VALE PARA AS PRÓXIMAS ENTRADAS.
+ NÃO APAGA HISTÓRICO NEM
+ ESTATÍSTICAS AO ALTERNAR.
+
+ CICLOS JÁ INICIADOS SÃO
+ CONCLUÍDOS COM A REGRA
+ EM QUE FORAM CRIADOS.
 */
 
 save();
@@ -2765,7 +2913,7 @@ padding:9px;
 border-radius:8px
 }
 
-/* NOVO: RESULTADO GERAL */
+/* RESULTADO GERAL */
 
 .generalGrid{
 display:grid;
@@ -2972,8 +3120,6 @@ G1 AJUSTE FINO
 GALE 2ª RODADA
 </button>
 
-<!-- NOVO BOTÃO -->
-
 <button class="btn" id="secondHouse">
 2ª CASA
 </button>
@@ -3107,7 +3253,7 @@ AUDITORIA
 
 </section>
 
-<!-- 8. NOVO RESULTADO GERAL -->
+<!-- 8. RESULTADO GERAL -->
 
 <section class="panel">
 
@@ -3197,9 +3343,8 @@ style="width:0%"
 </div>
 
 <div class="small">
-Contagem acumulada das jogadas encerradas.
-Casas puladas não são contabilizadas como
-GREEN ou RED.
+Total acumulado das jogadas encerradas.
+Casas puladas não contam como GREEN ou RED.
 </div>
 
 </div>
@@ -3236,8 +3381,6 @@ toggleFine;
 $("second").onclick=
 toggleSecond;
 
-/* NOVO */
-
 $("secondHouse").onclick=
 toggleSecondHouse;
 
@@ -3266,8 +3409,6 @@ s.openVirtual=
 save();
 render();
 };
-
-/* NOVO: ABRIR E FECHAR RESULTADO GERAL */
 
 $("toggleGeneral").onclick=()=>{
 s.openGeneral=!s.openGeneral;
@@ -3506,6 +3647,11 @@ Array.isArray(x.skipped)
 ?x.skipped
 :[];
 
+const entrySkipped=
+Array.isArray(x.entrySkipped)
+?x.entrySkipped
+:[];
+
 const hasGale=
 Number.isInteger(x.gale);
 
@@ -3515,9 +3661,15 @@ Number.isInteger(x.entryResult);
 const isG2=
 skipped.length>0;
 
-if(x.phase==="ENTRADA_ESPERA"){
+if(x.phase==="START"){
+border="yellow";
+label="START";
+}
+
+else if(x.phase==="ENTRADA_ESPERA"){
 border="yellow";
 label="2ª CASA";
+values=[...entrySkipped];
 }
 
 else if(x.phase==="WIN"){
@@ -3525,7 +3677,10 @@ border="green";
 label="WIN";
 
 if(hasEntryResult){
-values=[x.entryResult];
+values=[
+...entrySkipped,
+x.entryResult
+];
 }
 }
 
@@ -3534,6 +3689,8 @@ border="yellow";
 label=isG2?"G2":"G1";
 
 values=[
+...entrySkipped,
+
 ...(hasEntryResult
 ?[x.entryResult]
 :[]),
@@ -3549,6 +3706,8 @@ border="red";
 label="LOSS";
 
 values=[
+...entrySkipped,
+
 ...(hasEntryResult
 ?[x.entryResult]
 :[]),
@@ -3564,6 +3723,8 @@ border="yellow";
 label=isG2?"G2":"G1";
 
 values=[
+...entrySkipped,
+
 ...(hasEntryResult
 ?[x.entryResult]
 :[]),
@@ -3576,11 +3737,6 @@ else{
 border="green";
 label="ENTRADA";
 }
-
-/*
- COR DE FUNDO DA PRIMEIRA CASA:
- VERMELHO, PRETO OU ZERO.
-*/
 
 const numberColor=
 x.n===0
@@ -3616,7 +3772,7 @@ ${details}
 }).join("");
 }
 
-/* NOVO: RENDER RESULTADO GERAL */
+/* RESULTADO GERAL */
 
 function renderGeneral(){
 const total=s.general.analyzed;
@@ -3677,15 +3833,12 @@ const u=buildUnion(d);
 const cfg=selected(d);
 
 const freeze=activeFrozen();
-
-/* NOVO: ENTRADA CONGELADA NA 2ª CASA */
-
-const waitingEntry=activeEntryWait();
+const cycle=activeCycle();
 
 const play=freeze
 ?snapPlay(freeze)
-:waitingEntry
-?snapPlay(waitingEntry.play)
+:cycle?.play
+?snapPlay(cycle.play)
 :cfg?.play;
 
 const effective=effectiveAutoMode();
@@ -3754,8 +3907,6 @@ $("second").classList.toggle(
 "selected",
 s.galeSecond
 );
-
-/* NOVO: ESTADO VISUAL DO BOTÃO */
 
 $("secondHouse").classList.toggle(
 "selected",
@@ -3904,7 +4055,7 @@ $("playLabel").textContent=freeze
 (freeze.motor==="UNION"
 ?"AUTO UNIÃO"
 :LABEL[freeze.motor]+" C"+freeze.rx)
-:waitingEntry
+:cycle
 ?"2ª CASA • JOGADA CONGELADA"
 :effective==="UNION"&&s.mode==="AUTO"
 ?"JOGADA AUTO UNIÃO"
@@ -3937,8 +4088,10 @@ $("g1Info").textContent=freeze
 ?"GALE CONGELADO • PRÓXIMO RESULTADO IGNORADO"
 :"GALE CONGELADO • PRÓXIMO RESULTADO DECIDE"
 )
-:waitingEntry
-?"2ª CASA • PRÓXIMO RESULTADO VALIDA A ENTRADA"
+:cycle?.stage==="PULAR"
+?"2ª CASA • PRÓXIMO NÚMERO SERÁ PULADO"
+:cycle?.stage==="VALIDAR"
+?"2ª CASA • PRÓXIMO NÚMERO VALIDA A ENTRADA"
 :"AZUL: 2 VIZINHOS • AMARELO: 1 VIZINHO";
 
 /* ÚLTIMAS 14 */
@@ -4002,7 +4155,7 @@ $("virtualContent").classList.toggle(
 $("arrowVirtual").textContent=
 s.openVirtual?"−":"+";
 
-/* NOVO: RESULTADO GERAL */
+/* RESULTADO GERAL */
 
 renderGeneral();
 
