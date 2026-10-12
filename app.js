@@ -3,32 +3,32 @@
 "use strict";
 
 /*
- ANÁLISE BETA V4.8
+ ANÁLISE BETA V4.9
 
- ALTERAÇÕES:
- 1. ÚLTIMAS 14 JOGADAS:
-    FUNDO CONFORME A COR DO NÚMERO DA ENTRADA.
-    VERMELHO, PRETO OU VERDE (ZERO).
-    BORDAS DE WIN, GALE E LOSS PRESERVADAS.
+ BASE: V4.8 ENVIADA PELO USUÁRIO.
 
- 2. AUTO MELHORES 2 GEOMETRIA:
-    ALTERNA ENTRE AS DUAS MELHORES POSIÇÕES
-    DO RANKING DE DESEMPENHO GEOMÉTRICO.
+ INCLUSÕES:
+ 1. BOTÃO 2ª CASA:
+    - PULA UMA CASA ANTES DE VALIDAR A ENTRADA.
+    - PULA UMA CASA ANTES DE VALIDAR O GALE.
+    - TODOS OS NÚMEROS CONTINUAM NO HISTÓRICO
+      E NA ANÁLISE DOS MOTORES.
+    - A JOGADA ORIGINAL FICA CONGELADA
+      DURANTE A CASA PULADA.
 
- 3. AUTO TODAS MELHORES:
-    CICLO:
-    AUTO 2º ⇄ 3º
-    AUTO MELHORES 2
-    AUTO UNIÃO
-    AUTO MELHORES 2 GEOMETRIA
-    REPETE O CICLO.
+ 2. RESULTADO GERAL:
+    - PAINEL EXPANSÍVEL ABAIXO DO JOGADOR VIRTUAL.
+    - TOTAL DE JOGADAS ENCERRADAS.
+    - GREEN, RED E PORCENTAGENS.
+    - CONTAGEM ACUMULADA, SEM LIMITE DE 14 OU 20.
 
- DEMAIS ESTRUTURAS PRESERVADAS.
+ DEMAIS ESTRUTURAS DA V4.8 PRESERVADAS.
 */
 
-const KEY="ANALISE_BETA_V48";
+const KEY="ANALISE_BETA_V49";
 
 const OLD=[
+"ANALISE_BETA_V48",
 "ANALISE_BETA_V47",
 "ANALISE_BETA_V46",
 "ANALISE_BETA_V45",
@@ -165,6 +165,14 @@ Object.fromEntries(RX.map(r=>[r,f()]))
 );
 }
 
+function emptyTotals(){
+return {
+analyzed:0,
+green:0,
+red:0
+};
+}
+
 /* ESTADO */
 
 function fresh(){
@@ -188,6 +196,9 @@ allTurn:0,
 
 fineG1:false,
 galeSecond:false,
+
+/* NOVO: 2ª CASA */
+secondHouse:false,
 
 mode:"AUTO",
 manual:"NORMAL",
@@ -216,18 +227,44 @@ UNION:null,
 ...matrix(()=>null)
 },
 
+/*
+ NOVO:
+ JOGADAS AGUARDANDO A SEGUNDA CASA.
+*/
+entryWait:{
+AUTO:null,
+UNION:null,
+...matrix(()=>null)
+},
+
+/*
+ NOVO:
+ ESTATÍSTICAS GERAIS ACUMULADAS.
+*/
+general:emptyTotals(),
+
 cards:[],
 audit:null,
 
 openCandidates:false,
 openLines:false,
-openVirtual:true
+openVirtual:true,
+
+/* NOVO: PAINEL EXPANSÍVEL */
+openGeneral:false
 };
 }
 
 let s=fresh();
 
 /* PERSISTÊNCIA */
+
+function modAll(n){
+return (
+n%ALL_MODES.length+
+ALL_MODES.length
+)%ALL_MODES.length;
+}
 
 function load(){
 try{
@@ -270,6 +307,9 @@ s.allTurn=Number.isInteger(+a.allTurn)
 s.fineG1=!!a.fineG1;
 s.galeSecond=!!a.galeSecond;
 
+/* NOVO */
+s.secondHouse=!!a.secondHouse;
+
 s.mode=a.mode||"AUTO";
 s.manual=a.manual||"NORMAL";
 s.rx=+a.rx||4;
@@ -287,6 +327,22 @@ Array.isArray(a.geometryRecords)
 s.openCandidates=!!a.openCandidates;
 s.openLines=!!a.openLines;
 s.openVirtual=a.openVirtual??true;
+
+/* NOVO */
+s.openGeneral=!!a.openGeneral;
+
+if(a.general){
+s.general={
+analyzed:
+Math.max(0,+a.general.analyzed||0),
+
+green:
+Math.max(0,+a.general.green||0),
+
+red:
+Math.max(0,+a.general.red||0)
+};
+}
 
 if(a.lines){
 for(const name of ["AUTO","UNION"]){
@@ -330,6 +386,22 @@ a.frozen[m]?.[r]||null;
 }
 }
 
+/* NOVO: RESTAURAR 2ª CASA PENDENTE */
+
+if(a.entryWait){
+for(const name of ["AUTO","UNION"]){
+s.entryWait[name]=
+a.entryWait[name]||null;
+}
+
+for(const m of MOTORS){
+for(const r of RX){
+s.entryWait[m][r]=
+a.entryWait[m]?.[r]||null;
+}
+}
+}
+
 s.cards=
 Array.isArray(a.cards)
 ?a.cards.slice(-14):[];
@@ -339,13 +411,6 @@ s.audit=a.audit||null;
 }catch(e){
 console.warn("Erro ao carregar:",e);
 }
-}
-
-function modAll(n){
-return (
-n%ALL_MODES.length+
-ALL_MODES.length
-)%ALL_MODES.length;
 }
 
 function save(){
@@ -1333,6 +1398,12 @@ return s.mode==="MANUAL"
 :s.frozen.AUTO;
 }
 
+function activeEntryWait(){
+return s.mode==="MANUAL"
+?s.entryWait[s.manual][s.rx]
+:s.entryWait.AUTO;
+}
+
 function activeLines(){
 return s.mode==="MANUAL"
 ?s.lines[s.manual][s.rx]
@@ -1347,6 +1418,7 @@ s.history.join(",");
 
 if(
 !s.frozen.AUTO&&
+!s.entryWait.AUTO&&
 s.pending.AUTO?.history!==key
 ){
 s.pending.AUTO=snapshot(
@@ -1356,6 +1428,7 @@ autoSelected(d)
 
 if(
 !s.frozen.UNION&&
+!s.entryWait.UNION&&
 s.pending.UNION?.history!==key
 ){
 s.pending.UNION=snapshot(
@@ -1367,6 +1440,7 @@ for(const m of MOTORS){
 for(const r of RX){
 if(
 !s.frozen[m][r]&&
+!s.entryWait[m][r]&&
 s.pending[m][r]?.history!==key
 ){
 s.pending[m][r]=snapshot(
@@ -1377,16 +1451,33 @@ d.configs[m][r]
 }
 }
 
-/* GALE NORMAL E SEGUNDA RODADA */
+/*
+ NOVO: VALIDAÇÃO COM 2ª CASA.
+
+ 2ª CASA DESLIGADA:
+ - ENTRADA NO PRÓXIMO NÚMERO.
+ - GALE CONFORME CONFIGURAÇÃO ANTERIOR.
+
+ 2ª CASA LIGADA:
+ - PRIMEIRO NÚMERO DA ENTRADA É PULADO.
+ - SEGUNDO NÚMERO VALIDA A ENTRADA.
+ - SE ERRAR, PRIMEIRO NÚMERO DO GALE É PULADO.
+ - SEGUNDO NÚMERO VALIDA O GALE.
+
+ A JOGADA É CONGELADA DURANTE AS CASAS PULADAS.
+*/
 
 function evaluate(
 n,
 p,
 freeze,
 line,
-key
+key,
+entryWait
 ){
 line=line.slice(-20);
+
+/* GALE CONGELADO */
 
 if(freeze){
 if(
@@ -1407,9 +1498,11 @@ n
 ]
 },
 
+entryWait:null,
 pending:null,
 done:false,
-skipped:true
+skipped:true,
+stage:"GALE_SKIP"
 };
 }
 
@@ -1448,12 +1541,104 @@ line.push(result);
 return {
 line:line.slice(-20),
 freeze:null,
+entryWait:null,
 pending:null,
 done:true,
 hit,
-phase:result.phase
+phase:result.phase,
+stage:"GALE_RESULT"
 };
 }
+
+/*
+ SEGUNDA CASA DA ENTRADA:
+ VALIDAR O NÚMERO ATUAL USANDO
+ O SNAPSHOT GUARDADO ANTES DA CASA PULADA.
+*/
+
+if(entryWait){
+const original=entryWait.play;
+
+const hit=check(
+n,
+snapPlay(original)
+).hit;
+
+if(hit){
+line.push({
+n,
+hit:true,
+phase:"WIN",
+
+entrySkipped:
+entryWait.skipped
+});
+
+return {
+line:line.slice(-20),
+freeze:null,
+entryWait:null,
+pending:null,
+done:true,
+hit:true,
+phase:"WIN",
+stage:"ENTRY_RESULT",
+entrySkipped:
+entryWait.skipped
+};
+}
+
+line.push({
+n,
+wait:true,
+phase:"AGUARDANDO",
+
+entrySkipped:
+entryWait.skipped
+});
+
+const adjusted=s.fineG1
+?tuneG1(original,n)
+:{
+...original,
+g1:{
+type:"ORIGINAL",
+shift:0,
+miss:n
+}
+};
+
+/*
+ 2ª CASA SEMPRE PULA UMA CASA NO GALE.
+ SE A OPÇÃO ANTIGA GALE 2ª RODADA TAMBÉM
+ ESTIVER LIGADA, NÃO PULA DUAS VEZES.
+*/
+
+return {
+line:line.slice(-20),
+
+freeze:{
+...adjusted,
+
+skipRemaining:1,
+
+skipped:[],
+
+galeSecond:true
+},
+
+entryWait:null,
+pending:null,
+done:false,
+phase:"AGUARDANDO",
+stage:"ENTRY_RESULT",
+hit:false,
+entrySkipped:
+entryWait.skipped
+};
+}
+
+/* SEM JOGADA VÁLIDA */
 
 if(
 !p||
@@ -1468,10 +1653,39 @@ phase:"SEM"
 return {
 line:line.slice(-20),
 freeze:null,
+entryWait:null,
 pending:null,
-done:false
+done:false,
+stage:"SEM"
 };
 }
+
+/*
+ NOVO:
+ PULAR A PRIMEIRA CASA DA ENTRADA.
+*/
+
+if(s.secondHouse){
+return {
+line,
+
+freeze:null,
+
+entryWait:{
+play:{
+...p
+},
+skipped:[n]
+},
+
+pending:null,
+done:false,
+skipped:true,
+stage:"ENTRY_SKIP"
+};
+}
+
+/* ENTRADA NORMAL DA V4.8 */
 
 const hit=check(
 n,
@@ -1488,10 +1702,12 @@ phase:"WIN"
 return {
 line:line.slice(-20),
 freeze:null,
+entryWait:null,
 pending:null,
 done:true,
 hit:true,
-phase:"WIN"
+phase:"WIN",
+stage:"ENTRY_RESULT"
 };
 }
 
@@ -1527,9 +1743,12 @@ galeSecond:
 s.galeSecond
 },
 
+entryWait:null,
 pending:null,
 done:false,
-phase:"AGUARDANDO"
+phase:"AGUARDANDO",
+stage:"ENTRY_RESULT",
+hit:false
 };
 }
 
@@ -1542,12 +1761,14 @@ n,
 s.pending[name],
 s.frozen[name],
 s.lines[name],
-key
+key,
+s.entryWait[name]
 );
 
 s.lines[name]=a.line;
 s.pending[name]=a.pending;
 s.frozen[name]=a.freeze;
+s.entryWait[name]=a.entryWait;
 
 return a;
 }
@@ -1588,6 +1809,8 @@ if(auto.done){
 advanceAutoMode();
 }
 
+const manual=matrix(()=>null);
+
 for(const m of MOTORS){
 for(const r of RX){
 const key=
@@ -1598,19 +1821,43 @@ n,
 s.pending[m][r],
 s.frozen[m][r],
 s.lines[m][r],
-key
+key,
+s.entryWait[m][r]
 );
 
 s.lines[m][r]=a.line;
 s.pending[m][r]=a.pending;
 s.frozen[m][r]=a.freeze;
+s.entryWait[m][r]=a.entryWait;
+
+manual[m][r]=a;
 }
 }
 
 return {
 auto,
-union
+union,
+manual
 };
+}
+
+/* NOVO: RESULTADO GERAL ACUMULADO */
+
+function registerGeneral(result){
+if(
+!result?.done||
+typeof result.hit!=="boolean"
+){
+return;
+}
+
+s.general.analyzed++;
+
+if(result.hit){
+s.general.green++;
+}else{
+s.general.red++;
+}
 }
 
 /* INSERIR NÚMERO */
@@ -1628,26 +1875,38 @@ const d=calculate();
 
 prepare(d);
 
+/*
+ GUARDAR QUAL MODO ESTAVA ATIVO
+ ANTES DE ATUALIZAR OS MOTORES.
+*/
+
+const selectedMode=s.mode;
+const selectedMotor=s.manual;
+const selectedRx=s.rx;
+
 const original=
 activePending();
 
 const frozen=
 activeFrozen();
 
+const entryWait=
+activeEntryWait();
+
 const wasGale=!!frozen;
+
+const wasEntryWait=!!entryWait;
 
 const skipped=
 wasGale&&
 (frozen.skipRemaining||0)>0;
 
-const result=check(
-n,
-snapPlay(
-wasGale?frozen:original
-)
-);
-
 s.seen++;
+
+/*
+ MANTER ANÁLISE DOS NÚMEROS DIGITADOS,
+ INCLUSIVE AS CASAS PULADAS.
+*/
 
 if(!s.frozen.AUTO){
 for(const c of d.ranking){
@@ -1674,9 +1933,102 @@ s.geometryRecords=
 s.geometryRecords.slice(-2400);
 }
 
-updateAll(n);
+/* ATUALIZAR TODAS AS ESTRATÉGIAS */
 
-if(skipped){
+const updates=updateAll(n);
+
+const result=selectedMode==="MANUAL"
+?updates.manual[selectedMotor][selectedRx]
+:updates.auto;
+
+/*
+ REGISTRO GERAL:
+ SOMENTE A JOGADA ATIVA ENCERRADA.
+ NÃO SOMAR TODOS OS 12 MOTORES.
+*/
+
+registerGeneral(result);
+
+/* CARTÕES DAS ÚLTIMAS 14 */
+
+if(result.stage==="ENTRY_SKIP"){
+
+/*
+ PRIMEIRO NÚMERO PULADO.
+ APARECE NO QUADRO, MAS NÃO É
+ CONSIDERADO WIN OU LOSS.
+*/
+
+s.cards.push({
+n,
+phase:"ENTRADA_ESPERA",
+entrySkipped:[n],
+skipped:[]
+});
+
+s.audit={
+title:"2ª CASA — ENTRADA",
+
+text:
+"Número "+n+
+" registrado e analisado. "+
+"Entrada congelada. "+
+"O próximo número valida a jogada."
+};
+
+}else if(result.stage==="ENTRY_RESULT"&&wasEntryWait){
+
+/*
+ SEGUNDO NÚMERO:
+ VALIDA A JOGADA CONGELADA.
+*/
+
+const last=s.cards.at(-1);
+
+if(
+last&&
+last.phase==="ENTRADA_ESPERA"
+){
+
+last.entryResult=n;
+last.hit=!!result.hit;
+
+last.phase=result.hit
+?"WIN"
+:"AGUARDANDO";
+
+}else{
+
+s.cards.push({
+n,
+entryResult:n,
+hit:!!result.hit,
+
+phase:result.hit
+?"WIN"
+:"AGUARDANDO",
+
+skipped:[]
+});
+
+}
+
+s.audit={
+title:result.hit
+?"WIN NA 2ª CASA"
+:"GALE — 2ª CASA",
+
+text:
+"Resultado "+n+
+" • "+
+(result.hit
+?"WIN na entrada."
+:"Entrada não coberta. "+
+"Uma casa será pulada antes do Gale.")
+};
+
+}else if(result.stage==="GALE_SKIP"){
+
 const last=s.cards.at(-1);
 
 if(
@@ -1690,16 +2042,17 @@ n
 }
 
 s.audit={
-title:"GALE 2ª RODADA",
+title:"GALE — CASA PULADA",
 
 text:
 "Número "+n+
-" ignorado para WIN/LOSS."+
-" Jogada permanece congelada."+
-" O próximo número decide."
+" registrado e analisado, "+
+"mas não valida o Gale. "+
+"O próximo número decide."
 };
 
-}else if(wasGale){
+}else if(result.stage==="GALE_RESULT"){
+
 const last=s.cards.at(-1);
 
 if(
@@ -1707,7 +2060,7 @@ last&&
 last.phase==="AGUARDANDO"
 ){
 last.gale=n;
-last.hit=result.hit;
+last.hit=!!result.hit;
 
 last.phase=result.hit
 ?"GALE"
@@ -1726,15 +2079,16 @@ text:
 " • Jogada encerrada."
 };
 
-}else{
+}else if(result.stage==="ENTRY_RESULT"){
+
+/* COMPORTAMENTO ORIGINAL DA V4.8 */
+
 s.cards.push({
 n,
-hit:result.hit,
-sem:!original,
 
-phase:!original
-?"SEM"
-:result.hit
+hit:!!result.hit,
+
+phase:result.hit
 ?"WIN"
 :"AGUARDANDO",
 
@@ -1742,15 +2096,11 @@ skipped:[]
 });
 
 s.audit={
-title:!original
-?"SEM JOGADA"
-:result.hit
+title:result.hit
 ?"WIN NA ENTRADA"
 :"AGUARDANDO GALE",
 
-text:!original
-?"Não existe configuração válida."
-:result.hit
+text:result.hit
 ?"Número "+n+
 " coberto na entrada."
 :"Número "+n+
@@ -1759,14 +2109,30 @@ text:!original
 ?"Próxima rodada ignorada."
 :"Próxima rodada decide.")
 };
+
+}else if(result.stage==="SEM"){
+
+s.cards.push({
+n,
+sem:true,
+phase:"SEM",
+skipped:[]
+});
+
+s.audit={
+title:"SEM JOGADA",
+
+text:
+"Não existe configuração válida."
+};
+
 }
 
 s.cards=s.cards.slice(-14);
 
 /*
- TODOS OS NÚMEROS DIGITADOS,
- INCLUSIVE O INTERMEDIÁRIO DO G2,
- CONTINUAM NO HISTÓRICO.
+ TODOS OS NÚMEROS DIGITADOS
+ PERMANECEM NO HISTÓRICO.
 */
 
 s.history=clean([
@@ -1793,6 +2159,10 @@ s.lines=a.lines;
 s.pending=a.pending;
 s.frozen=a.frozen;
 
+/* NOVO */
+s.entryWait=a.entryWait;
+s.general=emptyTotals();
+
 s.cards=[];
 s.audit=null;
 
@@ -1818,7 +2188,10 @@ resetAutoSelection();
 s.rank=n;
 s.mode="AUTO";
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1840,7 +2213,10 @@ s.nextRank=3;
 s.rank=3;
 }
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1858,7 +2234,10 @@ s.best2=enabled;
 s.mode="AUTO";
 s.bestTurn=0;
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1875,7 +2254,10 @@ resetAutoSelection();
 s.union=enabled;
 s.mode="AUTO";
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1893,7 +2275,10 @@ s.geoBest2=enabled;
 s.mode="AUTO";
 s.geoBestTurn=0;
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1915,7 +2300,10 @@ s.nextRank=3;
 s.bestTurn=0;
 s.geoBestTurn=0;
 
-if(!s.frozen.AUTO){
+if(
+!s.frozen.AUTO&&
+!s.entryWait.AUTO
+){
 s.pending.AUTO=null;
 }
 
@@ -1933,6 +2321,21 @@ render();
 
 function toggleSecond(){
 s.galeSecond=!s.galeSecond;
+
+save();
+render();
+}
+
+/* NOVO: BOTÃO 2ª CASA */
+
+function toggleSecondHouse(){
+s.secondHouse=!s.secondHouse;
+
+/*
+ JOGADAS JÁ CONGELADAS CONTINUAM
+ ATÉ A VALIDAÇÃO. O NOVO ESTADO
+ VALE PARA AS PRÓXIMAS ENTRADAS.
+*/
 
 save();
 render();
@@ -2219,11 +2622,6 @@ text-align:center;
 overflow:hidden
 }
 
-/*
- A COR DE FUNDO DEPENDE
- SOMENTE DO NÚMERO DA ENTRADA.
-*/
-
 .historyItem.numberRed{
 background:#b52039
 }
@@ -2235,10 +2633,6 @@ background:#171717
 .historyItem.numberZero{
 background:#087c48
 }
-
-/*
- A BORDA DEPENDE DO RESULTADO.
-*/
 
 .historyItem.green{
 border-color:#21b977
@@ -2371,6 +2765,81 @@ padding:9px;
 border-radius:8px
 }
 
+/* NOVO: RESULTADO GERAL */
+
+.generalGrid{
+display:grid;
+grid-template-columns:repeat(3,minmax(0,1fr));
+gap:6px;
+margin:10px 0
+}
+
+.generalCard{
+border-radius:8px;
+padding:12px 5px;
+text-align:center;
+background:#303746;
+border:1px solid #586274
+}
+
+.generalCard.green{
+background:#124d37;
+border-color:#20bb79
+}
+
+.generalCard.red{
+background:#682735;
+border-color:#e65b6c
+}
+
+.generalCard small{
+display:block;
+font-size:10px;
+font-weight:bold;
+color:#e1e7ef
+}
+
+.generalCard strong{
+display:block;
+font-size:25px;
+margin-top:6px
+}
+
+.generalPercent{
+margin:12px 0
+}
+
+.generalPercentHeader{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:8px;
+font-size:12px;
+font-weight:bold;
+margin-bottom:6px
+}
+
+.generalTrack{
+height:11px;
+border-radius:10px;
+background:#404653;
+overflow:hidden
+}
+
+.generalFill{
+height:100%;
+border-radius:10px;
+transition:width .2s ease
+}
+
+.generalFill.green{
+background:#19a86b
+}
+
+.generalFill.red{
+background:#d7475b
+}
+
 @media(max-width:600px){
 .center{
 font-size:19px
@@ -2403,6 +2872,10 @@ gap:2px
 font-size:9px;
 gap:1px
 }
+
+.generalCard strong{
+font-size:21px
+}
 }
 `;
 
@@ -2413,7 +2886,7 @@ document.body.innerHTML=`
 
 <main class="app">
 
-<h2>ANÁLISE BETA V4.8</h2>
+<h2>ANÁLISE BETA V4.9</h2>
 
 <!-- 1. INSERIR HISTÓRICO -->
 
@@ -2497,6 +2970,12 @@ G1 AJUSTE FINO
 
 <button class="btn" id="second">
 GALE 2ª RODADA
+</button>
+
+<!-- NOVO BOTÃO -->
+
+<button class="btn" id="secondHouse">
+2ª CASA
 </button>
 
 </div>
@@ -2628,6 +3107,105 @@ AUDITORIA
 
 </section>
 
+<!-- 8. NOVO RESULTADO GERAL -->
+
+<section class="panel">
+
+<button class="head" id="toggleGeneral">
+RESULTADO GERAL
+<span id="arrowGeneral">+</span>
+</button>
+
+<div id="generalContent" class="hidden">
+
+<div class="generalGrid">
+
+<div class="generalCard">
+
+<small>ANALISADOS</small>
+
+<strong id="generalAnalyzed">0</strong>
+
+</div>
+
+<div class="generalCard green">
+
+<small>GREEN</small>
+
+<strong id="generalGreen">0</strong>
+
+</div>
+
+<div class="generalCard red">
+
+<small>RED</small>
+
+<strong id="generalRed">0</strong>
+
+</div>
+
+</div>
+
+<div class="generalPercent">
+
+<div class="generalPercentHeader">
+
+<span style="color:#59e3a1">
+GREEN —
+<span id="generalGreenPct">0,0%</span>
+</span>
+
+<span id="generalGreenCount">0 / 0</span>
+
+</div>
+
+<div class="generalTrack">
+
+<div
+class="generalFill green"
+id="generalGreenBar"
+style="width:0%"
+></div>
+
+</div>
+
+</div>
+
+<div class="generalPercent">
+
+<div class="generalPercentHeader">
+
+<span style="color:#ff8190">
+RED —
+<span id="generalRedPct">0,0%</span>
+</span>
+
+<span id="generalRedCount">0 / 0</span>
+
+</div>
+
+<div class="generalTrack">
+
+<div
+class="generalFill red"
+id="generalRedBar"
+style="width:0%"
+></div>
+
+</div>
+
+</div>
+
+<div class="small">
+Contagem acumulada das jogadas encerradas.
+Casas puladas não são contabilizadas como
+GREEN ou RED.
+</div>
+
+</div>
+
+</section>
+
 </main>
 `;
 
@@ -2658,6 +3236,11 @@ toggleFine;
 $("second").onclick=
 toggleSecond;
 
+/* NOVO */
+
+$("secondHouse").onclick=
+toggleSecondHouse;
+
 $("auto").onclick=()=>
 setMode("AUTO");
 
@@ -2679,6 +3262,15 @@ render();
 $("toggleVirtual").onclick=()=>{
 s.openVirtual=
 !s.openVirtual;
+
+save();
+render();
+};
+
+/* NOVO: ABRIR E FECHAR RESULTADO GERAL */
+
+$("toggleGeneral").onclick=()=>{
+s.openGeneral=!s.openGeneral;
 
 save();
 render();
@@ -2917,12 +3509,24 @@ Array.isArray(x.skipped)
 const hasGale=
 Number.isInteger(x.gale);
 
+const hasEntryResult=
+Number.isInteger(x.entryResult);
+
 const isG2=
 skipped.length>0;
 
-if(x.phase==="WIN"){
+if(x.phase==="ENTRADA_ESPERA"){
+border="yellow";
+label="2ª CASA";
+}
+
+else if(x.phase==="WIN"){
 border="green";
 label="WIN";
+
+if(hasEntryResult){
+values=[x.entryResult];
+}
 }
 
 else if(x.phase==="GALE"){
@@ -2930,7 +3534,12 @@ border="yellow";
 label=isG2?"G2":"G1";
 
 values=[
+...(hasEntryResult
+?[x.entryResult]
+:[]),
+
 ...skipped,
+
 ...(hasGale?[x.gale]:[])
 ];
 }
@@ -2940,7 +3549,12 @@ border="red";
 label="LOSS";
 
 values=[
+...(hasEntryResult
+?[x.entryResult]
+:[]),
+
 ...skipped,
+
 ...(hasGale?[x.gale]:[])
 ];
 }
@@ -2948,7 +3562,14 @@ values=[
 else if(x.phase==="AGUARDANDO"){
 border="yellow";
 label=isG2?"G2":"G1";
-values=[...skipped];
+
+values=[
+...(hasEntryResult
+?[x.entryResult]
+:[]),
+
+...skipped
+];
 }
 
 else{
@@ -2957,8 +3578,8 @@ label="ENTRADA";
 }
 
 /*
- COR DO QUADRO:
- INDEPENDENTE DE WIN, GALE OU LOSS.
+ COR DE FUNDO DA PRIMEIRA CASA:
+ VERMELHO, PRETO OU ZERO.
 */
 
 const numberColor=
@@ -2995,6 +3616,55 @@ ${details}
 }).join("");
 }
 
+/* NOVO: RENDER RESULTADO GERAL */
+
+function renderGeneral(){
+const total=s.general.analyzed;
+const green=s.general.green;
+const red=s.general.red;
+
+const greenRate=
+total?100*green/total:0;
+
+const redRate=
+total?100*red/total:0;
+
+$("generalAnalyzed").textContent=
+total;
+
+$("generalGreen").textContent=
+green;
+
+$("generalRed").textContent=
+red;
+
+$("generalGreenPct").textContent=
+pct(greenRate);
+
+$("generalRedPct").textContent=
+pct(redRate);
+
+$("generalGreenCount").textContent=
+green+" / "+total;
+
+$("generalRedCount").textContent=
+red+" / "+total;
+
+$("generalGreenBar").style.width=
+greenRate+"%";
+
+$("generalRedBar").style.width=
+redRate+"%";
+
+$("generalContent").classList.toggle(
+"hidden",
+!s.openGeneral
+);
+
+$("arrowGeneral").textContent=
+s.openGeneral?"−":"+";
+}
+
 /* RENDER */
 
 function render(){
@@ -3008,8 +3678,14 @@ const cfg=selected(d);
 
 const freeze=activeFrozen();
 
+/* NOVO: ENTRADA CONGELADA NA 2ª CASA */
+
+const waitingEntry=activeEntryWait();
+
 const play=freeze
 ?snapPlay(freeze)
+:waitingEntry
+?snapPlay(waitingEntry.play)
 :cfg?.play;
 
 const effective=effectiveAutoMode();
@@ -3079,6 +3755,13 @@ $("second").classList.toggle(
 s.galeSecond
 );
 
+/* NOVO: ESTADO VISUAL DO BOTÃO */
+
+$("secondHouse").classList.toggle(
+"selected",
+s.secondHouse
+);
+
 for(let n=1;n<=4;n++){
 $("rank"+n).classList.toggle(
 "selected",
@@ -3117,7 +3800,11 @@ autoModeLabel(effective)+
 " • "+
 (s.fineG1
 ?"AJUSTE FINO LIGADO"
-:"AJUSTE FINO DESLIGADO");
+:"AJUSTE FINO DESLIGADO")+
+" • "+
+(s.secondHouse
+?"2ª CASA LIGADA"
+:"2ª CASA DESLIGADA");
 
 $("candidatePanel").classList.toggle(
 "hidden",
@@ -3217,6 +3904,8 @@ $("playLabel").textContent=freeze
 (freeze.motor==="UNION"
 ?"AUTO UNIÃO"
 :LABEL[freeze.motor]+" C"+freeze.rx)
+:waitingEntry
+?"2ª CASA • JOGADA CONGELADA"
 :effective==="UNION"&&s.mode==="AUTO"
 ?"JOGADA AUTO UNIÃO"
 :cfg
@@ -3248,6 +3937,8 @@ $("g1Info").textContent=freeze
 ?"GALE CONGELADO • PRÓXIMO RESULTADO IGNORADO"
 :"GALE CONGELADO • PRÓXIMO RESULTADO DECIDE"
 )
+:waitingEntry
+?"2ª CASA • PRÓXIMO RESULTADO VALIDA A ENTRADA"
 :"AZUL: 2 VIZINHOS • AMARELO: 1 VIZINHO";
 
 /* ÚLTIMAS 14 */
@@ -3310,6 +4001,10 @@ $("virtualContent").classList.toggle(
 
 $("arrowVirtual").textContent=
 s.openVirtual?"−":"+";
+
+/* NOVO: RESULTADO GERAL */
+
+renderGeneral();
 
 save();
 }
