@@ -1,8 +1,11 @@
 (() => {
   "use strict";
   /*
-ANÁLISE BETA V6.5.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
+- Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
+- Estado completo salvo após cada número, com retomada da fila ao reabrir.
+- Reutilização de caches de análises puras; critérios e cálculos mantidos.
 - MASTER decide entre as estratégias, incluindo o Treinador Global independente.
 - Após encerrar entrada/G1, MASTER observa dois resultados completos antes do próximo sinal.
 - Linha MASTER registra os ciclos executados; sem resultados fictícios durante a pausa.
@@ -29,10 +32,11 @@ ANÁLISE BETA V6.5.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.5.8",
-    KEY = "ANALISE_BETA_V658",
+  const VERSION = "6.5.9",
+    KEY = "ANALISE_BETA_V659",
     WINDOW = 70;
   const OLD_KEYS = [
+    "ANALISE_BETA_V658",
     "ANALISE_BETA_V657",
     "ANALISE_BETA_V656",
     "ANALISE_BETA_V655",
@@ -212,34 +216,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     const play = { blocks, numbers: blocks.flatMap((b) => b.numbers), score };
     if (!validPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
     return play;
-  }
-
-  function read(key) {
-    try {
-      return JSON.parse(localStorage.getItem(key) || "null", (k, v) =>
-        v && typeof v.__betaPlay === "string"
-          ? restoreShape(v.__betaPlay, v.score)
-          : v,
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  function save() {
-    try {
-      localStorage.setItem(
-        KEY,
-        JSON.stringify(state, (k, v) =>
-          validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
-        ),
-      );
-      saveError = "";
-      return true;
-    } catch (e) {
-      saveError = String(e.message || e);
-      return false;
-    }
   }
 
   function cycleIsFree() {
@@ -3194,7 +3170,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
       r.postLossEnabled = true;
     r.postLossEnabled = !!r.postLossEnabled;
-    if (data?.forecastVersion !== VERSION && data?.strategy === "TRAINER")
+    if (
+      data?.forecastVersion !== VERSION &&
+      data?.strategy === "TRAINER" &&
+      !Object.prototype.hasOwnProperty.call(data, "masterResumeTurn")
+    )
       r.strategy = "MASTER";
     r.masterResumeTurn = Math.max(0, Number(r.masterResumeTurn) || 0);
     if (r.cycle && !r.cycle.controller) r.cycle.controller = r.strategy;
@@ -4335,6 +4315,107 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       .slice(-79);
   }
 
+  /* Caches dependentes do estado são renovados; análises puras por histórico
+   exato continuam disponíveis para reutilização, sem alterar os cálculos. */
+  function clearRuntimeCaches() {
+    motorDiversityCache.clear();
+    variantForecastCache.clear();
+    blockRuntimeKey = null;
+    blockRuntimeData = null;
+  }
+
+  /* Checkpoints completos. LZW síncrono reduz o espaço ocupado sem cortar histórico,
+   treinamento, ciclos ou desfazer. A fila possui seu próprio diário causal. */
+  function packSession(text) {
+    const bytes = unescape(encodeURIComponent(text)),
+      dictionary = new Map();
+    let next = 257,
+      phrase = "",
+      chunk = "",
+      chunks = [];
+    const emit = (code) => {
+      chunk += String.fromCharCode(code);
+      if (chunk.length >= 8192) {
+        chunks.push(chunk);
+        chunk = "";
+      }
+    };
+    for (let i = 0; i < bytes.length; i++) {
+      const char = bytes[i],
+        joined = phrase + char;
+      if (!phrase || dictionary.has(joined)) {
+        phrase = joined;
+        continue;
+      }
+      emit(phrase.length === 1 ? phrase.charCodeAt(0) : dictionary.get(phrase));
+      if (next < 65535) dictionary.set(joined, next++);
+      else {
+        emit(256);
+        dictionary.clear();
+        next = 257;
+      }
+      phrase = char;
+    }
+    if (phrase)
+      emit(phrase.length === 1 ? phrase.charCodeAt(0) : dictionary.get(phrase));
+    chunks.push(chunk);
+    return "BETA_LZW1:" + chunks.join("");
+  }
+  function unpackSession(text) {
+    if (!text.startsWith("BETA_LZW1:")) return text;
+    const dictionary = [],
+      parts = [];
+    let next = 257,
+      previous = "";
+    for (let i = 10; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      if (code === 256) {
+        dictionary.length = 0;
+        next = 257;
+        previous = "";
+        continue;
+      }
+      const value =
+        code < 256
+          ? String.fromCharCode(code)
+          : dictionary[code] || (code === next ? previous + previous[0] : null);
+      if (value == null) throw Error("Checkpoint inválido.");
+      parts.push(value);
+      if (previous && next < 65535) dictionary[next++] = previous + value[0];
+      previous = value;
+    }
+    return decodeURIComponent(escape(parts.join("")));
+  }
+  function read(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw == null) return null;
+      return JSON.parse(unpackSession(raw), (k, v) =>
+        v && typeof v.__betaPlay === "string"
+          ? restoreShape(v.__betaPlay, v.score)
+          : v,
+      );
+    } catch (error) {
+      saveError =
+        "Não foi possível recuperar o estado salvo: " +
+        String(error.message || error);
+      return null;
+    }
+  }
+  function save() {
+    try {
+      const raw = JSON.stringify(state, (k, v) =>
+        validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
+      );
+      localStorage.setItem(KEY, packSession(raw));
+      saveError = "";
+      return true;
+    } catch (error) {
+      saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
+      return false;
+    }
+  }
+
   let state = fresh();
   let busy = false;
   let saveError = "";
@@ -4347,8 +4428,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.5.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
+- Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
+- Estado completo salvo após cada número, com retomada da fila ao reabrir.
+- Reutilização de caches de análises puras; critérios e cálculos mantidos.
 - MASTER decide entre as estratégias, incluindo o Treinador Global independente.
 - Após encerrar entrada/G1, MASTER observa dois resultados completos antes do próximo sinal.
 - Linha MASTER registra os ciclos executados; sem resultados fictícios durante a pausa.
@@ -4375,10 +4459,11 @@ ANÁLISE BETA V6.5.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.5.8",
-      KEY = "ANALISE_BETA_V658",
+    const VERSION = "6.5.9",
+      KEY = "ANALISE_BETA_V659",
       WINDOW = 70;
     const OLD_KEYS = [
+      "ANALISE_BETA_V658",
       "ANALISE_BETA_V657",
       "ANALISE_BETA_V656",
       "ANALISE_BETA_V655",
@@ -4558,34 +4643,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       const play = { blocks, numbers: blocks.flatMap((b) => b.numbers), score };
       if (!validPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
       return play;
-    }
-
-    function read(key) {
-      try {
-        return JSON.parse(localStorage.getItem(key) || "null", (k, v) =>
-          v && typeof v.__betaPlay === "string"
-            ? restoreShape(v.__betaPlay, v.score)
-            : v,
-        );
-      } catch {
-        return null;
-      }
-    }
-
-    function save() {
-      try {
-        localStorage.setItem(
-          KEY,
-          JSON.stringify(state, (k, v) =>
-            validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
-          ),
-        );
-        saveError = "";
-        return true;
-      } catch (e) {
-        saveError = String(e.message || e);
-        return false;
-      }
     }
 
     function cycleIsFree() {
@@ -7592,7 +7649,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
         r.postLossEnabled = true;
       r.postLossEnabled = !!r.postLossEnabled;
-      if (data?.forecastVersion !== VERSION && data?.strategy === "TRAINER")
+      if (
+        data?.forecastVersion !== VERSION &&
+        data?.strategy === "TRAINER" &&
+        !Object.prototype.hasOwnProperty.call(data, "masterResumeTurn")
+      )
         r.strategy = "MASTER";
       r.masterResumeTurn = Math.max(0, Number(r.masterResumeTurn) || 0);
       if (r.cycle && !r.cycle.controller) r.cycle.controller = r.strategy;
@@ -8755,6 +8816,112 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         .slice(-79);
     }
 
+    /* Caches dependentes do estado são renovados; análises puras por histórico
+   exato continuam disponíveis para reutilização, sem alterar os cálculos. */
+    function clearRuntimeCaches() {
+      motorDiversityCache.clear();
+      variantForecastCache.clear();
+      blockRuntimeKey = null;
+      blockRuntimeData = null;
+    }
+
+    /* Checkpoints completos. LZW síncrono reduz o espaço ocupado sem cortar histórico,
+   treinamento, ciclos ou desfazer. A fila possui seu próprio diário causal. */
+    function packSession(text) {
+      const bytes = unescape(encodeURIComponent(text)),
+        dictionary = new Map();
+      let next = 257,
+        phrase = "",
+        chunk = "",
+        chunks = [];
+      const emit = (code) => {
+        chunk += String.fromCharCode(code);
+        if (chunk.length >= 8192) {
+          chunks.push(chunk);
+          chunk = "";
+        }
+      };
+      for (let i = 0; i < bytes.length; i++) {
+        const char = bytes[i],
+          joined = phrase + char;
+        if (!phrase || dictionary.has(joined)) {
+          phrase = joined;
+          continue;
+        }
+        emit(
+          phrase.length === 1 ? phrase.charCodeAt(0) : dictionary.get(phrase),
+        );
+        if (next < 65535) dictionary.set(joined, next++);
+        else {
+          emit(256);
+          dictionary.clear();
+          next = 257;
+        }
+        phrase = char;
+      }
+      if (phrase)
+        emit(
+          phrase.length === 1 ? phrase.charCodeAt(0) : dictionary.get(phrase),
+        );
+      chunks.push(chunk);
+      return "BETA_LZW1:" + chunks.join("");
+    }
+    function unpackSession(text) {
+      if (!text.startsWith("BETA_LZW1:")) return text;
+      const dictionary = [],
+        parts = [];
+      let next = 257,
+        previous = "";
+      for (let i = 10; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code === 256) {
+          dictionary.length = 0;
+          next = 257;
+          previous = "";
+          continue;
+        }
+        const value =
+          code < 256
+            ? String.fromCharCode(code)
+            : dictionary[code] ||
+              (code === next ? previous + previous[0] : null);
+        if (value == null) throw Error("Checkpoint inválido.");
+        parts.push(value);
+        if (previous && next < 65535) dictionary[next++] = previous + value[0];
+        previous = value;
+      }
+      return decodeURIComponent(escape(parts.join("")));
+    }
+    function read(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw == null) return null;
+        return JSON.parse(unpackSession(raw), (k, v) =>
+          v && typeof v.__betaPlay === "string"
+            ? restoreShape(v.__betaPlay, v.score)
+            : v,
+        );
+      } catch (error) {
+        saveError =
+          "Não foi possível recuperar o estado salvo: " +
+          String(error.message || error);
+        return null;
+      }
+    }
+    function save() {
+      try {
+        const raw = JSON.stringify(state, (k, v) =>
+          validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
+        );
+        localStorage.setItem(KEY, packSession(raw));
+        saveError = "";
+        return true;
+      } catch (error) {
+        saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
+        return false;
+      }
+    }
+
     let state = fresh();
     let busy = false;
     let saveError = "";
@@ -8768,15 +8935,15 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           return;
         }
         state = normalizeState(data.state);
-        clearSpatialCaches();
+        clearRuntimeCaches();
         if (data.action === "RESTORE") {
+          clearSpatialCaches();
           prepareBlock();
           self.postMessage({ id: data.id, kind: "FINAL", state });
           return;
         }
         spin(data.number, "TEMPO REAL");
         if (!state.block.data && state.history.length >= 8) {
-          self.postMessage({ id: data.id, kind: "PREVIEW", state });
           prepareBlock();
         }
         self.postMessage({ id: data.id, kind: "FINAL", state });
@@ -9082,7 +9249,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       state.totalTurns +
       " • " +
       state.phase +
-      (lastInputMs ? " • " + Math.round(lastInputMs) + " ms" : "") +
       (saveError ? " • FALHA AO SALVAR: " + saveError : "");
     $("counter").textContent = state.block.size + " / 70";
     $("barfill").style.width = (100 * state.block.size) / 70 + "%";
@@ -9103,7 +9269,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       " • " +
       (motor?.key || "AGUARDANDO ATUALIZAÇÃO") +
       (state.cycle?.decision ? " • G1 " + state.cycle.decision.mode : "");
-    $("centers").innerHTML = centersHTML(motor?.play);
+    patchHTML($("centers"), centersHTML(motor?.play));
     $("coverage").textContent = motor
       ? "28 COBERTOS • 9 DESCOBERTOS: " + missing(motor.play).join(" • ")
       : "IMPORTE DE 8 A 70 RESULTADOS.";
@@ -9164,37 +9330,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
             ? "Aguarda um LOSS final. Sem mínimo de ciclos."
             : "Preparando a próxima jogada do Treinador Global.";
     }
-    $("last").innerHTML = state.history
-      .slice(-14)
-      .map((n, i) => {
-        const turn =
-          state.historyTurns[
-            state.historyTurns.length - Math.min(14, state.history.length) + i
-          ];
-        const result =
-          state.ledger.find((r) => r.turn === turn)?.result || "HISTÓRICO";
-        const cls =
-          result === "LOSS"
-            ? "loss"
-            : result.startsWith("GREEN")
-              ? "green"
-              : result === "GALE"
-                ? "gale"
-                : "";
-        return (
-          '<div class="chip ' +
-          cls +
-          '" style="background:' +
-          (n === 0 ? "#087b50" : RED.has(n) ? "#a72740" : "#14181f") +
-          '"><b>' +
-          n +
-          "</b><small>" +
-          esc(result) +
-          "</small></div>"
-        );
-      })
-      .reverse()
-      .join("");
+    renderLastNumbers();
     $("general").hidden = !state.open.general;
     if (state.open.general) {
       $("general").innerHTML =
@@ -9324,6 +9460,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       else importNumbersCore(numbers, opts, customManualLog || []);
       clearSpatialCaches();
       save();
+      persistPendingInputs();
     } catch (error) {
       state = before;
       clearSpatialCaches();
@@ -9341,6 +9478,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       return;
     }
     inputQueue.push(n);
+    pendingReceipts.push(n);
+    persistPendingInputs();
+    renderLastNumbers();
     $("receipt").textContent =
       "NÚMERO " +
       n +
@@ -9357,32 +9497,19 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     const number = inputQueue.shift(),
       oldUndo = state.undoStack;
     await waitFrame();
-    await new Promise((resolve) => setTimeout(resolve, 0));
     const before = undoSnapshot();
     const started = performance.now();
     try {
-      const result = await workerRequest(
-        "SPIN",
-        { number, state: { ...state, undoStack: [] } },
-        (preview) => {
-          state = {
-            ...preview,
-            undoStack: oldUndo,
-            manualLog: before.manualLog,
-            manualCount: before.manualCount,
-          };
-          clearSpatialCaches();
-          render();
-        },
-      );
+      const result = await workerRequest("SPIN", {
+        number,
+        state: { ...state, undoStack: [] },
+      });
       if (result) state = { ...result, undoStack: oldUndo };
       else {
         spin(number, "TEMPO REAL");
-        render();
-        await waitFrame();
         prepareBlock();
       }
-      clearSpatialCaches();
+      clearRuntimeCaches();
       const row = state.ledger.at(-1);
       state.manualLog.push({
         id: Date.now() + "_" + state.totalTurns,
@@ -9407,11 +9534,15 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       });
       state.undoStack = state.undoStack.slice(-70);
       lastInputMs = performance.now() - started;
-      scheduleSave();
+      pendingReceipts.shift();
+      save();
+      persistPendingInputs();
     } catch (error) {
       state = { ...before, undoStack: oldUndo };
       clearSpatialCaches();
       inputQueue = [];
+      pendingReceipts = [];
+      persistPendingInputs();
       alert("ERRO AO INSERIR NÚMERO: " + String(error.message || error));
     } finally {
       inputRunning = false;
@@ -9450,6 +9581,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     state = fresh();
     clearSpatialCaches();
     save();
+    pendingReceipts = [];
+    inputQueue = [];
+    persistPendingInputs();
     render();
   }
 
@@ -9696,11 +9830,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         esc(target.name) +
         "</div>" +
         timelineCellsHTML(target.id);
-    $("focusLast").innerHTML = $("last").innerHTML;
+    patchHTML($("focusLast"), $("last").innerHTML);
     $("focusMode").textContent = $("selected").textContent;
     $("focusMode").className =
       "playNotice " + (target ? "postLossNotice" : "normalNotice");
-    $("focusCenters").innerHTML = centersHTML(motor?.play);
+    patchHTML($("focusCenters"), centersHTML(motor?.play));
     $("focusCoverage").textContent = $("coverage").textContent;
     for (const b of document.querySelectorAll("[data-focus-number]"))
       b.disabled = busy && !inputRunning;
@@ -9723,6 +9857,92 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           " ciclos anteriores sem identificação de normal/pós-loss permanecem somente no total.</div>"
         : "")
     );
+  }
+
+  let pendingReceipts = [];
+
+  function patchHTML(element, html) {
+    if (element && element.innerHTML !== html) element.innerHTML = html;
+  }
+
+  function renderLastNumbers() {
+    const known = state.history.map((n, i) => ({
+      number: n,
+      turn: state.historyTurns[i],
+      pending: false,
+    }));
+    const pending = pendingReceipts.map((n) => ({ number: n, pending: true }));
+    const html = [...known, ...pending]
+      .slice(-14)
+      .reverse()
+      .map((item) => {
+        const n = item.number,
+          row = item.pending
+            ? null
+            : state.ledger.find((r) => r.turn === item.turn);
+        const result = item.pending ? "" : row?.result || "HISTÓRICO";
+        const cls =
+          result === "LOSS"
+            ? "loss"
+            : result.startsWith("GREEN")
+              ? "green"
+              : result === "GALE"
+                ? "gale"
+                : "";
+        return (
+          '<div class="chip ' +
+          cls +
+          '" style="background:' +
+          (n === 0 ? "#087b50" : RED.has(n) ? "#a72740" : "#14181f") +
+          '"><b>' +
+          n +
+          "</b><small>" +
+          (result ? esc(result) : "&nbsp;") +
+          "</small></div>"
+        );
+      })
+      .join("");
+    patchHTML($("last"), html);
+    patchHTML($("focusLast"), html);
+  }
+
+  function persistPendingInputs() {
+    try {
+      localStorage.setItem(
+        KEY + "_QUEUE",
+        JSON.stringify({
+          baseTurn: state.totalTurns,
+          numbers: pendingReceipts,
+        }),
+      );
+    } catch (error) {
+      saveError =
+        "SALVAMENTO DA FILA FALHOU: " + String(error.message || error);
+    }
+  }
+  function resumePendingInputs() {
+    try {
+      const journal = JSON.parse(
+        localStorage.getItem(KEY + "_QUEUE") || "null",
+      );
+      if (
+        !journal ||
+        !Number.isInteger(journal.baseTurn) ||
+        journal.baseTurn > state.totalTurns
+      )
+        return;
+      const numbers = cleanNumbers(journal.numbers).slice(
+        Math.max(0, state.totalTurns - journal.baseTurn),
+      );
+      if (!numbers.length) return;
+      pendingReceipts = [...numbers];
+      inputQueue = [...numbers];
+      renderLastNumbers();
+      drainInputQueue();
+    } catch (error) {
+      saveError =
+        "Não foi possível recuperar a fila: " + String(error.message || error);
+    }
   }
 
   document.body.innerHTML = `
@@ -9816,7 +10036,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (busy) return;
     for (const key of [KEY, ...OLD_KEYS]) {
       const data = read(key);
-      if (data?.history?.length) {
+      if (data && Array.isArray(data.history)) {
         state = normalizeState(data);
         if (key !== KEY) state.undoStack = [];
         clearSpatialCaches();
@@ -9856,7 +10076,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   for (const key of [KEY, ...OLD_KEYS]) {
     const data = read(key);
-    if (data?.history?.length) {
+    if (data && Array.isArray(data.history)) {
       state = normalizeState(data);
       if (key !== KEY) state.undoStack = [];
       break;
@@ -9880,11 +10100,20 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       } finally {
         setBusy(false);
         render();
+        resumePendingInputs();
       }
     }, 0);
-  }
+  } else resumePendingInputs();
   globalThis.addEventListener?.("pagehide", () => {
     clearTimeout(saveTimer);
     save();
+    persistPendingInputs();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      clearTimeout(saveTimer);
+      save();
+      persistPendingInputs();
+    }
   });
 })();
