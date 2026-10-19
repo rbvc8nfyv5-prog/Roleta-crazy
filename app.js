@@ -1,9 +1,11 @@
 (() => {
   "use strict";
   /*
-ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
-- Seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
+- Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
+- Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
+- Busca geométrica validada preservada; seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
 - Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
 - Estado completo salvo após cada número, com retomada da fila ao reabrir.
 - Reutilização de caches de análises puras; critérios e cálculos mantidos.
@@ -33,10 +35,11 @@ ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.0",
-    KEY = "ANALISE_BETA_V660",
+  const VERSION = "6.6.1",
+    KEY = "ANALISE_BETA_V661",
     WINDOW = 70;
   const OLD_KEYS = [
+    "ANALISE_BETA_V660",
     "ANALISE_BETA_V659",
     "ANALISE_BETA_V658",
     "ANALISE_BETA_V657",
@@ -2663,6 +2666,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       postLossEnabled: false,
+      postThreeEnabled: false,
+      postThreeUsed: {},
+      strategyStreaks: {},
       focusTimelineId: null,
       rank: 3,
       manual: null,
@@ -2761,6 +2767,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       "timelineCycles",
       "virtual",
       "groupsOpen",
+      "postThreeUsed",
+      "strategyStreaks",
     ]) {
       if (!r[field] || typeof r[field] !== "object") r[field] = {};
     }
@@ -2772,6 +2780,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
       r.postLossEnabled = true;
     r.postLossEnabled = !!r.postLossEnabled;
+    r.postThreeEnabled = !!r.postThreeEnabled;
     if (
       data?.forecastVersion !== VERSION &&
       data?.strategy === "TRAINER" &&
@@ -2828,6 +2837,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       [
         "strategy",
         "postLossEnabled",
+        "postThreeEnabled",
         "rank",
         "manual",
         "adaptive",
@@ -3004,7 +3014,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (
       state.strategy === "MASTER" &&
       !state.cycle &&
-      masterRestRemaining() > 0
+      masterRestRemaining() > 0 &&
+      !priorityRecoveryChoice()
     )
       return {
         id: "MASTER",
@@ -3013,14 +3024,14 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       };
     const target = state.cycle
       ? state.cycle.original?.postLossTarget
-      : !state.manual &&
-          (state.postLossEnabled || state.strategy === "POSTLOSS")
-        ? postLossChoice()?.motor?.postLossTarget
-        : null;
+      : priorityRecoveryChoice()?.motor?.postLossTarget;
     if (target)
       return {
         id: target.defenseStrategy || target.id,
-        name: "JOGADA PÓS-LOSS • " + target.name,
+        name:
+          (target.kind === "POST3"
+            ? "JOGADA PÓS-3 LOSS • "
+            : "JOGADA PÓS-LOSS • ") + target.name,
         type: "POSTLOSS",
       };
     if (
@@ -3100,6 +3111,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function activeMotor(cs = currentBlock()?.global || []) {
+    const recovery = priorityRecoveryChoice();
+    if (recovery) return copy(recovery.motor);
     if (
       state.strategy === "MASTER" &&
       !state.cycle &&
@@ -3237,7 +3250,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     const masterPaused =
       state.strategy === "MASTER" &&
       state.phase === "ENTRY" &&
-      masterRestRemaining() > 0;
+      masterRestRemaining() > 0 &&
+      !priorityRecoveryChoice(block);
     const spatial = spatialRead(before.slice(-70)),
       after = [...before, n].slice(-70);
     let result = "AGUARDANDO",
@@ -3249,6 +3263,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       if (motor) {
         played = copy(motor);
         state.previous = motor.key;
+        if (motor.postLossTarget?.kind === "POST3")
+          state.postThreeUsed[motor.postLossTarget.id] =
+            motor.postLossTarget.lossTurn;
         state.cycle = {
           controller: state.strategy,
           strategy: definitionBefore.id,
@@ -3309,6 +3326,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
     recordMasterCycle(controller, oldCycle, played, result, turn);
     settleTimelineForecasts(timelineForecasts, n, turn, before);
+    updateStrategyStreaks(turn);
     settleNativeStrategies(
       cs,
       block?.variants.find((f) => f.owner === "NUMBER")?.choice,
@@ -3327,7 +3345,13 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     const postLossTarget = copy(
       oldCycle?.original?.postLossTarget || played?.postLossTarget || null,
     );
-    const playRoute = played ? (postLossTarget ? "POSTLOSS" : "NORMAL") : null;
+    const playRoute = played
+      ? postLossTarget
+        ? postLossTarget.kind === "POST3"
+          ? "POST3LOSS"
+          : "POSTLOSS"
+        : "NORMAL"
+      : null;
     state.ledger.push({
       controller,
       masterTarget: copy(
@@ -3604,6 +3628,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (!block) return null;
     if (id.endsWith("@THIRD"))
       return thirdVariationMotor(id.slice(0, -6), block);
+    if (id === "MASTER") return masterSelection(block)?.motor || null;
     if (id === "TRAINER") return independentGlobalMotor(block);
     if (id === "NUMBER") return bestNumberCombination(state.history);
     const variant = block.variants.find((f) => f.bankId === id);
@@ -3772,8 +3797,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     return {
       normal: rows.filter((r) => r.playRoute === "NORMAL"),
       postLoss: rows.filter((r) => r.playRoute === "POSTLOSS"),
+      postThree: rows.filter((r) => r.playRoute === "POST3LOSS"),
       combined: rows,
-      legacy: rows.filter((r) => !["NORMAL", "POSTLOSS"].includes(r.playRoute)),
+      legacy: rows.filter(
+        (r) => !["NORMAL", "POSTLOSS", "POST3LOSS"].includes(r.playRoute),
+      ),
     };
   }
 
@@ -4007,10 +4035,12 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   function save() {
     try {
       if (typeof checkpointSerial !== "undefined") checkpointSerial++;
+      if (typeof checkpointEpoch !== "undefined") checkpointEpoch++;
       const raw = JSON.stringify(state, (k, v) =>
         validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
       );
       localStorage.setItem(KEY, packSession(raw));
+      pruneSavedVersions();
       durableTurn = state.totalTurns;
       saveError = "";
       return true;
@@ -4020,92 +4050,59 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
 
-  /* A busca conserva os seis estados e os mesmos desempates da versão anterior.
-   Máscaras em dois inteiros evitam BigInt e ordenar todas as expansões. */
+  /* Busca geométrica original validada: cinco blocos de cinco e um de três,
+   sem reaproveitar combinações intermediárias da busca otimizada. */
   function rawGeometry(weights, mandatory = []) {
-    const annotate = (b) => {
-      let low = 0,
-        high = 0,
-        value = 0;
-      for (const n of b.numbers) {
-        const index = ix(n);
-        value += weights[index] || 0;
-        if (index < 32) low |= 1 << index;
-        else high |= 1 << (index - 32);
-      }
-      return { block: b, low, high, value };
-    };
-    const fives = FIVE.map(annotate).sort((a, b) => b.value - a.value);
-    const threes = THREE.filter((b) =>
-      mandatory.every((n) => b.numbers.includes(n)),
-    )
-      .map(annotate)
-      .sort((a, b) => b.value - a.value);
+    const score = (b) => ({
+        ...b,
+        value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
+      }),
+      fives = FIVE.map(score).sort((a, b) => b.value - a.value),
+      threes = THREE.map(score)
+        .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
+        .sort((a, b) => b.value - a.value);
     let best = null;
     for (const small of threes) {
-      let beam = [
-        {
-          block: small.block,
-          parent: null,
-          low: small.low,
-          high: small.high,
-          score: small.value,
-        },
-      ];
+      let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
       for (let step = 0; step < 5; step++) {
-        const top = [];
+        const next = [];
         for (const item of beam)
-          for (const block of fives) {
-            if (item.low & block.low || item.high & block.high) continue;
-            const low = item.low | block.low,
-              high = item.high | block.high,
-              score = item.score + block.value;
-            let duplicate = -1;
-            for (let j = 0; j < top.length; j++)
-              if (top[j].low === low && top[j].high === high) {
-                duplicate = j;
-                break;
-              }
-            if (duplicate >= 0) {
-              if (score <= top[duplicate].score) continue;
-              top.splice(duplicate, 1);
-            }
-            if (top.length === 6 && score <= top[5].score) continue;
-            let position = top.length;
-            while (position > 0 && score > top[position - 1].score) position--;
-            top.splice(position, 0, {
-              block: block.block,
-              parent: item,
-              low,
-              high,
-              score,
+          for (const b of fives) {
+            if ((item.mask & b.mask) !== 0n) continue;
+            next.push({
+              blocks: [...item.blocks, b],
+              mask: item.mask | b.mask,
+              score: item.score + b.value,
             });
-            if (top.length > 6) top.pop();
           }
-        beam = top;
+        next.sort((a, b) => b.score - a.score);
+        beam = [];
+        const seen = new Set();
+        for (const item of next) {
+          const k = String(item.mask);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          beam.push(item);
+          if (beam.length >= 6) break;
+        }
         if (!beam.length) break;
       }
-      for (const item of beam) {
-        let length = 0;
-        for (let node = item; node; node = node.parent) length++;
-        if (length === 6 && (!best || item.score > best.score)) best = item;
-      }
+      for (const item of beam)
+        if (item.blocks.length === 6 && (!best || item.score > best.score))
+          best = item;
     }
     if (!best) return null;
-    const blocks = [];
-    for (let node = best; node; node = node.parent)
-      blocks.push({
-        center: node.block.center,
-        radius: node.block.radius,
-        numbers: [...node.block.numbers],
-      });
-    blocks.reverse();
-    const play = {
-      blocks,
-      numbers: blocks.flatMap((b) => b.numbers),
-      score: best.score,
-    };
-    return validPlay(play) ? play : null;
+    const blocks = best.blocks.map((b) => ({
+        center: b.center,
+        radius: b.radius,
+        numbers: [...b.numbers],
+      })),
+      p = {
+        blocks,
+        numbers: blocks.flatMap((b) => b.numbers),
+        score: best.score,
+      };
+    return validPlay(p) ? p : null;
   }
 
   /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
@@ -4593,6 +4590,114 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
 
+  /* Os contadores de sequência não são apagados pelo descarte da janela. */
+  function updateStrategyStreaks(turn = state.totalTurns) {
+    for (const [id, rows] of Object.entries(state.strategyTimeline)) {
+      const closed = rows
+        .filter((r) => r.closed && r.closedTurn <= turn)
+        .sort((a, b) => a.closedTurn - b.closedTurn);
+      let counter = state.strategyStreaks[id];
+      if (!counter) {
+        let loss = 0;
+        for (
+          let i = closed.length - 1;
+          i >= 0 && closed[i].result === "LOSS";
+          i--
+        )
+          loss++;
+        const last = closed.at(-1);
+        if (last)
+          state.strategyStreaks[id] = {
+            loss,
+            closedTurn: last.closedTurn,
+            result: last.result,
+          };
+        continue;
+      }
+      for (const row of closed)
+        if (row.closedTurn > counter.closedTurn) {
+          counter = {
+            loss: row.result === "LOSS" ? counter.loss + 1 : 0,
+            closedTurn: row.closedTurn,
+            result: row.result,
+          };
+        }
+      state.strategyStreaks[id] = counter;
+    }
+  }
+  function postThreeChoice(block = currentBlock()) {
+    if (!block) return null;
+    const candidates = timelineDefinitions()
+      .filter((d) => !["POSTLOSS", "POST3LOSS"].includes(d.id))
+      .map((def) => {
+        const stats = postLossStats(def.id),
+          counter = state.strategyStreaks[def.id];
+        const streak = counter?.loss ?? stats.streak,
+          lossTurn = counter?.closedTurn ?? stats.last?.closedTurn;
+        return { ...def, ...stats, streak, lossTurn };
+      })
+      .filter(
+        (candidate) =>
+          candidate.streak >= 3 &&
+          candidate.lossTurn > (state.postThreeUsed[candidate.id] || 0),
+      )
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.samples - a.samples ||
+          b.lossTurn - a.lossTurn ||
+          a.id.localeCompare(b.id),
+      );
+    for (const candidate of candidates) {
+      const motor = timelineMotor(candidate.id, block);
+      if (!validPlay(motor?.play)) continue;
+      return {
+        ...candidate,
+        motor: {
+          ...copy(motor),
+          postLossTarget: {
+            kind: "POST3",
+            id: candidate.id,
+            name: candidate.name,
+            lossTurn: candidate.lossTurn,
+            streak: candidate.streak,
+            samples: candidate.samples,
+            recoveries: candidate.recoveries,
+            repeatLoss: candidate.repeatLoss,
+            score: candidate.score,
+            defenseStrategy:
+              motor.thirdTarget?.id ||
+              motor.globalStrategyTarget?.id ||
+              motor.masterTarget?.defenseStrategy ||
+              candidate.id,
+          },
+        },
+      };
+    }
+    return null;
+  }
+  function priorityRecoveryChoice(block = currentBlock()) {
+    if (state.postThreeEnabled) {
+      const choice = postThreeChoice(block);
+      if (choice) return choice;
+    }
+    return state.postLossEnabled || state.strategy === "POSTLOSS"
+      ? postLossChoice(block)
+      : null;
+  }
+
+  /* Só remove cópias de versões anteriores depois de gravar a sessão completa
+   na chave atual; a sessão em uso e seus registros permanecem intactos. */
+  function pruneSavedVersions() {
+    if (!localStorage.getItem(KEY)) return;
+    for (const oldKey of OLD_KEYS) {
+      try {
+        localStorage.removeItem?.(oldKey);
+        localStorage.removeItem?.(oldKey + "_QUEUE");
+      } catch (error) {}
+    }
+  }
+
   let state = fresh();
   let busy = false;
   let saveError = "";
@@ -4605,9 +4710,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
-- Seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
+- Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
+- Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
+- Busca geométrica validada preservada; seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
 - Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
 - Estado completo salvo após cada número, com retomada da fila ao reabrir.
 - Reutilização de caches de análises puras; critérios e cálculos mantidos.
@@ -4637,10 +4744,11 @@ ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.0",
-      KEY = "ANALISE_BETA_V660",
+    const VERSION = "6.6.1",
+      KEY = "ANALISE_BETA_V661",
       WINDOW = 70;
     const OLD_KEYS = [
+      "ANALISE_BETA_V660",
       "ANALISE_BETA_V659",
       "ANALISE_BETA_V658",
       "ANALISE_BETA_V657",
@@ -7314,6 +7422,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
         postLossEnabled: false,
+        postThreeEnabled: false,
+        postThreeUsed: {},
+        strategyStreaks: {},
         focusTimelineId: null,
         rank: 3,
         manual: null,
@@ -7412,6 +7523,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         "timelineCycles",
         "virtual",
         "groupsOpen",
+        "postThreeUsed",
+        "strategyStreaks",
       ]) {
         if (!r[field] || typeof r[field] !== "object") r[field] = {};
       }
@@ -7423,6 +7536,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
         r.postLossEnabled = true;
       r.postLossEnabled = !!r.postLossEnabled;
+      r.postThreeEnabled = !!r.postThreeEnabled;
       if (
         data?.forecastVersion !== VERSION &&
         data?.strategy === "TRAINER" &&
@@ -7479,6 +7593,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         [
           "strategy",
           "postLossEnabled",
+          "postThreeEnabled",
           "rank",
           "manual",
           "adaptive",
@@ -7657,7 +7772,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       if (
         state.strategy === "MASTER" &&
         !state.cycle &&
-        masterRestRemaining() > 0
+        masterRestRemaining() > 0 &&
+        !priorityRecoveryChoice()
       )
         return {
           id: "MASTER",
@@ -7666,14 +7782,14 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         };
       const target = state.cycle
         ? state.cycle.original?.postLossTarget
-        : !state.manual &&
-            (state.postLossEnabled || state.strategy === "POSTLOSS")
-          ? postLossChoice()?.motor?.postLossTarget
-          : null;
+        : priorityRecoveryChoice()?.motor?.postLossTarget;
       if (target)
         return {
           id: target.defenseStrategy || target.id,
-          name: "JOGADA PÓS-LOSS • " + target.name,
+          name:
+            (target.kind === "POST3"
+              ? "JOGADA PÓS-3 LOSS • "
+              : "JOGADA PÓS-LOSS • ") + target.name,
           type: "POSTLOSS",
         };
       if (
@@ -7753,6 +7869,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
 
     function activeMotor(cs = currentBlock()?.global || []) {
+      const recovery = priorityRecoveryChoice();
+      if (recovery) return copy(recovery.motor);
       if (
         state.strategy === "MASTER" &&
         !state.cycle &&
@@ -7892,7 +8010,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       const masterPaused =
         state.strategy === "MASTER" &&
         state.phase === "ENTRY" &&
-        masterRestRemaining() > 0;
+        masterRestRemaining() > 0 &&
+        !priorityRecoveryChoice(block);
       const spatial = spatialRead(before.slice(-70)),
         after = [...before, n].slice(-70);
       let result = "AGUARDANDO",
@@ -7904,6 +8023,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         if (motor) {
           played = copy(motor);
           state.previous = motor.key;
+          if (motor.postLossTarget?.kind === "POST3")
+            state.postThreeUsed[motor.postLossTarget.id] =
+              motor.postLossTarget.lossTurn;
           state.cycle = {
             controller: state.strategy,
             strategy: definitionBefore.id,
@@ -7964,6 +8086,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
       recordMasterCycle(controller, oldCycle, played, result, turn);
       settleTimelineForecasts(timelineForecasts, n, turn, before);
+      updateStrategyStreaks(turn);
       settleNativeStrategies(
         cs,
         block?.variants.find((f) => f.owner === "NUMBER")?.choice,
@@ -7984,7 +8107,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       );
       const playRoute = played
         ? postLossTarget
-          ? "POSTLOSS"
+          ? postLossTarget.kind === "POST3"
+            ? "POST3LOSS"
+            : "POSTLOSS"
           : "NORMAL"
         : null;
       state.ledger.push({
@@ -8271,6 +8396,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       if (!block) return null;
       if (id.endsWith("@THIRD"))
         return thirdVariationMotor(id.slice(0, -6), block);
+      if (id === "MASTER") return masterSelection(block)?.motor || null;
       if (id === "TRAINER") return independentGlobalMotor(block);
       if (id === "NUMBER") return bestNumberCombination(state.history);
       const variant = block.variants.find((f) => f.bankId === id);
@@ -8441,9 +8567,10 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       return {
         normal: rows.filter((r) => r.playRoute === "NORMAL"),
         postLoss: rows.filter((r) => r.playRoute === "POSTLOSS"),
+        postThree: rows.filter((r) => r.playRoute === "POST3LOSS"),
         combined: rows,
         legacy: rows.filter(
-          (r) => !["NORMAL", "POSTLOSS"].includes(r.playRoute),
+          (r) => !["NORMAL", "POSTLOSS", "POST3LOSS"].includes(r.playRoute),
         ),
       };
     }
@@ -8685,10 +8812,12 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     function save() {
       try {
         if (typeof checkpointSerial !== "undefined") checkpointSerial++;
+        if (typeof checkpointEpoch !== "undefined") checkpointEpoch++;
         const raw = JSON.stringify(state, (k, v) =>
           validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
         );
         localStorage.setItem(KEY, packSession(raw));
+        pruneSavedVersions();
         durableTurn = state.totalTurns;
         saveError = "";
         return true;
@@ -8698,93 +8827,59 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }
 
-    /* A busca conserva os seis estados e os mesmos desempates da versão anterior.
-   Máscaras em dois inteiros evitam BigInt e ordenar todas as expansões. */
+    /* Busca geométrica original validada: cinco blocos de cinco e um de três,
+   sem reaproveitar combinações intermediárias da busca otimizada. */
     function rawGeometry(weights, mandatory = []) {
-      const annotate = (b) => {
-        let low = 0,
-          high = 0,
-          value = 0;
-        for (const n of b.numbers) {
-          const index = ix(n);
-          value += weights[index] || 0;
-          if (index < 32) low |= 1 << index;
-          else high |= 1 << (index - 32);
-        }
-        return { block: b, low, high, value };
-      };
-      const fives = FIVE.map(annotate).sort((a, b) => b.value - a.value);
-      const threes = THREE.filter((b) =>
-        mandatory.every((n) => b.numbers.includes(n)),
-      )
-        .map(annotate)
-        .sort((a, b) => b.value - a.value);
+      const score = (b) => ({
+          ...b,
+          value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
+        }),
+        fives = FIVE.map(score).sort((a, b) => b.value - a.value),
+        threes = THREE.map(score)
+          .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
+          .sort((a, b) => b.value - a.value);
       let best = null;
       for (const small of threes) {
-        let beam = [
-          {
-            block: small.block,
-            parent: null,
-            low: small.low,
-            high: small.high,
-            score: small.value,
-          },
-        ];
+        let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
         for (let step = 0; step < 5; step++) {
-          const top = [];
+          const next = [];
           for (const item of beam)
-            for (const block of fives) {
-              if (item.low & block.low || item.high & block.high) continue;
-              const low = item.low | block.low,
-                high = item.high | block.high,
-                score = item.score + block.value;
-              let duplicate = -1;
-              for (let j = 0; j < top.length; j++)
-                if (top[j].low === low && top[j].high === high) {
-                  duplicate = j;
-                  break;
-                }
-              if (duplicate >= 0) {
-                if (score <= top[duplicate].score) continue;
-                top.splice(duplicate, 1);
-              }
-              if (top.length === 6 && score <= top[5].score) continue;
-              let position = top.length;
-              while (position > 0 && score > top[position - 1].score)
-                position--;
-              top.splice(position, 0, {
-                block: block.block,
-                parent: item,
-                low,
-                high,
-                score,
+            for (const b of fives) {
+              if ((item.mask & b.mask) !== 0n) continue;
+              next.push({
+                blocks: [...item.blocks, b],
+                mask: item.mask | b.mask,
+                score: item.score + b.value,
               });
-              if (top.length > 6) top.pop();
             }
-          beam = top;
+          next.sort((a, b) => b.score - a.score);
+          beam = [];
+          const seen = new Set();
+          for (const item of next) {
+            const k = String(item.mask);
+            if (seen.has(k)) continue;
+            seen.add(k);
+            beam.push(item);
+            if (beam.length >= 6) break;
+          }
           if (!beam.length) break;
         }
-        for (const item of beam) {
-          let length = 0;
-          for (let node = item; node; node = node.parent) length++;
-          if (length === 6 && (!best || item.score > best.score)) best = item;
-        }
+        for (const item of beam)
+          if (item.blocks.length === 6 && (!best || item.score > best.score))
+            best = item;
       }
       if (!best) return null;
-      const blocks = [];
-      for (let node = best; node; node = node.parent)
-        blocks.push({
-          center: node.block.center,
-          radius: node.block.radius,
-          numbers: [...node.block.numbers],
-        });
-      blocks.reverse();
-      const play = {
-        blocks,
-        numbers: blocks.flatMap((b) => b.numbers),
-        score: best.score,
-      };
-      return validPlay(play) ? play : null;
+      const blocks = best.blocks.map((b) => ({
+          center: b.center,
+          radius: b.radius,
+          numbers: [...b.numbers],
+        })),
+        p = {
+          blocks,
+          numbers: blocks.flatMap((b) => b.numbers),
+          score: best.score,
+        };
+      return validPlay(p) ? p : null;
     }
 
     /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
@@ -9279,6 +9374,114 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }
 
+    /* Os contadores de sequência não são apagados pelo descarte da janela. */
+    function updateStrategyStreaks(turn = state.totalTurns) {
+      for (const [id, rows] of Object.entries(state.strategyTimeline)) {
+        const closed = rows
+          .filter((r) => r.closed && r.closedTurn <= turn)
+          .sort((a, b) => a.closedTurn - b.closedTurn);
+        let counter = state.strategyStreaks[id];
+        if (!counter) {
+          let loss = 0;
+          for (
+            let i = closed.length - 1;
+            i >= 0 && closed[i].result === "LOSS";
+            i--
+          )
+            loss++;
+          const last = closed.at(-1);
+          if (last)
+            state.strategyStreaks[id] = {
+              loss,
+              closedTurn: last.closedTurn,
+              result: last.result,
+            };
+          continue;
+        }
+        for (const row of closed)
+          if (row.closedTurn > counter.closedTurn) {
+            counter = {
+              loss: row.result === "LOSS" ? counter.loss + 1 : 0,
+              closedTurn: row.closedTurn,
+              result: row.result,
+            };
+          }
+        state.strategyStreaks[id] = counter;
+      }
+    }
+    function postThreeChoice(block = currentBlock()) {
+      if (!block) return null;
+      const candidates = timelineDefinitions()
+        .filter((d) => !["POSTLOSS", "POST3LOSS"].includes(d.id))
+        .map((def) => {
+          const stats = postLossStats(def.id),
+            counter = state.strategyStreaks[def.id];
+          const streak = counter?.loss ?? stats.streak,
+            lossTurn = counter?.closedTurn ?? stats.last?.closedTurn;
+          return { ...def, ...stats, streak, lossTurn };
+        })
+        .filter(
+          (candidate) =>
+            candidate.streak >= 3 &&
+            candidate.lossTurn > (state.postThreeUsed[candidate.id] || 0),
+        )
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            b.samples - a.samples ||
+            b.lossTurn - a.lossTurn ||
+            a.id.localeCompare(b.id),
+        );
+      for (const candidate of candidates) {
+        const motor = timelineMotor(candidate.id, block);
+        if (!validPlay(motor?.play)) continue;
+        return {
+          ...candidate,
+          motor: {
+            ...copy(motor),
+            postLossTarget: {
+              kind: "POST3",
+              id: candidate.id,
+              name: candidate.name,
+              lossTurn: candidate.lossTurn,
+              streak: candidate.streak,
+              samples: candidate.samples,
+              recoveries: candidate.recoveries,
+              repeatLoss: candidate.repeatLoss,
+              score: candidate.score,
+              defenseStrategy:
+                motor.thirdTarget?.id ||
+                motor.globalStrategyTarget?.id ||
+                motor.masterTarget?.defenseStrategy ||
+                candidate.id,
+            },
+          },
+        };
+      }
+      return null;
+    }
+    function priorityRecoveryChoice(block = currentBlock()) {
+      if (state.postThreeEnabled) {
+        const choice = postThreeChoice(block);
+        if (choice) return choice;
+      }
+      return state.postLossEnabled || state.strategy === "POSTLOSS"
+        ? postLossChoice(block)
+        : null;
+    }
+
+    /* Só remove cópias de versões anteriores depois de gravar a sessão completa
+   na chave atual; a sessão em uso e seus registros permanecem intactos. */
+    function pruneSavedVersions() {
+      if (!localStorage.getItem(KEY)) return;
+      for (const oldKey of OLD_KEYS) {
+        try {
+          localStorage.removeItem?.(oldKey);
+          localStorage.removeItem?.(oldKey + "_QUEUE");
+        } catch (error) {}
+      }
+    }
+
     let state = fresh();
     let busy = false;
     let saveError = "";
@@ -9472,6 +9675,13 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     trainer.dataset.choice = "TRAINER";
     const postloss = button("PÓS-LOSS", () => togglePostLoss(), row, "trainer");
     postloss.dataset.choice = "POSTLOSS";
+    const postThree = button(
+      "PÓS-3 LOSS • TODAS",
+      () => togglePostThree(),
+      row,
+      "trainer",
+    );
+    postThree.dataset.choice = "POST3LOSS";
     trainers.appendChild(row);
     variationControls(
       VARIANT_OWNERS.find((o) => o.id === "NUMBER"),
@@ -9649,11 +9859,13 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     for (const b of document.querySelectorAll("[data-choice]"))
       b.classList.toggle(
         "active",
-        b.dataset.choice === "POSTLOSS"
-          ? !!state.postLossEnabled
-          : state.strategy === "ADAPTIVE"
-            ? b.dataset.choice === state.adaptive
-            : b.dataset.choice === state.strategy,
+        b.dataset.choice === "POST3LOSS"
+          ? !!state.postThreeEnabled
+          : b.dataset.choice === "POSTLOSS"
+            ? !!state.postLossEnabled
+            : state.strategy === "ADAPTIVE"
+              ? b.dataset.choice === state.adaptive
+              : b.dataset.choice === state.strategy,
       );
     for (const b of document.querySelectorAll("[data-rank]"))
       b.classList.toggle(
@@ -9677,10 +9889,17 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         activeVariationOwner() === b.dataset.thirdOwner &&
           state.variantSelections[b.dataset.thirdOwner] === -3,
       );
-    if (state.strategy === "POSTLOSS" || state.postLossEnabled) {
+    if (
+      state.strategy === "POSTLOSS" ||
+      state.postLossEnabled ||
+      state.postThreeEnabled
+    ) {
       const target =
         state.cycle?.original?.postLossTarget || motor?.postLossTarget;
-      const prefix = "JOGADA PÓS-LOSS • ADAPTATIVAS";
+      const prefix =
+        target?.kind === "POST3"
+          ? "JOGADA PÓS-3 LOSS • PRIORIDADE"
+          : "JOGADA PÓS-LOSS • ADAPTATIVAS";
       if (target)
         $("selected").textContent =
           prefix +
@@ -9695,7 +9914,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           " • " +
           state.phase;
       else if (state.strategy !== "POSTLOSS")
-        $("selected").textContent += " • PÓS-LOSS DAS ADAPTATIVAS LIGADO";
+        $("selected").textContent +=
+          (state.postLossEnabled ? " • PÓS-LOSS LIGADO" : "") +
+          (state.postThreeEnabled ? " • PÓS-3 LOSS LIGADO" : "");
       else $("selected").textContent = prefix + " • AGUARDANDO LOSS FINAL";
       if (!motor)
         $("coverage").textContent =
@@ -9719,7 +9940,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     if (
       state.strategy === "MASTER" &&
       !state.cycle &&
-      masterRestRemaining() > 0
+      masterRestRemaining() > 0 &&
+      !target
     ) {
       $("selected").textContent =
         "MASTER • SEM ENTRADA • FALTAM " +
@@ -9762,6 +9984,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   function undo() {
     if (busy || !state.undoStack.length) return;
     checkpointSerial++;
+    checkpointEpoch++;
     applyInverse(state.undoStack.pop().ops);
     clearSpatialCaches();
     scheduleSave();
@@ -10223,7 +10446,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       metricsHTML(groups.normal) +
       '<div class="title postLossText">PÓS-LOSS • ADAPTATIVAS</div>' +
       metricsHTML(groups.postLoss) +
-      '<div class="title">NORMAL + PÓS-LOSS • TOTAL</div>' +
+      '<div class="title postLossText">PÓS-3 LOSS • TODAS</div>' +
+      metricsHTML(groups.postThree) +
+      '<div class="title">NORMAL + PÓS-LOSS + PÓS-3 LOSS • TOTAL</div>' +
       metricsHTML(groups.combined) +
       (legacy
         ? '<div class="muted">' +
@@ -10325,7 +10550,10 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   /* A compactação do checkpoint não ocupa mais a thread do teclado. O diário
    curto permanece síncrono até o checkpoint confirmar que foi gravado. */
   let checkpointWorker = null,
-    checkpointSerial = 0;
+    checkpointSerial = 0,
+    checkpointBusy = false,
+    checkpointNext = null,
+    checkpointEpoch = 0;
   function saveAsync() {
     if (typeof Worker === "undefined") {
       scheduleCheckpointFallback();
@@ -10336,7 +10564,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         const source =
           "const packSession=" +
           packSession.toString() +
-          ";self.onmessage=e=>{try{self.postMessage({id:e.data.id,turn:e.data.turn,packed:packSession(e.data.raw)});}catch(error){self.postMessage({id:e.data.id,error:String(error.message||error)});}};";
+          ";self.onmessage=e=>{try{self.postMessage({id:e.data.id,epoch:e.data.epoch,turn:e.data.turn,packed:packSession(e.data.raw)});}catch(error){self.postMessage({id:e.data.id,epoch:e.data.epoch,error:String(error.message||error)});}};";
         const url = URL.createObjectURL(
           new Blob([source], { type: "text/javascript" }),
         );
@@ -10344,23 +10572,33 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         URL.revokeObjectURL(url);
         checkpointWorker.onmessage = (event) => {
           const result = event.data;
-          if (result.id !== checkpointSerial) return;
-          if (result.error) {
-            saveError = result.error;
-            return;
+          checkpointBusy = false;
+          if (result.epoch === checkpointEpoch && result.turn >= durableTurn) {
+            if (result.error) saveError = result.error;
+            else
+              try {
+                localStorage.setItem(KEY, result.packed);
+                pruneSavedVersions();
+                durableTurn = result.turn;
+                saveError = "";
+                persistPendingInputs();
+              } catch (error) {
+                saveError =
+                  "SALVAMENTO FALHOU: " + String(error.message || error);
+              }
           }
-          try {
-            localStorage.setItem(KEY, result.packed);
-            durableTurn = result.turn;
-            saveError = "";
-            persistPendingInputs();
-          } catch (error) {
-            saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
+          const next = checkpointNext;
+          checkpointNext = null;
+          if (next && next.id === checkpointSerial) {
+            checkpointBusy = true;
+            checkpointWorker.postMessage(next);
           }
         };
         checkpointWorker.onerror = () => {
           checkpointWorker.terminate();
           checkpointWorker = null;
+          checkpointBusy = false;
+          checkpointNext = null;
           scheduleCheckpointFallback();
         };
       }
@@ -10369,7 +10607,12 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       const raw = JSON.stringify(state, (k, v) =>
         validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
       );
-      checkpointWorker.postMessage({ id, turn, raw });
+      const message = { id, epoch: checkpointEpoch, turn, raw };
+      if (checkpointBusy) checkpointNext = message;
+      else {
+        checkpointBusy = true;
+        checkpointWorker.postMessage(message);
+      }
     } catch (error) {
       scheduleCheckpointFallback();
     }
@@ -10384,6 +10627,18 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       save();
       persistPendingInputs();
     }, 250);
+  }
+
+  function togglePostThree() {
+    if (busy) return;
+    if (!cycleIsFree()) {
+      alert("AGUARDE ENCERRAR O CICLO ATUAL.");
+      return;
+    }
+    state.postThreeEnabled = !state.postThreeEnabled;
+    state.manual = null;
+    scheduleSave();
+    render();
   }
 
   document.body.innerHTML = `
