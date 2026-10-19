@@ -1,8 +1,9 @@
 (() => {
   "use strict";
   /*
-ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
+- Seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
 - Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
 - Estado completo salvo após cada número, com retomada da fila ao reabrir.
 - Reutilização de caches de análises puras; critérios e cálculos mantidos.
@@ -32,10 +33,11 @@ ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.5.9",
-    KEY = "ANALISE_BETA_V659",
+  const VERSION = "6.6.0",
+    KEY = "ANALISE_BETA_V660",
     WINDOW = 70;
   const OLD_KEYS = [
+    "ANALISE_BETA_V659",
     "ANALISE_BETA_V658",
     "ANALISE_BETA_V657",
     "ANALISE_BETA_V656",
@@ -231,59 +233,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   for (const b of [...FIVE, ...THREE])
     b.mask = b.numbers.reduce((s, n) => s | (1n << BigInt(ix(n))), 0n);
-
-  function rawGeometry(weights, mandatory = []) {
-    const score = (b) => ({
-        ...b,
-        value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
-      }),
-      fives = FIVE.map(score).sort((a, b) => b.value - a.value),
-      threes = THREE.map(score)
-        .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
-        .sort((a, b) => b.value - a.value);
-    let best = null;
-    for (const small of threes) {
-      let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
-      for (let step = 0; step < 5; step++) {
-        const next = [];
-        for (const item of beam)
-          for (const b of fives) {
-            if ((item.mask & b.mask) !== 0n) continue;
-            next.push({
-              blocks: [...item.blocks, b],
-              mask: item.mask | b.mask,
-              score: item.score + b.value,
-            });
-          }
-        next.sort((a, b) => b.score - a.score);
-        beam = [];
-        const seen = new Set();
-        for (const item of next) {
-          const k = String(item.mask);
-          if (seen.has(k)) continue;
-          seen.add(k);
-          beam.push(item);
-          if (beam.length >= 6) break;
-        }
-        if (!beam.length) break;
-      }
-      for (const item of beam)
-        if (item.blocks.length === 6 && (!best || item.score > best.score))
-          best = item;
-    }
-    if (!best) return null;
-    const blocks = best.blocks.map((b) => ({
-        center: b.center,
-        radius: b.radius,
-        numbers: [...b.numbers],
-      })),
-      p = {
-        blocks,
-        numbers: blocks.flatMap((b) => b.numbers),
-        score: best.score,
-      };
-    return validPlay(p) ? p : null;
-  }
 
   function missing(play) {
     return validPlay(play)
@@ -1342,18 +1291,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   function coverageCode(play) {
     return [...play.numbers].sort((a, b) => a - b).join(",");
-  }
-
-  function diversityCandidate(play) {
-    const covered = new Set(play.numbers);
-    let low = 0,
-      high = 0;
-    for (let n = 0; n < 37; n++)
-      if (!covered.has(n)) {
-        if (n < 32) low |= 1 << n;
-        else high |= 1 << (n - 32);
-      }
-    return { play, low, high, code: coverageCode(play) };
   }
 
   function population32(n) {
@@ -2535,80 +2472,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     return sum;
   }
 
-  function fastIndependentMotors(proposals) {
-    const pool = diversityCandidates();
-    const candidates = proposals.map((m) => {
-      const ranked = pool.map((c, j) => ({
-        candidate: c,
-        score: m.poolScores[j],
-        index: j,
-      }));
-      ranked.sort((a, b) => b.score - a.score || a.index - b.index);
-      return ranked.slice(0, 96);
-    });
-    let chosen = null,
-      chosenScore = -Infinity;
-    for (const step of [1, 5, 7]) {
-      const selected = Array(12).fill(null),
-        counts = Array(37).fill(0);
-      for (let k = 0; k < 12; k++) {
-        const i = (k * step) % 12;
-        let best = null,
-          value = -Infinity;
-        for (const item of candidates[i]) {
-          if (selected.some((c) => c && sharedCoverage(c, item.candidate) > 24))
-            continue;
-          let newNumbers = 0;
-          for (const n of item.candidate.play.numbers)
-            if (!counts[n]) newNumbers++;
-          const score = item.score + 0.08 * newNumbers;
-          if (score > value) {
-            value = score;
-            best = item.candidate;
-          }
-        }
-        if (!best) break;
-        selected[i] = best;
-        for (const n of best.play.numbers) counts[n]++;
-      }
-      if (selected.some((c) => !c) || counts.some((n) => !n)) continue;
-      const score = selected.reduce(
-        (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
-        0,
-      );
-      if (score > chosenScore) {
-        chosenScore = score;
-        chosen = selected;
-      }
-    }
-    if (!chosen) {
-      for (let shift = 0; shift < 37; shift++) {
-        const selected = diversitySafety.map((c) =>
-          diversityCandidate(rotatedDiversity(c.play, shift)),
-        );
-        const score = selected.reduce(
-          (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
-          0,
-        );
-        if (score > chosenScore) {
-          chosenScore = score;
-          chosen = selected;
-        }
-      }
-    }
-    const result = proposals.map((m, i) => {
-      const { weights, poolScores, ...motor } = m;
-      const play = copy(chosen[i].play);
-      play.score = candidateFit(chosen[i], weights);
-      return { ...motor, score: play.score, play };
-    });
-    if (!validMotorEnsemble(result))
-      throw Error("CONJUNTO INCOMPLETO: " + proposals[0].bankId);
-    result.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
-    result.forEach((m, i) => (m.rank = i + 1));
-    return result;
-  }
-
   function variantMotorRate(key, limit = 12) {
     const id = key.split("::")[0];
     const motorKey = key.split("::")[1];
@@ -2705,268 +2568,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
 
-  function allVariantForecasts(h, onlyOwner = null) {
-    if (h.length < 8) return [];
-    const key =
-      h.join(",") +
-      "|" +
-      state.totalTurns +
-      (onlyOwner ? "|OWNER:" + onlyOwner : "");
-    if (variantForecastCache.has(key)) return variantForecastCache.get(key);
-    const spatial = spatialRead(h),
-      baseWeights = new Map(),
-      shared = { base: new Map(), additive: new Map() };
-    for (const family of FAMILIES)
-      for (const radius of RADII) {
-        const base = weightsFor(h, family, radius),
-          key = family + "_" + radius;
-        baseWeights.set(key, base);
-        const normalized = normalizeSpace(base);
-        shared.base.set(
-          key,
-          diversityCandidates().map((c) => candidateFit(c, normalized)),
-        );
-      }
-    const forecasts = [];
-    for (const owner of VARIANT_OWNERS.filter(
-      (o) => !onlyOwner || o.id === onlyOwner,
-    ))
-      for (let variation = 1; variation <= 8; variation++) {
-        const bankId = variantBookId(owner.id, variation),
-          proposals = [];
-        for (const family of FAMILIES)
-          for (const radius of RADII) {
-            const analysis = variantAnalyticalWeights(
-              h,
-              family,
-              radius,
-              owner.id,
-              variation,
-              baseWeights.get(family + "_" + radius),
-              spatial,
-              shared,
-            );
-            proposals.push({
-              key: bankId + "::" + family + "_" + radius,
-              bankId,
-              owner: owner.id,
-              variation,
-              family,
-              radius,
-              weights: analysis.weights,
-              poolScores: analysis.poolScores,
-              spatialKeys: [...spatial.keys],
-              componentShares: [...spatial.adaptive.shares],
-              adaptiveSamples: spatial.adaptive.samples,
-              spatialVersion: VERSION,
-            });
-          }
-        const cs = fastIndependentMotors(proposals);
-        forecasts.push({
-          bankId,
-          owner: owner.id,
-          name: owner.name,
-          variation,
-          motors: cs,
-          _weights: proposals,
-          choice: chooseVariant(owner.id, variation, cs, h),
-        });
-      }
-    coordinateOwnerVariations(forecasts);
-    for (const f of forecasts) delete f._weights;
-    variantForecastCache.set(key, forecasts);
-    if (variantForecastCache.size > 4)
-      variantForecastCache.delete(variantForecastCache.keys().next().value);
-    return forecasts;
-  }
-
-  function coordinateOwnerVariations(forecasts) {
-    for (const owner of VARIANT_OWNERS) {
-      const group = forecasts.filter((f) => f.owner === owner.id);
-      if (!group.length) continue;
-      const alternatives = group.map((f) => {
-        if (owner.id === "CONSENSUS" || owner.id === "UNION") {
-          const weights = Array(37).fill(0);
-          const members =
-            owner.id === "UNION" ? f.motors.slice(0, 3) : f.motors;
-          for (const m of members)
-            for (const n of m.play.numbers)
-              weights[ix(n)] += 1 / (1 + m.rank * 0.1);
-          applySpatial(weights, state.history, 0.25);
-          const ranked = diversityCandidates()
-            .map((candidate, index) => ({
-              candidate,
-              index,
-              score: candidateFit(candidate, weights),
-            }))
-            .sort((a, b) => b.score - a.score || a.index - b.index);
-          return [
-            f.choice,
-            ...ranked.slice(0, 96).map((r) => ({
-              key: owner.id,
-              rank: 0,
-              play: { ...copy(r.candidate.play), score: r.score },
-              score: r.score,
-              spatialKeys: [...spatialRead(state.history).keys],
-            })),
-          ];
-        }
-        let motors =
-          owner.id === "FIXED" ? f.motors.slice(0, 4) : [...f.motors];
-        if (owner.id === "BEST" || owner.id === "SWITCH")
-          motors.sort(
-            (a, b) =>
-              variantMotorRate(b.key, owner.id === "BEST" ? 20 : 12) -
-                variantMotorRate(a.key, owner.id === "BEST" ? 20 : 12) ||
-              a.rank - b.rank,
-          );
-        if (owner.id === "NUMBER")
-          motors.sort((a, b) => {
-            const score = (m) =>
-              compareNumberCombination(
-                { play: m.play, covered: m.play.numbers },
-                state.history.at(-1),
-                state.history,
-              ).score;
-            return score(b) - score(a) || a.rank - b.rank;
-          });
-        return [f.choice, ...motors];
-      });
-      let final = null;
-      for (const order of [0, 1, 2, 3, 4, 5, 6, 7]) {
-        const selected = Array(8).fill(null),
-          counts = Array(37).fill(0);
-        let failed = false;
-        for (let k = 0; k < 8; k++) {
-          const index = (k + order) % 8,
-            f = group[index];
-          const choices = alternatives[index].filter(
-            (m, i, a) =>
-              a.findIndex(
-                (x) => coverageCode(x.play) === coverageCode(m.play),
-              ) === i,
-          );
-          let best = null,
-            bestScore = -Infinity;
-          for (let i = 0; i < choices.length; i++) {
-            const motor = choices[i],
-              candidate = diversityCandidate(motor.play);
-            if (
-              selected.some(
-                (m) =>
-                  m &&
-                  sharedCoverage(diversityCandidate(m.play), candidate) > 27,
-              )
-            )
-              continue;
-            let additional = 0;
-            for (const n of motor.play.numbers) if (!counts[n]) additional++;
-            const score = (i === 0 ? 0.25 : 0) + 1 / (1 + i) + additional * 2;
-            if (score > bestScore) {
-              best = motor;
-              bestScore = score;
-            }
-          }
-          if (!best) {
-            failed = true;
-            break;
-          }
-          selected[index] = {
-            ...copy(best),
-            bankId: f.bankId,
-            owner: f.owner,
-            variation: f.variation,
-          };
-          if (owner.id === "FIXED")
-            selected[index].autoRank = best.autoRank || best.rank;
-          if (owner.id === "NUMBER")
-            Object.assign(selected[index], {
-              type: "NUMBER",
-              trigger: state.history.at(-1),
-              sourceNumber: best.sourceNumber ?? state.history.at(-1),
-              sourceTurn: best.sourceTurn ?? state.totalTurns,
-            });
-          for (const n of best.play.numbers) counts[n]++;
-        }
-        if (!failed && counts.every(Boolean)) {
-          final = selected;
-          break;
-        }
-      }
-      if (!final) {
-        // Reserva de conjuntos inteiros: conserva a regra da original, inclusive
-        // AUTO exclusivamente 1–4, sem transformar CONSENSO em um motor isolado.
-        const options = group.map((f) => {
-          const weights = new Map(f._weights.map((m) => [m.key, m.weights]));
-          return Array.from({ length: 37 }, (_, shift) => {
-            const motors = f.motors
-              .map((m, i) => {
-                const play = rotatedDiversity(diversitySafety[i].play, shift);
-                play.score = play.numbers.reduce(
-                  (sum, n) => sum + weights.get(m.key)[ix(n)],
-                  0,
-                );
-                return { ...m, play, score: play.score };
-              })
-              .sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
-            motors.forEach((m, i) => (m.rank = i + 1));
-            return {
-              motors,
-              choice: chooseVariant(
-                f.owner,
-                f.variation,
-                motors,
-                state.history,
-              ),
-            };
-          });
-        });
-        for (let order = 0; order < 8 && !final; order++) {
-          const selected = Array(8).fill(null),
-            banks = Array(8).fill(null),
-            counts = Array(37).fill(0);
-          for (let k = 0; k < 8; k++) {
-            const index = (k + order) % 8;
-            let best = null,
-              bestValue = -Infinity;
-            for (const option of options[index]) {
-              const candidate = diversityCandidate(option.choice.play);
-              if (
-                selected.some(
-                  (m) =>
-                    m &&
-                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
-                )
-              )
-                continue;
-              const gain = option.choice.play.numbers.filter(
-                (n) => !counts[n],
-              ).length;
-              const value = gain * 2 + option.choice.score / 100;
-              if (value > bestValue) {
-                best = option;
-                bestValue = value;
-              }
-            }
-            if (!best) break;
-            selected[index] = best.choice;
-            banks[index] = best.motors;
-            for (const n of best.choice.play.numbers) counts[n]++;
-          }
-          if (selected.every(Boolean) && counts.every(Boolean)) {
-            final = selected;
-            for (let i = 0; i < 8; i++) group[i].motors = banks[i];
-          }
-        }
-      }
-      if (!final)
-        throw Error(
-          "NÃO FOI POSSÍVEL DIVERSIFICAR AS OITO VARIAÇÕES: " + owner.id,
-        );
-      for (let i = 0; i < 8; i++) group[i].choice = final[i];
-    }
-  }
-
   function activeVariationOwner() {
     return VARIANT_OWNERS.some((o) => o.id === state.strategy)
       ? state.strategy
@@ -3033,6 +2634,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   let inputRunning = false;
   let saveTimer = null;
   let lastInputMs = 0;
+  let durableTurn = 0;
   const geometryMemo = new Map();
 
   function geometry(weights, mandatory = []) {
@@ -4404,15 +4006,590 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
   function save() {
     try {
+      if (typeof checkpointSerial !== "undefined") checkpointSerial++;
       const raw = JSON.stringify(state, (k, v) =>
         validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
       );
       localStorage.setItem(KEY, packSession(raw));
+      durableTurn = state.totalTurns;
       saveError = "";
       return true;
     } catch (error) {
       saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
       return false;
+    }
+  }
+
+  /* A busca conserva os seis estados e os mesmos desempates da versão anterior.
+   Máscaras em dois inteiros evitam BigInt e ordenar todas as expansões. */
+  function rawGeometry(weights, mandatory = []) {
+    const annotate = (b) => {
+      let low = 0,
+        high = 0,
+        value = 0;
+      for (const n of b.numbers) {
+        const index = ix(n);
+        value += weights[index] || 0;
+        if (index < 32) low |= 1 << index;
+        else high |= 1 << (index - 32);
+      }
+      return { block: b, low, high, value };
+    };
+    const fives = FIVE.map(annotate).sort((a, b) => b.value - a.value);
+    const threes = THREE.filter((b) =>
+      mandatory.every((n) => b.numbers.includes(n)),
+    )
+      .map(annotate)
+      .sort((a, b) => b.value - a.value);
+    let best = null;
+    for (const small of threes) {
+      let beam = [
+        {
+          block: small.block,
+          parent: null,
+          low: small.low,
+          high: small.high,
+          score: small.value,
+        },
+      ];
+      for (let step = 0; step < 5; step++) {
+        const top = [];
+        for (const item of beam)
+          for (const block of fives) {
+            if (item.low & block.low || item.high & block.high) continue;
+            const low = item.low | block.low,
+              high = item.high | block.high,
+              score = item.score + block.value;
+            let duplicate = -1;
+            for (let j = 0; j < top.length; j++)
+              if (top[j].low === low && top[j].high === high) {
+                duplicate = j;
+                break;
+              }
+            if (duplicate >= 0) {
+              if (score <= top[duplicate].score) continue;
+              top.splice(duplicate, 1);
+            }
+            if (top.length === 6 && score <= top[5].score) continue;
+            let position = top.length;
+            while (position > 0 && score > top[position - 1].score) position--;
+            top.splice(position, 0, {
+              block: block.block,
+              parent: item,
+              low,
+              high,
+              score,
+            });
+            if (top.length > 6) top.pop();
+          }
+        beam = top;
+        if (!beam.length) break;
+      }
+      for (const item of beam) {
+        let length = 0;
+        for (let node = item; node; node = node.parent) length++;
+        if (length === 6 && (!best || item.score > best.score)) best = item;
+      }
+    }
+    if (!best) return null;
+    const blocks = [];
+    for (let node = best; node; node = node.parent)
+      blocks.push({
+        center: node.block.center,
+        radius: node.block.radius,
+        numbers: [...node.block.numbers],
+      });
+    blocks.reverse();
+    const play = {
+      blocks,
+      numbers: blocks.flatMap((b) => b.numbers),
+      score: best.score,
+    };
+    return validPlay(play) ? play : null;
+  }
+
+  /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
+   Mesma pontuação, mesma ordem de desempate pelo índice de origem. */
+  function topPoolCandidates(scores, limit = 96) {
+    const pool = diversityCandidates(),
+      heap = [];
+    const worse = (a, b) =>
+      scores[a] < scores[b] || (scores[a] === scores[b] && a > b);
+    for (let index = 0; index < scores.length; index++) {
+      if (heap.length < limit) {
+        heap.push(index);
+        let child = heap.length - 1;
+        while (child) {
+          const parent = (child - 1) >> 1;
+          if (!worse(heap[child], heap[parent])) break;
+          [heap[child], heap[parent]] = [heap[parent], heap[child]];
+          child = parent;
+        }
+      } else if (worse(heap[0], index)) {
+        heap[0] = index;
+        let parent = 0;
+        while (true) {
+          let child = parent * 2 + 1;
+          if (child >= heap.length) break;
+          if (child + 1 < heap.length && worse(heap[child + 1], heap[child]))
+            child++;
+          if (!worse(heap[child], heap[parent])) break;
+          [heap[child], heap[parent]] = [heap[parent], heap[child]];
+          parent = child;
+        }
+      }
+    }
+    return heap
+      .sort((a, b) => scores[b] - scores[a] || a - b)
+      .map((index) => ({
+        candidate: pool[index],
+        score: scores[index],
+        index,
+      }));
+  }
+
+  function fastIndependentMotors(proposals) {
+    const pool = diversityCandidates();
+    const candidates = proposals.map((m) => topPoolCandidates(m.poolScores));
+    let chosen = null,
+      chosenScore = -Infinity;
+    for (const step of [1, 5, 7]) {
+      const selected = Array(12).fill(null),
+        counts = Array(37).fill(0);
+      for (let k = 0; k < 12; k++) {
+        const i = (k * step) % 12;
+        let best = null,
+          value = -Infinity;
+        for (const item of candidates[i]) {
+          if (selected.some((c) => c && sharedCoverage(c, item.candidate) > 24))
+            continue;
+          let newNumbers = 0;
+          for (const n of item.candidate.play.numbers)
+            if (!counts[n]) newNumbers++;
+          const score = item.score + 0.08 * newNumbers;
+          if (score > value) {
+            value = score;
+            best = item.candidate;
+          }
+        }
+        if (!best) break;
+        selected[i] = best;
+        for (const n of best.play.numbers) counts[n]++;
+      }
+      if (selected.some((c) => !c) || counts.some((n) => !n)) continue;
+      const score = selected.reduce(
+        (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
+        0,
+      );
+      if (score > chosenScore) {
+        chosenScore = score;
+        chosen = selected;
+      }
+    }
+    if (!chosen) {
+      for (let shift = 0; shift < 37; shift++) {
+        const selected = diversitySafety.map((c) =>
+          diversityCandidate(rotatedDiversity(c.play, shift)),
+        );
+        const score = selected.reduce(
+          (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
+          0,
+        );
+        if (score > chosenScore) {
+          chosenScore = score;
+          chosen = selected;
+        }
+      }
+    }
+    const result = proposals.map((m, i) => {
+      const { weights, poolScores, ...motor } = m;
+      const play = copy(chosen[i].play);
+      play.score = candidateFit(chosen[i], weights);
+      return { ...motor, score: play.score, play };
+    });
+    if (!validMotorEnsemble(result))
+      throw Error("CONJUNTO INCOMPLETO: " + proposals[0].bankId);
+    result.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+    result.forEach((m, i) => (m.rank = i + 1));
+    return result;
+  }
+
+  function coordinateOwnerVariations(forecasts) {
+    for (const owner of VARIANT_OWNERS) {
+      const group = forecasts.filter((f) => f.owner === owner.id);
+      if (!group.length) continue;
+      const alternatives = group.map((f) => {
+        if (owner.id === "CONSENSUS" || owner.id === "UNION") {
+          const weights = Array(37).fill(0);
+          const members =
+            owner.id === "UNION" ? f.motors.slice(0, 3) : f.motors;
+          for (const m of members)
+            for (const n of m.play.numbers)
+              weights[ix(n)] += 1 / (1 + m.rank * 0.1);
+          applySpatial(weights, state.history, 0.25);
+          const ranked = topPoolCandidates(
+            diversityCandidates().map((candidate) =>
+              candidateFit(candidate, weights),
+            ),
+          );
+          return [
+            f.choice,
+            ...ranked.slice(0, 96).map((r) => ({
+              key: owner.id,
+              rank: 0,
+              play: { ...copy(r.candidate.play), score: r.score },
+              score: r.score,
+              spatialKeys: [...spatialRead(state.history).keys],
+            })),
+          ];
+        }
+        let motors =
+          owner.id === "FIXED" ? f.motors.slice(0, 4) : [...f.motors];
+        if (owner.id === "BEST" || owner.id === "SWITCH")
+          motors.sort(
+            (a, b) =>
+              variantMotorRate(b.key, owner.id === "BEST" ? 20 : 12) -
+                variantMotorRate(a.key, owner.id === "BEST" ? 20 : 12) ||
+              a.rank - b.rank,
+          );
+        if (owner.id === "NUMBER")
+          motors.sort((a, b) => {
+            const score = (m) =>
+              compareNumberCombination(
+                { play: m.play, covered: m.play.numbers },
+                state.history.at(-1),
+                state.history,
+              ).score;
+            return score(b) - score(a) || a.rank - b.rank;
+          });
+        return [f.choice, ...motors];
+      });
+      const prepared = alternatives.map((items) => {
+        const seen = new Set();
+        return items
+          .filter((m) => {
+            const code = coverageCode(m.play);
+            if (seen.has(code)) return false;
+            seen.add(code);
+            return true;
+          })
+          .map((motor) => ({
+            motor,
+            candidate: diversityCandidate(motor.play),
+          }));
+      });
+      let final = null;
+      for (const order of [0, 1, 2, 3, 4, 5, 6, 7]) {
+        const selected = Array(8).fill(null),
+          counts = Array(37).fill(0);
+        let failed = false;
+        for (let k = 0; k < 8; k++) {
+          const index = (k + order) % 8,
+            f = group[index];
+          const choices = prepared[index];
+          let best = null,
+            bestScore = -Infinity;
+          for (let i = 0; i < choices.length; i++) {
+            const { motor, candidate } = choices[i];
+            if (
+              selected.some(
+                (m) =>
+                  m &&
+                  sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+              )
+            )
+              continue;
+            let additional = 0;
+            for (const n of motor.play.numbers) if (!counts[n]) additional++;
+            const score = (i === 0 ? 0.25 : 0) + 1 / (1 + i) + additional * 2;
+            if (score > bestScore) {
+              best = motor;
+              bestScore = score;
+            }
+          }
+          if (!best) {
+            failed = true;
+            break;
+          }
+          selected[index] = {
+            ...copy(best),
+            bankId: f.bankId,
+            owner: f.owner,
+            variation: f.variation,
+          };
+          if (owner.id === "FIXED")
+            selected[index].autoRank = best.autoRank || best.rank;
+          if (owner.id === "NUMBER")
+            Object.assign(selected[index], {
+              type: "NUMBER",
+              trigger: state.history.at(-1),
+              sourceNumber: best.sourceNumber ?? state.history.at(-1),
+              sourceTurn: best.sourceTurn ?? state.totalTurns,
+            });
+          for (const n of best.play.numbers) counts[n]++;
+        }
+        if (!failed && counts.every(Boolean)) {
+          final = selected;
+          break;
+        }
+      }
+      if (!final) {
+        // Reserva de conjuntos inteiros: conserva a regra da original, inclusive
+        // AUTO exclusivamente 1–4, sem transformar CONSENSO em um motor isolado.
+        const options = group.map((f) => {
+          const weights = new Map(f._weights.map((m) => [m.key, m.weights]));
+          return Array.from({ length: 37 }, (_, shift) => {
+            const motors = f.motors
+              .map((m, i) => {
+                const play = rotatedDiversity(diversitySafety[i].play, shift);
+                play.score = play.numbers.reduce(
+                  (sum, n) => sum + weights.get(m.key)[ix(n)],
+                  0,
+                );
+                return { ...m, play, score: play.score };
+              })
+              .sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+            motors.forEach((m, i) => (m.rank = i + 1));
+            return {
+              motors,
+              choice: chooseVariant(
+                f.owner,
+                f.variation,
+                motors,
+                state.history,
+              ),
+            };
+          });
+        });
+        for (let order = 0; order < 8 && !final; order++) {
+          const selected = Array(8).fill(null),
+            banks = Array(8).fill(null),
+            counts = Array(37).fill(0);
+          for (let k = 0; k < 8; k++) {
+            const index = (k + order) % 8;
+            let best = null,
+              bestValue = -Infinity;
+            for (const option of options[index]) {
+              const candidate = diversityCandidate(option.choice.play);
+              if (
+                selected.some(
+                  (m) =>
+                    m &&
+                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+                )
+              )
+                continue;
+              const gain = option.choice.play.numbers.filter(
+                (n) => !counts[n],
+              ).length;
+              const value = gain * 2 + option.choice.score / 100;
+              if (value > bestValue) {
+                best = option;
+                bestValue = value;
+              }
+            }
+            if (!best) break;
+            selected[index] = best.choice;
+            banks[index] = best.motors;
+            for (const n of best.choice.play.numbers) counts[n]++;
+          }
+          if (selected.every(Boolean) && counts.every(Boolean)) {
+            final = selected;
+            for (let i = 0; i < 8; i++) group[i].motors = banks[i];
+          }
+        }
+      }
+      if (!final)
+        throw Error(
+          "NÃO FOI POSSÍVEL DIVERSIFICAR AS OITO VARIAÇÕES: " + owner.id,
+        );
+      for (let i = 0; i < 8; i++) group[i].choice = final[i];
+    }
+  }
+
+  const coverageCandidateMemo = new WeakMap();
+  function diversityCandidate(play) {
+    if (coverageCandidateMemo.has(play)) return coverageCandidateMemo.get(play);
+    const covered = new Set(play.numbers);
+    let low = 0,
+      high = 0;
+    for (let n = 0; n < 37; n++)
+      if (!covered.has(n)) {
+        if (n < 32) low |= 1 << n;
+        else high |= 1 << (n - 32);
+      }
+    const candidate = { play, low, high, code: coverageCode(play) };
+    coverageCandidateMemo.set(play, candidate);
+    return candidate;
+  }
+
+  function allVariantForecasts(h, onlyOwner = null) {
+    if (h.length < 8) return [];
+    const key =
+      h.join(",") +
+      "|" +
+      state.totalTurns +
+      (onlyOwner ? "|OWNER:" + onlyOwner : "");
+    if (variantForecastCache.has(key)) return variantForecastCache.get(key);
+    const spatial = spatialRead(h),
+      baseWeights = new Map(),
+      shared = { base: new Map(), additive: new Map() };
+    for (const family of FAMILIES)
+      for (const radius of RADII) {
+        const base = weightsFor(h, family, radius),
+          key = family + "_" + radius;
+        baseWeights.set(key, base);
+        const normalized = normalizeSpace(base);
+        shared.base.set(
+          key,
+          diversityCandidates().map((c) => candidateFit(c, normalized)),
+        );
+      }
+    const forecasts = [];
+    for (const owner of VARIANT_OWNERS.filter(
+      (o) =>
+        !onlyOwner ||
+        (Array.isArray(onlyOwner)
+          ? onlyOwner.includes(o.id)
+          : o.id === onlyOwner),
+    ))
+      for (let variation = 1; variation <= 8; variation++) {
+        const bankId = variantBookId(owner.id, variation),
+          proposals = [];
+        for (const family of FAMILIES)
+          for (const radius of RADII) {
+            const analysis = variantAnalyticalWeights(
+              h,
+              family,
+              radius,
+              owner.id,
+              variation,
+              baseWeights.get(family + "_" + radius),
+              spatial,
+              shared,
+            );
+            proposals.push({
+              key: bankId + "::" + family + "_" + radius,
+              bankId,
+              owner: owner.id,
+              variation,
+              family,
+              radius,
+              weights: analysis.weights,
+              poolScores: analysis.poolScores,
+              spatialKeys: [...spatial.keys],
+              componentShares: [...spatial.adaptive.shares],
+              adaptiveSamples: spatial.adaptive.samples,
+              spatialVersion: VERSION,
+            });
+          }
+        const cs = fastIndependentMotors(proposals);
+        forecasts.push({
+          bankId,
+          owner: owner.id,
+          name: owner.name,
+          variation,
+          motors: cs,
+          _weights: proposals,
+          choice: chooseVariant(owner.id, variation, cs, h),
+        });
+      }
+    coordinateOwnerVariations(forecasts);
+    for (const f of forecasts) delete f._weights;
+    variantForecastCache.set(key, forecasts);
+    if (variantForecastCache.size > 4)
+      variantForecastCache.delete(variantForecastCache.keys().next().value);
+    return forecasts;
+  }
+
+  /* Dois calculadores persistentes repartem as oito famílias de estratégias.
+   Nenhuma combinação é reutilizada de um resultado anterior. */
+  let bankCalculators = null,
+    bankRequestId = 0;
+  function createBankCalculator() {
+    const url = URL.createObjectURL(
+      new Blob(["(" + analysisBackground.toString() + ")();"], {
+        type: "text/javascript",
+      }),
+    );
+    const worker = new Worker(url);
+    URL.revokeObjectURL(url);
+    const requests = new Map();
+    worker.onmessage = (event) => {
+      const data = event.data,
+        request = requests.get(data.id);
+      if (!request) return;
+      requests.delete(data.id);
+      data.error
+        ? request.reject(Error(data.error))
+        : request.resolve(data.variants);
+    };
+    worker.onerror = () => {
+      worker.terminate();
+      for (const request of requests.values())
+        request.reject(Error("Calculador indisponível."));
+      requests.clear();
+      bankCalculators = null;
+    };
+    return { worker, requests };
+  }
+  function requestBankCalculation(calculator, owners) {
+    return new Promise((resolve, reject) => {
+      const id = ++bankRequestId;
+      calculator.requests.set(id, { resolve, reject });
+      calculator.worker.postMessage({
+        id,
+        action: "BANKS",
+        state: { ...state, undoStack: [] },
+        owners,
+      });
+    });
+  }
+  async function prepareBlockParallel() {
+    if (state.history.length < 8) return null;
+    if (state.block.data && state.block.decisionTurn === state.totalTurns)
+      return currentBlock();
+    if (typeof Worker === "undefined" || typeof Blob === "undefined")
+      return prepareBlock();
+    try {
+      if (!bankCalculators)
+        bankCalculators = [createBankCalculator(), createBankCalculator()];
+      const groups = [
+        VARIANT_OWNERS.filter((_, i) => i % 2 === 0).map((o) => o.id),
+        VARIANT_OWNERS.filter((_, i) => i % 2 === 1).map((o) => o.id),
+      ];
+      const pending = Promise.all(
+        bankCalculators.map((calculator, i) =>
+          requestBankCalculation(calculator, groups[i]),
+        ),
+      );
+      const anchor = [...state.history].slice(-70),
+        global = motors(anchor);
+      const partitions = await pending;
+      const byId = new Map(partitions.flat().map((f) => [f.bankId, f]));
+      const variants = [];
+      for (const owner of VARIANT_OWNERS)
+        for (let variation = 1; variation <= 8; variation++) {
+          const id = variantBookId(owner.id, variation),
+            forecast = byId.get(id);
+          if (!forecast) throw Error("Variação ausente: " + id);
+          variants.push(forecast);
+        }
+      state.block.anchor = anchor;
+      state.block.decisionTurn = state.totalTurns;
+      state.block.data = { global: global.map(compactMotor), variants };
+      state.block.best = rankBestVariation();
+      registerNumberCombination(anchor, state.totalTurns);
+      updateNumberChoice();
+      updateTrainer();
+      blockRuntimeKey = null;
+      updateMaster(currentBlock());
+      return currentBlock();
+    } catch (error) {
+      if (bankCalculators)
+        for (const calculator of bankCalculators) calculator.worker.terminate();
+      bankCalculators = null;
+      return prepareBlock();
     }
   }
 
@@ -4428,8 +4605,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.0 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
+- Seleção parcial exata e metadados de geometria reutilizados; salvamento compactado em segundo plano.
 - Número aparece imediatamente; indicação atualiza uma única vez, sem tela provisória vazia.
 - Estado completo salvo após cada número, com retomada da fila ao reabrir.
 - Reutilização de caches de análises puras; critérios e cálculos mantidos.
@@ -4459,10 +4637,11 @@ ANÁLISE BETA V6.5.9 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.5.9",
-      KEY = "ANALISE_BETA_V659",
+    const VERSION = "6.6.0",
+      KEY = "ANALISE_BETA_V660",
       WINDOW = 70;
     const OLD_KEYS = [
+      "ANALISE_BETA_V659",
       "ANALISE_BETA_V658",
       "ANALISE_BETA_V657",
       "ANALISE_BETA_V656",
@@ -4662,59 +4841,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
     for (const b of [...FIVE, ...THREE])
       b.mask = b.numbers.reduce((s, n) => s | (1n << BigInt(ix(n))), 0n);
-
-    function rawGeometry(weights, mandatory = []) {
-      const score = (b) => ({
-          ...b,
-          value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
-        }),
-        fives = FIVE.map(score).sort((a, b) => b.value - a.value),
-        threes = THREE.map(score)
-          .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
-          .sort((a, b) => b.value - a.value);
-      let best = null;
-      for (const small of threes) {
-        let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
-        for (let step = 0; step < 5; step++) {
-          const next = [];
-          for (const item of beam)
-            for (const b of fives) {
-              if ((item.mask & b.mask) !== 0n) continue;
-              next.push({
-                blocks: [...item.blocks, b],
-                mask: item.mask | b.mask,
-                score: item.score + b.value,
-              });
-            }
-          next.sort((a, b) => b.score - a.score);
-          beam = [];
-          const seen = new Set();
-          for (const item of next) {
-            const k = String(item.mask);
-            if (seen.has(k)) continue;
-            seen.add(k);
-            beam.push(item);
-            if (beam.length >= 6) break;
-          }
-          if (!beam.length) break;
-        }
-        for (const item of beam)
-          if (item.blocks.length === 6 && (!best || item.score > best.score))
-            best = item;
-      }
-      if (!best) return null;
-      const blocks = best.blocks.map((b) => ({
-          center: b.center,
-          radius: b.radius,
-          numbers: [...b.numbers],
-        })),
-        p = {
-          blocks,
-          numbers: blocks.flatMap((b) => b.numbers),
-          score: best.score,
-        };
-      return validPlay(p) ? p : null;
-    }
 
     function missing(play) {
       return validPlay(play)
@@ -5781,18 +5907,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
     function coverageCode(play) {
       return [...play.numbers].sort((a, b) => a - b).join(",");
-    }
-
-    function diversityCandidate(play) {
-      const covered = new Set(play.numbers);
-      let low = 0,
-        high = 0;
-      for (let n = 0; n < 37; n++)
-        if (!covered.has(n)) {
-          if (n < 32) low |= 1 << n;
-          else high |= 1 << (n - 32);
-        }
-      return { play, low, high, code: coverageCode(play) };
     }
 
     function population32(n) {
@@ -7007,82 +7121,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       return sum;
     }
 
-    function fastIndependentMotors(proposals) {
-      const pool = diversityCandidates();
-      const candidates = proposals.map((m) => {
-        const ranked = pool.map((c, j) => ({
-          candidate: c,
-          score: m.poolScores[j],
-          index: j,
-        }));
-        ranked.sort((a, b) => b.score - a.score || a.index - b.index);
-        return ranked.slice(0, 96);
-      });
-      let chosen = null,
-        chosenScore = -Infinity;
-      for (const step of [1, 5, 7]) {
-        const selected = Array(12).fill(null),
-          counts = Array(37).fill(0);
-        for (let k = 0; k < 12; k++) {
-          const i = (k * step) % 12;
-          let best = null,
-            value = -Infinity;
-          for (const item of candidates[i]) {
-            if (
-              selected.some((c) => c && sharedCoverage(c, item.candidate) > 24)
-            )
-              continue;
-            let newNumbers = 0;
-            for (const n of item.candidate.play.numbers)
-              if (!counts[n]) newNumbers++;
-            const score = item.score + 0.08 * newNumbers;
-            if (score > value) {
-              value = score;
-              best = item.candidate;
-            }
-          }
-          if (!best) break;
-          selected[i] = best;
-          for (const n of best.play.numbers) counts[n]++;
-        }
-        if (selected.some((c) => !c) || counts.some((n) => !n)) continue;
-        const score = selected.reduce(
-          (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
-          0,
-        );
-        if (score > chosenScore) {
-          chosenScore = score;
-          chosen = selected;
-        }
-      }
-      if (!chosen) {
-        for (let shift = 0; shift < 37; shift++) {
-          const selected = diversitySafety.map((c) =>
-            diversityCandidate(rotatedDiversity(c.play, shift)),
-          );
-          const score = selected.reduce(
-            (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
-            0,
-          );
-          if (score > chosenScore) {
-            chosenScore = score;
-            chosen = selected;
-          }
-        }
-      }
-      const result = proposals.map((m, i) => {
-        const { weights, poolScores, ...motor } = m;
-        const play = copy(chosen[i].play);
-        play.score = candidateFit(chosen[i], weights);
-        return { ...motor, score: play.score, play };
-      });
-      if (!validMotorEnsemble(result))
-        throw Error("CONJUNTO INCOMPLETO: " + proposals[0].bankId);
-      result.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
-      result.forEach((m, i) => (m.rank = i + 1));
-      return result;
-    }
-
     function variantMotorRate(key, limit = 12) {
       const id = key.split("::")[0];
       const motorKey = key.split("::")[1];
@@ -7181,271 +7219,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }
 
-    function allVariantForecasts(h, onlyOwner = null) {
-      if (h.length < 8) return [];
-      const key =
-        h.join(",") +
-        "|" +
-        state.totalTurns +
-        (onlyOwner ? "|OWNER:" + onlyOwner : "");
-      if (variantForecastCache.has(key)) return variantForecastCache.get(key);
-      const spatial = spatialRead(h),
-        baseWeights = new Map(),
-        shared = { base: new Map(), additive: new Map() };
-      for (const family of FAMILIES)
-        for (const radius of RADII) {
-          const base = weightsFor(h, family, radius),
-            key = family + "_" + radius;
-          baseWeights.set(key, base);
-          const normalized = normalizeSpace(base);
-          shared.base.set(
-            key,
-            diversityCandidates().map((c) => candidateFit(c, normalized)),
-          );
-        }
-      const forecasts = [];
-      for (const owner of VARIANT_OWNERS.filter(
-        (o) => !onlyOwner || o.id === onlyOwner,
-      ))
-        for (let variation = 1; variation <= 8; variation++) {
-          const bankId = variantBookId(owner.id, variation),
-            proposals = [];
-          for (const family of FAMILIES)
-            for (const radius of RADII) {
-              const analysis = variantAnalyticalWeights(
-                h,
-                family,
-                radius,
-                owner.id,
-                variation,
-                baseWeights.get(family + "_" + radius),
-                spatial,
-                shared,
-              );
-              proposals.push({
-                key: bankId + "::" + family + "_" + radius,
-                bankId,
-                owner: owner.id,
-                variation,
-                family,
-                radius,
-                weights: analysis.weights,
-                poolScores: analysis.poolScores,
-                spatialKeys: [...spatial.keys],
-                componentShares: [...spatial.adaptive.shares],
-                adaptiveSamples: spatial.adaptive.samples,
-                spatialVersion: VERSION,
-              });
-            }
-          const cs = fastIndependentMotors(proposals);
-          forecasts.push({
-            bankId,
-            owner: owner.id,
-            name: owner.name,
-            variation,
-            motors: cs,
-            _weights: proposals,
-            choice: chooseVariant(owner.id, variation, cs, h),
-          });
-        }
-      coordinateOwnerVariations(forecasts);
-      for (const f of forecasts) delete f._weights;
-      variantForecastCache.set(key, forecasts);
-      if (variantForecastCache.size > 4)
-        variantForecastCache.delete(variantForecastCache.keys().next().value);
-      return forecasts;
-    }
-
-    function coordinateOwnerVariations(forecasts) {
-      for (const owner of VARIANT_OWNERS) {
-        const group = forecasts.filter((f) => f.owner === owner.id);
-        if (!group.length) continue;
-        const alternatives = group.map((f) => {
-          if (owner.id === "CONSENSUS" || owner.id === "UNION") {
-            const weights = Array(37).fill(0);
-            const members =
-              owner.id === "UNION" ? f.motors.slice(0, 3) : f.motors;
-            for (const m of members)
-              for (const n of m.play.numbers)
-                weights[ix(n)] += 1 / (1 + m.rank * 0.1);
-            applySpatial(weights, state.history, 0.25);
-            const ranked = diversityCandidates()
-              .map((candidate, index) => ({
-                candidate,
-                index,
-                score: candidateFit(candidate, weights),
-              }))
-              .sort((a, b) => b.score - a.score || a.index - b.index);
-            return [
-              f.choice,
-              ...ranked.slice(0, 96).map((r) => ({
-                key: owner.id,
-                rank: 0,
-                play: { ...copy(r.candidate.play), score: r.score },
-                score: r.score,
-                spatialKeys: [...spatialRead(state.history).keys],
-              })),
-            ];
-          }
-          let motors =
-            owner.id === "FIXED" ? f.motors.slice(0, 4) : [...f.motors];
-          if (owner.id === "BEST" || owner.id === "SWITCH")
-            motors.sort(
-              (a, b) =>
-                variantMotorRate(b.key, owner.id === "BEST" ? 20 : 12) -
-                  variantMotorRate(a.key, owner.id === "BEST" ? 20 : 12) ||
-                a.rank - b.rank,
-            );
-          if (owner.id === "NUMBER")
-            motors.sort((a, b) => {
-              const score = (m) =>
-                compareNumberCombination(
-                  { play: m.play, covered: m.play.numbers },
-                  state.history.at(-1),
-                  state.history,
-                ).score;
-              return score(b) - score(a) || a.rank - b.rank;
-            });
-          return [f.choice, ...motors];
-        });
-        let final = null;
-        for (const order of [0, 1, 2, 3, 4, 5, 6, 7]) {
-          const selected = Array(8).fill(null),
-            counts = Array(37).fill(0);
-          let failed = false;
-          for (let k = 0; k < 8; k++) {
-            const index = (k + order) % 8,
-              f = group[index];
-            const choices = alternatives[index].filter(
-              (m, i, a) =>
-                a.findIndex(
-                  (x) => coverageCode(x.play) === coverageCode(m.play),
-                ) === i,
-            );
-            let best = null,
-              bestScore = -Infinity;
-            for (let i = 0; i < choices.length; i++) {
-              const motor = choices[i],
-                candidate = diversityCandidate(motor.play);
-              if (
-                selected.some(
-                  (m) =>
-                    m &&
-                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
-                )
-              )
-                continue;
-              let additional = 0;
-              for (const n of motor.play.numbers) if (!counts[n]) additional++;
-              const score = (i === 0 ? 0.25 : 0) + 1 / (1 + i) + additional * 2;
-              if (score > bestScore) {
-                best = motor;
-                bestScore = score;
-              }
-            }
-            if (!best) {
-              failed = true;
-              break;
-            }
-            selected[index] = {
-              ...copy(best),
-              bankId: f.bankId,
-              owner: f.owner,
-              variation: f.variation,
-            };
-            if (owner.id === "FIXED")
-              selected[index].autoRank = best.autoRank || best.rank;
-            if (owner.id === "NUMBER")
-              Object.assign(selected[index], {
-                type: "NUMBER",
-                trigger: state.history.at(-1),
-                sourceNumber: best.sourceNumber ?? state.history.at(-1),
-                sourceTurn: best.sourceTurn ?? state.totalTurns,
-              });
-            for (const n of best.play.numbers) counts[n]++;
-          }
-          if (!failed && counts.every(Boolean)) {
-            final = selected;
-            break;
-          }
-        }
-        if (!final) {
-          // Reserva de conjuntos inteiros: conserva a regra da original, inclusive
-          // AUTO exclusivamente 1–4, sem transformar CONSENSO em um motor isolado.
-          const options = group.map((f) => {
-            const weights = new Map(f._weights.map((m) => [m.key, m.weights]));
-            return Array.from({ length: 37 }, (_, shift) => {
-              const motors = f.motors
-                .map((m, i) => {
-                  const play = rotatedDiversity(diversitySafety[i].play, shift);
-                  play.score = play.numbers.reduce(
-                    (sum, n) => sum + weights.get(m.key)[ix(n)],
-                    0,
-                  );
-                  return { ...m, play, score: play.score };
-                })
-                .sort(
-                  (a, b) => b.score - a.score || a.key.localeCompare(b.key),
-                );
-              motors.forEach((m, i) => (m.rank = i + 1));
-              return {
-                motors,
-                choice: chooseVariant(
-                  f.owner,
-                  f.variation,
-                  motors,
-                  state.history,
-                ),
-              };
-            });
-          });
-          for (let order = 0; order < 8 && !final; order++) {
-            const selected = Array(8).fill(null),
-              banks = Array(8).fill(null),
-              counts = Array(37).fill(0);
-            for (let k = 0; k < 8; k++) {
-              const index = (k + order) % 8;
-              let best = null,
-                bestValue = -Infinity;
-              for (const option of options[index]) {
-                const candidate = diversityCandidate(option.choice.play);
-                if (
-                  selected.some(
-                    (m) =>
-                      m &&
-                      sharedCoverage(diversityCandidate(m.play), candidate) >
-                        27,
-                  )
-                )
-                  continue;
-                const gain = option.choice.play.numbers.filter(
-                  (n) => !counts[n],
-                ).length;
-                const value = gain * 2 + option.choice.score / 100;
-                if (value > bestValue) {
-                  best = option;
-                  bestValue = value;
-                }
-              }
-              if (!best) break;
-              selected[index] = best.choice;
-              banks[index] = best.motors;
-              for (const n of best.choice.play.numbers) counts[n]++;
-            }
-            if (selected.every(Boolean) && counts.every(Boolean)) {
-              final = selected;
-              for (let i = 0; i < 8; i++) group[i].motors = banks[i];
-            }
-          }
-        }
-        if (!final)
-          throw Error(
-            "NÃO FOI POSSÍVEL DIVERSIFICAR AS OITO VARIAÇÕES: " + owner.id,
-          );
-        for (let i = 0; i < 8; i++) group[i].choice = final[i];
-      }
-    }
-
     function activeVariationOwner() {
       return VARIANT_OWNERS.some((o) => o.id === state.strategy)
         ? state.strategy
@@ -7512,6 +7285,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     let inputRunning = false;
     let saveTimer = null;
     let lastInputMs = 0;
+    let durableTurn = 0;
     const geometryMemo = new Map();
 
     function geometry(weights, mandatory = []) {
@@ -8910,10 +8684,12 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
     function save() {
       try {
+        if (typeof checkpointSerial !== "undefined") checkpointSerial++;
         const raw = JSON.stringify(state, (k, v) =>
           validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
         );
         localStorage.setItem(KEY, packSession(raw));
+        durableTurn = state.totalTurns;
         saveError = "";
         return true;
       } catch (error) {
@@ -8922,11 +8698,592 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }
 
+    /* A busca conserva os seis estados e os mesmos desempates da versão anterior.
+   Máscaras em dois inteiros evitam BigInt e ordenar todas as expansões. */
+    function rawGeometry(weights, mandatory = []) {
+      const annotate = (b) => {
+        let low = 0,
+          high = 0,
+          value = 0;
+        for (const n of b.numbers) {
+          const index = ix(n);
+          value += weights[index] || 0;
+          if (index < 32) low |= 1 << index;
+          else high |= 1 << (index - 32);
+        }
+        return { block: b, low, high, value };
+      };
+      const fives = FIVE.map(annotate).sort((a, b) => b.value - a.value);
+      const threes = THREE.filter((b) =>
+        mandatory.every((n) => b.numbers.includes(n)),
+      )
+        .map(annotate)
+        .sort((a, b) => b.value - a.value);
+      let best = null;
+      for (const small of threes) {
+        let beam = [
+          {
+            block: small.block,
+            parent: null,
+            low: small.low,
+            high: small.high,
+            score: small.value,
+          },
+        ];
+        for (let step = 0; step < 5; step++) {
+          const top = [];
+          for (const item of beam)
+            for (const block of fives) {
+              if (item.low & block.low || item.high & block.high) continue;
+              const low = item.low | block.low,
+                high = item.high | block.high,
+                score = item.score + block.value;
+              let duplicate = -1;
+              for (let j = 0; j < top.length; j++)
+                if (top[j].low === low && top[j].high === high) {
+                  duplicate = j;
+                  break;
+                }
+              if (duplicate >= 0) {
+                if (score <= top[duplicate].score) continue;
+                top.splice(duplicate, 1);
+              }
+              if (top.length === 6 && score <= top[5].score) continue;
+              let position = top.length;
+              while (position > 0 && score > top[position - 1].score)
+                position--;
+              top.splice(position, 0, {
+                block: block.block,
+                parent: item,
+                low,
+                high,
+                score,
+              });
+              if (top.length > 6) top.pop();
+            }
+          beam = top;
+          if (!beam.length) break;
+        }
+        for (const item of beam) {
+          let length = 0;
+          for (let node = item; node; node = node.parent) length++;
+          if (length === 6 && (!best || item.score > best.score)) best = item;
+        }
+      }
+      if (!best) return null;
+      const blocks = [];
+      for (let node = best; node; node = node.parent)
+        blocks.push({
+          center: node.block.center,
+          radius: node.block.radius,
+          numbers: [...node.block.numbers],
+        });
+      blocks.reverse();
+      const play = {
+        blocks,
+        numbers: blocks.flatMap((b) => b.numbers),
+        score: best.score,
+      };
+      return validPlay(play) ? play : null;
+    }
+
+    /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
+   Mesma pontuação, mesma ordem de desempate pelo índice de origem. */
+    function topPoolCandidates(scores, limit = 96) {
+      const pool = diversityCandidates(),
+        heap = [];
+      const worse = (a, b) =>
+        scores[a] < scores[b] || (scores[a] === scores[b] && a > b);
+      for (let index = 0; index < scores.length; index++) {
+        if (heap.length < limit) {
+          heap.push(index);
+          let child = heap.length - 1;
+          while (child) {
+            const parent = (child - 1) >> 1;
+            if (!worse(heap[child], heap[parent])) break;
+            [heap[child], heap[parent]] = [heap[parent], heap[child]];
+            child = parent;
+          }
+        } else if (worse(heap[0], index)) {
+          heap[0] = index;
+          let parent = 0;
+          while (true) {
+            let child = parent * 2 + 1;
+            if (child >= heap.length) break;
+            if (child + 1 < heap.length && worse(heap[child + 1], heap[child]))
+              child++;
+            if (!worse(heap[child], heap[parent])) break;
+            [heap[child], heap[parent]] = [heap[parent], heap[child]];
+            parent = child;
+          }
+        }
+      }
+      return heap
+        .sort((a, b) => scores[b] - scores[a] || a - b)
+        .map((index) => ({
+          candidate: pool[index],
+          score: scores[index],
+          index,
+        }));
+    }
+
+    function fastIndependentMotors(proposals) {
+      const pool = diversityCandidates();
+      const candidates = proposals.map((m) => topPoolCandidates(m.poolScores));
+      let chosen = null,
+        chosenScore = -Infinity;
+      for (const step of [1, 5, 7]) {
+        const selected = Array(12).fill(null),
+          counts = Array(37).fill(0);
+        for (let k = 0; k < 12; k++) {
+          const i = (k * step) % 12;
+          let best = null,
+            value = -Infinity;
+          for (const item of candidates[i]) {
+            if (
+              selected.some((c) => c && sharedCoverage(c, item.candidate) > 24)
+            )
+              continue;
+            let newNumbers = 0;
+            for (const n of item.candidate.play.numbers)
+              if (!counts[n]) newNumbers++;
+            const score = item.score + 0.08 * newNumbers;
+            if (score > value) {
+              value = score;
+              best = item.candidate;
+            }
+          }
+          if (!best) break;
+          selected[i] = best;
+          for (const n of best.play.numbers) counts[n]++;
+        }
+        if (selected.some((c) => !c) || counts.some((n) => !n)) continue;
+        const score = selected.reduce(
+          (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
+          0,
+        );
+        if (score > chosenScore) {
+          chosenScore = score;
+          chosen = selected;
+        }
+      }
+      if (!chosen) {
+        for (let shift = 0; shift < 37; shift++) {
+          const selected = diversitySafety.map((c) =>
+            diversityCandidate(rotatedDiversity(c.play, shift)),
+          );
+          const score = selected.reduce(
+            (sum, c, i) => sum + candidateFit(c, proposals[i].weights),
+            0,
+          );
+          if (score > chosenScore) {
+            chosenScore = score;
+            chosen = selected;
+          }
+        }
+      }
+      const result = proposals.map((m, i) => {
+        const { weights, poolScores, ...motor } = m;
+        const play = copy(chosen[i].play);
+        play.score = candidateFit(chosen[i], weights);
+        return { ...motor, score: play.score, play };
+      });
+      if (!validMotorEnsemble(result))
+        throw Error("CONJUNTO INCOMPLETO: " + proposals[0].bankId);
+      result.sort((a, b) => b.score - a.score || a.key.localeCompare(b.key));
+      result.forEach((m, i) => (m.rank = i + 1));
+      return result;
+    }
+
+    function coordinateOwnerVariations(forecasts) {
+      for (const owner of VARIANT_OWNERS) {
+        const group = forecasts.filter((f) => f.owner === owner.id);
+        if (!group.length) continue;
+        const alternatives = group.map((f) => {
+          if (owner.id === "CONSENSUS" || owner.id === "UNION") {
+            const weights = Array(37).fill(0);
+            const members =
+              owner.id === "UNION" ? f.motors.slice(0, 3) : f.motors;
+            for (const m of members)
+              for (const n of m.play.numbers)
+                weights[ix(n)] += 1 / (1 + m.rank * 0.1);
+            applySpatial(weights, state.history, 0.25);
+            const ranked = topPoolCandidates(
+              diversityCandidates().map((candidate) =>
+                candidateFit(candidate, weights),
+              ),
+            );
+            return [
+              f.choice,
+              ...ranked.slice(0, 96).map((r) => ({
+                key: owner.id,
+                rank: 0,
+                play: { ...copy(r.candidate.play), score: r.score },
+                score: r.score,
+                spatialKeys: [...spatialRead(state.history).keys],
+              })),
+            ];
+          }
+          let motors =
+            owner.id === "FIXED" ? f.motors.slice(0, 4) : [...f.motors];
+          if (owner.id === "BEST" || owner.id === "SWITCH")
+            motors.sort(
+              (a, b) =>
+                variantMotorRate(b.key, owner.id === "BEST" ? 20 : 12) -
+                  variantMotorRate(a.key, owner.id === "BEST" ? 20 : 12) ||
+                a.rank - b.rank,
+            );
+          if (owner.id === "NUMBER")
+            motors.sort((a, b) => {
+              const score = (m) =>
+                compareNumberCombination(
+                  { play: m.play, covered: m.play.numbers },
+                  state.history.at(-1),
+                  state.history,
+                ).score;
+              return score(b) - score(a) || a.rank - b.rank;
+            });
+          return [f.choice, ...motors];
+        });
+        const prepared = alternatives.map((items) => {
+          const seen = new Set();
+          return items
+            .filter((m) => {
+              const code = coverageCode(m.play);
+              if (seen.has(code)) return false;
+              seen.add(code);
+              return true;
+            })
+            .map((motor) => ({
+              motor,
+              candidate: diversityCandidate(motor.play),
+            }));
+        });
+        let final = null;
+        for (const order of [0, 1, 2, 3, 4, 5, 6, 7]) {
+          const selected = Array(8).fill(null),
+            counts = Array(37).fill(0);
+          let failed = false;
+          for (let k = 0; k < 8; k++) {
+            const index = (k + order) % 8,
+              f = group[index];
+            const choices = prepared[index];
+            let best = null,
+              bestScore = -Infinity;
+            for (let i = 0; i < choices.length; i++) {
+              const { motor, candidate } = choices[i];
+              if (
+                selected.some(
+                  (m) =>
+                    m &&
+                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+                )
+              )
+                continue;
+              let additional = 0;
+              for (const n of motor.play.numbers) if (!counts[n]) additional++;
+              const score = (i === 0 ? 0.25 : 0) + 1 / (1 + i) + additional * 2;
+              if (score > bestScore) {
+                best = motor;
+                bestScore = score;
+              }
+            }
+            if (!best) {
+              failed = true;
+              break;
+            }
+            selected[index] = {
+              ...copy(best),
+              bankId: f.bankId,
+              owner: f.owner,
+              variation: f.variation,
+            };
+            if (owner.id === "FIXED")
+              selected[index].autoRank = best.autoRank || best.rank;
+            if (owner.id === "NUMBER")
+              Object.assign(selected[index], {
+                type: "NUMBER",
+                trigger: state.history.at(-1),
+                sourceNumber: best.sourceNumber ?? state.history.at(-1),
+                sourceTurn: best.sourceTurn ?? state.totalTurns,
+              });
+            for (const n of best.play.numbers) counts[n]++;
+          }
+          if (!failed && counts.every(Boolean)) {
+            final = selected;
+            break;
+          }
+        }
+        if (!final) {
+          // Reserva de conjuntos inteiros: conserva a regra da original, inclusive
+          // AUTO exclusivamente 1–4, sem transformar CONSENSO em um motor isolado.
+          const options = group.map((f) => {
+            const weights = new Map(f._weights.map((m) => [m.key, m.weights]));
+            return Array.from({ length: 37 }, (_, shift) => {
+              const motors = f.motors
+                .map((m, i) => {
+                  const play = rotatedDiversity(diversitySafety[i].play, shift);
+                  play.score = play.numbers.reduce(
+                    (sum, n) => sum + weights.get(m.key)[ix(n)],
+                    0,
+                  );
+                  return { ...m, play, score: play.score };
+                })
+                .sort(
+                  (a, b) => b.score - a.score || a.key.localeCompare(b.key),
+                );
+              motors.forEach((m, i) => (m.rank = i + 1));
+              return {
+                motors,
+                choice: chooseVariant(
+                  f.owner,
+                  f.variation,
+                  motors,
+                  state.history,
+                ),
+              };
+            });
+          });
+          for (let order = 0; order < 8 && !final; order++) {
+            const selected = Array(8).fill(null),
+              banks = Array(8).fill(null),
+              counts = Array(37).fill(0);
+            for (let k = 0; k < 8; k++) {
+              const index = (k + order) % 8;
+              let best = null,
+                bestValue = -Infinity;
+              for (const option of options[index]) {
+                const candidate = diversityCandidate(option.choice.play);
+                if (
+                  selected.some(
+                    (m) =>
+                      m &&
+                      sharedCoverage(diversityCandidate(m.play), candidate) >
+                        27,
+                  )
+                )
+                  continue;
+                const gain = option.choice.play.numbers.filter(
+                  (n) => !counts[n],
+                ).length;
+                const value = gain * 2 + option.choice.score / 100;
+                if (value > bestValue) {
+                  best = option;
+                  bestValue = value;
+                }
+              }
+              if (!best) break;
+              selected[index] = best.choice;
+              banks[index] = best.motors;
+              for (const n of best.choice.play.numbers) counts[n]++;
+            }
+            if (selected.every(Boolean) && counts.every(Boolean)) {
+              final = selected;
+              for (let i = 0; i < 8; i++) group[i].motors = banks[i];
+            }
+          }
+        }
+        if (!final)
+          throw Error(
+            "NÃO FOI POSSÍVEL DIVERSIFICAR AS OITO VARIAÇÕES: " + owner.id,
+          );
+        for (let i = 0; i < 8; i++) group[i].choice = final[i];
+      }
+    }
+
+    const coverageCandidateMemo = new WeakMap();
+    function diversityCandidate(play) {
+      if (coverageCandidateMemo.has(play))
+        return coverageCandidateMemo.get(play);
+      const covered = new Set(play.numbers);
+      let low = 0,
+        high = 0;
+      for (let n = 0; n < 37; n++)
+        if (!covered.has(n)) {
+          if (n < 32) low |= 1 << n;
+          else high |= 1 << (n - 32);
+        }
+      const candidate = { play, low, high, code: coverageCode(play) };
+      coverageCandidateMemo.set(play, candidate);
+      return candidate;
+    }
+
+    function allVariantForecasts(h, onlyOwner = null) {
+      if (h.length < 8) return [];
+      const key =
+        h.join(",") +
+        "|" +
+        state.totalTurns +
+        (onlyOwner ? "|OWNER:" + onlyOwner : "");
+      if (variantForecastCache.has(key)) return variantForecastCache.get(key);
+      const spatial = spatialRead(h),
+        baseWeights = new Map(),
+        shared = { base: new Map(), additive: new Map() };
+      for (const family of FAMILIES)
+        for (const radius of RADII) {
+          const base = weightsFor(h, family, radius),
+            key = family + "_" + radius;
+          baseWeights.set(key, base);
+          const normalized = normalizeSpace(base);
+          shared.base.set(
+            key,
+            diversityCandidates().map((c) => candidateFit(c, normalized)),
+          );
+        }
+      const forecasts = [];
+      for (const owner of VARIANT_OWNERS.filter(
+        (o) =>
+          !onlyOwner ||
+          (Array.isArray(onlyOwner)
+            ? onlyOwner.includes(o.id)
+            : o.id === onlyOwner),
+      ))
+        for (let variation = 1; variation <= 8; variation++) {
+          const bankId = variantBookId(owner.id, variation),
+            proposals = [];
+          for (const family of FAMILIES)
+            for (const radius of RADII) {
+              const analysis = variantAnalyticalWeights(
+                h,
+                family,
+                radius,
+                owner.id,
+                variation,
+                baseWeights.get(family + "_" + radius),
+                spatial,
+                shared,
+              );
+              proposals.push({
+                key: bankId + "::" + family + "_" + radius,
+                bankId,
+                owner: owner.id,
+                variation,
+                family,
+                radius,
+                weights: analysis.weights,
+                poolScores: analysis.poolScores,
+                spatialKeys: [...spatial.keys],
+                componentShares: [...spatial.adaptive.shares],
+                adaptiveSamples: spatial.adaptive.samples,
+                spatialVersion: VERSION,
+              });
+            }
+          const cs = fastIndependentMotors(proposals);
+          forecasts.push({
+            bankId,
+            owner: owner.id,
+            name: owner.name,
+            variation,
+            motors: cs,
+            _weights: proposals,
+            choice: chooseVariant(owner.id, variation, cs, h),
+          });
+        }
+      coordinateOwnerVariations(forecasts);
+      for (const f of forecasts) delete f._weights;
+      variantForecastCache.set(key, forecasts);
+      if (variantForecastCache.size > 4)
+        variantForecastCache.delete(variantForecastCache.keys().next().value);
+      return forecasts;
+    }
+
+    /* Dois calculadores persistentes repartem as oito famílias de estratégias.
+   Nenhuma combinação é reutilizada de um resultado anterior. */
+    let bankCalculators = null,
+      bankRequestId = 0;
+    function createBankCalculator() {
+      const url = URL.createObjectURL(
+        new Blob(["(" + analysisBackground.toString() + ")();"], {
+          type: "text/javascript",
+        }),
+      );
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      const requests = new Map();
+      worker.onmessage = (event) => {
+        const data = event.data,
+          request = requests.get(data.id);
+        if (!request) return;
+        requests.delete(data.id);
+        data.error
+          ? request.reject(Error(data.error))
+          : request.resolve(data.variants);
+      };
+      worker.onerror = () => {
+        worker.terminate();
+        for (const request of requests.values())
+          request.reject(Error("Calculador indisponível."));
+        requests.clear();
+        bankCalculators = null;
+      };
+      return { worker, requests };
+    }
+    function requestBankCalculation(calculator, owners) {
+      return new Promise((resolve, reject) => {
+        const id = ++bankRequestId;
+        calculator.requests.set(id, { resolve, reject });
+        calculator.worker.postMessage({
+          id,
+          action: "BANKS",
+          state: { ...state, undoStack: [] },
+          owners,
+        });
+      });
+    }
+    async function prepareBlockParallel() {
+      if (state.history.length < 8) return null;
+      if (state.block.data && state.block.decisionTurn === state.totalTurns)
+        return currentBlock();
+      if (typeof Worker === "undefined" || typeof Blob === "undefined")
+        return prepareBlock();
+      try {
+        if (!bankCalculators)
+          bankCalculators = [createBankCalculator(), createBankCalculator()];
+        const groups = [
+          VARIANT_OWNERS.filter((_, i) => i % 2 === 0).map((o) => o.id),
+          VARIANT_OWNERS.filter((_, i) => i % 2 === 1).map((o) => o.id),
+        ];
+        const pending = Promise.all(
+          bankCalculators.map((calculator, i) =>
+            requestBankCalculation(calculator, groups[i]),
+          ),
+        );
+        const anchor = [...state.history].slice(-70),
+          global = motors(anchor);
+        const partitions = await pending;
+        const byId = new Map(partitions.flat().map((f) => [f.bankId, f]));
+        const variants = [];
+        for (const owner of VARIANT_OWNERS)
+          for (let variation = 1; variation <= 8; variation++) {
+            const id = variantBookId(owner.id, variation),
+              forecast = byId.get(id);
+            if (!forecast) throw Error("Variação ausente: " + id);
+            variants.push(forecast);
+          }
+        state.block.anchor = anchor;
+        state.block.decisionTurn = state.totalTurns;
+        state.block.data = { global: global.map(compactMotor), variants };
+        state.block.best = rankBestVariation();
+        registerNumberCombination(anchor, state.totalTurns);
+        updateNumberChoice();
+        updateTrainer();
+        blockRuntimeKey = null;
+        updateMaster(currentBlock());
+        return currentBlock();
+      } catch (error) {
+        if (bankCalculators)
+          for (const calculator of bankCalculators)
+            calculator.worker.terminate();
+        bankCalculators = null;
+        return prepareBlock();
+      }
+    }
+
     let state = fresh();
     let busy = false;
     let saveError = "";
 
-    self.onmessage = function (event) {
+    self.onmessage = async function (event) {
       const data = event.data;
       try {
         if (data.action === "IMPORT") {
@@ -8938,13 +9295,29 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         clearRuntimeCaches();
         if (data.action === "RESTORE") {
           clearSpatialCaches();
-          prepareBlock();
+          await prepareBlockParallel();
           self.postMessage({ id: data.id, kind: "FINAL", state });
+          return;
+        }
+        if (data.action === "BANKS") {
+          const forecasts = allVariantForecasts(
+            state.history.slice(-70),
+            data.owners,
+          );
+          const variants = forecasts.map((f) => ({
+            bankId: f.bankId,
+            owner: f.owner,
+            name: f.name,
+            variation: f.variation,
+            motors: f.motors.map(compactMotor),
+            choice: compactMotor(f.choice),
+          }));
+          self.postMessage({ id: data.id, variants });
           return;
         }
         spin(data.number, "TEMPO REAL");
         if (!state.block.data && state.history.length >= 8) {
-          prepareBlock();
+          await prepareBlockParallel();
         }
         self.postMessage({ id: data.id, kind: "FINAL", state });
       } catch (error) {
@@ -9373,7 +9746,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         scheduleSave();
         return;
       }
-      save();
+      saveAsync();
     }, 150);
   }
 
@@ -9388,6 +9761,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   function undo() {
     if (busy || !state.undoStack.length) return;
+    checkpointSerial++;
     applyInverse(state.undoStack.pop().ops);
     clearSpatialCaches();
     scheduleSave();
@@ -9496,7 +9870,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     clearTimeout(saveTimer);
     const number = inputQueue.shift(),
       oldUndo = state.undoStack;
-    await waitFrame();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const before = undoSnapshot();
     const started = performance.now();
     try {
@@ -9535,7 +9909,6 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       state.undoStack = state.undoStack.slice(-70);
       lastInputMs = performance.now() - started;
       pendingReceipts.shift();
-      save();
       persistPendingInputs();
     } catch (error) {
       state = { ...before, undoStack: oldUndo };
@@ -9548,6 +9921,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       inputRunning = false;
       setBusy(false);
       render();
+      saveAsync();
       $("receipt").textContent = inputQueue.length
         ? "FILA: " + inputQueue.join(" • ")
         : "ÚLTIMO NÚMERO REGISTRADO: " + number;
@@ -9911,8 +10285,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       localStorage.setItem(
         KEY + "_QUEUE",
         JSON.stringify({
-          baseTurn: state.totalTurns,
-          numbers: pendingReceipts,
+          baseTurn: durableTurn,
+          numbers: state.manualLog
+            .filter((r) => r.turn > durableTurn)
+            .map((r) => r.number)
+            .concat(pendingReceipts),
         }),
       );
     } catch (error) {
@@ -9943,6 +10320,70 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       saveError =
         "Não foi possível recuperar a fila: " + String(error.message || error);
     }
+  }
+
+  /* A compactação do checkpoint não ocupa mais a thread do teclado. O diário
+   curto permanece síncrono até o checkpoint confirmar que foi gravado. */
+  let checkpointWorker = null,
+    checkpointSerial = 0;
+  function saveAsync() {
+    if (typeof Worker === "undefined") {
+      scheduleCheckpointFallback();
+      return;
+    }
+    try {
+      if (!checkpointWorker) {
+        const source =
+          "const packSession=" +
+          packSession.toString() +
+          ";self.onmessage=e=>{try{self.postMessage({id:e.data.id,turn:e.data.turn,packed:packSession(e.data.raw)});}catch(error){self.postMessage({id:e.data.id,error:String(error.message||error)});}};";
+        const url = URL.createObjectURL(
+          new Blob([source], { type: "text/javascript" }),
+        );
+        checkpointWorker = new Worker(url);
+        URL.revokeObjectURL(url);
+        checkpointWorker.onmessage = (event) => {
+          const result = event.data;
+          if (result.id !== checkpointSerial) return;
+          if (result.error) {
+            saveError = result.error;
+            return;
+          }
+          try {
+            localStorage.setItem(KEY, result.packed);
+            durableTurn = result.turn;
+            saveError = "";
+            persistPendingInputs();
+          } catch (error) {
+            saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
+          }
+        };
+        checkpointWorker.onerror = () => {
+          checkpointWorker.terminate();
+          checkpointWorker = null;
+          scheduleCheckpointFallback();
+        };
+      }
+      const id = ++checkpointSerial,
+        turn = state.totalTurns;
+      const raw = JSON.stringify(state, (k, v) =>
+        validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
+      );
+      checkpointWorker.postMessage({ id, turn, raw });
+    } catch (error) {
+      scheduleCheckpointFallback();
+    }
+  }
+  function scheduleCheckpointFallback() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (inputRunning || busy) {
+        scheduleCheckpointFallback();
+        return;
+      }
+      save();
+      persistPendingInputs();
+    }, 250);
   }
 
   document.body.innerHTML = `
@@ -10082,6 +10523,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       break;
     }
   }
+  durableTurn = state.totalTurns;
   render();
   if (state.history.length >= 8 && !state.block.data) {
     setBusy(true, "PREPARANDO HISTÓRICO");
@@ -10106,12 +10548,14 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   } else resumePendingInputs();
   globalThis.addEventListener?.("pagehide", () => {
     clearTimeout(saveTimer);
+    checkpointSerial++;
     save();
     persistPendingInputs();
   });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
       clearTimeout(saveTimer);
+      checkpointSerial++;
       save();
       persistPendingInputs();
     }
