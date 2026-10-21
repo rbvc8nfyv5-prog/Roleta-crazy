@@ -1,7 +1,81 @@
+/* ANÁLISE BETA V6.6.8 — ATLAS COMPLETO ATIVO NOS MOTORES.
+1.369 formas relativas distintas: A=0, B=0..36, C=0..36.
+Equivale às 50.653 trincas numéricas ordenadas, incluindo repetições.
+361 pares de amplitudes: 0..18 por 0..18.
+Cada forma contém saltos com sinal, amplitudes, proporção, diferença,
+contração/expansão/manutenção, fechamento, soma assinada, percurso,
+resíduo, voltas algébricas, retorno parcial, contorno, degeneração,
+área, três cordas, três ângulos e perímetro na circunferência unitária.
+Os 1.369 registros e 361 pares são avaliados sem seleção dos mais frequentes.
+Sucessores conhecidos alimentam distribuições relativas antes da geometria.
+Forma sem sucessor observado permanece representada, com contagem zero.
+As comparações por classes de triângulo/amplitude da 6.6.7 foram substituídas
+pelo atlas integral com atributos sem arredondamento para faixas.
+Cadeias 4–8, polos, arcos, perfis dos motores, treinadores, pós-loss,
+duas leituras, controles, persistência e defesas comprometidas preservados.
+Nenhum painel de comparação adicional. Mesma chave de sessão da 6.6.5.
+A enumeração completa refere-se a trincas e pares de amplitudes definidos;
+não significa todas as sequências de qualquer comprimento nem acerto garantido.
+*/
+/* V6.6.8 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
+encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
+Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
+Enumeração geométrica NÃO significa ocorrências observadas ou acertos.
+OPÇÃO EXPERIMENTAL, DESLIGADA POR PADRÃO: não houve ganho consistente.
+Oito canais usam somente resultados já conhecidos; influência total até 20%
+do componente de triangulação, e somente com avaliação causal favorável.
+Desligada, ou na falta de suporte, preserva exatamente o peso anterior.
+A avaliação desta memória não bloqueia gatilhos PÓS-LOSS/PÓS-3 LOSS.
+A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
+comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
+Resultados anteriores não são recalculados como se usassem o novo motor.
+*/
+/* ANÁLISE BETA 6.6.8 — DUAS LEITURAS EM UMA TELA COMPACTA.
+BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
+NORMAL: histórico na ordem cronológica escolhida na importação.
+INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
+Todas as estratégias, variações, linhas do tempo e centros,
+últimos 14, resultados, ciclos e defesas são independentes por conjunto.
+Um único teclado registra o mesmo resultado novo nos dois conjuntos.
+A reversão se aplica à importação; os novos resultados são anexados aos dois.
+Importar, recuperar, desfazer e zerar atuam nos dois conjuntos juntos.
+O salvamento de cada conjunto tem chave própria e não substitui a 6.6.4 simples.
+As jogadas podem coincidir. Duas leituras não garantem mais acertos.
+*/
 (() => {
+"use strict";
+// Cada leitura encontra apenas seus próprios elementos, mesmo quando os
+// quadros são reunidos na tela única. Nenhum ID de uma leitura busca a outra.
+function createSideDocument(root,nativeDocument,listeners){
+ const scopes=[root];
+ function all(selector){return [...new Set(scopes.flatMap(scope=>[...scope.querySelectorAll(selector)]))];}
+ return {
+  body:root,
+  registerScope(element){if(!scopes.includes(element))scopes.push(element);},
+  getElementById(id){for(const scope of scopes){if(scope.id===id)return scope;const el=scope.getElementById?scope.getElementById(id):scope.querySelector('[id="'+id+'"]');if(el)return el;}return null;},
+  querySelector:selector=>all(selector)[0]||null,
+  querySelectorAll:all,
+  createElement:tag=>nativeDocument.createElement(tag),
+  get visibilityState(){return nativeDocument.visibilityState;},
+  addEventListener(type,handler,options){const target=type==='visibilitychange'?nativeDocument:root;target.addEventListener(type,handler,options);listeners.push([target,type,handler,options]);}
+ };
+}
+
+function runBetaSide(side,root,coordinator,nativeDocument){
+const sideListeners=[];
+const document=createSideDocument(root,nativeDocument,sideListeners);
+function sideWindowAdd(type,handler,options){
+ globalThis.addEventListener(type,handler,options);sideListeners.push([globalThis,type,handler,options]);
+}
+
   "use strict";
+if(typeof globalThis['__analiseBetaDispose_'+side]==='function')globalThis['__analiseBetaDispose_'+side]();
+let appAlive=true;
+function isCurrentApp(){return appAlive;}
+
   /*
-ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -35,37 +109,10 @@ ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.1",
-    KEY = "ANALISE_BETA_V661",
+  const VERSION = "6.6.8",
+    KEY = 'ANALISE_BETA_V664_DUAL_'+side,
     WINDOW = 70;
-  const OLD_KEYS = [
-    "ANALISE_BETA_V660",
-    "ANALISE_BETA_V659",
-    "ANALISE_BETA_V658",
-    "ANALISE_BETA_V657",
-    "ANALISE_BETA_V656",
-    "ANALISE_BETA_V655",
-    "ANALISE_BETA_V654",
-    "ANALISE_BETA_V653",
-    "ANALISE_BETA_V652",
-    "ANALISE_BETA_V651",
-    "ANALISE_BETA_V650",
-    "ANALISE_BETA_V649",
-    "ANALISE_BETA_V648",
-    "ANALISE_BETA_V645",
-    "ANALISE_BETA_V644",
-    "ANALISE_BETA_V643",
-    "ANALISE_BETA_V642",
-    "ANALISE_BETA_V641",
-    "ANALISE_BETA_V640",
-    "ANALISE_BETA_V639",
-    "ANALISE_BETA_V638",
-    "ANALISE_BETA_V637",
-    "ANALISE_BETA_V636",
-    "ANALISE_BETA_V635",
-    "ANALISE_BETA_V634",
-    "ANALISE_BETA_V633",
-  ];
+  const OLD_KEYS=[];
   const W = [
     32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24,
     16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26, 0,
@@ -463,7 +510,677 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     );
   }
 
+/* Memória causal do quarto resultado. Geometria simulada não é observação.
+   O atlas enumera formas possíveis; distribuições usam SOMENTE sucessores vistos.
+   Cada canal conta uma ocorrência uma vez. Canais não somam suas amostras.
+   Sem suporte e avaliação cronológica favorável, a influência é exatamente zero. */
+function createTriangleMemory666(wheel){
+  const N=37, index=Array(N), names=[
+    'TRINCA EXATA → QUARTO', 'FORMA GIRADA', 'FORMA REFLETIDA',
+    'AMPLITUDE E PROPORÇÃO', 'ENCADEAMENTO 4–8', 'FECHAMENTO E CONTORNO',
+    'ARCO → PRÓXIMO RESULTADO', 'POLOS → PRÓXIMO RESULTADO'
+  ];
+  wheel.forEach((n,i)=>{index[n]=i;});
+  const mod=n=>(n%N+N)%N;
+  const jump=(a,b)=>{const d=mod(b-a);return d<=18?d:d-N;};
+  const dist=(a,b)=>Math.abs(jump(a,b));
+  const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+  const cache=new Map(), forecasts=new Map();
+  const keep=(map,key,value)=>{map.set(key,value);if(map.size>384)map.delete(map.keys().next().value);return value;};
+  const points=Array.from({length:N},(_,i)=>[Math.sin(i*2*Math.PI/N),Math.cos(i*2*Math.PI/N)]);
+  const chord=(a,b)=>Math.hypot(points[a][0]-points[b][0],points[a][1]-points[b][1]);
+  const angle=(a,b,c)=>{
+    const x=points[a][0]-points[b][0],y=points[a][1]-points[b][1];
+    const u=points[c][0]-points[b][0],v=points[c][1]-points[b][1];
+    const length=Math.hypot(x,y)*Math.hypot(u,v);
+    return length<1e-12?null:Math.acos(Math.max(-1,Math.min(1,(x*u+y*v)/length)))*180/Math.PI;
+  };
+  // Fixar A na posição 0 elimina apenas rotações: 37² formas, todas as repetições inclusas.
+  const atlas=Array.from({length:N*N},(_,id)=>{
+    const b=Math.floor(id/N),c=id%N,s1=jump(0,b),s2=jump(b,c);
+    const closure=dist(0,c),net=s1+s2;
+    const area=Math.abs((points[b][0]-points[0][0])*(points[c][1]-points[0][1])-(points[b][1]-points[0][1])*(points[c][0]-points[0][0]))/2;
+    const type=b===0&&c===0?'TRIPLA':c===0?'RETORNO':b===0?'REPETIÇÃO INICIAL':b===c?'REPETIÇÃO FINAL':Math.sign(s1)===Math.sign(s2)?'CONTINUIDADE':'INVERSÃO';
+    return Object.freeze({s1,s2,closure,net,length:Math.abs(s1)+Math.abs(s2),
+      trend:Math.sign(Math.abs(s2)-Math.abs(s1)),type,area,degenerate:area<1e-10,
+      ratio:s1?Math.abs(s2/s1):null,
+      contour:Math.sign(s1)===Math.sign(s2)&&s1!==0&&Math.abs(net)>=31&&closure<=6,
+      chords:[chord(0,b),chord(b,c),chord(0,c)],angles:[angle(b,0,c),angle(0,b,c),angle(0,c,b)]});
+  });
+  const feature=(a,b,c)=>atlas[mod(b-a)*N+mod(c-a)];
+  const kernels=Array.from({length:N},(_,center)=>{
+    const values=Array.from({length:N},(_,j)=>Math.exp(-dist(center,j)/1.25));
+    const total=values.reduce((s,v)=>s+v,0);return values.map(v=>v/total);
+  });
+  function arc(p,end){
+    const start=Math.max(0,end-5);let best=null;
+    for(let sector=0;sector<N;sector++){
+      let count=0;for(let i=start;i<=end;i++)if(mod(p[i]-sector)<8)count++;
+      if(!best||count>best.count)best={start:sector,count};
+    }
+    if(!best||best.count<3)return null;
+    const inside=mod(p[end]-best.start)<8;
+    return {...best,inside,total:end-start+1,offset:mod(p[end]-best.start)};
+  }
+  function poles(p,end){
+    if(end<3)return null;
+    const a=p[end-3],b=p[end-2],c=p[end-1],d=p[end];
+    if(dist(a,b)<8||dist(a,c)>2||dist(b,d)>2)return null;
+    const initial=dist(a,b),separation=dist(c,d);
+    return {a,b,c,d,separation,movement:Math.sign(separation-initial)};
+  }
+  function raw(history){
+    const h=history.slice(-70),key=h.join(',');if(cache.has(key))return cache.get(key);
+    const p=h.map(n=>index[n]),end=p.length-1;
+    const modes=names.map(name=>({name,support:0,occurrences:0,weights:Array(N).fill(6)}));
+    if(end<2)return keep(cache,key,modes.map(m=>({...m,weights:Array(N).fill(1)})));
+    const current=feature(p[end-2],p[end-1],p[end]);
+    const currentArc=arc(p,end),currentPoles=poles(p,end);
+    function add(k,weight,center,exact=false){
+      if(weight<0.025)return;
+      const mode=modes[k];mode.support+=weight;mode.occurrences++;
+      if(exact)mode.weights[mod(center)]+=weight*N;
+      else for(let j=0;j<N;j++)mode.weights[j]+=weight*N*kernels[mod(center)][j];
+    }
+    for(let old=2;old<end;old++){
+      // old+1 is an observed successor and is never the unknown next spin.
+      const f=feature(p[old-2],p[old-1],p[old]),next=p[old+1];
+      const recency=Math.exp(-(end-old-1)/28),delta=jump(p[old],next);
+      if(h[old-2]===h[end-2]&&h[old-1]===h[end-1]&&h[old]===h[end])add(0,recency,next,true);
+      const shape=(f.type===current.type?1:0.2)*(f.trend===current.trend?1:0.4);
+      const sameDiff=Math.abs(f.s1-current.s1)+Math.abs(f.s2-current.s2);
+      if(sameDiff<=4)add(1,recency*Math.exp(-sameDiff/2)*shape,p[end]+delta);
+      const reflectedDiff=Math.abs(f.s1+current.s1)+Math.abs(f.s2+current.s2);
+      if(reflectedDiff<=4)add(2,recency*Math.exp(-reflectedDiff/2)*shape,p[end]-delta);
+      const amplitudeDiff=Math.abs(Math.abs(f.s1)-Math.abs(current.s1))+Math.abs(Math.abs(f.s2)-Math.abs(current.s2));
+      if(amplitudeDiff<=5&&f.trend===current.trend&&Math.abs(f.closure-current.closure)<=3){
+        const sign=Math.sign(current.s2)*Math.sign(f.s2)||1;
+        const ratio=f.ratio==null||current.ratio==null?1:Math.exp(-Math.abs(Math.log((f.ratio+0.1)/(current.ratio+0.1))));
+        add(3,recency*Math.exp(-amplitudeDiff/3)*ratio,p[end]+delta*sign);
+      }
+      // One historical endpoint contributes once: choose its longest supported chain.
+      let chain=null;
+      for(let length=Math.min(8,old+1,end+1);length>=4;length--){
+        let error=0,opposite=0;
+        for(let k=0;k<length-1;k++){
+          const a=jump(p[end-k-1],p[end-k]),b=jump(p[old-k-1],p[old-k]);
+          error+=Math.abs(a-b);if(Math.sign(a)!==Math.sign(b))opposite++;
+        }
+        if(error/(length-1)<=2&&opposite<=1){chain={error:error/(length-1),length};break;}
+      }
+      if(chain)add(4,recency*Math.exp(-chain.error/2)*(chain.length-2)/6,p[end]+delta);
+      if(current.closure<=6&&f.closure<=6&&current.contour===f.contour&&f.type===current.type&&f.trend===current.trend){
+        const similarity=Math.exp(-Math.abs(current.closure-f.closure)/2-Math.abs(current.length-f.length)/8-Math.abs(current.area-f.area));
+        add(5,recency*similarity,p[end-2]+jump(p[old-2],next));
+      }
+      const oldArc=currentArc?arc(p,old):null;
+      if(oldArc&&oldArc.inside===currentArc.inside&&Math.abs(oldArc.count-currentArc.count)<=1&&Math.abs(oldArc.total-currentArc.total)<=1){
+        const relative=dist(oldArc.offset,currentArc.offset);
+        if(relative<=4)add(6,recency*Math.exp(-relative/2),currentArc.start+mod(next-oldArc.start));
+      }
+      const oldPoles=currentPoles?poles(p,old):null;
+      if(oldPoles&&oldPoles.movement===currentPoles.movement&&Math.abs(oldPoles.separation-currentPoles.separation)<=3){
+        add(7,recency*Math.exp(-Math.abs(oldPoles.separation-currentPoles.separation)/2),currentPoles.c+jump(oldPoles.c,next));
+      }
+    }
+    for(const mode of modes){const average=mean(mode.weights);mode.weights=mode.weights.map(v=>v/average);}
+    return keep(cache,key,modes);
+  }
+  function analyze(history,baseline){
+    const h=history.slice(-70),key=h.join(',');if(forecasts.has(key))return forecasts.get(key);
+    const current=raw(h),base=baseline(h),logs=names.map(()=>[]);
+    // Rolling chronological validation. No actual result enters its own forecast.
+    for(let t=Math.max(8,h.length-24);t<h.length;t++){
+      const before=h.slice(0,t),past=raw(before),previous=baseline(before),outcome=index[h[t]];
+      for(let k=0;k<names.length;k++){
+        if(past[k].support<2||past[k].occurrences<3)continue;
+        const comparison=previous[outcome],trial=0.85*comparison+0.15*past[k].weights[outcome];
+        logs[k].push(Math.log(Math.max(1e-9,trial)/Math.max(1e-9,comparison)));
+      }
+    }
+    const modes=current.map((model,k)=>{
+      const values=logs[k],gain=mean(values),count=values.length;
+      const variance=count>1?values.reduce((s,x)=>s+(x-gain)**2,0)/(count-1):0;
+      const stderr=count?Math.sqrt(variance/count):0;
+      const recentGain=mean(values.slice(-4));
+      const active=count>=8&&model.occurrences>=3&&model.support>=2&&gain>stderr&&recentGain>0;
+      const mass=active?Math.min(0.2,(gain-stderr)*5)*count/(count+16)*Math.min(1,model.support/8):0;
+      return {...model,evaluations:count,meanLogGain:gain,stderr,recentGain,active,mass};
+    });
+    const totalMass=modes.reduce((s,m)=>s+m.mass,0),influence=Math.min(0.2,totalMass);
+    const weights=totalMass?base.map((v,j)=>v*(1-influence)+influence*modes.reduce((s,m)=>s+m.weights[j]*m.mass,0)/totalMass):[...base];
+    return keep(forecasts,key,{weights,modes,influence,observedSuccessors:Math.max(0,h.length-3),
+      status:influence?'ATIVA EM TESTE CRONOLÓGICO':'SEM SUPORTE FAVORÁVEL — BASE PRESERVADA'});
+  }
+  return {raw,analyze,feature,atlas,names,clear(){cache.clear();forecasts.clear();}};
+}
+
+
+  /* Leitura estrutural ativa. Enumera os 37 próximos resultados e seus estados.
+   Uma alternativa possível não é uma previsão confirmada. Somente sucessores
+   já observados atribuem peso. Leitura e escolha permanecem separadas. */
+function createMotorReadings667(wheel, atlas) {
+  const size = 37;
+  const positions = Array(size);
+  wheel.forEach((number, index) => { positions[number] = index; });
+  const mod = value => (value % size + size) % size;
+  const jump = (from, to) => {
+    const forward = mod(to - from);
+    return forward <= 18 ? forward : forward - size;
+  };
+  const distance = (from, to) => Math.abs(jump(from, to));
+  const average = values => values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const band = value => value === 0 ? '0' : value <= 2 ? '1–2' : value <= 6 ? '3–6' : value <= 12 ? '7–12' : '13+';
+  const amplitudeBand = value => value <= 3 ? 'CURTO' : value <= 9 ? 'MÉDIO' : 'LONGO';
+  const normalize = values => {
+    const mean = average(values) || 1;
+    return values.map(value => value / mean);
+  };
+  const cache = new Map();
+  const groups = ['TRIANGULAÇÃO', 'AMPLITUDE', 'ENCADEAMENTO', 'FECHAMENTO/PERCURSO', 'POLOS', 'ARCOS'];
+  const profiles = [
+    [1, 1, 1, 1, 1, 1],
+    [1.2, 1.8, 1.5, 1, .6, .6],
+    [.8, .7, .8, 1.3, 1.1, 1.7],
+    [.8, 1.1, 2, 2, .6, .6],
+    [2.3, 1.2, 1.6, 1.8, .5, .5],
+    [.6, .6, .7, .8, 2.4, 2.1],
+    [1.4, .8, .9, 2, 1.7, .6],
+    [.8, 2.2, 1.4, 1.5, .6, 1.3]
+  ];
+
+  /* Atlas completo: nenhum corte por ranking, frequência ou classe.
+     ID = posição relativa de B * 37 + posição relativa de C, com A = 0.
+     Cada registro guarda atributos exatos; somente o passado fornece sucessores. */
+  const relativeForms = Array.from({ length: 1369 }, (_, id) => {
+    const b = Math.floor(id / 37), c = id % 37;
+    const shape = atlas.feature(0, b, c);
+    return Object.freeze({ ...shape, id, positions: Object.freeze([0, b, c]),
+      amplitudes: Object.freeze([Math.abs(shape.s1), Math.abs(shape.s2)]),
+      amplitudeId: Math.abs(shape.s1) * 19 + Math.abs(shape.s2),
+      amplitudeChange: Math.abs(shape.s2) - Math.abs(shape.s1),
+      perimeter: shape.chords.reduce((sum, value) => sum + value, 0),
+      partialReturn: c !== 0 && shape.s1 * shape.s2 < 0 && shape.closure < Math.abs(shape.s1),
+      signedResidual: shape.net - Math.round(shape.net / 37) * 37,
+      algebraicTurns: shape.net / 37,
+      chords: Object.freeze([...shape.chords]), angles: Object.freeze([...shape.angles])
+    });
+  });
+  const amplitudeForms = Array.from({ length: 361 }, (_, id) => {
+    const first = Math.floor(id / 19), second = id % 19;
+    return Object.freeze({ id, first, second, difference: second - first,
+      ratio: first === 0 ? null : second / first,
+      trend: second < first ? 'CONTRAÇÃO' : second > first ? 'EXPANSÃO' : 'MANUTENÇÃO' });
+  });
+  const formId = (a, b, c) => mod(b - a) * 37 + mod(c - a);
+  const kernelCache = new Map();
+
+  function fullKernels(currentId) {
+    if (kernelCache.has(currentId)) return kernelCache.get(currentId);
+    const current = relativeForms[currentId];
+    const geometry = new Float64Array(1369);
+    const closure = new Float64Array(1369);
+    const amplitude = new Float64Array(361);
+    for (const old of relativeForms) {
+      // Todos os 1.369 registros são avaliados, sem faixas arredondadas.
+      const steps = (Math.abs(current.s1 - old.s1) + Math.abs(current.s2 - old.s2)) / 12;
+      const chords = current.chords.reduce((sum, value, i) => sum + Math.abs(value - old.chords[i]), 0) / 3;
+      const angles = current.angles.reduce((sum, value, i) => {
+        const other = old.angles[i];
+        return sum + (value == null || other == null ? Number(value !== other) : Math.abs(value - other) / 180);
+      }, 0) / 3;
+      const area = Math.abs(current.area - old.area);
+      const ratio = current.ratio == null || old.ratio == null
+        ? Number(current.ratio !== old.ratio)
+        : Math.abs(Math.atan(current.ratio) - Math.atan(old.ratio));
+      const attributes = Math.abs(current.closure - old.closure) / 18 +
+        Math.abs(current.amplitudeChange - old.amplitudeChange) / 36 + ratio +
+        Number(current.partialReturn !== old.partialReturn) + Number(current.degenerate !== old.degenerate);
+      geometry[old.id] = Math.exp(-steps - chords - angles - area - attributes) + (old.id === currentId ? 4 : 0);
+      closure[old.id] = Math.exp(-Math.abs(current.closure - old.closure) / 4 -
+        Math.abs(current.net - old.net) / 12 - Math.abs(current.length - old.length) / 12 -
+        Number(current.contour !== old.contour));
+    }
+    for (const old of amplitudeForms) {
+      amplitude[old.id] = Math.exp(-(Math.abs(current.amplitudes[0] - old.first) +
+        Math.abs(current.amplitudes[1] - old.second)) / 5 -
+        Math.abs(current.amplitudeChange - old.difference) / 8) +
+        (old.id === current.amplitudeId ? 3 : 0);
+    }
+    const result = { geometry, closure, amplitude };
+    kernelCache.set(currentId, result);
+    if (kernelCache.size > 32) kernelCache.delete(kernelCache.keys().next().value);
+    return result;
+  }
+
+  function exhaustiveRead(prefix) {
+    const formCounts = new Uint16Array(1369);
+    const amplitudeCounts = new Uint16Array(361);
+    const observed = new Map();
+    // A trinca corrente ainda não tem sucessor e não pode treiná-lo.
+    for (let end = 2; end < prefix.length - 1; end++) {
+      const id = formId(prefix[end - 2], prefix[end - 1], prefix[end]);
+      const shape = relativeForms[id];
+      const nextStep = jump(prefix[end], prefix[end + 1]);
+      const mass = Math.exp(-(prefix.length - 2 - end) / 28);
+      formCounts[id]++;
+      amplitudeCounts[shape.amplitudeId]++;
+      let record = observed.get(id);
+      if (!record) {
+        record = { id, count: 0, mass: 0, successors: new Map() };
+        observed.set(id, record);
+      }
+      record.count++;
+      record.mass += mass;
+      const next = record.successors.get(nextStep) || { step: nextStep, count: 0, mass: 0 };
+      next.count++;
+      next.mass += mass;
+      record.successors.set(nextStep, next);
+    }
+    const currentId = prefix.length >= 3 ? formId(...prefix.slice(-3)) : null;
+    const groups = [0, 1, 3].map(group => ({ name: ['TRIANGULAÇÃO', 'AMPLITUDE', '', 'FECHAMENTO/PERCURSO'][group],
+      group, support: 0, modes: group === 1 ? 361 : 1369, weights: Array(37).fill(8) }));
+    if (currentId != null) {
+      const kernels = fullKernels(currentId);
+      const anchor = prefix.at(-1);
+      // Percorre explicitamente o atlas inteiro. Sem ocorrência, contribuição
+      // observada é zero; o registro continua disponível, sem inventar evidência.
+      for (let id = 0; id < 1369; id++) {
+        const shape = relativeForms[id], record = observed.get(id);
+        if (!record) continue;
+        const coefficients = [kernels.geometry[id], kernels.amplitude[shape.amplitudeId], kernels.closure[id]];
+        groups.forEach((group, index) => {
+          const coefficient = coefficients[index];
+          group.support += coefficient * record.mass;
+          for (const successor of record.successors.values()) {
+            const target = mod(anchor + successor.step);
+            const contribution = coefficient * successor.mass * 37;
+            group.weights[target] += contribution * .7;
+            group.weights[mod(target - 1)] += contribution * .15;
+            group.weights[mod(target + 1)] += contribution * .15;
+          }
+        });
+      }
+    }
+    groups.forEach(group => { group.weights = normalize(group.weights); });
+    return { currentId, formsEvaluated: currentId == null ? 0 : 1369,
+      amplitudesEvaluated: currentId == null ? 0 : 361,
+      representedForms: 1369, representedAmplitudes: 361,
+      numericTriples: 50653, formCounts, amplitudeCounts,
+      observedForms: observed.size, successorSamples: Math.max(0, prefix.length - 3),
+      observed: [...observed.values()].map(record => ({ ...record, successors: [...record.successors.values()] })), groups };
+  }
+
+  function catalogue(history, id = null) {
+    const reading = read(history), data = reading.exhaustive;
+    const describe = form => ({ ...form, occurrences: data.formCounts[form.id],
+      successors: data.observed.find(record => record.id === form.id)?.successors || [],
+      status: data.formCounts[form.id] ? 'OBSERVADA COM SUCESSOR' : 'REPRESENTADA SEM SUCESSOR OBSERVADO' });
+    if (id != null) return Number.isInteger(id) && id >= 0 && id < 1369 ? describe(relativeForms[id]) : null;
+    return relativeForms.map(describe);
+  }
+
+  function poleStep(previous, prefix, next, tolerance) {
+    const state = previous ? {
+      ...previous,
+      anchors: previous.anchors ? [...previous.anchors] : null,
+      drift: previous.drift ? [...previous.drift] : [0, 0]
+    } : { active: false, anchors: null, drift: [0, 0], outside: 0, age: 0, event: 'SEM FORMAÇÃO' };
+    state.age++;
+    state.inactiveAge = state.active || state.concentration != null ? 0 : (state.inactiveAge || 0) + 1;
+    if (state.anchors && (state.active || (state.event === 'RUPTURA' && state.outside <= 3))) {
+      const oldDistance = distance(...state.anchors);
+      const expected = 1 - state.lastSide;
+      const de = distance(next, state.anchors[expected]);
+      const ds = distance(next, state.anchors[state.lastSide]);
+      if (de <= tolerance && de <= ds) {
+        const resumed = !state.active || state.outside > 0 || state.event === 'INTERRUPÇÃO';
+        state.drift[expected] += jump(state.anchors[expected], next);
+        state.anchors[expected] = next;
+        state.lastSide = expected;
+        state.outside = 0;
+        state.active = true;
+        state.event = resumed ? 'RETOMADA' : 'ALTERNÂNCIA';
+      } else if (state.active && ds <= tolerance) {
+        state.drift[state.lastSide] += jump(state.anchors[state.lastSide], next);
+        state.anchors[state.lastSide] = next;
+        state.outside = 0;
+        state.event = 'INTERRUPÇÃO';
+      } else {
+        state.outside++;
+        state.event = state.outside >= 2 ? 'RUPTURA' : 'SAÍDA';
+        if (state.outside >= 2) state.active = false;
+      }
+      state.separation = distance(...state.anchors);
+      state.movement = Math.sign(state.separation - oldDistance);
+      if (state.active && state.separation <= Math.max(2, tolerance)) {
+        state.active = false;
+        state.event = 'FUSÃO';
+        state.concentration = next;
+        state.fromFusion = true;
+        state.concentrationOutside = 0;
+      } else if (state.active && state.event === 'ALTERNÂNCIA') {
+        if (state.movement < 0) state.event = 'CONVERGÊNCIA';
+        if (state.movement > 0) state.event = 'DIVERGÊNCIA';
+        if (!state.movement) state.event = 'MANUTENÇÃO';
+      }
+    } else if (state.concentration != null) {
+      if (distance(next, state.concentration) <= Math.max(2, tolerance)) {
+        state.concentration = next;
+        state.fromFusion = true;
+        state.concentrationOutside = 0;
+        state.event = 'CONCENTRAÇÃO APÓS FUSÃO';
+      } else {
+        state.concentrationOutside++;
+        state.event = state.concentrationOutside >= 2 ? 'DISPERSÃO APÓS FUSÃO' : 'SAÍDA APÓS FUSÃO';
+        if (state.concentrationOutside >= 2) state.concentration = null;
+      }
+    }
+    if (!state.active && prefix.length >= 3 && state.event !== 'FUSÃO') {
+      const [a, b, c] = prefix.slice(-3);
+      if (distance(a, b) >= Math.max(8, 2 * tolerance + 2) &&
+          distance(a, c) <= tolerance && distance(b, next) <= tolerance) {
+        const split = state.concentration != null || state.fromFusion;
+        state.anchors = [c, next];
+        state.drift = [jump(a, c), jump(b, next)];
+        state.lastSide = 1;
+        state.separation = distance(c, next);
+        state.movement = Math.sign(state.separation - distance(a, b));
+        state.outside = 0;
+        state.active = true;
+        state.concentration = null;
+        state.event = split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
+      }
+    }
+    if(state.active)state.inactiveAge=0;
+    if(!state.active&&state.concentration==null&&state.inactiveAge>3){state.anchors=null;state.event='ENCERRADO';}
+    return state;
+  }
+
+  function chooseArc(previous, prefix, width) {
+    if (prefix.length < 4 || width === 37) return { width, start: null, event: 'SEM CONCENTRAÇÃO', outside: 0, inside: 0 };
+    const sample = prefix.slice(-8);
+    const counts = Array(size).fill(0);
+    for (const position of sample) counts[position]++;
+    let total = 0;
+    for (let j = 0; j < width; j++) total += counts[j];
+    let best = { start: 0, count: total };
+    for (let start = 1; start < size; start++) {
+      total += counts[mod(start + width - 1)] - counts[start - 1];
+      if (total > best.count) best = { start, count: total };
+    }
+    const minimum = Math.max(2, Math.ceil(sample.length * width / size + 1));
+    const state = previous ? { ...previous } : { width, start: null, outside: 0, inside: 0, weak: 0 };
+    if (state.start != null) {
+      const count = sample.filter(position => mod(position - state.start) < width).length;
+      state.weak = count < minimum ? (state.weak || 0) + 1 : 0;
+      if (best.count >= minimum && best.start !== state.start && best.count >= count + 2) {
+        state.start = best.start;
+        state.event = 'SUBSTITUIÇÃO';
+        state.outside = 0;
+        state.inside = 0;
+        state.lastInside = null;
+      } else if (state.weak >= 2 || (state.outside >= 8 && count < minimum)) {
+        state.start = null;
+        state.event = 'ENCERRAMENTO';
+      } else if (!state.weak && previous?.weak) state.event = 'RETOMADA DO ARCO';
+      else if (state.weak) state.event = 'ENFRAQUECIMENTO';
+    } else if (best.count >= minimum) {
+      state.start = best.start;
+      state.event = 'FORMAÇÃO';
+      state.outside = 0;
+      state.inside = 0;
+      state.lastInside = null;
+      state.weak = 0;
+    } else state.event = state.event === 'ENCERRAMENTO' ? 'ENCERRAMENTO' : 'SEM CONCENTRAÇÃO';
+    state.width = width;
+    state.count = state.start == null ? 0 : sample.filter(position => mod(position - state.start) < width).length;
+    return state;
+  }
+
+  function consumeArc(prepared, next) {
+    const state = { ...prepared };
+    if (state.start == null) return state;
+    const inside = mod(next - state.start) < state.width;
+    const transition = inside ? state.lastInside === true ? 'PERMANÊNCIA' : state.outside > 0 ? 'REENTRADA' : 'ENTRADA'
+                             : state.lastInside === true ? 'SAÍDA' : 'AFASTAMENTO';
+    state.transition = transition;
+    if (!['SUBSTITUIÇÃO', 'FORMAÇÃO', 'ENFRAQUECIMENTO', 'RETOMADA DO ARCO'].includes(state.event)) state.event = transition;
+    state.inside = inside ? state.inside + 1 : 0;
+    state.outside = inside ? 0 : state.outside + 1;
+    state.lastInside = inside;
+    return state;
+  }
+
+
+  // Todos os setores fixos são lidos, inclusive quando não são o arco eleito.
+  // Chaves compactas evitam armazenar 1.369 objetos em cada prefixo histórico.
+  function fixedArcKeys(prefix) {
+    const keys = new Uint16Array(37 * 37);
+    const recent = prefix.slice(-8);
+    for (let width = 1; width <= 37; width++) {
+      for (let start = 0; start < 37; start++) {
+        const flags = recent.map(position => mod(position - start) < width);
+        const count = flags.filter(Boolean).length;
+        let run = 0;
+        const inside = flags.at(-1) || false;
+        for (let k = flags.length - 1; k >= 0 && flags[k] === inside && run < 4; k--) run++;
+        keys[(width - 1) * 37 + start] = count * 10 + Number(inside) * 5 + run;
+      }
+    }
+    return keys;
+  }
+
+  function arcAlternative(history, number, start, width) {
+    if (!Number.isInteger(start) || start < 0 || start > 36 || !Number.isInteger(width) || width < 1 || width > 37) return null;
+    const prefix = history.slice(-70).map(number => positions[number]);
+    const priorInside = prefix.length ? mod(prefix.at(-1) - start) < width : null;
+    const inside = mod(positions[number] - start) < width;
+    const visited = prefix.some(position => mod(position - start) < width);
+    const event = inside ? priorInside === true ? 'PERMANÊNCIA' : visited ? 'REENTRADA' : 'ENTRADA'
+                         : priorInside === true ? 'SAÍDA' : 'AFASTAMENTO';
+    const sample = prefix.slice(-8);
+    const visits = sample.filter(position => mod(position - start) < width).length;
+    return { start, startNumber: wheel[start], width, number, inside, event, visits, sample: sample.length };
+  }
+
+  function makeFrame(prefix, poles, arcs, captureModes = true) {
+    const end = prefix.length - 1;
+    if (end < 2) return { modes: [], poles, arcs, triangle: null, chains: [] };
+    const a = prefix[end - 2], b = prefix[end - 1], c = prefix[end];
+    const shape = atlas.feature(a, b, c);
+    const f = { ...shape,
+      partialReturn: a!==c && shape.s1*shape.s2<0 && shape.closure<Math.abs(shape.s1),
+      perimeter: shape.chords.reduce((sum,value)=>sum+value,0),
+      amplitudeChange: Math.abs(shape.s2)-Math.abs(shape.s1),
+      abruptAmplitude: Math.abs(Math.abs(shape.s2)-Math.abs(shape.s1))>=10,
+      amplitudeAlternation: (Math.abs(shape.s1)<=3&&Math.abs(shape.s2)>=10)||(Math.abs(shape.s2)<=3&&Math.abs(shape.s1)>=10),
+      signedResidual: shape.net-Math.round(shape.net/37)*37,
+      algebraicTurns: shape.net/37
+    };
+    const modes = [];
+    function mode(id, group, key, anchor = c, orientation = 1) {
+      if(captureModes)modes.push({ id, group, key, anchor, orientation });
+    }
+    const chains = [];
+    for (let length = 4; length <= Math.min(8, prefix.length); length++) {
+      const chain = prefix.slice(-length);
+      const steps = chain.slice(1).map((position, i) => jump(chain[i], position));
+      const net = steps.reduce((sum, value) => sum + value, 0);
+      const absolute = steps.reduce((sum, value) => sum + Math.abs(value), 0);
+      const closure = distance(chain[0], c);
+      const trends = steps.slice(1).map((value, i) => Math.sign(Math.abs(value) - Math.abs(steps[i])));
+      mode('CADEIA EXATA ' + length, 2, steps.join(','));
+      mode('CADEIA DIREÇÃO/AMPLITUDE ' + length, 2, steps.map(value => Math.sign(value) + ':' + amplitudeBand(Math.abs(value))).join(','));
+      mode('PERCURSO/RETORNO ' + length, 3, [Math.sign(net), Math.floor(Math.abs(net) / 6), Math.floor(absolute / 10), band(closure), trends.join(',')].join('|'), chain[0]);
+      chains.push({ length, steps, net, absolute, closure, turns: net / 37, residual: mod(net), trends,
+        interruption: steps.length>=3&&Math.sign(steps.at(-2))===Math.sign(steps.at(-3))&&Math.sign(steps.at(-1))!==Math.sign(steps.at(-2)),
+        resumption: steps.length>=3&&steps.at(-1)===steps.at(-3)&&steps.at(-1)!==steps.at(-2),
+        directionChanges: steps.slice(1).filter((value,index)=>Math.sign(value)!==Math.sign(steps[index])).length
+      });
+    }
+    for (let tolerance = 0; tolerance <= 8; tolerance++) {
+      const state = poles[tolerance];
+      const relevant = state.anchors && (state.active || state.outside <= 3 || state.concentration != null);
+      const key = relevant ? [state.event, band(state.separation || 0), state.movement || 0, Math.min(3, state.outside), state.drift.map(Math.sign).join(',')].join('|') : null;
+      const anchor = state.concentration != null ? state.concentration : state.anchors ? state.anchors[1 - state.lastSide] : c;
+      mode('POLOS TOLERÂNCIA ' + tolerance, 4, key, anchor);
+    }
+    for (let width = 1; width <= 37; width++) {
+      const state = arcs[width - 1];
+      const key = state.start == null ? null : [state.event, state.transition, state.count, Math.min(4, state.outside), Math.min(4, state.inside)].join('|');
+      mode('ARCO ' + width, 5, key, state.start == null ? c : state.start);
+    }
+    if(captureModes)for(let width=1;width<=37;width++){
+      mode('ARCO TODOS OS SETORES '+width,5,width===37?null:'TODOS OS SETORES');
+      modes.at(-1).fixedWidth=width;
+    }
+    return { modes, poles, arcs, triangle: f, chains, fixedKeys: captureModes ? fixedArcKeys(prefix) : null };
+  }
+
+  function read(history) {
+    const h = history.slice(-70);
+    const key = h.join(',');
+    if (cache.has(key)) return cache.get(key);
+    const prefix = [];
+    let poles = Array.from({ length: 9 }, () => null);
+    let arcs = Array.from({ length: 37 }, () => null);
+    const frames = [];
+    for (const number of h) {
+      const next = positions[number];
+      const prepared = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
+      poles = poles.map((state, tolerance) => poleStep(state, prefix, next, tolerance));
+      arcs = prepared.map(state => consumeArc(state, next));
+      prefix.push(next);
+      frames.push(makeFrame(prefix, poles, arcs));
+    }
+    const current = frames.at(-1) || { modes: [], poles, arcs, triangle: null, chains: [] };
+    const modes = current.modes.map(mode => ({ ...mode, support: 0, occurrences: 0, weights: Array(size).fill(16), outcomes: Array(size).fill(0), outcomeIndices: Array.from({length:size},()=>[]) }));
+    for (let end = 2; end < h.length - 1; end++) {
+      const previous = frames[end];
+      const next = positions[h[end + 1]];
+      const mass = Math.exp(-(h.length - 2 - end) / 28);
+      const previousModes = new Map(previous.modes.map(mode => [mode.id, mode]));
+      for (const mode of modes) {
+        const old = previousModes.get(mode.id);
+        if (mode.fixedWidth || mode.key == null || !old || old.key !== mode.key) continue;
+        mode.support += mass;
+        mode.occurrences++;
+        const center = mode.anchor == null ? next : mod(mode.anchor + jump(old.anchor, next) * mode.orientation * old.orientation);
+        mode.outcomes[center]++;
+        mode.outcomeIndices[center].push(end);
+        mode.weights[center] += mass * size * .7;
+        mode.weights[mod(center - 1)] += mass * size * .15;
+        mode.weights[mod(center + 1)] += mass * size * .15;
+      }
+    }
+    for(const mode of modes.filter(mode=>mode.fixedWidth&&mode.fixedWidth<37)){
+      const indices=new Set();
+      for(let start=0;start<37;start++){
+        const index=(mode.fixedWidth-1)*37+start;
+        for(let end=2;end<h.length-1;end++){
+          if(frames[end].fixedKeys[index]!==current.fixedKeys[index])continue;
+          const mass=Math.exp(-(h.length-2-end)/28)/37;
+          const center=positions[h[end+1]];
+          mode.support+=mass;indices.add(end);
+          mode.outcomeIndices[center].push(end);mode.outcomes[center]++;
+          mode.weights[center]+=mass*37*.7;
+          mode.weights[mod(center-1)]+=mass*37*.15;
+          mode.weights[mod(center+1)]+=mass*37*.15;
+        }
+      }
+      mode.occurrences=indices.size;
+    }
+    for (const mode of modes) mode.weights = normalize(mode.weights);
+    const exhaustive = exhaustiveRead(prefix);
+    const summaries = groups.map((name, group) => {
+      const members = modes.filter(mode => mode.group === group && mode.support > 0);
+      const support = Math.max(0, ...members.map(mode => mode.support));
+      const weights = members.length ? normalize(Array.from({ length: size }, (_, j) => average(members.map(mode => mode.weights[j])))) : Array(size).fill(1);
+      return { name, support, modes: members.length, weights };
+    });
+    for(const complete of exhaustive.groups){
+      if(complete.group===3){
+        const legacy=summaries[3];
+        summaries[3]={...complete,weights:normalize(complete.weights.map((value,j)=>(value+legacy.weights[j])/2)),support:Math.max(complete.support,legacy.support)};
+      }else summaries[complete.group]=complete;
+    }
+    const preparedArcs = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
+    const candidates = wheel.map((number, position) => {
+      const futurePoles = poles.map((state, tolerance) => poleStep(state, prefix, position, tolerance));
+      const futureArcs = preparedArcs.map(state => consumeArc(state, position));
+      const future = makeFrame([...prefix, position], futurePoles, futureArcs, false);
+      const last = current.triangle;
+      return { number, position, triangle: future.triangle,
+        triangleTransition: last && future.triangle ? { areaChange: Math.sign(future.triangle.area - last.area), closureChange: Math.sign(future.triangle.closure - last.closure), turn: Math.sign(future.triangle.s2), ratio: future.triangle.ratio } : null,
+        chains: future.chains,
+        poleEvents: futurePoles.map((state, tolerance) => ({ tolerance, event: state.event, movement: state.movement || 0, separation: state.separation == null ? null : state.separation, anchors: state.anchors ? state.anchors.map(p => wheel[p]) : [] })),
+        arcEvents: futureArcs.map(state => ({ width: state.width, event: state.event, transition: state.transition || null, start: state.start, outside: state.outside, inside: state.inside })),
+        allArcStartsRead: true, arcSectorCases: 1369,
+        historicalSupport: new Set(modes.flatMap(mode => mode.outcomeIndices[position])).size,
+        supportingChannels: modes.filter(mode => mode.outcomes[position] > 0).length
+      };
+    });
+    const result = { version: '6.6.8', prefix: h, candidates, modes, groups: summaries, exhaustive,
+      candidateCount: candidates.length, channelCount: modes.length, arcSectorCases:1369,
+      interpretationCount: candidates.length * modes.length,
+      status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
+    result.profileCache = new Map();
+    cache.set(key, result);
+    if (cache.size > 32) cache.delete(cache.keys().next().value);
+    return result;
+  }
+
+  function weights(history, profile = {}) {
+    const reading = read(history);
+    const cacheKey = [profile.family || '', profile.radius || '', profile.variation || ''].join('|');
+    if (reading.profileCache.has(cacheKey)) return reading.profileCache.get(cacheKey);
+    const shares = [...(profiles[profile.variation - 1] || profiles[0])];
+    if ((profile.family || '').startsWith('RX')) { shares[0] *= 1.35; shares[2] *= 1.3; }
+    if ((profile.family || '').includes('DINAMICO')) { shares[1] *= 1.35; shares[3] *= 1.25; }
+    if (profile.radius) { shares[4] *= .8 + (profile.radius - 4) * .2; shares[5] *= .8 + (profile.radius - 4) * .25; }
+    const total = shares.reduce((sum, value) => sum + value, 0);
+    const result = normalize(Array.from({ length: size }, (_, j) => reading.groups.reduce((sum, group, k) => {
+      const confidence = group.support / (group.support + 12);
+      return sum + shares[k] / total * (1 + confidence * (group.weights[j] - 1));
+    }, 0)));
+    reading.profileCache.set(cacheKey, result);
+    return result;
+  }
+
+  function merge(original, history, profile = {}, strength = .18) {
+    if (history.length < 3) return original;
+    const reading = read(history);
+    if (!reading.groups.some(group => group.support > 0)) return original;
+    const contribution = weights(history, profile);
+    const mean = average(original) || 1;
+    return original.map((value, j) => Math.max(.001, value * (1 - strength) + mean * contribution[j] * strength));
+  }
+
+  function summary(history) {
+    const reading = read(history);
+    return { version: reading.version, candidateCount: reading.candidateCount,
+      channelCount: reading.channelCount, interpretationCount: reading.interpretationCount,
+      relativeForms:1369, amplitudeForms:361, numericTriples:50653,
+      formsEvaluated:reading.exhaustive.formsEvaluated, amplitudesEvaluated:reading.exhaustive.amplitudesEvaluated,
+      successorSamples:reading.exhaustive.successorSamples,
+      groups: reading.groups.map(({ name, support, modes }) => ({ name, support, modes })) };
+  }
+
+  return { read, weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, poleStep, chooseArc, consumeArc, arcAlternative,
+    clear() { cache.clear(); kernelCache.clear(); } };
+}
+
+const triangleMemory666 = createTriangleMemory666(W);
+  const motorReadings667=createMotorReadings667(W,triangleMemory666);
   function triangleAnalysis(h) {
+    const original=legacyTriangleAnalysis(h);
+    if(!state.structuralMemoryEnabled)return original;
+    const successor=triangleMemory666.analyze(h,past=>legacyTriangleAnalysis(past).weights);
+    return {...original,weights:successor.weights,successorMemory:successor};
+  }
+
+  function legacyTriangleAnalysis(h) {
     const key = h.join(",");
     if (triangleCache.has(key)) return triangleCache.get(key);
     const triples = [];
@@ -1080,7 +1797,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.8" };
     spaceCache.set(key, r);
     if (spaceCache.size > 120)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -1277,11 +1994,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         weights[ix(n)] += (b * radius) / 5;
       }
     }
-    return applySpatial(
-      weights,
-      h,
-      0.3 + (radius - 4) * 0.035 + (family.startsWith("RX") ? 0.035 : 0),
-    );
+    return motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12);
   }
 
   const motorDiversityCache = new Map();
@@ -1549,6 +2263,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
+          readingVersion:"6.6.8",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -2413,6 +3128,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }
     const recency = normalizeSpace(recent);
+    const completeWeights667=motorReadings667.weights(h,{variation,radius});
     const last = h.at(-1),
       prior = h.at(-2);
     const jump = prior == null ? 0 : direction(prior, last);
@@ -2433,6 +3149,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         0,
       );
       let value = mixed * 0.65 + recency[j] * profile.recent;
+      value+=.18*(completeWeights667[j]-1);
       value +=
         1.8 * Math.exp(-distance(n, hypothesis) / (1.6 + (radius - 4) * 0.4));
       if (variation === 4) value += 0.5 * Math.exp(-distance(n, projected) / 2);
@@ -2652,6 +3369,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   function fresh() {
     return {
+      structuralMemoryVersion: "6.6.8",
+      structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
       historyTurns: [],
@@ -2660,7 +3379,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       manualCount: 0,
       manualLog: [],
       undoStack: [],
-      strategy: "MASTER",
+      strategy: "MASTER",importAudit:null,
       masterChoice: null,
       masterHistory: [],
       masterResumeTurn: 0,
@@ -2829,13 +3548,18 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       r.strategy = "TRAINER";
       r.manual = null;
     }
+    if(data.structuralMemoryVersion!=="6.6.8"){
+      r.structuralMemoryVersion="6.6.8";
+      r.block={...r.block,data:null};
+    }
+
     return r;
   }
 
   function settings() {
     return Object.fromEntries(
       [
-        "strategy",
+        "structuralMemoryEnabled","strategy",
         "postLossEnabled",
         "postThreeEnabled",
         "rank",
@@ -2856,6 +3580,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function clearSpatialCaches() {
+    motorReadings667.clear();
+    triangleMemory666.clear();
     triangleCache.clear();
     spaceCache.clear();
     rawSpaceCache.clear();
@@ -2866,7 +3592,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function compactMotor(m) {
-    const result = {};
+    const result = { readingVersion:"6.6.8", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3353,6 +4079,18 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         : "NORMAL"
       : null;
     state.ledger.push({
+      readingAudit: {
+        version: "6.6.8", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        candidateCount: 37, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
+        supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
+        coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
+        selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
+        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
+          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
+        readingSupport: motorReadings667.read(before).candidates.find(option=>option.number===n)?.historicalSupport||0,
+        chosenCovered: played?.play?.numbers.includes(n) ?? null,
+        note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
+      },
       controller,
       masterTarget: copy(
         oldCycle?.original?.masterTarget || played?.masterTarget || null,
@@ -3407,10 +4145,25 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     return state.ledger.at(-1);
   }
 
-  function importNumbersCore(numbers, opts, manualLog = []) {
+  
+function importFingerprint(value){
+ const text=JSON.stringify(value);let hash=2166136261;
+ for(let i=0;i<text.length;i++)hash=Math.imul(hash^text.charCodeAt(i),16777619)>>>0;
+ return hash.toString(16).padStart(8,'0').toUpperCase();
+}
+function describeImport(numbers,opts){
+ const config={};
+ for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','rank','manual','adaptive',
+ 'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
+ return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
+ historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
+}
+
+function importNumbersCore(numbers, opts, manualLog = []) {
     state = { ...fresh(), ...opts, manualLog: copy(manualLog) };
     clearSpatialCaches();
     const clean = cleanNumbers(numbers).slice(-70);
+state.importAudit=describeImport(clean,opts);
     // A importação cresce até o tamanho escolhido; não descarta seu próprio histórico.
     state.block.size = 0;
     for (const n of clean) spin(n, "HISTÓRICO");
@@ -4033,6 +4786,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
   function save() {
+if(!isCurrentApp())return false;
+
     try {
       if (typeof checkpointSerial !== "undefined") checkpointSerial++;
       if (typeof checkpointEpoch !== "undefined") checkpointEpoch++;
@@ -4478,6 +5233,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
+          readingVersion:"6.6.8",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -4710,7 +5466,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -4744,37 +5500,10 @@ ANÁLISE BETA V6.6.1 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.1",
-      KEY = "ANALISE_BETA_V661",
+    const VERSION = "6.6.8",
+      KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
-    const OLD_KEYS = [
-      "ANALISE_BETA_V660",
-      "ANALISE_BETA_V659",
-      "ANALISE_BETA_V658",
-      "ANALISE_BETA_V657",
-      "ANALISE_BETA_V656",
-      "ANALISE_BETA_V655",
-      "ANALISE_BETA_V654",
-      "ANALISE_BETA_V653",
-      "ANALISE_BETA_V652",
-      "ANALISE_BETA_V651",
-      "ANALISE_BETA_V650",
-      "ANALISE_BETA_V649",
-      "ANALISE_BETA_V648",
-      "ANALISE_BETA_V645",
-      "ANALISE_BETA_V644",
-      "ANALISE_BETA_V643",
-      "ANALISE_BETA_V642",
-      "ANALISE_BETA_V641",
-      "ANALISE_BETA_V640",
-      "ANALISE_BETA_V639",
-      "ANALISE_BETA_V638",
-      "ANALISE_BETA_V637",
-      "ANALISE_BETA_V636",
-      "ANALISE_BETA_V635",
-      "ANALISE_BETA_V634",
-      "ANALISE_BETA_V633",
-    ];
+    const OLD_KEYS=[];
     const W = [
       32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24,
       16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26, 0,
@@ -5179,7 +5908,677 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       );
     }
 
-    function triangleAnalysis(h) {
+/* Memória causal do quarto resultado. Geometria simulada não é observação.
+   O atlas enumera formas possíveis; distribuições usam SOMENTE sucessores vistos.
+   Cada canal conta uma ocorrência uma vez. Canais não somam suas amostras.
+   Sem suporte e avaliação cronológica favorável, a influência é exatamente zero. */
+function createTriangleMemory666(wheel){
+  const N=37, index=Array(N), names=[
+    'TRINCA EXATA → QUARTO', 'FORMA GIRADA', 'FORMA REFLETIDA',
+    'AMPLITUDE E PROPORÇÃO', 'ENCADEAMENTO 4–8', 'FECHAMENTO E CONTORNO',
+    'ARCO → PRÓXIMO RESULTADO', 'POLOS → PRÓXIMO RESULTADO'
+  ];
+  wheel.forEach((n,i)=>{index[n]=i;});
+  const mod=n=>(n%N+N)%N;
+  const jump=(a,b)=>{const d=mod(b-a);return d<=18?d:d-N;};
+  const dist=(a,b)=>Math.abs(jump(a,b));
+  const mean=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+  const cache=new Map(), forecasts=new Map();
+  const keep=(map,key,value)=>{map.set(key,value);if(map.size>384)map.delete(map.keys().next().value);return value;};
+  const points=Array.from({length:N},(_,i)=>[Math.sin(i*2*Math.PI/N),Math.cos(i*2*Math.PI/N)]);
+  const chord=(a,b)=>Math.hypot(points[a][0]-points[b][0],points[a][1]-points[b][1]);
+  const angle=(a,b,c)=>{
+    const x=points[a][0]-points[b][0],y=points[a][1]-points[b][1];
+    const u=points[c][0]-points[b][0],v=points[c][1]-points[b][1];
+    const length=Math.hypot(x,y)*Math.hypot(u,v);
+    return length<1e-12?null:Math.acos(Math.max(-1,Math.min(1,(x*u+y*v)/length)))*180/Math.PI;
+  };
+  // Fixar A na posição 0 elimina apenas rotações: 37² formas, todas as repetições inclusas.
+  const atlas=Array.from({length:N*N},(_,id)=>{
+    const b=Math.floor(id/N),c=id%N,s1=jump(0,b),s2=jump(b,c);
+    const closure=dist(0,c),net=s1+s2;
+    const area=Math.abs((points[b][0]-points[0][0])*(points[c][1]-points[0][1])-(points[b][1]-points[0][1])*(points[c][0]-points[0][0]))/2;
+    const type=b===0&&c===0?'TRIPLA':c===0?'RETORNO':b===0?'REPETIÇÃO INICIAL':b===c?'REPETIÇÃO FINAL':Math.sign(s1)===Math.sign(s2)?'CONTINUIDADE':'INVERSÃO';
+    return Object.freeze({s1,s2,closure,net,length:Math.abs(s1)+Math.abs(s2),
+      trend:Math.sign(Math.abs(s2)-Math.abs(s1)),type,area,degenerate:area<1e-10,
+      ratio:s1?Math.abs(s2/s1):null,
+      contour:Math.sign(s1)===Math.sign(s2)&&s1!==0&&Math.abs(net)>=31&&closure<=6,
+      chords:[chord(0,b),chord(b,c),chord(0,c)],angles:[angle(b,0,c),angle(0,b,c),angle(0,c,b)]});
+  });
+  const feature=(a,b,c)=>atlas[mod(b-a)*N+mod(c-a)];
+  const kernels=Array.from({length:N},(_,center)=>{
+    const values=Array.from({length:N},(_,j)=>Math.exp(-dist(center,j)/1.25));
+    const total=values.reduce((s,v)=>s+v,0);return values.map(v=>v/total);
+  });
+  function arc(p,end){
+    const start=Math.max(0,end-5);let best=null;
+    for(let sector=0;sector<N;sector++){
+      let count=0;for(let i=start;i<=end;i++)if(mod(p[i]-sector)<8)count++;
+      if(!best||count>best.count)best={start:sector,count};
+    }
+    if(!best||best.count<3)return null;
+    const inside=mod(p[end]-best.start)<8;
+    return {...best,inside,total:end-start+1,offset:mod(p[end]-best.start)};
+  }
+  function poles(p,end){
+    if(end<3)return null;
+    const a=p[end-3],b=p[end-2],c=p[end-1],d=p[end];
+    if(dist(a,b)<8||dist(a,c)>2||dist(b,d)>2)return null;
+    const initial=dist(a,b),separation=dist(c,d);
+    return {a,b,c,d,separation,movement:Math.sign(separation-initial)};
+  }
+  function raw(history){
+    const h=history.slice(-70),key=h.join(',');if(cache.has(key))return cache.get(key);
+    const p=h.map(n=>index[n]),end=p.length-1;
+    const modes=names.map(name=>({name,support:0,occurrences:0,weights:Array(N).fill(6)}));
+    if(end<2)return keep(cache,key,modes.map(m=>({...m,weights:Array(N).fill(1)})));
+    const current=feature(p[end-2],p[end-1],p[end]);
+    const currentArc=arc(p,end),currentPoles=poles(p,end);
+    function add(k,weight,center,exact=false){
+      if(weight<0.025)return;
+      const mode=modes[k];mode.support+=weight;mode.occurrences++;
+      if(exact)mode.weights[mod(center)]+=weight*N;
+      else for(let j=0;j<N;j++)mode.weights[j]+=weight*N*kernels[mod(center)][j];
+    }
+    for(let old=2;old<end;old++){
+      // old+1 is an observed successor and is never the unknown next spin.
+      const f=feature(p[old-2],p[old-1],p[old]),next=p[old+1];
+      const recency=Math.exp(-(end-old-1)/28),delta=jump(p[old],next);
+      if(h[old-2]===h[end-2]&&h[old-1]===h[end-1]&&h[old]===h[end])add(0,recency,next,true);
+      const shape=(f.type===current.type?1:0.2)*(f.trend===current.trend?1:0.4);
+      const sameDiff=Math.abs(f.s1-current.s1)+Math.abs(f.s2-current.s2);
+      if(sameDiff<=4)add(1,recency*Math.exp(-sameDiff/2)*shape,p[end]+delta);
+      const reflectedDiff=Math.abs(f.s1+current.s1)+Math.abs(f.s2+current.s2);
+      if(reflectedDiff<=4)add(2,recency*Math.exp(-reflectedDiff/2)*shape,p[end]-delta);
+      const amplitudeDiff=Math.abs(Math.abs(f.s1)-Math.abs(current.s1))+Math.abs(Math.abs(f.s2)-Math.abs(current.s2));
+      if(amplitudeDiff<=5&&f.trend===current.trend&&Math.abs(f.closure-current.closure)<=3){
+        const sign=Math.sign(current.s2)*Math.sign(f.s2)||1;
+        const ratio=f.ratio==null||current.ratio==null?1:Math.exp(-Math.abs(Math.log((f.ratio+0.1)/(current.ratio+0.1))));
+        add(3,recency*Math.exp(-amplitudeDiff/3)*ratio,p[end]+delta*sign);
+      }
+      // One historical endpoint contributes once: choose its longest supported chain.
+      let chain=null;
+      for(let length=Math.min(8,old+1,end+1);length>=4;length--){
+        let error=0,opposite=0;
+        for(let k=0;k<length-1;k++){
+          const a=jump(p[end-k-1],p[end-k]),b=jump(p[old-k-1],p[old-k]);
+          error+=Math.abs(a-b);if(Math.sign(a)!==Math.sign(b))opposite++;
+        }
+        if(error/(length-1)<=2&&opposite<=1){chain={error:error/(length-1),length};break;}
+      }
+      if(chain)add(4,recency*Math.exp(-chain.error/2)*(chain.length-2)/6,p[end]+delta);
+      if(current.closure<=6&&f.closure<=6&&current.contour===f.contour&&f.type===current.type&&f.trend===current.trend){
+        const similarity=Math.exp(-Math.abs(current.closure-f.closure)/2-Math.abs(current.length-f.length)/8-Math.abs(current.area-f.area));
+        add(5,recency*similarity,p[end-2]+jump(p[old-2],next));
+      }
+      const oldArc=currentArc?arc(p,old):null;
+      if(oldArc&&oldArc.inside===currentArc.inside&&Math.abs(oldArc.count-currentArc.count)<=1&&Math.abs(oldArc.total-currentArc.total)<=1){
+        const relative=dist(oldArc.offset,currentArc.offset);
+        if(relative<=4)add(6,recency*Math.exp(-relative/2),currentArc.start+mod(next-oldArc.start));
+      }
+      const oldPoles=currentPoles?poles(p,old):null;
+      if(oldPoles&&oldPoles.movement===currentPoles.movement&&Math.abs(oldPoles.separation-currentPoles.separation)<=3){
+        add(7,recency*Math.exp(-Math.abs(oldPoles.separation-currentPoles.separation)/2),currentPoles.c+jump(oldPoles.c,next));
+      }
+    }
+    for(const mode of modes){const average=mean(mode.weights);mode.weights=mode.weights.map(v=>v/average);}
+    return keep(cache,key,modes);
+  }
+  function analyze(history,baseline){
+    const h=history.slice(-70),key=h.join(',');if(forecasts.has(key))return forecasts.get(key);
+    const current=raw(h),base=baseline(h),logs=names.map(()=>[]);
+    // Rolling chronological validation. No actual result enters its own forecast.
+    for(let t=Math.max(8,h.length-24);t<h.length;t++){
+      const before=h.slice(0,t),past=raw(before),previous=baseline(before),outcome=index[h[t]];
+      for(let k=0;k<names.length;k++){
+        if(past[k].support<2||past[k].occurrences<3)continue;
+        const comparison=previous[outcome],trial=0.85*comparison+0.15*past[k].weights[outcome];
+        logs[k].push(Math.log(Math.max(1e-9,trial)/Math.max(1e-9,comparison)));
+      }
+    }
+    const modes=current.map((model,k)=>{
+      const values=logs[k],gain=mean(values),count=values.length;
+      const variance=count>1?values.reduce((s,x)=>s+(x-gain)**2,0)/(count-1):0;
+      const stderr=count?Math.sqrt(variance/count):0;
+      const recentGain=mean(values.slice(-4));
+      const active=count>=8&&model.occurrences>=3&&model.support>=2&&gain>stderr&&recentGain>0;
+      const mass=active?Math.min(0.2,(gain-stderr)*5)*count/(count+16)*Math.min(1,model.support/8):0;
+      return {...model,evaluations:count,meanLogGain:gain,stderr,recentGain,active,mass};
+    });
+    const totalMass=modes.reduce((s,m)=>s+m.mass,0),influence=Math.min(0.2,totalMass);
+    const weights=totalMass?base.map((v,j)=>v*(1-influence)+influence*modes.reduce((s,m)=>s+m.weights[j]*m.mass,0)/totalMass):[...base];
+    return keep(forecasts,key,{weights,modes,influence,observedSuccessors:Math.max(0,h.length-3),
+      status:influence?'ATIVA EM TESTE CRONOLÓGICO':'SEM SUPORTE FAVORÁVEL — BASE PRESERVADA'});
+  }
+  return {raw,analyze,feature,atlas,names,clear(){cache.clear();forecasts.clear();}};
+}
+
+
+    /* Leitura estrutural ativa. Enumera os 37 próximos resultados e seus estados.
+   Uma alternativa possível não é uma previsão confirmada. Somente sucessores
+   já observados atribuem peso. Leitura e escolha permanecem separadas. */
+function createMotorReadings667(wheel, atlas) {
+  const size = 37;
+  const positions = Array(size);
+  wheel.forEach((number, index) => { positions[number] = index; });
+  const mod = value => (value % size + size) % size;
+  const jump = (from, to) => {
+    const forward = mod(to - from);
+    return forward <= 18 ? forward : forward - size;
+  };
+  const distance = (from, to) => Math.abs(jump(from, to));
+  const average = values => values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+  const band = value => value === 0 ? '0' : value <= 2 ? '1–2' : value <= 6 ? '3–6' : value <= 12 ? '7–12' : '13+';
+  const amplitudeBand = value => value <= 3 ? 'CURTO' : value <= 9 ? 'MÉDIO' : 'LONGO';
+  const normalize = values => {
+    const mean = average(values) || 1;
+    return values.map(value => value / mean);
+  };
+  const cache = new Map();
+  const groups = ['TRIANGULAÇÃO', 'AMPLITUDE', 'ENCADEAMENTO', 'FECHAMENTO/PERCURSO', 'POLOS', 'ARCOS'];
+  const profiles = [
+    [1, 1, 1, 1, 1, 1],
+    [1.2, 1.8, 1.5, 1, .6, .6],
+    [.8, .7, .8, 1.3, 1.1, 1.7],
+    [.8, 1.1, 2, 2, .6, .6],
+    [2.3, 1.2, 1.6, 1.8, .5, .5],
+    [.6, .6, .7, .8, 2.4, 2.1],
+    [1.4, .8, .9, 2, 1.7, .6],
+    [.8, 2.2, 1.4, 1.5, .6, 1.3]
+  ];
+
+  /* Atlas completo: nenhum corte por ranking, frequência ou classe.
+     ID = posição relativa de B * 37 + posição relativa de C, com A = 0.
+     Cada registro guarda atributos exatos; somente o passado fornece sucessores. */
+  const relativeForms = Array.from({ length: 1369 }, (_, id) => {
+    const b = Math.floor(id / 37), c = id % 37;
+    const shape = atlas.feature(0, b, c);
+    return Object.freeze({ ...shape, id, positions: Object.freeze([0, b, c]),
+      amplitudes: Object.freeze([Math.abs(shape.s1), Math.abs(shape.s2)]),
+      amplitudeId: Math.abs(shape.s1) * 19 + Math.abs(shape.s2),
+      amplitudeChange: Math.abs(shape.s2) - Math.abs(shape.s1),
+      perimeter: shape.chords.reduce((sum, value) => sum + value, 0),
+      partialReturn: c !== 0 && shape.s1 * shape.s2 < 0 && shape.closure < Math.abs(shape.s1),
+      signedResidual: shape.net - Math.round(shape.net / 37) * 37,
+      algebraicTurns: shape.net / 37,
+      chords: Object.freeze([...shape.chords]), angles: Object.freeze([...shape.angles])
+    });
+  });
+  const amplitudeForms = Array.from({ length: 361 }, (_, id) => {
+    const first = Math.floor(id / 19), second = id % 19;
+    return Object.freeze({ id, first, second, difference: second - first,
+      ratio: first === 0 ? null : second / first,
+      trend: second < first ? 'CONTRAÇÃO' : second > first ? 'EXPANSÃO' : 'MANUTENÇÃO' });
+  });
+  const formId = (a, b, c) => mod(b - a) * 37 + mod(c - a);
+  const kernelCache = new Map();
+
+  function fullKernels(currentId) {
+    if (kernelCache.has(currentId)) return kernelCache.get(currentId);
+    const current = relativeForms[currentId];
+    const geometry = new Float64Array(1369);
+    const closure = new Float64Array(1369);
+    const amplitude = new Float64Array(361);
+    for (const old of relativeForms) {
+      // Todos os 1.369 registros são avaliados, sem faixas arredondadas.
+      const steps = (Math.abs(current.s1 - old.s1) + Math.abs(current.s2 - old.s2)) / 12;
+      const chords = current.chords.reduce((sum, value, i) => sum + Math.abs(value - old.chords[i]), 0) / 3;
+      const angles = current.angles.reduce((sum, value, i) => {
+        const other = old.angles[i];
+        return sum + (value == null || other == null ? Number(value !== other) : Math.abs(value - other) / 180);
+      }, 0) / 3;
+      const area = Math.abs(current.area - old.area);
+      const ratio = current.ratio == null || old.ratio == null
+        ? Number(current.ratio !== old.ratio)
+        : Math.abs(Math.atan(current.ratio) - Math.atan(old.ratio));
+      const attributes = Math.abs(current.closure - old.closure) / 18 +
+        Math.abs(current.amplitudeChange - old.amplitudeChange) / 36 + ratio +
+        Number(current.partialReturn !== old.partialReturn) + Number(current.degenerate !== old.degenerate);
+      geometry[old.id] = Math.exp(-steps - chords - angles - area - attributes) + (old.id === currentId ? 4 : 0);
+      closure[old.id] = Math.exp(-Math.abs(current.closure - old.closure) / 4 -
+        Math.abs(current.net - old.net) / 12 - Math.abs(current.length - old.length) / 12 -
+        Number(current.contour !== old.contour));
+    }
+    for (const old of amplitudeForms) {
+      amplitude[old.id] = Math.exp(-(Math.abs(current.amplitudes[0] - old.first) +
+        Math.abs(current.amplitudes[1] - old.second)) / 5 -
+        Math.abs(current.amplitudeChange - old.difference) / 8) +
+        (old.id === current.amplitudeId ? 3 : 0);
+    }
+    const result = { geometry, closure, amplitude };
+    kernelCache.set(currentId, result);
+    if (kernelCache.size > 32) kernelCache.delete(kernelCache.keys().next().value);
+    return result;
+  }
+
+  function exhaustiveRead(prefix) {
+    const formCounts = new Uint16Array(1369);
+    const amplitudeCounts = new Uint16Array(361);
+    const observed = new Map();
+    // A trinca corrente ainda não tem sucessor e não pode treiná-lo.
+    for (let end = 2; end < prefix.length - 1; end++) {
+      const id = formId(prefix[end - 2], prefix[end - 1], prefix[end]);
+      const shape = relativeForms[id];
+      const nextStep = jump(prefix[end], prefix[end + 1]);
+      const mass = Math.exp(-(prefix.length - 2 - end) / 28);
+      formCounts[id]++;
+      amplitudeCounts[shape.amplitudeId]++;
+      let record = observed.get(id);
+      if (!record) {
+        record = { id, count: 0, mass: 0, successors: new Map() };
+        observed.set(id, record);
+      }
+      record.count++;
+      record.mass += mass;
+      const next = record.successors.get(nextStep) || { step: nextStep, count: 0, mass: 0 };
+      next.count++;
+      next.mass += mass;
+      record.successors.set(nextStep, next);
+    }
+    const currentId = prefix.length >= 3 ? formId(...prefix.slice(-3)) : null;
+    const groups = [0, 1, 3].map(group => ({ name: ['TRIANGULAÇÃO', 'AMPLITUDE', '', 'FECHAMENTO/PERCURSO'][group],
+      group, support: 0, modes: group === 1 ? 361 : 1369, weights: Array(37).fill(8) }));
+    if (currentId != null) {
+      const kernels = fullKernels(currentId);
+      const anchor = prefix.at(-1);
+      // Percorre explicitamente o atlas inteiro. Sem ocorrência, contribuição
+      // observada é zero; o registro continua disponível, sem inventar evidência.
+      for (let id = 0; id < 1369; id++) {
+        const shape = relativeForms[id], record = observed.get(id);
+        if (!record) continue;
+        const coefficients = [kernels.geometry[id], kernels.amplitude[shape.amplitudeId], kernels.closure[id]];
+        groups.forEach((group, index) => {
+          const coefficient = coefficients[index];
+          group.support += coefficient * record.mass;
+          for (const successor of record.successors.values()) {
+            const target = mod(anchor + successor.step);
+            const contribution = coefficient * successor.mass * 37;
+            group.weights[target] += contribution * .7;
+            group.weights[mod(target - 1)] += contribution * .15;
+            group.weights[mod(target + 1)] += contribution * .15;
+          }
+        });
+      }
+    }
+    groups.forEach(group => { group.weights = normalize(group.weights); });
+    return { currentId, formsEvaluated: currentId == null ? 0 : 1369,
+      amplitudesEvaluated: currentId == null ? 0 : 361,
+      representedForms: 1369, representedAmplitudes: 361,
+      numericTriples: 50653, formCounts, amplitudeCounts,
+      observedForms: observed.size, successorSamples: Math.max(0, prefix.length - 3),
+      observed: [...observed.values()].map(record => ({ ...record, successors: [...record.successors.values()] })), groups };
+  }
+
+  function catalogue(history, id = null) {
+    const reading = read(history), data = reading.exhaustive;
+    const describe = form => ({ ...form, occurrences: data.formCounts[form.id],
+      successors: data.observed.find(record => record.id === form.id)?.successors || [],
+      status: data.formCounts[form.id] ? 'OBSERVADA COM SUCESSOR' : 'REPRESENTADA SEM SUCESSOR OBSERVADO' });
+    if (id != null) return Number.isInteger(id) && id >= 0 && id < 1369 ? describe(relativeForms[id]) : null;
+    return relativeForms.map(describe);
+  }
+
+  function poleStep(previous, prefix, next, tolerance) {
+    const state = previous ? {
+      ...previous,
+      anchors: previous.anchors ? [...previous.anchors] : null,
+      drift: previous.drift ? [...previous.drift] : [0, 0]
+    } : { active: false, anchors: null, drift: [0, 0], outside: 0, age: 0, event: 'SEM FORMAÇÃO' };
+    state.age++;
+    state.inactiveAge = state.active || state.concentration != null ? 0 : (state.inactiveAge || 0) + 1;
+    if (state.anchors && (state.active || (state.event === 'RUPTURA' && state.outside <= 3))) {
+      const oldDistance = distance(...state.anchors);
+      const expected = 1 - state.lastSide;
+      const de = distance(next, state.anchors[expected]);
+      const ds = distance(next, state.anchors[state.lastSide]);
+      if (de <= tolerance && de <= ds) {
+        const resumed = !state.active || state.outside > 0 || state.event === 'INTERRUPÇÃO';
+        state.drift[expected] += jump(state.anchors[expected], next);
+        state.anchors[expected] = next;
+        state.lastSide = expected;
+        state.outside = 0;
+        state.active = true;
+        state.event = resumed ? 'RETOMADA' : 'ALTERNÂNCIA';
+      } else if (state.active && ds <= tolerance) {
+        state.drift[state.lastSide] += jump(state.anchors[state.lastSide], next);
+        state.anchors[state.lastSide] = next;
+        state.outside = 0;
+        state.event = 'INTERRUPÇÃO';
+      } else {
+        state.outside++;
+        state.event = state.outside >= 2 ? 'RUPTURA' : 'SAÍDA';
+        if (state.outside >= 2) state.active = false;
+      }
+      state.separation = distance(...state.anchors);
+      state.movement = Math.sign(state.separation - oldDistance);
+      if (state.active && state.separation <= Math.max(2, tolerance)) {
+        state.active = false;
+        state.event = 'FUSÃO';
+        state.concentration = next;
+        state.fromFusion = true;
+        state.concentrationOutside = 0;
+      } else if (state.active && state.event === 'ALTERNÂNCIA') {
+        if (state.movement < 0) state.event = 'CONVERGÊNCIA';
+        if (state.movement > 0) state.event = 'DIVERGÊNCIA';
+        if (!state.movement) state.event = 'MANUTENÇÃO';
+      }
+    } else if (state.concentration != null) {
+      if (distance(next, state.concentration) <= Math.max(2, tolerance)) {
+        state.concentration = next;
+        state.fromFusion = true;
+        state.concentrationOutside = 0;
+        state.event = 'CONCENTRAÇÃO APÓS FUSÃO';
+      } else {
+        state.concentrationOutside++;
+        state.event = state.concentrationOutside >= 2 ? 'DISPERSÃO APÓS FUSÃO' : 'SAÍDA APÓS FUSÃO';
+        if (state.concentrationOutside >= 2) state.concentration = null;
+      }
+    }
+    if (!state.active && prefix.length >= 3 && state.event !== 'FUSÃO') {
+      const [a, b, c] = prefix.slice(-3);
+      if (distance(a, b) >= Math.max(8, 2 * tolerance + 2) &&
+          distance(a, c) <= tolerance && distance(b, next) <= tolerance) {
+        const split = state.concentration != null || state.fromFusion;
+        state.anchors = [c, next];
+        state.drift = [jump(a, c), jump(b, next)];
+        state.lastSide = 1;
+        state.separation = distance(c, next);
+        state.movement = Math.sign(state.separation - distance(a, b));
+        state.outside = 0;
+        state.active = true;
+        state.concentration = null;
+        state.event = split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
+      }
+    }
+    if(state.active)state.inactiveAge=0;
+    if(!state.active&&state.concentration==null&&state.inactiveAge>3){state.anchors=null;state.event='ENCERRADO';}
+    return state;
+  }
+
+  function chooseArc(previous, prefix, width) {
+    if (prefix.length < 4 || width === 37) return { width, start: null, event: 'SEM CONCENTRAÇÃO', outside: 0, inside: 0 };
+    const sample = prefix.slice(-8);
+    const counts = Array(size).fill(0);
+    for (const position of sample) counts[position]++;
+    let total = 0;
+    for (let j = 0; j < width; j++) total += counts[j];
+    let best = { start: 0, count: total };
+    for (let start = 1; start < size; start++) {
+      total += counts[mod(start + width - 1)] - counts[start - 1];
+      if (total > best.count) best = { start, count: total };
+    }
+    const minimum = Math.max(2, Math.ceil(sample.length * width / size + 1));
+    const state = previous ? { ...previous } : { width, start: null, outside: 0, inside: 0, weak: 0 };
+    if (state.start != null) {
+      const count = sample.filter(position => mod(position - state.start) < width).length;
+      state.weak = count < minimum ? (state.weak || 0) + 1 : 0;
+      if (best.count >= minimum && best.start !== state.start && best.count >= count + 2) {
+        state.start = best.start;
+        state.event = 'SUBSTITUIÇÃO';
+        state.outside = 0;
+        state.inside = 0;
+        state.lastInside = null;
+      } else if (state.weak >= 2 || (state.outside >= 8 && count < minimum)) {
+        state.start = null;
+        state.event = 'ENCERRAMENTO';
+      } else if (!state.weak && previous?.weak) state.event = 'RETOMADA DO ARCO';
+      else if (state.weak) state.event = 'ENFRAQUECIMENTO';
+    } else if (best.count >= minimum) {
+      state.start = best.start;
+      state.event = 'FORMAÇÃO';
+      state.outside = 0;
+      state.inside = 0;
+      state.lastInside = null;
+      state.weak = 0;
+    } else state.event = state.event === 'ENCERRAMENTO' ? 'ENCERRAMENTO' : 'SEM CONCENTRAÇÃO';
+    state.width = width;
+    state.count = state.start == null ? 0 : sample.filter(position => mod(position - state.start) < width).length;
+    return state;
+  }
+
+  function consumeArc(prepared, next) {
+    const state = { ...prepared };
+    if (state.start == null) return state;
+    const inside = mod(next - state.start) < state.width;
+    const transition = inside ? state.lastInside === true ? 'PERMANÊNCIA' : state.outside > 0 ? 'REENTRADA' : 'ENTRADA'
+                             : state.lastInside === true ? 'SAÍDA' : 'AFASTAMENTO';
+    state.transition = transition;
+    if (!['SUBSTITUIÇÃO', 'FORMAÇÃO', 'ENFRAQUECIMENTO', 'RETOMADA DO ARCO'].includes(state.event)) state.event = transition;
+    state.inside = inside ? state.inside + 1 : 0;
+    state.outside = inside ? 0 : state.outside + 1;
+    state.lastInside = inside;
+    return state;
+  }
+
+
+  // Todos os setores fixos são lidos, inclusive quando não são o arco eleito.
+  // Chaves compactas evitam armazenar 1.369 objetos em cada prefixo histórico.
+  function fixedArcKeys(prefix) {
+    const keys = new Uint16Array(37 * 37);
+    const recent = prefix.slice(-8);
+    for (let width = 1; width <= 37; width++) {
+      for (let start = 0; start < 37; start++) {
+        const flags = recent.map(position => mod(position - start) < width);
+        const count = flags.filter(Boolean).length;
+        let run = 0;
+        const inside = flags.at(-1) || false;
+        for (let k = flags.length - 1; k >= 0 && flags[k] === inside && run < 4; k--) run++;
+        keys[(width - 1) * 37 + start] = count * 10 + Number(inside) * 5 + run;
+      }
+    }
+    return keys;
+  }
+
+  function arcAlternative(history, number, start, width) {
+    if (!Number.isInteger(start) || start < 0 || start > 36 || !Number.isInteger(width) || width < 1 || width > 37) return null;
+    const prefix = history.slice(-70).map(number => positions[number]);
+    const priorInside = prefix.length ? mod(prefix.at(-1) - start) < width : null;
+    const inside = mod(positions[number] - start) < width;
+    const visited = prefix.some(position => mod(position - start) < width);
+    const event = inside ? priorInside === true ? 'PERMANÊNCIA' : visited ? 'REENTRADA' : 'ENTRADA'
+                         : priorInside === true ? 'SAÍDA' : 'AFASTAMENTO';
+    const sample = prefix.slice(-8);
+    const visits = sample.filter(position => mod(position - start) < width).length;
+    return { start, startNumber: wheel[start], width, number, inside, event, visits, sample: sample.length };
+  }
+
+  function makeFrame(prefix, poles, arcs, captureModes = true) {
+    const end = prefix.length - 1;
+    if (end < 2) return { modes: [], poles, arcs, triangle: null, chains: [] };
+    const a = prefix[end - 2], b = prefix[end - 1], c = prefix[end];
+    const shape = atlas.feature(a, b, c);
+    const f = { ...shape,
+      partialReturn: a!==c && shape.s1*shape.s2<0 && shape.closure<Math.abs(shape.s1),
+      perimeter: shape.chords.reduce((sum,value)=>sum+value,0),
+      amplitudeChange: Math.abs(shape.s2)-Math.abs(shape.s1),
+      abruptAmplitude: Math.abs(Math.abs(shape.s2)-Math.abs(shape.s1))>=10,
+      amplitudeAlternation: (Math.abs(shape.s1)<=3&&Math.abs(shape.s2)>=10)||(Math.abs(shape.s2)<=3&&Math.abs(shape.s1)>=10),
+      signedResidual: shape.net-Math.round(shape.net/37)*37,
+      algebraicTurns: shape.net/37
+    };
+    const modes = [];
+    function mode(id, group, key, anchor = c, orientation = 1) {
+      if(captureModes)modes.push({ id, group, key, anchor, orientation });
+    }
+    const chains = [];
+    for (let length = 4; length <= Math.min(8, prefix.length); length++) {
+      const chain = prefix.slice(-length);
+      const steps = chain.slice(1).map((position, i) => jump(chain[i], position));
+      const net = steps.reduce((sum, value) => sum + value, 0);
+      const absolute = steps.reduce((sum, value) => sum + Math.abs(value), 0);
+      const closure = distance(chain[0], c);
+      const trends = steps.slice(1).map((value, i) => Math.sign(Math.abs(value) - Math.abs(steps[i])));
+      mode('CADEIA EXATA ' + length, 2, steps.join(','));
+      mode('CADEIA DIREÇÃO/AMPLITUDE ' + length, 2, steps.map(value => Math.sign(value) + ':' + amplitudeBand(Math.abs(value))).join(','));
+      mode('PERCURSO/RETORNO ' + length, 3, [Math.sign(net), Math.floor(Math.abs(net) / 6), Math.floor(absolute / 10), band(closure), trends.join(',')].join('|'), chain[0]);
+      chains.push({ length, steps, net, absolute, closure, turns: net / 37, residual: mod(net), trends,
+        interruption: steps.length>=3&&Math.sign(steps.at(-2))===Math.sign(steps.at(-3))&&Math.sign(steps.at(-1))!==Math.sign(steps.at(-2)),
+        resumption: steps.length>=3&&steps.at(-1)===steps.at(-3)&&steps.at(-1)!==steps.at(-2),
+        directionChanges: steps.slice(1).filter((value,index)=>Math.sign(value)!==Math.sign(steps[index])).length
+      });
+    }
+    for (let tolerance = 0; tolerance <= 8; tolerance++) {
+      const state = poles[tolerance];
+      const relevant = state.anchors && (state.active || state.outside <= 3 || state.concentration != null);
+      const key = relevant ? [state.event, band(state.separation || 0), state.movement || 0, Math.min(3, state.outside), state.drift.map(Math.sign).join(',')].join('|') : null;
+      const anchor = state.concentration != null ? state.concentration : state.anchors ? state.anchors[1 - state.lastSide] : c;
+      mode('POLOS TOLERÂNCIA ' + tolerance, 4, key, anchor);
+    }
+    for (let width = 1; width <= 37; width++) {
+      const state = arcs[width - 1];
+      const key = state.start == null ? null : [state.event, state.transition, state.count, Math.min(4, state.outside), Math.min(4, state.inside)].join('|');
+      mode('ARCO ' + width, 5, key, state.start == null ? c : state.start);
+    }
+    if(captureModes)for(let width=1;width<=37;width++){
+      mode('ARCO TODOS OS SETORES '+width,5,width===37?null:'TODOS OS SETORES');
+      modes.at(-1).fixedWidth=width;
+    }
+    return { modes, poles, arcs, triangle: f, chains, fixedKeys: captureModes ? fixedArcKeys(prefix) : null };
+  }
+
+  function read(history) {
+    const h = history.slice(-70);
+    const key = h.join(',');
+    if (cache.has(key)) return cache.get(key);
+    const prefix = [];
+    let poles = Array.from({ length: 9 }, () => null);
+    let arcs = Array.from({ length: 37 }, () => null);
+    const frames = [];
+    for (const number of h) {
+      const next = positions[number];
+      const prepared = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
+      poles = poles.map((state, tolerance) => poleStep(state, prefix, next, tolerance));
+      arcs = prepared.map(state => consumeArc(state, next));
+      prefix.push(next);
+      frames.push(makeFrame(prefix, poles, arcs));
+    }
+    const current = frames.at(-1) || { modes: [], poles, arcs, triangle: null, chains: [] };
+    const modes = current.modes.map(mode => ({ ...mode, support: 0, occurrences: 0, weights: Array(size).fill(16), outcomes: Array(size).fill(0), outcomeIndices: Array.from({length:size},()=>[]) }));
+    for (let end = 2; end < h.length - 1; end++) {
+      const previous = frames[end];
+      const next = positions[h[end + 1]];
+      const mass = Math.exp(-(h.length - 2 - end) / 28);
+      const previousModes = new Map(previous.modes.map(mode => [mode.id, mode]));
+      for (const mode of modes) {
+        const old = previousModes.get(mode.id);
+        if (mode.fixedWidth || mode.key == null || !old || old.key !== mode.key) continue;
+        mode.support += mass;
+        mode.occurrences++;
+        const center = mode.anchor == null ? next : mod(mode.anchor + jump(old.anchor, next) * mode.orientation * old.orientation);
+        mode.outcomes[center]++;
+        mode.outcomeIndices[center].push(end);
+        mode.weights[center] += mass * size * .7;
+        mode.weights[mod(center - 1)] += mass * size * .15;
+        mode.weights[mod(center + 1)] += mass * size * .15;
+      }
+    }
+    for(const mode of modes.filter(mode=>mode.fixedWidth&&mode.fixedWidth<37)){
+      const indices=new Set();
+      for(let start=0;start<37;start++){
+        const index=(mode.fixedWidth-1)*37+start;
+        for(let end=2;end<h.length-1;end++){
+          if(frames[end].fixedKeys[index]!==current.fixedKeys[index])continue;
+          const mass=Math.exp(-(h.length-2-end)/28)/37;
+          const center=positions[h[end+1]];
+          mode.support+=mass;indices.add(end);
+          mode.outcomeIndices[center].push(end);mode.outcomes[center]++;
+          mode.weights[center]+=mass*37*.7;
+          mode.weights[mod(center-1)]+=mass*37*.15;
+          mode.weights[mod(center+1)]+=mass*37*.15;
+        }
+      }
+      mode.occurrences=indices.size;
+    }
+    for (const mode of modes) mode.weights = normalize(mode.weights);
+    const exhaustive = exhaustiveRead(prefix);
+    const summaries = groups.map((name, group) => {
+      const members = modes.filter(mode => mode.group === group && mode.support > 0);
+      const support = Math.max(0, ...members.map(mode => mode.support));
+      const weights = members.length ? normalize(Array.from({ length: size }, (_, j) => average(members.map(mode => mode.weights[j])))) : Array(size).fill(1);
+      return { name, support, modes: members.length, weights };
+    });
+    for(const complete of exhaustive.groups){
+      if(complete.group===3){
+        const legacy=summaries[3];
+        summaries[3]={...complete,weights:normalize(complete.weights.map((value,j)=>(value+legacy.weights[j])/2)),support:Math.max(complete.support,legacy.support)};
+      }else summaries[complete.group]=complete;
+    }
+    const preparedArcs = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
+    const candidates = wheel.map((number, position) => {
+      const futurePoles = poles.map((state, tolerance) => poleStep(state, prefix, position, tolerance));
+      const futureArcs = preparedArcs.map(state => consumeArc(state, position));
+      const future = makeFrame([...prefix, position], futurePoles, futureArcs, false);
+      const last = current.triangle;
+      return { number, position, triangle: future.triangle,
+        triangleTransition: last && future.triangle ? { areaChange: Math.sign(future.triangle.area - last.area), closureChange: Math.sign(future.triangle.closure - last.closure), turn: Math.sign(future.triangle.s2), ratio: future.triangle.ratio } : null,
+        chains: future.chains,
+        poleEvents: futurePoles.map((state, tolerance) => ({ tolerance, event: state.event, movement: state.movement || 0, separation: state.separation == null ? null : state.separation, anchors: state.anchors ? state.anchors.map(p => wheel[p]) : [] })),
+        arcEvents: futureArcs.map(state => ({ width: state.width, event: state.event, transition: state.transition || null, start: state.start, outside: state.outside, inside: state.inside })),
+        allArcStartsRead: true, arcSectorCases: 1369,
+        historicalSupport: new Set(modes.flatMap(mode => mode.outcomeIndices[position])).size,
+        supportingChannels: modes.filter(mode => mode.outcomes[position] > 0).length
+      };
+    });
+    const result = { version: '6.6.8', prefix: h, candidates, modes, groups: summaries, exhaustive,
+      candidateCount: candidates.length, channelCount: modes.length, arcSectorCases:1369,
+      interpretationCount: candidates.length * modes.length,
+      status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
+    result.profileCache = new Map();
+    cache.set(key, result);
+    if (cache.size > 32) cache.delete(cache.keys().next().value);
+    return result;
+  }
+
+  function weights(history, profile = {}) {
+    const reading = read(history);
+    const cacheKey = [profile.family || '', profile.radius || '', profile.variation || ''].join('|');
+    if (reading.profileCache.has(cacheKey)) return reading.profileCache.get(cacheKey);
+    const shares = [...(profiles[profile.variation - 1] || profiles[0])];
+    if ((profile.family || '').startsWith('RX')) { shares[0] *= 1.35; shares[2] *= 1.3; }
+    if ((profile.family || '').includes('DINAMICO')) { shares[1] *= 1.35; shares[3] *= 1.25; }
+    if (profile.radius) { shares[4] *= .8 + (profile.radius - 4) * .2; shares[5] *= .8 + (profile.radius - 4) * .25; }
+    const total = shares.reduce((sum, value) => sum + value, 0);
+    const result = normalize(Array.from({ length: size }, (_, j) => reading.groups.reduce((sum, group, k) => {
+      const confidence = group.support / (group.support + 12);
+      return sum + shares[k] / total * (1 + confidence * (group.weights[j] - 1));
+    }, 0)));
+    reading.profileCache.set(cacheKey, result);
+    return result;
+  }
+
+  function merge(original, history, profile = {}, strength = .18) {
+    if (history.length < 3) return original;
+    const reading = read(history);
+    if (!reading.groups.some(group => group.support > 0)) return original;
+    const contribution = weights(history, profile);
+    const mean = average(original) || 1;
+    return original.map((value, j) => Math.max(.001, value * (1 - strength) + mean * contribution[j] * strength));
+  }
+
+  function summary(history) {
+    const reading = read(history);
+    return { version: reading.version, candidateCount: reading.candidateCount,
+      channelCount: reading.channelCount, interpretationCount: reading.interpretationCount,
+      relativeForms:1369, amplitudeForms:361, numericTriples:50653,
+      formsEvaluated:reading.exhaustive.formsEvaluated, amplitudesEvaluated:reading.exhaustive.amplitudesEvaluated,
+      successorSamples:reading.exhaustive.successorSamples,
+      groups: reading.groups.map(({ name, support, modes }) => ({ name, support, modes })) };
+  }
+
+  return { read, weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, poleStep, chooseArc, consumeArc, arcAlternative,
+    clear() { cache.clear(); kernelCache.clear(); } };
+}
+
+const triangleMemory666 = createTriangleMemory666(W);
+  const motorReadings667=createMotorReadings667(W,triangleMemory666);
+  function triangleAnalysis(h) {
+    const original=legacyTriangleAnalysis(h);
+    if(!state.structuralMemoryEnabled)return original;
+    const successor=triangleMemory666.analyze(h,past=>legacyTriangleAnalysis(past).weights);
+    return {...original,weights:successor.weights,successorMemory:successor};
+  }
+
+    function legacyTriangleAnalysis(h) {
       const key = h.join(",");
       if (triangleCache.has(key)) return triangleCache.get(key);
       const triples = [];
@@ -5800,7 +7199,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.8" };
       spaceCache.set(key, r);
       if (spaceCache.size > 120)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -5998,11 +7397,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           weights[ix(n)] += (b * radius) / 5;
         }
       }
-      return applySpatial(
-        weights,
-        h,
-        0.3 + (radius - 4) * 0.035 + (family.startsWith("RX") ? 0.035 : 0),
-      );
+      return motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12);
     }
 
     const motorDiversityCache = new Map();
@@ -6277,6 +7673,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
+          readingVersion:"6.6.8",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -7161,6 +8558,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         }
       }
       const recency = normalizeSpace(recent);
+    const completeWeights667=motorReadings667.weights(h,{variation,radius});
       const last = h.at(-1),
         prior = h.at(-2);
       const jump = prior == null ? 0 : direction(prior, last);
@@ -7181,6 +8579,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           0,
         );
         let value = mixed * 0.65 + recency[j] * profile.recent;
+      value+=.18*(completeWeights667[j]-1);
         value +=
           1.8 * Math.exp(-distance(n, hypothesis) / (1.6 + (radius - 4) * 0.4));
         if (variation === 4)
@@ -7408,6 +8807,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
     function fresh() {
       return {
+      structuralMemoryVersion: "6.6.8",
+      structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
         historyTurns: [],
@@ -7416,7 +8817,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         manualCount: 0,
         manualLog: [],
         undoStack: [],
-        strategy: "MASTER",
+        strategy: "MASTER",importAudit:null,
         masterChoice: null,
         masterHistory: [],
         masterResumeTurn: 0,
@@ -7585,13 +8986,18 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         r.strategy = "TRAINER";
         r.manual = null;
       }
+    if(data.structuralMemoryVersion!=="6.6.8"){
+      r.structuralMemoryVersion="6.6.8";
+      r.block={...r.block,data:null};
+    }
+
       return r;
     }
 
     function settings() {
       return Object.fromEntries(
         [
-          "strategy",
+          "structuralMemoryEnabled","strategy",
           "postLossEnabled",
           "postThreeEnabled",
           "rank",
@@ -7612,6 +9018,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
 
     function clearSpatialCaches() {
+    motorReadings667.clear();
+    triangleMemory666.clear();
       triangleCache.clear();
       spaceCache.clear();
       rawSpaceCache.clear();
@@ -7622,7 +9030,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
 
     function compactMotor(m) {
-      const result = {};
+      const result = { readingVersion:"6.6.8", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -8113,6 +9521,18 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           : "NORMAL"
         : null;
       state.ledger.push({
+      readingAudit: {
+        version: "6.6.8", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        candidateCount: 37, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
+        supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
+        coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
+        selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
+        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
+          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
+        readingSupport: motorReadings667.read(before).candidates.find(option=>option.number===n)?.historicalSupport||0,
+        chosenCovered: played?.play?.numbers.includes(n) ?? null,
+        note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
+      },
         controller,
         masterTarget: copy(
           oldCycle?.original?.masterTarget || played?.masterTarget || null,
@@ -8167,10 +9587,25 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       return state.ledger.at(-1);
     }
 
-    function importNumbersCore(numbers, opts, manualLog = []) {
+    
+function importFingerprint(value){
+ const text=JSON.stringify(value);let hash=2166136261;
+ for(let i=0;i<text.length;i++)hash=Math.imul(hash^text.charCodeAt(i),16777619)>>>0;
+ return hash.toString(16).padStart(8,'0').toUpperCase();
+}
+function describeImport(numbers,opts){
+ const config={};
+ for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','rank','manual','adaptive',
+ 'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
+ return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
+ historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
+}
+
+function importNumbersCore(numbers, opts, manualLog = []) {
       state = { ...fresh(), ...opts, manualLog: copy(manualLog) };
       clearSpatialCaches();
       const clean = cleanNumbers(numbers).slice(-70);
+state.importAudit=describeImport(clean,opts);
       // A importação cresce até o tamanho escolhido; não descarta seu próprio histórico.
       state.block.size = 0;
       for (const n of clean) spin(n, "HISTÓRICO");
@@ -9261,6 +10696,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
+          readingVersion:"6.6.8",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -9530,6 +10966,24 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         });
       }
     };
+  }
+
+
+  async function toggleStructuralMemory666(){
+    if(busy)return;
+    if(!cycleIsFree()){alert('AGUARDE ENCERRAR O CICLO ATUAL.');return;}
+    const previous=copy(state);
+    setBusy(true,'PREPARANDO MEMÓRIA TRIANGULAR');await waitFrame();
+    try{
+      state.structuralMemoryEnabled=!state.structuralMemoryEnabled;
+      state.block.data=null;clearSpatialCaches();
+      const result=await workerRequest('RESTORE',{state:{...state,undoStack:[]}});
+      if(!isCurrentApp())return;
+      if(result){const stack=state.undoStack;state={...result,undoStack:stack};}
+      else if(state.history.length>=8)prepareBlock();
+      save();
+    }catch(error){state=previous;clearSpatialCaches();alert(String(error.message||error));}
+    finally{if(isCurrentApp()){setBusy(false);render();}}
   }
 
   function button(label, action, parent, extra = "") {
@@ -9807,8 +11261,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function render() {
-    try {
-      performRender();
+if(!isCurrentApp())return;
+
+    try {performRender();coordinator.render?.();
     } catch (error) {
       console.error(error);
       if ($("status"))
@@ -9817,6 +11272,10 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function performRender() {
+const receipt=$('importAudit'),audit=state.importAudit;
+if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' • '+audit.count+
+' NÚMEROS • MAIS ANTIGO '+audit.oldest+' • MAIS RECENTE '+audit.newest+' • CONFIG '+audit.settingsId:'';
+
     buildStrategies();
     const block = currentBlock(),
       definition = activeDefinition();
@@ -9956,12 +11415,16 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       $("selected").textContent =
         "MASTER ESCOLHEU: " + motor.masterTarget.name + " • " + state.phase;
     }
+    if(state.structuralMemoryEnabled)$("selected").textContent+=" • TRIANGULAÇÃO EXPERIMENTAL";
+
     renderFocusGame(motor);
     $("stake").value = state.stake;
     $("multiplier").value = state.multiplier;
   }
 
   function scheduleSave() {
+if(!isCurrentApp())return;
+
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       if (busy || inputRunning) {
@@ -9973,6 +11436,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function setBusy(value, message = "") {
+if(!isCurrentApp())return;
+
     busy = value;
     if (message) $("status").textContent = message;
     for (const id of ["import", "restore", "undo", "clear"])
@@ -9981,7 +11446,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       key.disabled = value && !inputRunning;
   }
 
-  function undo() {
+  function undoSide() {
     if (busy || !state.undoStack.length) return;
     checkpointSerial++;
     checkpointEpoch++;
@@ -10004,9 +11469,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
           );
           workerClient = new Worker(url);
           URL.revokeObjectURL(url);
-          if (globalThis.__analiseBetaWorker)
-            globalThis.__analiseBetaWorker.terminate();
-          globalThis.__analiseBetaWorker = workerClient;
+          if (globalThis['__analiseBetaWorker_'+side])
+            globalThis['__analiseBetaWorker_'+side].terminate();
+          globalThis['__analiseBetaWorker_'+side] = workerClient;
           workerClient.onmessage = (event) => {
             const message = event.data,
               request = clientRequests.get(message.id);
@@ -10042,7 +11507,11 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     numbers,
     { customSettings = null, customManualLog = null } = {},
   ) {
-    if (busy) return;
+    if(!isCurrentApp()||busy||inputRunning||inputQueue.length)return;
+clearTimeout(saveTimer);checkpointSerial++;checkpointEpoch++;checkpointNext=null;
+if(workerClient){workerClient.onmessage=null;workerClient.onerror=null;workerClient.terminate();workerClient=null;}
+clientRequests.clear();workerDisabled=false;
+
     const before = state,
       opts = customSettings || settings();
     setBusy(true, "IMPORTANDO HISTÓRICO");
@@ -10053,6 +11522,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         settings: opts,
         manualLog: customManualLog || [],
       });
+if(!isCurrentApp())return;
       if (result) state = normalizeState(result);
       else importNumbersCore(numbers, opts, customManualLog || []);
       clearSpatialCaches();
@@ -10068,7 +11538,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
 
-  function addManual(n) {
+  function addSideManual(n) {
     if (busy && !inputRunning) return;
     if (state.history.length < 8) {
       alert("IMPORTE DE 8 A 70 RESULTADOS.");
@@ -10152,7 +11622,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     }
   }
 
-  async function importHistory(numbers) {
+  async function importSideHistory(numbers) {
     if (busy) return;
     const clean = cleanNumbers(numbers).slice(-70);
     if (clean.length < 8) {
@@ -10173,7 +11643,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     await loadHistory(clean);
   }
 
-  function clearAll() {
+  function clearSide() {
     if (busy || !confirm("ZERAR HISTÓRICO, TREINADORES E REGISTROS?")) return;
     state = fresh();
     clearSpatialCaches();
@@ -10392,7 +11862,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         '<div class="timelineCells" id="focusTimeline"></div><div class="muted" id="focusTimelineLabel"></div>' +
         '<div class="title">ÚLTIMOS 14 NÚMEROS</div><div class="history" id="focusLast"></div>' +
         '<div id="focusMode" aria-live="polite"></div><div class="centers" id="focusCenters"></div><div class="muted" id="focusCoverage"></div>' +
-        '<div class="title">TECLADO 0–36</div><div class="keys" id="focusKeys"></div><div class="status" id="focusReceipt" aria-live="polite"></div>';
+        '<div class="keys" id="focusKeys" hidden></div><div class="status" id="focusReceipt" aria-live="polite"></div>';
       $("focusClose").onclick = () => {
         state.focusTimelineId = null;
         scheduleSave();
@@ -10506,6 +11976,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
   }
 
   function persistPendingInputs() {
+if(!isCurrentApp())return;
+
     try {
       localStorage.setItem(
         KEY + "_QUEUE",
@@ -10555,6 +12027,8 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     checkpointNext = null,
     checkpointEpoch = 0;
   function saveAsync() {
+if(!isCurrentApp())return;
+
     if (typeof Worker === "undefined") {
       scheduleCheckpointFallback();
       return;
@@ -10571,6 +12045,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         checkpointWorker = new Worker(url);
         URL.revokeObjectURL(url);
         checkpointWorker.onmessage = (event) => {
+if(!isCurrentApp())return;
           const result = event.data;
           checkpointBusy = false;
           if (result.epoch === checkpointEpoch && result.turn >= durableTurn) {
@@ -10643,6 +12118,9 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 
   document.body.innerHTML = `
 <style>${css}
+:host{display:block;color:#f4f7fb;font:13px Arial,sans-serif}
+#paste,#import,#restore,#undo,#clear{display:none}
+
 .controlGroup{margin:9px 0;padding:9px;background:#172434;border:1px solid #405a73;border-radius:8px}
 .controlGroup summary{cursor:pointer;padding:9px;color:#59e5ff;font-weight:bold}
 .controlGroup .controlGroup{background:#102030}
@@ -10679,13 +12157,14 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
 @media(max-width:650px){.timelineRow{display:block}.timelineName{margin-bottom:5px}.wlCell{width:18px;height:22px}}
 </style>
 <main class="app">
-<h1>ANÁLISE BETA V${VERSION}</h1>
+<h1>${side} • ANÁLISE BETA V${VERSION}</h1>
 <div class="sub">8 VARIAÇÕES POR ORIGINAL E TREINADOR NÚMEROS • 12 MOTORES PRÓPRIOS POR VARIAÇÃO<br>PRÓXIMA JOGADA A CADA NÚMERO • DESCARTE EM DEZ • JANELA ATÉ 70</div>
 <section class="panel">
-<div class="title">IMPORTAR HISTÓRICO</div>
+<div class="title">LEITURA ${side}</div>
 <textarea id="paste" placeholder="Cole de 8 a 70 números, do mais antigo ao mais recente"></textarea>
 <div class="row"><button class="btn" id="import">IMPORTAR</button><button class="btn" id="restore">RECUPERAR HISTÓRICO</button><button class="btn" id="undo">APAGAR ÚLTIMO MANUAL</button><button class="btn" id="clear">ZERAR TUDO</button></div>
 <div class="status" id="status"></div>
+<div class="muted" id="importAudit"></div>
 <div class="windowBox"><strong id="counter">0 / 70</strong><div class="bar"><div class="barfill" id="barfill"></div></div><div class="muted" id="windowInfo"></div><div class="muted" id="cycleInfo"></div></div>
 </section>
 <section class="panel"><div class="title">ESTRATÉGIA ATIVA</div><div id="strategies"></div><div class="row" id="options"></div><div class="muted" id="selected"></div><div class="centers" id="centers"></div><div class="muted" id="coverage"></div></section>
@@ -10718,6 +12197,10 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     );
     b.dataset.option = field;
   }
+
+  const structuralButton666=button('MEMÓRIA TRIANGULAR • TESTE',toggleStructuralMemory666,$('options'));
+  structuralButton666.dataset.option='structuralMemoryEnabled';
+  structuralButton666.title='Experimental: a comparação histórica não demonstrou ganho consistente. Desligada preserva os pesos anteriores.';
   for (let n = 0; n <= 36; n++) {
     const b = document.createElement("button");
     b.className = "key" + (n === 0 ? " zero" : "");
@@ -10801,7 +12284,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       }
     }, 0);
   } else resumePendingInputs();
-  globalThis.addEventListener?.("pagehide", () => {
+  sideWindowAdd("pagehide", () => {
     clearTimeout(saveTimer);
     checkpointSerial++;
     save();
@@ -10815,4 +12298,314 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       persistPendingInputs();
     }
   });
+
+globalThis['__analiseBetaDispose_'+side]=()=>{
+ if(!appAlive)return;
+ clearTimeout(saveTimer);save();persistPendingInputs();appAlive=false;
+ if(workerClient)workerClient.terminate();
+ if(checkpointWorker)checkpointWorker.terminate();
+ clientRequests.clear();
+};
+
+// Teclado e comandos de sessão são compartilhados. Estratégias, escolhas,
+// estatísticas, G1 e pausas continuam locais a esta leitura.
+function addManual(n){return coordinator.add(n);}
+function undo(){return coordinator.undo();}
+function clearAll(){return coordinator.clear();}
+function importHistory(numbers){return coordinator.import(numbers);}
+const sideDispose=globalThis['__analiseBetaDispose_'+side];
+return {
+ side,root,
+ styles:()=>root.querySelector('style').textContent,
+ element:id=>$(id),
+ mount(id,target){const element=$(id);if(!element)return null;document.registerScope(element);target.appendChild(element);return element;},
+ timelineRows(){return timelineDefinitions().map(def=>{const ui=timelineUINodes.get(def.id);if(ui)document.registerScope(ui.item);return {id:def.id,name:def.name,item:ui?.item};});},
+ setFinancial(stake,multiplier){state.stake=stake;state.multiplier=multiplier;$('stake').value=stake;$('multiplier').value=multiplier;scheduleSave();},
+ structuralDiagnostics(simulate=false){if(!state.structuralMemoryEnabled&&!simulate)return {status:'DESLIGADA — SEM GANHO COMPROVADO',influence:0};const r=triangleMemory666.analyze(state.history,past=>legacyTriangleAnalysis(past).weights);return {status:r.status,influence:r.influence,observedSuccessors:r.observedSuccessors,modes:r.modes.map(({name,support,occurrences,evaluations,meanLogGain,stderr,active,mass})=>({name,support,occurrences,evaluations,meanLogGain,stderr,active,mass}))};},
+ triangleCatalogue(id=null){return motorReadings667.catalogue(state.history,id);},
+ amplitudeCatalogue(){return motorReadings667.amplitudeForms.map(form=>({...form,occurrences:motorReadings667.read(state.history).exhaustive.amplitudeCounts[form.id]}));},
+ motorReadings(number=null){const r=motorReadings667.read(state.history);return number==null?{...motorReadings667.summary(state.history),candidates:r.candidates}:r.candidates.find(option=>option.number===number);},
+ auditReading(turn){const row=state.ledger.find(row=>row.turn===turn);if(!row?.readingAudit)return null;return {record:copy(row.readingAudit),outcome:row.number,options:motorReadings667.read(row.readingAudit.prefix).candidates};},
+ arcReading(number,start,width){return motorReadings667.arcAlternative(state.history,number,start,width);},
+ getState:()=>state,
+ busy:()=>busy||inputRunning||inputQueue.length>0,
+ canEnqueue:()=>appAlive&&state.history.length>=8&&(!busy||inputRunning),
+ enqueue(n){addSideManual(n);},
+ async importLocal(numbers){
+  await loadHistory(numbers);
+  if(JSON.stringify(state.history)!==JSON.stringify(numbers))throw Error('A importação '+side+' não foi concluída.');
+ },
+ undoLocal(){undoSide();},
+ clearLocal(){
+  state=fresh();clearSpatialCaches();save();pendingReceipts=[];inputQueue=[];persistPendingInputs();render();
+ },
+ async restoreLocal(){await $('restore').onclick();},
+ snapshot:()=>copy(state),
+ rollback(snapshot){state=normalizeState(copy(snapshot));clearSpatialCaches();save();persistPendingInputs();render();},
+ saveLocal(){return save();},
+ dispose(){
+  sideDispose();
+  for(const [target,type,handler,options] of sideListeners)target.removeEventListener(type,handler,options);
+ },
+ select(id){selectTimeline(id);},
+ // Exportação para conferência dos testes e dos registros, sem tocar no motor.
+ summary(){return {side,version:VERSION,turn:state.totalTurns,phase:state.phase,
+  history:[...state.history],audit:copy(state.importAudit),metrics:metrics(state.ledger),
+  timelineIds:timelineDefinitions().map(d=>d.id),manual:state.manualLog.map(r=>r.number)};}
+};
+
+}
+
+// Um número digitado é observado pelos dois sistemas. A inversão vale para
+// o histórico inicial; resultados ao vivo são anexados ao fim de AMBOS.
+const nativeDocument=globalThis.document;
+if(typeof globalThis.__analiseBetaDualDispose==='function')globalThis.__analiseBetaDualDispose();
+if(typeof globalThis.__analiseBetaDispose==='function')globalThis.__analiseBetaDispose();
+let alive=true,operation=false,monitoring=false,aligned=true,expectedTurn=0;
+const sides={};
+let unifiedReady=false;
+const pairedRows=new Map();
+nativeDocument.body.innerHTML=`<style id="dual-base-style"></style>
+<style>
+body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
+#beta-dual-app{max-width:1100px;margin:auto;padding:10px;box-sizing:border-box}
+#beta-dual-app *{box-sizing:border-box}
+#beta-dual-app h1{font-size:22px;color:#59e5ff;margin:8px 0}
+#beta-dual-app textarea{display:block;width:100%;height:75px;background:#0c1623;color:#fff;border:1px solid #62758b;border-radius:7px;padding:9px;font:16px Arial,sans-serif;margin:8px 0}
+#beta-dual-app .dual-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+#beta-dual-app .dual-controls button,#beta-dual-app select{background:#304359;border:1px solid #708aa6;border-radius:7px;color:#fff;padding:9px;min-height:40px}
+#beta-dual-app .dual-controls button{cursor:pointer}
+#beta-dual-app button:disabled{opacity:.4;cursor:default}
+#beta-dual-app label{display:block;line-height:1.7}
+#beta-dual-app .dual-status{line-height:1.6;margin-top:8px;overflow-wrap:anywhere;color:#c4d8eb}
+#beta-dual-app .reading-card{border:1px solid #4386ad;border-left:5px solid #59d3ff;background:#122b3e;border-radius:7px;padding:8px;margin:7px 0;min-width:0}
+#beta-dual-app .reading-card.reverse{border-left-color:#4483ee;background:#182b45}
+#beta-dual-app .reading-mark{font-size:11px;color:#b5dcf3;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+#beta-dual-app .reading-dot{display:inline-block;width:10px;height:10px;background:#59d3ff;border-radius:2px;flex:none}
+#beta-dual-app .reverse .reading-dot{background:#4483ee}
+#beta-dual-app .centers{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:7px 0}
+#beta-dual-app .center{min-height:57px;padding:5px 1px;gap:3px;border-width:1px}
+#beta-dual-app .center strong{font-size:clamp(21px,5.5vw,29px)}
+#beta-dual-app .center small{font-size:8px}
+#beta-dual-app .playNotice{font-size:12px;padding:7px;margin:5px 0;border-width:2px}
+#beta-dual-app .history-lane{display:flex;align-items:center;gap:5px;margin:7px 0;min-width:0}
+#beta-dual-app .history-lane .history{flex:1;display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:2px;min-width:0}
+#beta-dual-app .history-lane .chip{min-width:0;padding:4px 0;border-width:1px;border-radius:3px}
+#beta-dual-app .history-lane .chip b{font-size:clamp(10px,2.6vw,15px);line-height:1.2}
+#beta-dual-app .history-lane .chip small{display:none}
+#beta-dual-app .timeline-pair{margin:7px 0;border:1px solid #366181;border-radius:7px;overflow:hidden}
+#beta-dual-app .timelineItem{padding:0 7px;background:#11283a;border-left:4px solid #59d3ff}
+#beta-dual-app .timelineItem.reverse-lane{background:#182b45;border-left-color:#4483ee}
+#beta-dual-app .timelineRow{border:0;margin:0}
+#beta-dual-app .reverse-lane .timelineName{flex:0 0 32px;width:32px;font-size:0;min-height:32px;padding:3px;margin:0}
+#beta-dual-app .reverse-lane .timelineName::before{content:'↶';font-size:16px}
+#beta-dual-app .reverse-lane .timelineRow{padding-top:3px;padding-bottom:7px}
+#beta-dual-app .focusGame .keys,#beta-dual-app .focusGame [id="focusReceipt"]{display:none}
+#beta-dual-app .history-lane .history [title]{cursor:default}
+#beta-dual-app [hidden]{display:none!important}
+#beta-dual-app .control-label{font-size:11px;color:#b5dcf3;padding:6px 0}
+#beta-dual-app .audit-details .muted{font-size:10px}
+@media(max-width:650px){#beta-dual-app .reverse-lane .timelineRow{display:flex;gap:6px}#beta-dual-app .timelineName{font-size:12px}#beta-dual-app .history-lane{gap:3px}}
+</style>
+<main id="beta-dual-app">
+<section class="panel">
+<h1>ANÁLISE BETA 6.6.8</h1>
+<label for="dual-paste">IMPORTAR HISTÓRICO</label>
+<textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
+<div class="dual-controls">
+<label>ORDEM COPIADA <select id="dual-order"><option value="OLDEST">MAIS ANTIGO → MAIS RECENTE</option><option value="NEWEST">MAIS RECENTE → MAIS ANTIGO</option></select></label>
+<button type="button" id="dual-import">IMPORTAR</button><button type="button" id="dual-undo">APAGAR ÚLTIMO</button><button type="button" id="dual-restore">RECUPERAR</button><button type="button" id="dual-clear">ZERAR TUDO</button>
+</div>
+<div class="dual-status" id="dual-status" role="status" aria-live="polite">Duas leituras independentes • um teclado.</div>
+<details class="audit-details"><summary>Conferir importação e janela</summary><div id="dual-audit-normal"></div><div id="dual-audit-inverted"></div></details>
+</section>
+<section class="panel">
+<div class="title">TREINADORES E ESTRATÉGIAS</div>
+<div class="dual-controls"><label>AJUSTAR LEITURA <select id="dual-control-side"><option value="NORMAL">NORMAL</option><option value="INVERTIDO">INVERSA</option></select></label></div>
+<div id="dual-controls-normal"></div><div id="dual-controls-inverted" hidden></div>
+</section>
+<section class="panel" id="dual-plays">
+<div class="title">JOGADAS</div>
+<div class="reading-card"><div class="reading-mark"><span class="reading-dot"></span>NORMAL</div><div id="dual-play-normal"></div></div>
+<div class="reading-card reverse"><div class="reading-mark"><span class="reading-dot"></span>INVERSA</div><div id="dual-play-inverted"></div></div>
+</section>
+<section class="panel"><div class="title">TECLADO 0–36</div><div id="dual-keyboard"></div></section>
+<section class="panel" id="dual-last-panel"><div class="title">ÚLTIMOS 14 NÚMEROS</div>
+<div class="history-lane"><span class="reading-dot" title="Normal" aria-label="Normal"></span><div id="dual-last-normal"></div></div>
+<div class="history-lane reverse"><span class="reading-dot" title="Inversa" aria-label="Inversa"></span><div id="dual-last-inverted"></div></div>
+</section>
+<section class="panel"><button class="head" id="dual-timeline-toggle">LINHAS DO TEMPO • NORMAL / INVERSA <span>− / +</span></button><div class="muted">W = direto • G1 = defesa • R = LOSS final. Linha de cima: normal. Linha azul de baixo: inversa.</div><div id="dual-timelines"></div></section>
+<section class="panel"><div class="title">FICHAS / G1</div><div class="row" id="dual-financial"></div></section>
+<section class="panel"><button class="head" id="dual-general-toggle">RESULTADO GERAL <span>− / +</span></button><div id="dual-general"><details open><summary>NORMAL</summary><div id="dual-result-normal"></div></details><details><summary>INVERSA</summary><div id="dual-result-inverted"></div></details></div></section>
+<div id="dual-normal" hidden></div><div id="dual-inverted" hidden></div>
+</main>
+`;
+const ui=id=>nativeDocument.getElementById(id);
+const status=message=>{if(alive)ui('dual-status').textContent=message;};
+const stateKey='ANALISE_BETA_V664_DUAL_INPUT_ORDER';
+try{const saved=localStorage.getItem(stateKey);if(['OLDEST','NEWEST'].includes(saved))ui('dual-order').value=saved;}catch{}
+ui('dual-order').onchange=()=>{try{localStorage.setItem(stateKey,ui('dual-order').value);}catch{}};
+function both(){return [sides.NORMAL,sides.INVERTIDO].filter(Boolean);}
+function running(){return operation||both().some(s=>s.busy());}
+function updateButtons(){
+ const blocked=running();
+ for(const id of ['dual-import','dual-undo','dual-restore','dual-clear'])ui(id).disabled=blocked;
+ for(const id of ['dual-controls-normal','dual-controls-inverted','dual-plays','dual-keyboard','dual-timelines'])ui(id).inert=operation;
+}
+function inputNumbers(text){
+ const tokens=String(text).match(/\d+/g)||[];
+ if(tokens.some(n=>/^0{2,}$/.test(n)))throw Error('00 não é 0. Use somente a roda de 0 a 36.');
+ if(/-\s*\d/.test(String(text)))throw Error('O histórico contém número negativo.');
+ const numbers=tokens.map(Number);
+ if(numbers.some(n=>n>36))throw Error('O histórico contém número maior que 36.');
+ return numbers;
+}
+function prepareHistories(numbers,order){
+ let normal=[...numbers];
+ if(order==='NEWEST')normal.reverse();
+ // Seleciona os 70 mais recentes ANTES de inverter a segunda leitura.
+ normal=normal.slice(-70);
+ return {NORMAL:normal,INVERTIDO:[...normal].reverse()};
+}
+async function idle(){
+ while(alive&&both().some(s=>s.busy()))await new Promise(resolve=>setTimeout(resolve,20));
+}
+function checkAlignment(){
+ const [a,b]=both().map(s=>s.getState());
+ aligned=!!a&&!!b&&a.totalTurns===b.totalTurns&&
+ JSON.stringify(a.manualLog.map(r=>r.number))===JSON.stringify(b.manualLog.map(r=>r.number));
+ if(aligned)expectedTurn=a.totalTurns;
+ else status('RETOMADA INCOMPLETA ENTRE OS DOIS CONJUNTOS. RECUPERE OU IMPORTE O HISTÓRICO ANTES DE CONTINUAR.');
+ return aligned;
+}
+async function watchNumbers(){
+ if(monitoring)return;
+ monitoring=true;
+ await idle();
+ if(alive){
+  const turns=both().map(s=>s.getState().totalTurns);
+  if(turns.some(n=>n!==expectedTurn)){
+   aligned=false;status('NÚMERO NÃO CONCLUÍDO NOS DOIS CONJUNTOS. RECUPERE OU IMPORTE ANTES DE CONTINUAR.');
+  }else{
+   checkAlignment();
+   if(aligned)status('NORMAL E INVERTIDO ATUALIZADOS • GIRO '+expectedTurn+' • JOGADAS E G1 INDEPENDENTES');
+  }
+  updateButtons();
+ }
+ monitoring=false;
+}
+const coordinator={
+ async import(numbers){
+  if(!alive||running())return false;
+  if(!Array.isArray(numbers))throw Error('HISTÓRICO INVÁLIDO.');
+  if(numbers.some(n=>!Number.isInteger(n)||n<0||n>36)){alert('USE SOMENTE NÚMEROS DE 0 A 36.');return false;}
+  if(numbers.length<8){alert('INFORME PELO MENOS OITO NÚMEROS.');return false;}
+  const histories=prepareHistories(numbers,ui('dual-order').value);
+  if(!confirm('IMPORTAR '+histories.NORMAL.length+' NÚMEROS NOS DOIS CONJUNTOS?\nNORMAL E INVERTIDO TERÃO TREINAMENTO E CICLOS PRÓPRIOS.'))return false;
+  operation=true;updateButtons();
+  const snapshots=both().map(s=>s.snapshot());
+  try{
+   status('LENDO HISTÓRICO NORMAL…');
+   await sides.NORMAL.importLocal(histories.NORMAL);
+   if(!alive)return false;
+   status('LENDO O MESMO HISTÓRICO INVERTIDO…');
+   await sides.INVERTIDO.importLocal(histories.INVERTIDO);
+   if(!alive)return false;
+   checkAlignment();ui('dual-paste').value='';
+   status('DUAS LEITURAS CONCLUÍDAS • '+histories.NORMAL.length+' NÚMEROS • NORMAL: '+histories.NORMAL[0]+' → '+histories.NORMAL.at(-1)+' • INVERTIDO: '+histories.INVERTIDO[0]+' → '+histories.INVERTIDO.at(-1));
+   return true;
+  }catch(error){
+   if(alive){both().forEach((s,i)=>s.rollback(snapshots[i]));checkAlignment();status('IMPORTAÇÃO NÃO CONCLUÍDA. OS DOIS ESTADOS ANTERIORES FORAM PRESERVADOS.');alert(String(error.message||error));}
+   return false;
+  }finally{operation=false;if(alive)updateButtons();}
+ },
+ add(n){
+  if(!alive||operation||!aligned)return false;
+  if(!Number.isInteger(n)||n<0||n>36)return false;
+  if(both().length!==2||both().some(s=>!s.canEnqueue())){status('AGUARDE A PREPARAÇÃO DOS DOIS CONJUNTOS OU IMPORTE UM HISTÓRICO.');return false;}
+  expectedTurn++;status('NÚMERO '+n+' RECEBIDO NOS DOIS CONJUNTOS');
+  for(const side of both())side.enqueue(n);
+  updateButtons();watchNumbers();return true;
+ },
+ undo(){
+  if(!alive||running())return false;
+  if(both().some(s=>!s.getState().undoStack.length)){alert('NÃO HÁ UM LANÇAMENTO MANUAL PARA DESFAZER NOS DOIS CONJUNTOS.');return false;}
+  both().forEach(s=>s.undoLocal());checkAlignment();status('ÚLTIMO NÚMERO DESFEITO NOS DOIS CONJUNTOS');updateButtons();return true;
+ },
+ clear(){
+  if(!alive||running())return false;
+  if(!confirm('ZERAR OS DOIS HISTÓRICOS, TREINADORES E REGISTROS?'))return false;
+  both().forEach(s=>s.clearLocal());aligned=true;expectedTurn=0;status('NORMAL E INVERTIDO ZERADOS');updateButtons();return true;
+ },
+ async restore(){
+  if(!alive||running())return false;
+  operation=true;updateButtons();status('RECUPERANDO NORMAL E INVERTIDO…');
+  try{
+   for(const side of both())await side.restoreLocal();
+   await idle();if(alive&&checkAlignment())status('DUAS SESSÕES RECUPERADAS • GIRO '+expectedTurn);
+  }finally{operation=false;if(alive)updateButtons();}
+ },
+ render(){if(unifiedReady)pairTimelines();},
+ busy:running,prepareHistories,inputNumbers
+};
+for(const [side,id] of [['NORMAL','dual-normal'],['INVERTIDO','dual-inverted']]){
+ const root=ui(id).attachShadow({mode:'open'});
+ sides[side]=runBetaSide(side,root,coordinator,nativeDocument);
+}
+function pairTimelines(){
+ const normal=sides.NORMAL.timelineRows(),inverse=new Map(sides.INVERTIDO.timelineRows().map(row=>[row.id,row]));
+ for(const row of normal){
+  const reversed=inverse.get(row.id);if(!row.item||!reversed?.item)continue;
+  let pair=pairedRows.get(row.id);
+  if(!pair){pair=nativeDocument.createElement('div');pair.className='timeline-pair';pair.dataset.strategy=row.id;pairedRows.set(row.id,pair);ui('dual-timelines').appendChild(pair);}
+  row.item.classList.add('normal-lane');reversed.item.classList.add('reverse-lane');
+  const label=reversed.item.querySelector('.timelineName');if(label)label.setAttribute('aria-label',row.name+' • leitura inversa');
+  if(row.item.parentNode!==pair)pair.appendChild(row.item);
+  if(reversed.item.parentNode!==pair)pair.appendChild(reversed.item);
+  // Existing focus elements remain below their own timeline, including after rebuilds.
+ }
+ for(const [side,id] of [['NORMAL','dual-controls-normal'],['INVERTIDO','dual-controls-inverted']]){
+  const focus=sides[side].element('focusGame');
+  if(focus&&!focus.hidden){const wanted=pairedRows.get(sides[side].getState().focusTimelineId);const rows=side==='NORMAL'?normal:[...inverse.values()];const lane=rows.find(row=>row.id===sides[side].getState().focusTimelineId)?.item;if(wanted&&lane&&focus.parentNode!==lane)lane.appendChild(focus);}
+ }
+}
+function mountUnified(){
+ ui('dual-base-style').textContent=sides.NORMAL.styles();
+ for(const [side,tail] of [['NORMAL','normal'],['INVERTIDO','inverted']]){
+  const engine=sides[side];
+  for(const id of ['strategies','options'])engine.mount(id,ui('dual-controls-'+tail));
+  for(const id of ['selected','centers','coverage'])engine.mount(id,ui('dual-play-'+tail));
+  for(const id of ['status','importAudit','counter','windowInfo','cycleInfo'])engine.mount(id,ui('dual-audit-'+tail));
+  engine.mount('last',ui('dual-last-'+tail));
+  // The wrapper itself stretches to the available history lane width.
+  ui('dual-last-'+tail).style.flex='1';ui('dual-last-'+tail).style.minWidth='0';
+  engine.mount('general',ui('dual-result-'+tail));
+  // Register the focus root before it moves under a timeline row.
+  engine.mount('focusGame',ui('dual-timelines'));
+ }
+ for(const id of ['receipt','keys'])sides.NORMAL.mount(id,ui('dual-keyboard'));
+ for(const [id,label] of [['stake','VALOR DA FICHA'],['multiplier','MULTIPLICADOR G1']]){
+  const wrapper=nativeDocument.createElement('label');wrapper.textContent=label;
+  sides.NORMAL.mount(id,wrapper);ui('dual-financial').appendChild(wrapper);
+  const input=sides.NORMAL.element(id),previous=input.onchange;
+  input.onchange=()=>{previous?.();const s=sides.NORMAL.getState();sides.INVERTIDO.setFinancial(s.stake,s.multiplier);};
+ }
+ unifiedReady=true;pairTimelines();
+}
+mountUnified();
+ui('dual-control-side').onchange=()=>{const inverse=ui('dual-control-side').value==='INVERTIDO';ui('dual-controls-normal').hidden=inverse;ui('dual-controls-inverted').hidden=!inverse;};
+ui('dual-timeline-toggle').onclick=()=>{ui('dual-timelines').hidden=!ui('dual-timelines').hidden;};
+ui('dual-general-toggle').onclick=()=>{ui('dual-general').hidden=!ui('dual-general').hidden;};
+ui('dual-import').onclick=()=>{try{coordinator.import(inputNumbers(ui('dual-paste').value));}catch(error){alert(String(error.message||error));}};
+ui('dual-undo').onclick=()=>coordinator.undo();
+ui('dual-clear').onclick=()=>coordinator.clear();
+ui('dual-restore').onclick=()=>coordinator.restore();
+globalThis.__analiseBetaDual={...coordinator,normal:sides.NORMAL,inverted:sides.INVERTIDO};
+globalThis.__analiseBetaDualDispose=()=>{
+ if(!alive)return;
+ alive=false;both().forEach(s=>s.dispose());
+};
+updateButtons();
+(async()=>{await idle();if(!alive)return;if(checkAlignment()&&expectedTurn)status('NORMAL E INVERTIDO RETOMADOS • GIRO '+expectedTurn);updateButtons();})();
+
 })();
