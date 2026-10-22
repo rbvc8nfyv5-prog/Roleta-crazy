@@ -1,19 +1,40 @@
-/* V6.6.10 — MASTER: MELHOR VARIAÇÃO E REVISÃO PROSPECTIVA.
-O normal e o inverso mantêm rankings, escolhas e lições independentes.
-O MASTER segue o indicador MELHOR VARIAÇÃO daquele lado: a primeira
-colocada entre as 64 variações, usando o mesmo índice exibido na tela.
-As oito posições e o indicador recebem a mesma memória de avaliações.
-Adaptativas e AUTO conservam seus próprios mecanismos.
-Antes da entrada MASTER, congela alternativas elegíveis e configurações.
-Avalia entrada e defesa somente com os resultados que chegam depois.
-Aprende com GREEN, GREEN G1 e LOSS, sem transformar perdas passadas em vitórias.
-Lições anteriores participam moderadamente do ranking, com regularização;
-a contagem é por decisão MASTER, não pelo número de alternativas da decisão.
-A memória das últimas 120 decisões fica separada do descarte de dez resultados.
-Ciclos abertos, pausa, prioridades pós-loss, duas leituras e controles preservados.
-Uma alternativa acertar retrospectivamente não garante a próxima escolha.
+/* ANÁLISE BETA 6.6.12 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
+Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
+Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
+posteriores a avaliam e autorizam influência limitada nos pesos dos motores.
+Entrada manual publica os centros uma vez por conclusão, sem prévia duplicada
+nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 */
-/* ANÁLISE BETA V6.6.10 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* Correção de sessão e resposta ao clique:
+- Número recebido aparece antes das operações de armazenamento.
+- Cópia e diferença para desfazer calculadas no worker de análise.
+- Próxima jogada é publicada uma vez, junto do estado final calculado.
+- Busca geométrica usa duas máscaras inteiras exatas de 32+5 bits no laço crítico.
+  Mesma busca, pontuação e desempates; sem reduzir as análises.
+- Caches de leituras limitados sem reduzir hipóteses nem mudar os pesos.
+- Checkpoints completos com revisão: banco persistente, cópia permanente e cópia da aba.
+- Recuperação escolhe a cópia íntegra mais recente, inclusive após desfazer/zerar.
+- Falha de leitura protege a cópia existente de gravação vazia automática.
+- Aviso de salvamento permanece visível na tela compartilhada.
+*/
+/* ANÁLISE BETA V6.6.12 — SELEÇÃO MASTER CORRIGIDA.
+Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
+12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
+O MASTER e o controlador pós-loss não disputam consigo mesmos.
+Pós-loss e pós-três-loss conservam suas prioridades independentes.
+Últimas 5/15/30 entradas: pesos 60%/25%/15%, com decaimento temporal.
+GREEN direto=1; GREEN G1 confirmado=.45; G1 pendente=.15; LOSS final=-1.
+LOSS final e sequência de LOSS recebem penalização explícita.
+Memória de revisões anteriores participa como ajuste limitado e centrado.
+Não força mais o vencedor do antigo indicador restrito a 64 variações.
+Resultado geral mostra INDICAÇÃO MASTER, ou MASTER NO CICLO quando congelado,
+com W/G1/R recentes da escolha, de maneira independente nos dois sentidos.
+Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
+Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
+Este é um critério comparativo; não garante acerto nem ausência de LOSS.
+*/
+/* ANÁLISE BETA V6.6.12 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -35,7 +56,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.10 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.12 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -49,7 +70,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.10 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.12 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -93,7 +114,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -127,7 +148,7 @@ ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.10",
+  const VERSION = "6.6.12",
     KEY = 'ANALISE_BETA_V664_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=[];
@@ -1271,13 +1292,13 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.10', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.12', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
     result.profileCache = new Map();
     cache.set(key, result);
-    if (cache.size > 32) cache.delete(cache.keys().next().value);
+    if (cache.size > 4) cache.delete(cache.keys().next().value);
     return result;
   }
 
@@ -1404,7 +1425,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       samples: triples.length,
     };
     triangleCache.set(key, r);
-    if (triangleCache.size > 180)
+    if (triangleCache.size > 64)
       triangleCache.delete(triangleCache.keys().next().value);
     return r;
   }
@@ -1902,7 +1923,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       ],
     };
     rawSpaceCache.set(key, r);
-    if (rawSpaceCache.size > 240)
+    if (rawSpaceCache.size > 80)
       rawSpaceCache.delete(rawSpaceCache.keys().next().value);
     return r;
   }
@@ -1949,9 +1970,9 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.10" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.12" };
     spaceCache.set(key, r);
-    if (spaceCache.size > 120)
+    if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
     return r;
   }
@@ -2146,8 +2167,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         weights[ix(n)] += (b * radius) / 5;
       }
     }
-    return motorReadings667.merge(applySpatial(weights,h,
-      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12);
+    return applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h);
   }
 
   const motorDiversityCache = new Map();
@@ -2415,7 +2436,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.10",readingCandidates:37,
+          readingVersion:"6.6.12",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -3521,7 +3542,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function fresh() {
     return {
-      structuralMemoryVersion: "6.6.10",
+      structuralMemoryVersion: "6.6.12",
       structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
@@ -3533,7 +3554,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       undoStack: [],
       strategy: "MASTER",importAudit:null,
       masterChoice: null,
-      masterHistory: [], masterLessons:[],masterReviews:[],
+      masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       postLossEnabled: false,
@@ -3618,7 +3639,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       "ledger",
       "autoRows",
       "masterHistory",
-    "masterLessons","masterReviews",])
+    "masterLessons","masterReviews","importReanalyses","reanalysisPolicies",])
       if (!Array.isArray(r[field])) r[field] = [];
     r.totalTurns = Math.max(
       Number(r.totalTurns) || 0,
@@ -3700,8 +3721,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       r.strategy = "TRAINER";
       r.manual = null;
     }
-    if(data.structuralMemoryVersion!=="6.6.10"){
-      r.structuralMemoryVersion="6.6.10";
+    if(data.structuralMemoryVersion!=="6.6.12"){
+      r.structuralMemoryVersion="6.6.12";
       r.block={...r.block,data:null};
     }
 
@@ -3744,7 +3765,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function compactMotor(m) {
-    const result = { readingVersion:"6.6.10", readingCandidates:37,};
+    const result = { readingVersion:"6.6.12", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3770,42 +3791,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     return { ...motor, play: restoreShape(shape, m.score) };
   }
 
-  function rankBestVariation() {
-    const cutoff = state.historyTurns[0] || 1;
-    const ranked = [];
-    for (const owner of VARIANT_OWNERS)
-      for (let variation = 1; variation <= 8; variation++) {
-        const rows = (
-          state.variantBooks[variantBookId(owner.id, variation)]?.rows || []
-        ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
-        if (!rows.length) continue;
-        const hits = rows.filter((r) => r.entryHit).length,
-          recent = rows.slice(-5);
-        const rate = hits / rows.length;
-        const score =
-          ((hits + (4 * 28) / 37) / (rows.length + 4)) * 0.65 +
-          ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
-            (recent.length + 2)) *
-            0.35;
-        ranked.push({
-          id: variantBookId(owner.id, variation),
-          owner: owner.id,
-          variation,
-          name: owner.name,
-          total: rows.length,
-          hits,
-          rate,
-          score:masterVariationScore(variantBookId(owner.id,variation),score),
-          turn: state.totalTurns,
-        });
-      }
-    return (
-      ranked.sort(
-        (a, b) =>
-          b.score - a.score || b.hits - a.hits || a.id.localeCompare(b.id),
-      )[0] || null
-    );
-  }
+  
 
   function prepareBlock() {
     if (state.history.length < 8) return null;
@@ -4235,7 +4221,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       : null;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.10", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        version: "6.6.12", prefix: [...before].slice(-70), beforeTurn: turn-1,
         candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
         supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -4266,6 +4252,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       motorHits,
       autoRank: played?.autoRank || null,
     });
+    if(before.length>=8)validateReanalysisPolicies(before,n,turn);
     state.totalTurns = turn;
     state.history.push(n);
     state.historyTurns.push(turn);
@@ -4321,7 +4308,9 @@ function importNumbersCore(numbers, opts, manualLog = []) {
 state.importAudit=describeImport(clean,opts);
     // A importação cresce até o tamanho escolhido; não descarta seu próprio histórico.
     state.block.size = 0;
-    for (const n of clean) spin(n, "HISTÓRICO");
+    state.importTrainingActive=true;
+    try{for (const n of clean) spin(n, "HISTÓRICO");}
+    finally{state.importTrainingActive=false;}
     state.block = {
       size: clean.length,
       pending: 0,
@@ -4355,28 +4344,14 @@ state.importAudit=describeImport(clean,opts);
     return chooseMotor(def, cs, previous);
   }
 
-  function variationPerformance(owner) {
-    const cutoff = state.historyTurns[0] || 1;
-    const rows = Array.from({ length: 8 }, (_, index) => {
-      const variation = index + 1;
-      const samples = (
-        state.variantBooks[variantBookId(owner, variation)]?.rows || []
-      ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
-      const total = samples.length,
-        hits = samples.filter((r) => r.entryHit).length,
-        recent = samples.slice(-5);
-      const score =
-        ((hits + (4 * 28) / 37) / (total + 4)) * 0.65 +
-        ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
-          (recent.length + 2)) *
-          0.35;
-      return { variation,total,hits,score:masterVariationScore(variantBookId(owner,variation),score),rate:total?hits/total:0 };
-    }).sort(
-      (a, b) =>
-        b.score - a.score || b.hits - a.hits || a.variation - b.variation,
-    );
-    return rows.map((r, i) => ({ ...r, position: i + 1 }));
+  function variationPerformance(owner){
+    return Array.from({length:8},(_,index)=>{
+      const variation=index+1,stats=masterCandidateStats(variantBookId(owner,variation));
+      return {...stats,variation,hits:stats.direct,rate:stats.total?stats.direct/stats.total:0};
+    }).sort((a,b)=>Number(b.total>0)-Number(a.total>0)||b.score-a.score||a.lossStreak-b.lossStreak||a.variation-b.variation)
+      .map((row,index)=>({...row,position:index+1}));
   }
+
 
   function timelineDefinitions() {
     return [
@@ -4738,6 +4713,105 @@ state.importAudit=describeImport(clean,opts);
     return timelineMotor(id,block);
   }
 
+  /* Reanálise supervisionada da importação. Hipóteses são definidas pelo
+     prefixo; o resultado conhecido apenas avalia as tentativas depois.
+     O ajuste retrospectivo nunca conta como validação prospectiva. */
+  const REANALYSIS_COMPONENTS = ['triangle','chain','pole','arc','route','recent'];
+  const REANALYSIS_LEVELS = [.35,.55,.75,.90];
+  function reanalysisWeights(prefix, group, level) {
+    const h=prefix.slice(-70), reading=spatialRead(h);
+    const recent=Array(37).fill(.1);
+    for(let age=0;age<h.length;age++){
+      const mass=Math.exp(-age/12);
+      for(let j=0;j<37;j++)recent[j]+=mass*Math.exp(-distance(W[j],h[h.length-1-age])/2);
+    }
+    const components=[...reading.components,normalizeSpace(recent)];
+    const selected=components[group], strength=REANALYSIS_LEVELS[level];
+    const reference=normalizeSpace(reading.weights);
+    return normalizeSpace(reference.map((v,j)=>Math.max(.001,v*(1-strength)+selected[j]*strength)));
+  }
+  function reanalysisKey(group,level){return 'REVIEW:'+group+':'+level;}
+  function validateReanalysisPolicies(prefix,number,turn){
+    for(const policy of state.reanalysisPolicies){
+      if(policy.createdTurn>=turn)continue;
+      const play=geometry(reanalysisWeights(prefix,policy.group,policy.level));
+      if(!validPlay(play))continue;
+      const hit=play.numbers.includes(number);
+      policy.evaluations++;
+      if(hit)policy.hits++;
+      policy.lastEvaluation={beforeTurn:turn-1,turn,number,hit};
+    }
+  }
+  function applyReanalysisMemory(weights,h){
+    if(!state.reanalysisPolicies?.length)return weights;
+    const base=28/37, mean=avg(weights)||1;
+    for(const policy of state.reanalysisPolicies){
+      // Só resultados POSTERIORES à descoberta autorizam influência.
+      if(policy.evaluations<4)continue;
+      const estimate=(policy.hits+base*8)/(policy.evaluations+8);
+      const strength=Math.min(.12,Math.max(0,estimate-base)*policy.evaluations/(policy.evaluations+8));
+      if(!strength)continue;
+      const proposal=reanalysisWeights(h,policy.group,policy.level);
+      for(let j=0;j<37;j++)weights[j]=Math.max(.001,weights[j]+mean*strength*(proposal[j]-1));
+    }
+    return weights;
+  }
+  function reviseImportedMasterLoss(review,turn){
+    if(!review.imported || review.actualResult!=='LOSS')return null;
+    const results=review.observations||[];
+    const entryIndex=results.findIndex(row=>row.phase==='ENTRY');
+    if(entryIndex<0)return null;
+    const entryOutcome=results[entryIndex];
+    const prefix=results[entryIndex].prefix;
+    const attempts=[];let solution=null;
+    // 6 leituras x 4 intensidades. Sem deslocamento escolhido pelo resultado,
+    // sem adicionar o número revelado aos pesos ou como número obrigatório.
+    for(let level=0;level<4&&!solution;level++){
+      for(let group=0;group<6&&!solution;group++){
+        const weights=reanalysisWeights(prefix,group,level);
+        const play=geometry(weights);
+        if(!validPlay(play))continue;
+        let simulated=play.numbers.includes(entryOutcome.number)?'GREEN':null;
+        let defense=null;
+        if(!simulated){
+          const gale=results.slice(entryIndex+1).find(row=>row.phase==='GALE');
+          if(gale){
+            const failureHistory=[...prefix,entryOutcome.number].slice(-70);
+            const original={key:reanalysisKey(group,level),play};
+            // Reconstrói a defesa somente com informação até a falha da entrada.
+            const savedRows=state.g1Rows;
+            state.g1Rows=savedRows.filter(row=>row.turn<entryOutcome.turn);
+            try{
+              const config=review.config;
+              const decision=config.g1Trainer?chooseG1(original,entryOutcome.number,failureHistory,'MASTER')
+                :{motor:config.g1?fineG1(original,entryOutcome.number,failureHistory):original};
+              defense=decision?.motor?.play||play;
+              simulated=defense.numbers.includes(gale.number)?'GREEN G1':'LOSS';
+            }finally{state.g1Rows=savedRows;}
+          }else simulated='LOSS';
+        }
+        const attempt={id:reanalysisKey(group,level),component:REANALYSIS_COMPONENTS[group],
+          group,level,strength:REANALYSIS_LEVELS[level],result:simulated,
+          entryShape:signaturePlay(play),defenseShape:defense?signaturePlay(defense):null};
+        attempts.push(attempt);
+        if(simulated!=='LOSS')solution=attempt;
+      }
+    }
+    const record={id:'REANALYSIS@'+review.turn,turn:review.turn,closedTurn:turn,
+      beforeTurn:review.beforeTurn,originalResult:'LOSS',selectedId:review.selectedId,
+      prefix:[...prefix],observedAfter:results.map(row=>({turn:row.turn,number:row.number,phase:row.phase})),
+      status:solution?'REVISED':'UNSOLVED',result:solution?.result||'LOSS',attempts,
+      solution:solution?{...solution}:null,retrospective:true,validated:false,
+      meaning:'TREINAMENTO REVISADO DEPOIS DO RESULTADO; NÃO É PREVISÃO COMPROVADA'};
+    state.importReanalyses.push(record);
+    state.importReanalyses=state.importReanalyses.slice(-120);
+    if(solution&&!state.reanalysisPolicies.some(policy=>policy.id===solution.id)){
+      state.reanalysisPolicies.push({id:solution.id,group:solution.group,level:solution.level,
+        createdTurn:turn,evaluations:0,hits:0,lastEvaluation:null});
+    }
+    return record;
+  }
+
   function masterLessonStats(id){
     const keys=spatialRead(state.history.slice(-70)).keys;
     let support=0,reward=0,count=0,direct=0,g1=0,loss=0;
@@ -4758,11 +4832,12 @@ state.importAudit=describeImport(clean,opts);
     const definitions=masterDefinitions(block);
     const alternatives=forecasts.filter(f=>f.id!=='POSTLOSS'&&validPlay(f.motor?.play)).map(f=>{
       const definition=definitions.find(d=>d.id===f.id);
-      const motor=definition?.resolvedId?masterCandidateMotor(definition,block):f.motor;
+      const motor=f.motor;
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.10',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.12',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+      imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
       forecastFingerprint:importFingerprint(alternatives.map(a=>[a.id,signaturePlay(a.entry.play)])),
@@ -4804,6 +4879,11 @@ state.importAudit=describeImport(clean,opts);
     }
     const actualStart=oldCycle?.entryTurn||turn;
     for(const review of state.masterReviews){
+      if(review.imported){
+        const first=review.alternatives.find(a=>a.id===review.selectedId)||review.alternatives[0];
+        review.observations.push({turn,number:n,prefix:[...before].slice(-70),
+          phase:first?.phase==='GALE'?'GALE':['ENTRY','SECOND_ENTRY'].includes(first?.phase)?'ENTRY':first?.phase});
+      }
       for(const alternative of review.alternatives)stepMasterAlternative(alternative,review,n,turn,before);
       if(controller==='MASTER'&&review.turn===actualStart&&['GREEN','GREEN G1','LOSS'].includes(result)){
         review.actualResult=result;review.actualClosedTurn=turn;
@@ -4812,6 +4892,7 @@ state.importAudit=describeImport(clean,opts);
     const remaining=[];
     for(const review of state.masterReviews){
       if(!review.actualResult||review.alternatives.some(a=>!a.result)){remaining.push(review);continue;}
+      reviseImportedMasterLoss(review,turn);
       const outcomes={};
       for(const a of review.alternatives)outcomes[a.id]=a.result==='GREEN'?2:a.result==='GREEN G1'?1:0;
       state.masterLessons.push({version:review.version,turn:review.turn,beforeTurn:review.beforeTurn,
@@ -4830,67 +4911,92 @@ state.importAudit=describeImport(clean,opts);
     return baseScore*(1-weight)+lesson.score*weight;
   }
 
-  function masterDefinitions(block=currentBlock()) {
-    const owned=new Set();
-    for(const owner of VARIANT_OWNERS){
-      owned.add(owner.id==='NUMBER'?'NUMBER':'ORIGINAL:'+owner.id);
-      owned.add(owner.id+'@THIRD');
-      for(let variation=1;variation<=8;variation++)owned.add(variantBookId(owner.id,variation));
+    /* Nota comparativa, não probabilidade do próximo giro.
+     GREEN=1; G1 confirmado=.45; G1 pendente=.15; LOSS final=-1.
+     Últimas 5/15/30 entradas pesam 60%/25%/15%, respectivamente.
+     Dentro de cada janela, resultados recentes recebem maior peso.
+     Uma perda pendente nunca é contada como LOSS final. */
+  function masterCandidateStats(id){
+    const cache = typeof renderStatsCache === 'undefined' ? null : renderStatsCache;
+    if(cache?.has(id)) return cache.get(id);
+    const rows=timelineSamples(id).filter(row=>Number.isFinite(row.turn)&&row.turn<=state.totalTurns)
+      .slice().sort((a,b)=>a.turn-b.turn).slice(-30);
+    const closed=row=>row.closed&&Number(row.closedTurn??(row.result==='GREEN'?row.turn:Infinity))<=state.totalTurns;
+    const reward=row=>row.result==='GREEN'&&closed(row)?1:closed(row)&&row.result==='GREEN G1'?.45:closed(row)&&row.result==='LOSS'?-1:.15;
+    function windowScore(limit,decay){
+      const sample=rows.slice(-limit);let mass=0,value=0;
+      for(let index=0;index<sample.length;index++){
+        const weight=Math.exp(-(sample.length-1-index)/decay);
+        mass+=weight;value+=weight*reward(sample[index]);
+      }
+      return (value+.5*1.5)/(mass+1.5);
     }
-    const candidates=timelineDefinitions().filter(d=>!['MASTER','POSTLOSS'].includes(d.id)&&!owned.has(d.id));
-    const best=VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id,block)).filter(Boolean);
-    const trainer=candidates.find(d=>d.id==='TRAINER');
-    const trainerBase=trainerBaseDefinition();
-    const owner=trainerBase?.type==='VARIANT'?trainerBase.owner:trainerBase?.rule;
-    const replacement=best.find(d=>d.owner===owner);
-    if(trainer&&replacement){trainer.resolvedId=replacement.id;trainer.scoreId=replacement.id;
-      trainer.name='TREINADOR GLOBAL • '+replacement.name;trainer.owner=replacement.owner;trainer.variation=replacement.variation;}
-    return [...best,...candidates];
+    const finished=rows.filter(closed),recent=rows.slice(-5);
+    const direct=finished.filter(row=>row.result==='GREEN').length;
+    const g1=finished.filter(row=>row.result==='GREEN G1').length;
+    const loss=finished.filter(row=>row.result==='LOSS').length;
+    let lossStreak=0;
+    for(let i=finished.length-1;i>=0&&finished[i].result==='LOSS';i--)lossStreak++;
+    const baseScore=.60*windowScore(5,3)+.25*windowScore(15,10)+.15*windowScore(30,20)-.08*Math.min(3,lossStreak);
+    const lesson=masterLessonStats(id);
+    const feedback=.10*(lesson.score-28/37)*lesson.support/(lesson.support+8);
+    const result = {total:rows.length,closedTotal:finished.length,direct,g1,loss,hits:direct+g1,
+      pending:rows.length-finished.length,firstMiss:rows.length-direct,lossStreak,
+      recentDirect:recent.filter(row=>closed(row)&&row.result==='GREEN').length,
+      recentG1:recent.filter(row=>closed(row)&&row.result==='GREEN G1').length,
+      recentLoss:recent.filter(row=>closed(row)&&row.result==='LOSS').length,
+      recentPending:recent.filter(row=>!closed(row)).length,
+      score:baseScore+feedback,baseScore,feedback,lesson,
+      weights:{recent5:.60,recent15:.25,last30:.15},
+      rewards:{GREEN:1,GREEN_G1:.45,PENDING_G1:.15,LOSS:-1}};
+    cache?.set(id,result);
+    return result;
   }
 
-  /* Todos os candidatos são comparados por ciclos completos sob a mesma fórmula. */
-  function masterRanking(block = currentBlock()) {
-    if (!block) return [];
-    const globalBest=rankBestVariation()||bestMasterVariation(VARIANT_OWNERS[0].id,block);
-    return masterDefinitions(block)
-      .map((def) => {
-        const rows = timelineSamples(def.scoreId||def.id)
-          .filter((r) => r.closed && r.closedTurn <= state.totalTurns)
-          .slice(-30);
-        const direct = rows.filter((r) => r.result === "GREEN").length;
-        const hits = rows.filter((r) => r.result !== "LOSS").length,
-          recent = rows.slice(-5);
-        const recentDirect = recent.filter((r) => r.result === "GREEN").length;
-        const recentLoss = recent.filter((r) => r.result === "LOSS").length,
-          base = 28 / 37;
-        const score =
-          (0.55 * (direct + base * 6)) / (rows.length + 6) +
-          (0.35 * (hits + base * 6)) / (rows.length + 6) +
-          (0.1 * (recentDirect + base * 3)) / (recent.length + 3) -
-          (0.15 * recentLoss) / (recent.length + 3);
-        const motor = masterCandidateMotor(def, block);
-        const lesson=masterLessonStats(def.resolvedId||def.id);
-        const feedback=.20*lesson.support/(lesson.support+8);
-        return {
-          ...def,
-          total: rows.length,
-          direct,
-          hits,
-          loss: rows.length - hits,
-          score:def.performanceScore??(score*(1-feedback)+lesson.score*feedback),baseScore:score,lesson,
-          eligible: validPlay(motor?.play),
-        };
-      })
-      .filter((d) => d.eligible)
-      .sort(
-        (a, b) =>
-          Number(b.id===globalBest?.id)-Number(a.id===globalBest?.id)||b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
-      );
+  function masterDefinitions(block=currentBlock()){
+    // O controlador MASTER não se compara consigo mesmo. Pós-loss continua
+    // como prioridade independente sobre a escolha normal, quando ativado.
+    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS'].includes(def.id));
   }
+
+  function masterRanking(block=currentBlock()){
+    if(!block)return [];
+    return masterDefinitions(block).map(def=>{
+      const motor=timelineMotor(def.id,block);
+      return {...def,...masterCandidateStats(def.id),eligible:validPlay(motor?.play)};
+    }).filter(def=>def.eligible).sort((a,b)=>
+      Number(b.total>0)-Number(a.total>0)||b.score-a.score||
+      a.lossStreak-b.lossStreak||b.recentDirect-a.recentDirect||b.closedTotal-a.closedTotal||a.id.localeCompare(b.id));
+  }
+
+  function rankBestVariation(){
+    const block=currentBlock();
+    if(block)return masterRanking(block)[0]||null;
+    // Durante o processamento não usa uma cobertura do giro anterior.
+    return null;
+  }
+
+  function displayedMasterChoice(){
+    const cycle=state.cycle;
+    if(cycle?.controller==='MASTER'){
+      const target=cycle.original?.postLossTarget||cycle.original?.masterTarget;
+      if(target)return {...target,...masterCandidateStats(target.id),committed:true};
+    }
+    if(state.strategy==='MASTER'&&state.phase==='ENTRY'){
+      const priority=priorityRecoveryChoice(currentBlock());
+      if(priority?.motor?.postLossTarget){
+        const target=priority.motor.postLossTarget;
+        return {...target,...masterCandidateStats(target.id),priority:true};
+      }
+    }
+    return state.block.best;
+  }
+
 
   function updateMaster(block = currentBlock()) {
     const best = masterRanking(block)[0];
     if (!best) return;
+    state.block.best=copy(best);
     if (state.masterChoice !== best.id) {
       state.masterHistory.push({
         turn: state.totalTurns,
@@ -5049,24 +5155,135 @@ state.importAudit=describeImport(clean,opts);
     }
     return decodeURIComponent(escape(parts.join("")));
   }
-  function read(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw == null) return null;
-      return JSON.parse(unpackSession(raw), (k, v) =>
-        v && typeof v.__betaPlay === "string"
-          ? restoreShape(v.__betaPlay, v.score)
-          : v,
-      );
-    } catch (error) {
-      saveError =
-        "Não foi possível recuperar o estado salvo: " +
-        String(error.message || error);
-      return null;
+  // Checkpoint duplo: o armazenamento da aba tem quota independente.
+  // A revisão acompanha o conteúdo, inclusive ao zerar, importar ou desfazer.
+  let sessionRevision = 0;
+  let recoveryLocked = false;
+  let sessionDatabase = null;
+  function openSessionDatabase() {
+    if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+    if (sessionDatabase) return sessionDatabase;
+    sessionDatabase = new Promise(resolve => {
+      try {
+        const request = indexedDB.open('ANALISE_BETA_SESSOES', 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains('checkpoints')) db.createObjectStore('checkpoints');
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = request.onblocked = () => resolve(null);
+      } catch (error) { resolve(null); }
+    });
+    return sessionDatabase;
+  }
+  async function readDatabaseCheckpoint() {
+    const db = await openSessionDatabase();
+    if (!db) return null;
+    return new Promise(resolve => {
+      try {
+        const transaction = db.transaction('checkpoints', 'readonly');
+        const request = transaction.objectStore('checkpoints').get(KEY);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => resolve(null);
+        transaction.onabort = () => resolve(null);
+      } catch (error) { resolve(null); }
+    });
+  }
+  async function writeDatabaseCheckpoint(envelope, revision, turn, primary) {
+    const db = await openSessionDatabase();
+    if (!db) return false;
+    return new Promise(resolve => {
+      try {
+        const transaction = db.transaction('checkpoints', 'readwrite');
+        const store = transaction.objectStore('checkpoints');
+        const request = store.get(KEY);
+        request.onsuccess = () => {
+          let oldRevision = -1;
+          try { oldRevision = JSON.parse(request.result).revision; } catch (error) {}
+          if (!(oldRevision > revision)) store.put(envelope, KEY);
+        };
+        transaction.oncomplete = () => {
+          if (revision === sessionRevision && isCurrentApp()) {
+            durableTurn = turn;
+            if (!primary) saveError = '';
+            persistPendingInputs();
+            showSaveHealth();
+          }
+          resolve(true);
+        };
+        transaction.onerror = transaction.onabort = () => resolve(false);
+      } catch (error) { resolve(false); }
+    });
+  }
+  function checkpointValue(text) {
+    const value = text.startsWith('BETA_LZW1:') ? null : JSON.parse(text);
+    if (value && value.__betaSession === 2) {
+      if (!Number.isSafeInteger(value.revision) || typeof value.packed !== 'string')
+        throw Error('Envelope de sessão inválido.');
+      const data = JSON.parse(unpackSession(value.packed), reviveCheckpoint);
+      return { revision: value.revision, data };
     }
+    return { revision: 0, data: JSON.parse(unpackSession(text), reviveCheckpoint) };
+  }
+  function reviveCheckpoint(k, v) {
+    return v && typeof v.__betaPlay === 'string'
+      ? restoreShape(v.__betaPlay, v.score) : v;
+  }
+  function read(key) {
+    const candidates = [];
+    let failed = false;
+    for (const [storage, name] of [
+      [() => localStorage, key],
+      [() => typeof sessionStorage === 'undefined' ? null : sessionStorage, key + '_SAFE']
+    ]) {
+      try {
+        const raw = storage()?.getItem(name);
+        if (raw == null) continue;
+        const decoded = checkpointValue(raw);
+        if (!Array.isArray(decoded.data?.history)) throw Error('Histórico salvo inválido.');
+        candidates.push(decoded);
+      } catch (error) { failed = true; }
+    }
+    candidates.sort((a, b) => b.revision - a.revision);
+    if (candidates.length) {
+      sessionRevision = Math.max(sessionRevision, candidates[0].revision);
+      recoveryLocked = false;
+      return candidates[0].data;
+    }
+    if (failed && key === KEY) {
+      recoveryLocked = true;
+      saveError = 'A sessão não pôde ser lida. A cópia existente foi protegida; use RECUPERAR HISTÓRICO.';
+    }
+    return null;
+  }
+  function commitCheckpoint(packed, turn) {
+    if (recoveryLocked) { showSaveHealth(); return false; }
+    sessionRevision = Math.max(sessionRevision + 1, Date.now() * 1000);
+    const envelope = JSON.stringify({ __betaSession: 2, revision: sessionRevision, packed });
+    let primary = false, backup = false;
+    try { localStorage.setItem(KEY, envelope); primary = true; } catch (error) {}
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem(KEY + '_SAFE', envelope); backup = true;
+      }
+    } catch (error) {}
+    writeDatabaseCheckpoint(envelope, sessionRevision, turn, primary);
+    if (primary || backup) {
+      durableTurn = turn;
+      if (primary) pruneSavedVersions();
+      saveError = primary ? '' : 'SALVO SOMENTE NA ABA: o armazenamento permanente está indisponível. Não feche esta aba.';
+      showSaveHealth();
+      return true;
+    }
+    saveError = 'NÃO FOI POSSÍVEL SALVAR. Mantenha esta aba aberta; a sessão está somente na memória.';
+    showSaveHealth();
+    return false;
+  }
+  function showSaveHealth() {
+    coordinator?.storageChanged?.();
   }
   function save() {
-if(!isCurrentApp())return false;
+if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
 
     try {
       if (typeof checkpointSerial !== "undefined") checkpointSerial++;
@@ -5074,11 +5291,7 @@ if(!isCurrentApp())return false;
       const raw = JSON.stringify(state, (k, v) =>
         validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
       );
-      localStorage.setItem(KEY, packSession(raw));
-      pruneSavedVersions();
-      durableTurn = state.totalTurns;
-      saveError = "";
-      return true;
+      return commitCheckpoint(packSession(raw), state.totalTurns);
     } catch (error) {
       saveError = "SALVAMENTO FALHOU: " + String(error.message || error);
       return false;
@@ -5090,6 +5303,8 @@ if(!isCurrentApp())return false;
   function rawGeometry(weights, mandatory = []) {
     const score = (b) => ({
         ...b,
+        lowMask: Number(b.mask & 0xffffffffn) >>> 0,
+        highMask: Number(b.mask >> 32n),
         value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
       }),
       fives = FIVE.map(score).sort((a, b) => b.value - a.value),
@@ -5098,15 +5313,16 @@ if(!isCurrentApp())return false;
         .sort((a, b) => b.value - a.value);
     let best = null;
     for (const small of threes) {
-      let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
+      let beam = [{ blocks: [small], lowMask: small.lowMask, highMask: small.highMask, score: small.value }];
       for (let step = 0; step < 5; step++) {
         const next = [];
         for (const item of beam)
           for (const b of fives) {
-            if ((item.mask & b.mask) !== 0n) continue;
+            if ((item.lowMask & b.lowMask) !== 0 || (item.highMask & b.highMask) !== 0) continue;
             next.push({
               blocks: [...item.blocks, b],
-              mask: item.mask | b.mask,
+              lowMask: (item.lowMask | b.lowMask) >>> 0,
+              highMask: item.highMask | b.highMask,
               score: item.score + b.value,
             });
           }
@@ -5114,7 +5330,7 @@ if(!isCurrentApp())return false;
         beam = [];
         const seen = new Set();
         for (const item of next) {
-          const k = String(item.mask);
+          const k = item.highMask + ":" + item.lowMask;
           if (seen.has(k)) continue;
           seen.add(k);
           beam.push(item);
@@ -5513,7 +5729,7 @@ if(!isCurrentApp())return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.10",readingCandidates:37,
+          readingVersion:"6.6.12",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -5746,7 +5962,7 @@ if(!isCurrentApp())return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -5780,7 +5996,7 @@ ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.10",
+    const VERSION = "6.6.12",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -6931,13 +7147,13 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.10', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.12', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
     result.profileCache = new Map();
     cache.set(key, result);
-    if (cache.size > 32) cache.delete(cache.keys().next().value);
+    if (cache.size > 4) cache.delete(cache.keys().next().value);
     return result;
   }
 
@@ -7064,7 +7280,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         samples: triples.length,
       };
       triangleCache.set(key, r);
-      if (triangleCache.size > 180)
+      if (triangleCache.size > 64)
         triangleCache.delete(triangleCache.keys().next().value);
       return r;
     }
@@ -7563,7 +7779,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         ],
       };
       rawSpaceCache.set(key, r);
-      if (rawSpaceCache.size > 240)
+      if (rawSpaceCache.size > 80)
         rawSpaceCache.delete(rawSpaceCache.keys().next().value);
       return r;
     }
@@ -7613,9 +7829,9 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.10" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.12" };
       spaceCache.set(key, r);
-      if (spaceCache.size > 120)
+      if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
       return r;
     }
@@ -7811,8 +8027,8 @@ const triangleMemory666 = createTriangleMemory666(W);
           weights[ix(n)] += (b * radius) / 5;
         }
       }
-      return motorReadings667.merge(applySpatial(weights,h,
-      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12);
+      return applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h);
     }
 
     const motorDiversityCache = new Map();
@@ -8087,7 +8303,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.10",readingCandidates:37,
+          readingVersion:"6.6.12",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -9221,7 +9437,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function fresh() {
       return {
-      structuralMemoryVersion: "6.6.10",
+      structuralMemoryVersion: "6.6.12",
       structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
@@ -9233,7 +9449,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         undoStack: [],
         strategy: "MASTER",importAudit:null,
         masterChoice: null,
-        masterHistory: [], masterLessons:[],masterReviews:[],
+        masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
         postLossEnabled: false,
@@ -9318,7 +9534,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         "ledger",
         "autoRows",
         "masterHistory",
-      "masterLessons","masterReviews",])
+      "masterLessons","masterReviews","importReanalyses","reanalysisPolicies",])
         if (!Array.isArray(r[field])) r[field] = [];
       r.totalTurns = Math.max(
         Number(r.totalTurns) || 0,
@@ -9400,8 +9616,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         r.strategy = "TRAINER";
         r.manual = null;
       }
-    if(data.structuralMemoryVersion!=="6.6.10"){
-      r.structuralMemoryVersion="6.6.10";
+    if(data.structuralMemoryVersion!=="6.6.12"){
+      r.structuralMemoryVersion="6.6.12";
       r.block={...r.block,data:null};
     }
 
@@ -9444,7 +9660,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function compactMotor(m) {
-      const result = { readingVersion:"6.6.10", readingCandidates:37,};
+      const result = { readingVersion:"6.6.12", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -9470,42 +9686,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       return { ...motor, play: restoreShape(shape, m.score) };
     }
 
-    function rankBestVariation() {
-      const cutoff = state.historyTurns[0] || 1;
-      const ranked = [];
-      for (const owner of VARIANT_OWNERS)
-        for (let variation = 1; variation <= 8; variation++) {
-          const rows = (
-            state.variantBooks[variantBookId(owner.id, variation)]?.rows || []
-          ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
-          if (!rows.length) continue;
-          const hits = rows.filter((r) => r.entryHit).length,
-            recent = rows.slice(-5);
-          const rate = hits / rows.length;
-          const score =
-            ((hits + (4 * 28) / 37) / (rows.length + 4)) * 0.65 +
-            ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
-              (recent.length + 2)) *
-              0.35;
-          ranked.push({
-            id: variantBookId(owner.id, variation),
-            owner: owner.id,
-            variation,
-            name: owner.name,
-            total: rows.length,
-            hits,
-            rate,
-            score:masterVariationScore(variantBookId(owner.id,variation),score),
-            turn: state.totalTurns,
-          });
-        }
-      return (
-        ranked.sort(
-          (a, b) =>
-            b.score - a.score || b.hits - a.hits || a.id.localeCompare(b.id),
-        )[0] || null
-      );
-    }
+    
 
     function prepareBlock() {
       if (state.history.length < 8) return null;
@@ -9939,7 +10120,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         : null;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.10", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        version: "6.6.12", prefix: [...before].slice(-70), beforeTurn: turn-1,
         candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
         supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -9970,7 +10151,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         motorHits,
         autoRank: played?.autoRank || null,
       });
-      state.totalTurns = turn;
+      if(before.length>=8)validateReanalysisPolicies(before,n,turn);
+    state.totalTurns = turn;
       state.history.push(n);
       state.historyTurns.push(turn);
       state.sources.push(source);
@@ -10025,7 +10207,9 @@ function importNumbersCore(numbers, opts, manualLog = []) {
 state.importAudit=describeImport(clean,opts);
       // A importação cresce até o tamanho escolhido; não descarta seu próprio histórico.
       state.block.size = 0;
-      for (const n of clean) spin(n, "HISTÓRICO");
+      state.importTrainingActive=true;
+    try{for (const n of clean) spin(n, "HISTÓRICO");}
+    finally{state.importTrainingActive=false;}
       state.block = {
         size: clean.length,
         pending: 0,
@@ -10059,28 +10243,14 @@ state.importAudit=describeImport(clean,opts);
       return chooseMotor(def, cs, previous);
     }
 
-    function variationPerformance(owner) {
-      const cutoff = state.historyTurns[0] || 1;
-      const rows = Array.from({ length: 8 }, (_, index) => {
-        const variation = index + 1;
-        const samples = (
-          state.variantBooks[variantBookId(owner, variation)]?.rows || []
-        ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
-        const total = samples.length,
-          hits = samples.filter((r) => r.entryHit).length,
-          recent = samples.slice(-5);
-        const score =
-          ((hits + (4 * 28) / 37) / (total + 4)) * 0.65 +
-          ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
-            (recent.length + 2)) *
-            0.35;
-        return { variation,total,hits,score:masterVariationScore(variantBookId(owner,variation),score),rate:total?hits/total:0 };
-      }).sort(
-        (a, b) =>
-          b.score - a.score || b.hits - a.hits || a.variation - b.variation,
-      );
-      return rows.map((r, i) => ({ ...r, position: i + 1 }));
-    }
+    function variationPerformance(owner){
+    return Array.from({length:8},(_,index)=>{
+      const variation=index+1,stats=masterCandidateStats(variantBookId(owner,variation));
+      return {...stats,variation,hits:stats.direct,rate:stats.total?stats.direct/stats.total:0};
+    }).sort((a,b)=>Number(b.total>0)-Number(a.total>0)||b.score-a.score||a.lossStreak-b.lossStreak||a.variation-b.variation)
+      .map((row,index)=>({...row,position:index+1}));
+  }
+
 
     function timelineDefinitions() {
       return [
@@ -10446,6 +10616,105 @@ state.importAudit=describeImport(clean,opts);
     return timelineMotor(id,block);
   }
 
+  /* Reanálise supervisionada da importação. Hipóteses são definidas pelo
+     prefixo; o resultado conhecido apenas avalia as tentativas depois.
+     O ajuste retrospectivo nunca conta como validação prospectiva. */
+  const REANALYSIS_COMPONENTS = ['triangle','chain','pole','arc','route','recent'];
+  const REANALYSIS_LEVELS = [.35,.55,.75,.90];
+  function reanalysisWeights(prefix, group, level) {
+    const h=prefix.slice(-70), reading=spatialRead(h);
+    const recent=Array(37).fill(.1);
+    for(let age=0;age<h.length;age++){
+      const mass=Math.exp(-age/12);
+      for(let j=0;j<37;j++)recent[j]+=mass*Math.exp(-distance(W[j],h[h.length-1-age])/2);
+    }
+    const components=[...reading.components,normalizeSpace(recent)];
+    const selected=components[group], strength=REANALYSIS_LEVELS[level];
+    const reference=normalizeSpace(reading.weights);
+    return normalizeSpace(reference.map((v,j)=>Math.max(.001,v*(1-strength)+selected[j]*strength)));
+  }
+  function reanalysisKey(group,level){return 'REVIEW:'+group+':'+level;}
+  function validateReanalysisPolicies(prefix,number,turn){
+    for(const policy of state.reanalysisPolicies){
+      if(policy.createdTurn>=turn)continue;
+      const play=geometry(reanalysisWeights(prefix,policy.group,policy.level));
+      if(!validPlay(play))continue;
+      const hit=play.numbers.includes(number);
+      policy.evaluations++;
+      if(hit)policy.hits++;
+      policy.lastEvaluation={beforeTurn:turn-1,turn,number,hit};
+    }
+  }
+  function applyReanalysisMemory(weights,h){
+    if(!state.reanalysisPolicies?.length)return weights;
+    const base=28/37, mean=avg(weights)||1;
+    for(const policy of state.reanalysisPolicies){
+      // Só resultados POSTERIORES à descoberta autorizam influência.
+      if(policy.evaluations<4)continue;
+      const estimate=(policy.hits+base*8)/(policy.evaluations+8);
+      const strength=Math.min(.12,Math.max(0,estimate-base)*policy.evaluations/(policy.evaluations+8));
+      if(!strength)continue;
+      const proposal=reanalysisWeights(h,policy.group,policy.level);
+      for(let j=0;j<37;j++)weights[j]=Math.max(.001,weights[j]+mean*strength*(proposal[j]-1));
+    }
+    return weights;
+  }
+  function reviseImportedMasterLoss(review,turn){
+    if(!review.imported || review.actualResult!=='LOSS')return null;
+    const results=review.observations||[];
+    const entryIndex=results.findIndex(row=>row.phase==='ENTRY');
+    if(entryIndex<0)return null;
+    const entryOutcome=results[entryIndex];
+    const prefix=results[entryIndex].prefix;
+    const attempts=[];let solution=null;
+    // 6 leituras x 4 intensidades. Sem deslocamento escolhido pelo resultado,
+    // sem adicionar o número revelado aos pesos ou como número obrigatório.
+    for(let level=0;level<4&&!solution;level++){
+      for(let group=0;group<6&&!solution;group++){
+        const weights=reanalysisWeights(prefix,group,level);
+        const play=geometry(weights);
+        if(!validPlay(play))continue;
+        let simulated=play.numbers.includes(entryOutcome.number)?'GREEN':null;
+        let defense=null;
+        if(!simulated){
+          const gale=results.slice(entryIndex+1).find(row=>row.phase==='GALE');
+          if(gale){
+            const failureHistory=[...prefix,entryOutcome.number].slice(-70);
+            const original={key:reanalysisKey(group,level),play};
+            // Reconstrói a defesa somente com informação até a falha da entrada.
+            const savedRows=state.g1Rows;
+            state.g1Rows=savedRows.filter(row=>row.turn<entryOutcome.turn);
+            try{
+              const config=review.config;
+              const decision=config.g1Trainer?chooseG1(original,entryOutcome.number,failureHistory,'MASTER')
+                :{motor:config.g1?fineG1(original,entryOutcome.number,failureHistory):original};
+              defense=decision?.motor?.play||play;
+              simulated=defense.numbers.includes(gale.number)?'GREEN G1':'LOSS';
+            }finally{state.g1Rows=savedRows;}
+          }else simulated='LOSS';
+        }
+        const attempt={id:reanalysisKey(group,level),component:REANALYSIS_COMPONENTS[group],
+          group,level,strength:REANALYSIS_LEVELS[level],result:simulated,
+          entryShape:signaturePlay(play),defenseShape:defense?signaturePlay(defense):null};
+        attempts.push(attempt);
+        if(simulated!=='LOSS')solution=attempt;
+      }
+    }
+    const record={id:'REANALYSIS@'+review.turn,turn:review.turn,closedTurn:turn,
+      beforeTurn:review.beforeTurn,originalResult:'LOSS',selectedId:review.selectedId,
+      prefix:[...prefix],observedAfter:results.map(row=>({turn:row.turn,number:row.number,phase:row.phase})),
+      status:solution?'REVISED':'UNSOLVED',result:solution?.result||'LOSS',attempts,
+      solution:solution?{...solution}:null,retrospective:true,validated:false,
+      meaning:'TREINAMENTO REVISADO DEPOIS DO RESULTADO; NÃO É PREVISÃO COMPROVADA'};
+    state.importReanalyses.push(record);
+    state.importReanalyses=state.importReanalyses.slice(-120);
+    if(solution&&!state.reanalysisPolicies.some(policy=>policy.id===solution.id)){
+      state.reanalysisPolicies.push({id:solution.id,group:solution.group,level:solution.level,
+        createdTurn:turn,evaluations:0,hits:0,lastEvaluation:null});
+    }
+    return record;
+  }
+
   function masterLessonStats(id){
     const keys=spatialRead(state.history.slice(-70)).keys;
     let support=0,reward=0,count=0,direct=0,g1=0,loss=0;
@@ -10466,11 +10735,12 @@ state.importAudit=describeImport(clean,opts);
     const definitions=masterDefinitions(block);
     const alternatives=forecasts.filter(f=>f.id!=='POSTLOSS'&&validPlay(f.motor?.play)).map(f=>{
       const definition=definitions.find(d=>d.id===f.id);
-      const motor=definition?.resolvedId?masterCandidateMotor(definition,block):f.motor;
+      const motor=f.motor;
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.10',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.12',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+      imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
       forecastFingerprint:importFingerprint(alternatives.map(a=>[a.id,signaturePlay(a.entry.play)])),
@@ -10512,6 +10782,11 @@ state.importAudit=describeImport(clean,opts);
     }
     const actualStart=oldCycle?.entryTurn||turn;
     for(const review of state.masterReviews){
+      if(review.imported){
+        const first=review.alternatives.find(a=>a.id===review.selectedId)||review.alternatives[0];
+        review.observations.push({turn,number:n,prefix:[...before].slice(-70),
+          phase:first?.phase==='GALE'?'GALE':['ENTRY','SECOND_ENTRY'].includes(first?.phase)?'ENTRY':first?.phase});
+      }
       for(const alternative of review.alternatives)stepMasterAlternative(alternative,review,n,turn,before);
       if(controller==='MASTER'&&review.turn===actualStart&&['GREEN','GREEN G1','LOSS'].includes(result)){
         review.actualResult=result;review.actualClosedTurn=turn;
@@ -10520,6 +10795,7 @@ state.importAudit=describeImport(clean,opts);
     const remaining=[];
     for(const review of state.masterReviews){
       if(!review.actualResult||review.alternatives.some(a=>!a.result)){remaining.push(review);continue;}
+      reviseImportedMasterLoss(review,turn);
       const outcomes={};
       for(const a of review.alternatives)outcomes[a.id]=a.result==='GREEN'?2:a.result==='GREEN G1'?1:0;
       state.masterLessons.push({version:review.version,turn:review.turn,beforeTurn:review.beforeTurn,
@@ -10538,69 +10814,88 @@ state.importAudit=describeImport(clean,opts);
     return baseScore*(1-weight)+lesson.score*weight;
   }
 
-  function masterDefinitions(block=currentBlock()) {
-    const owned=new Set();
-    for(const owner of VARIANT_OWNERS){
-      owned.add(owner.id==='NUMBER'?'NUMBER':'ORIGINAL:'+owner.id);
-      owned.add(owner.id+'@THIRD');
-      for(let variation=1;variation<=8;variation++)owned.add(variantBookId(owner.id,variation));
+    /* Nota comparativa, não probabilidade do próximo giro.
+     GREEN=1; G1 confirmado=.45; G1 pendente=.15; LOSS final=-1.
+     Últimas 5/15/30 entradas pesam 60%/25%/15%, respectivamente.
+     Dentro de cada janela, resultados recentes recebem maior peso.
+     Uma perda pendente nunca é contada como LOSS final. */
+  function masterCandidateStats(id){
+    const rows=timelineSamples(id).filter(row=>Number.isFinite(row.turn)&&row.turn<=state.totalTurns)
+      .slice().sort((a,b)=>a.turn-b.turn).slice(-30);
+    const closed=row=>row.closed&&Number(row.closedTurn??(row.result==='GREEN'?row.turn:Infinity))<=state.totalTurns;
+    const reward=row=>row.result==='GREEN'&&closed(row)?1:closed(row)&&row.result==='GREEN G1'?.45:closed(row)&&row.result==='LOSS'?-1:.15;
+    function windowScore(limit,decay){
+      const sample=rows.slice(-limit);let mass=0,value=0;
+      for(let index=0;index<sample.length;index++){
+        const weight=Math.exp(-(sample.length-1-index)/decay);
+        mass+=weight;value+=weight*reward(sample[index]);
+      }
+      return (value+.5*1.5)/(mass+1.5);
     }
-    const candidates=timelineDefinitions().filter(d=>!['MASTER','POSTLOSS'].includes(d.id)&&!owned.has(d.id));
-    const best=VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id,block)).filter(Boolean);
-    const trainer=candidates.find(d=>d.id==='TRAINER');
-    const trainerBase=trainerBaseDefinition();
-    const owner=trainerBase?.type==='VARIANT'?trainerBase.owner:trainerBase?.rule;
-    const replacement=best.find(d=>d.owner===owner);
-    if(trainer&&replacement){trainer.resolvedId=replacement.id;trainer.scoreId=replacement.id;
-      trainer.name='TREINADOR GLOBAL • '+replacement.name;trainer.owner=replacement.owner;trainer.variation=replacement.variation;}
-    return [...best,...candidates];
+    const finished=rows.filter(closed),recent=rows.slice(-5);
+    const direct=finished.filter(row=>row.result==='GREEN').length;
+    const g1=finished.filter(row=>row.result==='GREEN G1').length;
+    const loss=finished.filter(row=>row.result==='LOSS').length;
+    let lossStreak=0;
+    for(let i=finished.length-1;i>=0&&finished[i].result==='LOSS';i--)lossStreak++;
+    const baseScore=.60*windowScore(5,3)+.25*windowScore(15,10)+.15*windowScore(30,20)-.08*Math.min(3,lossStreak);
+    const lesson=masterLessonStats(id);
+    const feedback=.10*(lesson.score-28/37)*lesson.support/(lesson.support+8);
+    return {total:rows.length,closedTotal:finished.length,direct,g1,loss,hits:direct+g1,
+      pending:rows.length-finished.length,firstMiss:rows.length-direct,lossStreak,
+      recentDirect:recent.filter(row=>closed(row)&&row.result==='GREEN').length,
+      recentG1:recent.filter(row=>closed(row)&&row.result==='GREEN G1').length,
+      recentLoss:recent.filter(row=>closed(row)&&row.result==='LOSS').length,
+      recentPending:recent.filter(row=>!closed(row)).length,
+      score:baseScore+feedback,baseScore,feedback,lesson,
+      weights:{recent5:.60,recent15:.25,last30:.15},
+      rewards:{GREEN:1,GREEN_G1:.45,PENDING_G1:.15,LOSS:-1}};
   }
 
-  /* Todos os candidatos são comparados por ciclos completos sob a mesma fórmula. */
-    function masterRanking(block = currentBlock()) {
-      if (!block) return [];
-    const globalBest=rankBestVariation()||bestMasterVariation(VARIANT_OWNERS[0].id,block);
-      return masterDefinitions(block)
-      .map((def) => {
-          const rows = timelineSamples(def.scoreId||def.id)
-          .filter((r) => r.closed && r.closedTurn <= state.totalTurns)
-            .slice(-30);
-          const direct = rows.filter((r) => r.result === "GREEN").length;
-          const hits = rows.filter((r) => r.result !== "LOSS").length,
-            recent = rows.slice(-5);
-          const recentDirect = recent.filter(
-            (r) => r.result === "GREEN",
-          ).length;
-          const recentLoss = recent.filter((r) => r.result === "LOSS").length,
-            base = 28 / 37;
-          const score =
-            (0.55 * (direct + base * 6)) / (rows.length + 6) +
-            (0.35 * (hits + base * 6)) / (rows.length + 6) +
-            (0.1 * (recentDirect + base * 3)) / (recent.length + 3) -
-            (0.15 * recentLoss) / (recent.length + 3);
-          const motor = masterCandidateMotor(def, block);
-        const lesson=masterLessonStats(def.resolvedId||def.id);
-        const feedback=.20*lesson.support/(lesson.support+8);
-          return {
-            ...def,
-            total: rows.length,
-            direct,
-            hits,
-            loss: rows.length - hits,
-            score:def.performanceScore??(score*(1-feedback)+lesson.score*feedback),baseScore:score,lesson,
-            eligible: validPlay(motor?.play),
-          };
-        })
-        .filter((d) => d.eligible)
-        .sort(
-          (a, b) =>
-            Number(b.id===globalBest?.id)-Number(a.id===globalBest?.id)||b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
-        );
+  function masterDefinitions(block=currentBlock()){
+    // O controlador MASTER não se compara consigo mesmo. Pós-loss continua
+    // como prioridade independente sobre a escolha normal, quando ativado.
+    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS'].includes(def.id));
+  }
+
+  function masterRanking(block=currentBlock()){
+    if(!block)return [];
+    return masterDefinitions(block).map(def=>{
+      const motor=timelineMotor(def.id,block);
+      return {...def,...masterCandidateStats(def.id),eligible:validPlay(motor?.play)};
+    }).filter(def=>def.eligible).sort((a,b)=>
+      Number(b.total>0)-Number(a.total>0)||b.score-a.score||
+      a.lossStreak-b.lossStreak||b.recentDirect-a.recentDirect||b.closedTotal-a.closedTotal||a.id.localeCompare(b.id));
+  }
+
+  function rankBestVariation(){
+    const block=currentBlock();
+    if(block)return masterRanking(block)[0]||null;
+    // Durante o processamento não usa uma cobertura do giro anterior.
+    return null;
+  }
+
+  function displayedMasterChoice(){
+    const cycle=state.cycle;
+    if(cycle?.controller==='MASTER'){
+      const target=cycle.original?.postLossTarget||cycle.original?.masterTarget;
+      if(target)return {...target,...masterCandidateStats(target.id),committed:true};
     }
+    if(state.strategy==='MASTER'&&state.phase==='ENTRY'){
+      const priority=priorityRecoveryChoice(currentBlock());
+      if(priority?.motor?.postLossTarget){
+        const target=priority.motor.postLossTarget;
+        return {...target,...masterCandidateStats(target.id),priority:true};
+      }
+    }
+    return state.block.best;
+  }
+
 
     function updateMaster(block = currentBlock()) {
       const best = masterRanking(block)[0];
       if (!best) return;
+    state.block.best=copy(best);
       if (state.masterChoice !== best.id) {
         state.masterHistory.push({
           turn: state.totalTurns,
@@ -10803,6 +11098,8 @@ state.importAudit=describeImport(clean,opts);
     function rawGeometry(weights, mandatory = []) {
       const score = (b) => ({
           ...b,
+          lowMask: Number(b.mask & 0xffffffffn) >>> 0,
+          highMask: Number(b.mask >> 32n),
           value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
         }),
         fives = FIVE.map(score).sort((a, b) => b.value - a.value),
@@ -10811,15 +11108,16 @@ state.importAudit=describeImport(clean,opts);
           .sort((a, b) => b.value - a.value);
       let best = null;
       for (const small of threes) {
-        let beam = [{ blocks: [small], mask: small.mask, score: small.value }];
+        let beam = [{ blocks: [small], lowMask: small.lowMask, highMask: small.highMask, score: small.value }];
         for (let step = 0; step < 5; step++) {
           const next = [];
           for (const item of beam)
             for (const b of fives) {
-              if ((item.mask & b.mask) !== 0n) continue;
+              if ((item.lowMask & b.lowMask) !== 0 || (item.highMask & b.highMask) !== 0) continue;
               next.push({
                 blocks: [...item.blocks, b],
-                mask: item.mask | b.mask,
+                lowMask: (item.lowMask | b.lowMask) >>> 0,
+              highMask: item.highMask | b.highMask,
                 score: item.score + b.value,
               });
             }
@@ -10827,7 +11125,7 @@ state.importAudit=describeImport(clean,opts);
           beam = [];
           const seen = new Set();
           for (const item of next) {
-            const k = String(item.mask);
+            const k = item.highMask + ":" + item.lowMask;
             if (seen.has(k)) continue;
             seen.add(k);
             beam.push(item);
@@ -11232,7 +11530,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.10",readingCandidates:37,
+          readingVersion:"6.6.12",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -11490,11 +11788,19 @@ state.importAudit=describeImport(clean,opts);
           self.postMessage({ id: data.id, variants });
           return;
         }
+        const before = undoSnapshot();
         spin(data.number, "TEMPO REAL");
-        if (!state.block.data && state.history.length >= 8) {
-          await prepareBlockParallel();
-        }
-        self.postMessage({ id: data.id, kind: "FINAL", state });
+        if (!state.block.data && state.history.length >= 8) await prepareBlockParallel();
+        const row = state.ledger.at(-1);
+        state.manualLog.push({
+          id: Date.now()+"_"+state.totalTurns,turn:state.totalTurns,number:data.number,
+          result:row.result,profit:row.profit,strategy:row.strategy,motor:row.motor,
+          phase:row.phase,controller:row.controller,masterTarget:copy(row.masterTarget),
+          playRoute:row.playRoute,postLossTarget:copy(row.postLossTarget),timestamp:Date.now()
+        });
+        state.manualCount++;
+        const undoOps=inverseChanges(before,undoSnapshot());
+        self.postMessage({ id:data.id, kind:'SPIN', state, undoOps });
       } catch (error) {
         self.postMessage({
           id: data.id,
@@ -11565,7 +11871,7 @@ state.importAudit=describeImport(clean,opts);
     return { total: closed.length, green, g1, loss, net };
   }
   const css = `
-*{box-sizing:border-box}body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}.app{max-width:1100px;margin:auto;padding:12px}h1{font-size:24px;text-align:center;color:#59e5ff;margin:15px 0 5px}.sub{text-align:center;font-size:11px;color:#b3c7d9;line-height:1.7;margin-bottom:15px}.panel{background:#1d2938;border:1px solid #405a73;border-radius:11px;padding:12px;margin:10px 0}.title{color:#47e1f8;font-size:12px;font-weight:bold;margin:13px 0}.row{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}.btn{background:#304359;border:1px solid #708aa6;border-radius:7px;color:white;padding:10px;font-size:11px;font-weight:bold;cursor:pointer}.btn.active{background:#087e9c;border-color:#4eeaff}.btn.trainer{background:#263f4c;border-color:#4d8191}.btn.trainer.active,.btn.trainer.on{background:#086c4d;border:2px solid #42ffb0;box-shadow:0 0 13px #27e99a77,inset 0 0 8px #27e99a33}.btn.number.active{background:#705200;border:2px solid #ffdf60;box-shadow:0 0 16px #ffce3677}.btn.number10.active{background:#512884;border:2px solid #d6a3ff;box-shadow:0 0 16px #ae67ff77}.btn:disabled,.key:disabled{opacity:.35;cursor:not-allowed}textarea{width:100%;height:88px;padding:10px;border-radius:8px;background:#0c1623;border:1px solid #62758b;color:white}.status{font-size:12px;color:#b5d7e8;padding:9px 0;overflow-wrap:anywhere}.windowBox{background:#102b2c;border:1px solid #32bba2;border-radius:9px;padding:12px;margin:10px 0}.windowBox strong{font-size:27px;color:#54f0c3}.bar{height:10px;background:#34475a;border-radius:20px;overflow:hidden;margin:10px 0}.barfill{height:100%;background:#31dca9}.centers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:12px 0}.center{min-height:86px;min-width:0;padding:8px 2px;border:2px solid #20d7f4;border-radius:9px;background:#086c91;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}.center.short{background:#d2a62b;border-color:#ffe28a;color:#111}.center strong{font-size:clamp(27px,5vw,43px);line-height:1;font-weight:900}.center small{font-size:9px;font-weight:bold}.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.key{height:44px;border:1px solid #71849b;border-radius:7px;color:white;font-size:16px;font-weight:bold;cursor:pointer}.key.zero{grid-column:span 6}.history{display:flex;flex-wrap:wrap;gap:5px}.chip{min-width:47px;padding:8px;border:2px solid #667f99;border-radius:7px;text-align:center}.chip b{display:block;font-size:18px}.chip small{font-size:9px}.chip.green{border:3px solid #29e99a}.chip.loss{border:3px solid #ff416e}.chip.gale{border:3px solid #ffe045}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.metric{background:#293c51;border-radius:8px;padding:11px 5px;text-align:center}.metric small{display:block;font-size:9px;color:#bbd0e2}.metric b{display:block;font-size:22px;margin-top:5px}.good{color:#4ee4a4}.bad{color:#ff778c}.box{background:#132235;border:1px solid #46617d;border-radius:9px;padding:12px;margin:9px 0;line-height:1.7;overflow-wrap:anywhere}.g1card{background:#142438;border:1px solid #55728f;border-radius:9px;padding:12px;margin:9px 0}.g1card.selected{border:2px solid #38e6aa;background:#10382e}.cloud{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}.cloud span{display:inline-flex;min-width:36px;height:36px;align-items:center;justify-content:center;background:#2b4058;border:1px solid #64829f;border-radius:7px;font-weight:bold}.cloud span.danger{background:#69283e;border-color:#ff6989}.tablewrap{overflow:auto}table{width:100%;min-width:610px;border-collapse:collapse;font-size:11px}td,th{padding:9px;text-align:left;border-bottom:1px solid #41556e}th{color:#57def4}.listrow{border-bottom:1px solid #35485d;padding:9px 2px;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.muted{color:#b1c7d9;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.head{width:100%;background:#2c4056;color:white;border:1px solid #66829f;border-radius:8px;padding:12px;font-weight:bold;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px}.hide{display:none}input[type=number]{width:110px;padding:9px;background:#101b2a;color:white;border:1px solid #637b95;border-radius:7px}select{padding:10px;background:#101b2a;color:white;border:1px solid #8d6eb0;border-radius:7px;max-width:100%}.play10{position:relative;min-height:86px}#centers{position:relative}.reject10{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:3;background:#d20b2b;color:white;border:2px solid #ff8c9c;text-align:center;font-size:clamp(19px,5vw,31px);font-weight:900;padding:8px 4px;box-shadow:0 3px 18px #000b;pointer-events:none}.reject10 small{display:block;font-size:10px;line-height:1.4;margin-top:3px}.triangleDrawing{max-width:540px;margin:10px auto}.triangleDrawing svg{display:block;width:100%;height:auto}@media(max-width:600px){.center{min-height:79px}.center strong{font-size:clamp(25px,7vw,37px)}.center small{font-size:8px}.btn{font-size:10px;padding:9px}}
+*{box-sizing:border-box}body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}.app{max-width:1100px;margin:auto;padding:12px}h1{font-size:24px;text-align:center;color:#59e5ff;margin:15px 0 5px}.sub{text-align:center;font-size:11px;color:#b3c7d9;line-height:1.7;margin-bottom:15px}.panel{background:#1d2938;border:1px solid #405a73;border-radius:11px;padding:12px;margin:10px 0}.title{color:#47e1f8;font-size:12px;font-weight:bold;margin:13px 0}.row{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}.btn{background:#304359;border:1px solid #708aa6;border-radius:7px;color:white;padding:10px;font-size:11px;font-weight:bold;cursor:pointer}.btn.active{background:#087e9c;border-color:#4eeaff}.btn.trainer{background:#263f4c;border-color:#4d8191}.btn.trainer.active,.btn.trainer.on{background:#086c4d;border:2px solid #42ffb0;box-shadow:0 0 13px #27e99a77,inset 0 0 8px #27e99a33}.btn.number.active{background:#705200;border:2px solid #ffdf60;box-shadow:0 0 16px #ffce3677}.btn.number10.active{background:#512884;border:2px solid #d6a3ff;box-shadow:0 0 16px #ae67ff77}.btn:disabled,.key:disabled{opacity:.35;cursor:not-allowed}textarea{width:100%;height:88px;padding:10px;border-radius:8px;background:#0c1623;border:1px solid #62758b;color:white}.status{font-size:12px;color:#b5d7e8;padding:9px 0;overflow-wrap:anywhere}.windowBox{background:#102b2c;border:1px solid #32bba2;border-radius:9px;padding:12px;margin:10px 0}.windowBox strong{font-size:27px;color:#54f0c3}.bar{height:10px;background:#34475a;border-radius:20px;overflow:hidden;margin:10px 0}.barfill{height:100%;background:#31dca9}.centers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:12px 0}.center{min-height:86px;min-width:0;padding:8px 2px;border:2px solid #20d7f4;border-radius:9px;background:#086c91;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}.center.short{background:#d2a62b;border-color:#ffe28a;color:#111}.center strong{font-size:clamp(27px,5vw,43px);line-height:1;font-weight:900}.center small{font-size:9px;font-weight:bold}.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.key{touch-action:manipulation;height:44px;border:1px solid #71849b;border-radius:7px;color:white;font-size:16px;font-weight:bold;cursor:pointer}.key.zero{grid-column:span 6}.history{display:flex;flex-wrap:wrap;gap:5px}.chip{min-width:47px;padding:8px;border:2px solid #667f99;border-radius:7px;text-align:center}.chip b{display:block;font-size:18px}.chip small{font-size:9px}.chip.green{border:3px solid #29e99a}.chip.loss{border:3px solid #ff416e}.chip.gale{border:3px solid #ffe045}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.metric{background:#293c51;border-radius:8px;padding:11px 5px;text-align:center}.metric small{display:block;font-size:9px;color:#bbd0e2}.metric b{display:block;font-size:22px;margin-top:5px}.good{color:#4ee4a4}.bad{color:#ff778c}.box{background:#132235;border:1px solid #46617d;border-radius:9px;padding:12px;margin:9px 0;line-height:1.7;overflow-wrap:anywhere}.g1card{background:#142438;border:1px solid #55728f;border-radius:9px;padding:12px;margin:9px 0}.g1card.selected{border:2px solid #38e6aa;background:#10382e}.cloud{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}.cloud span{display:inline-flex;min-width:36px;height:36px;align-items:center;justify-content:center;background:#2b4058;border:1px solid #64829f;border-radius:7px;font-weight:bold}.cloud span.danger{background:#69283e;border-color:#ff6989}.tablewrap{overflow:auto}table{width:100%;min-width:610px;border-collapse:collapse;font-size:11px}td,th{padding:9px;text-align:left;border-bottom:1px solid #41556e}th{color:#57def4}.listrow{border-bottom:1px solid #35485d;padding:9px 2px;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.muted{color:#b1c7d9;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.head{width:100%;background:#2c4056;color:white;border:1px solid #66829f;border-radius:8px;padding:12px;font-weight:bold;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px}.hide{display:none}input[type=number]{width:110px;padding:9px;background:#101b2a;color:white;border:1px solid #637b95;border-radius:7px}select{padding:10px;background:#101b2a;color:white;border:1px solid #8d6eb0;border-radius:7px;max-width:100%}.play10{position:relative;min-height:86px}#centers{position:relative}.reject10{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:3;background:#d20b2b;color:white;border:2px solid #ff8c9c;text-align:center;font-size:clamp(19px,5vw,31px);font-weight:900;padding:8px 4px;box-shadow:0 3px 18px #000b;pointer-events:none}.reject10 small{display:block;font-size:10px;line-height:1.4;margin-top:3px}.triangleDrawing{max-width:540px;margin:10px auto}.triangleDrawing svg{display:block;width:100%;height:auto}@media(max-width:600px){.center{min-height:79px}.center strong{font-size:clamp(25px,7vw,37px)}.center small{font-size:8px}.btn{font-size:10px;padding:9px}}
 `;
   const variationUINodes = new Map();
   const timelineUINodes = new Map();
@@ -11760,7 +12066,7 @@ state.importAudit=describeImport(clean,opts);
 
   function metricsHTML(rows) {
     const m = metrics(rows),
-      best = state.block.best;
+      best = displayedMasterChoice();
     return (
       '<div class="metrics">' +
       [
@@ -11770,17 +12076,11 @@ state.importAudit=describeImport(clean,opts);
         ["LOSS", m.loss],
         ["ACERTOS", pct(m.green + m.g1, m.total)],
         [
-          "MELHOR VARIAÇÃO",
-          best
-            ? esc(best.name) +
-              " • V" +
-              best.variation +
-              "<small>" +
-              pct(best.hits, best.total) +
-              " DIRETO • " +
-              best.total +
-              " TESTES</small>"
-            : "AGUARDANDO TESTES",
+          best?.committed?"MASTER NO CICLO":best?.priority?"PRIORIDADE PÓS-LOSS":"INDICAÇÃO MASTER",
+          best?esc(best.name)+"<small>"+
+            (best.total?"ÚLTIMAS 5: W "+best.recentDirect+" • G1 "+best.recentG1+" • R "+best.recentLoss+
+              (best.recentPending?" • EM G1 "+best.recentPending:""):"ESCOLHA INICIAL • SEM AVALIAÇÕES")+
+            "</small>":"AGUARDANDO HISTÓRICO",
         ],
       ]
         .map(
@@ -11796,15 +12096,17 @@ state.importAudit=describeImport(clean,opts);
     );
   }
 
+  let renderStatsCache = null;
   function render() {
 if(!isCurrentApp())return;
+    renderStatsCache = new Map();
 
     try {performRender();coordinator.render?.();
     } catch (error) {
       console.error(error);
       if ($("status"))
         $("status").textContent = "ERRO: " + String(error.message || error);
-    }
+    } finally { renderStatsCache = null; }
   }
 
   function performRender() {
@@ -11922,11 +12224,11 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     renderLastNumbers();
     $("general").hidden = !state.open.general;
     if (state.open.general) {
-      $("general").innerHTML =
+      patchHTML($("general"),
         '<div class="title">RESULTADOS DA JANELA</div>' +
         resultsSeparatedHTML(state.ledger) +
         '<div class="title">MANUAIS ARQUIVADOS</div>' +
-        resultsSeparatedHTML(state.manualLog);
+        resultsSeparatedHTML(state.manualLog)+reanalysisSummaryHTML());
     }
     const target =
       state.cycle?.original?.postLossTarget || motor?.postLossTarget;
@@ -11992,7 +12294,7 @@ if(!isCurrentApp())return;
     render();
   }
 
-  function workerRequest(action, payload, onPreview = null) {
+  function workerRequest(action, payload) {
     if (typeof Worker === "undefined" || workerDisabled)
       return Promise.resolve(null);
     return new Promise((resolve, reject) => {
@@ -12012,13 +12314,9 @@ if(!isCurrentApp())return;
             const message = event.data,
               request = clientRequests.get(message.id);
             if (!request) return;
-            if (message.kind === "PREVIEW") {
-              request.onPreview?.(message.state);
-              return;
-            }
             clientRequests.delete(message.id);
             if (message.error) request.reject(Error(message.error));
-            else request.resolve(message.state);
+            else request.resolve(message.kind === 'SPIN' ? {state:message.state,undoOps:message.undoOps} : message.state);
           };
           workerClient.onerror = () => {
             workerDisabled = true;
@@ -12030,7 +12328,7 @@ if(!isCurrentApp())return;
           };
         }
         const id = ++clientSequence;
-        clientRequests.set(id, { resolve, reject, onPreview });
+        clientRequests.set(id, { resolve, reject });
         workerClient.postMessage({ id, action, ...payload });
       } catch (error) {
         workerDisabled = true;
@@ -12062,6 +12360,7 @@ if(!isCurrentApp())return;
       if (result) state = normalizeState(result);
       else importNumbersCore(numbers, opts, customManualLog || []);
       clearSpatialCaches();
+      recoveryLocked = false;
       save();
       persistPendingInputs();
     } catch (error) {
@@ -12082,38 +12381,39 @@ if(!isCurrentApp())return;
     }
     inputQueue.push(n);
     pendingReceipts.push(n);
-    persistPendingInputs();
     renderLastNumbers();
-    $("receipt").textContent =
-      "NÚMERO " +
-      n +
-      " RECEBIDO" +
-      (inputQueue.length > 1 ? " • FILA " + inputQueue.length : "");
+    persistPendingInputs();
+
     drainInputQueue();
   }
 
   async function drainInputQueue() {
     if (inputRunning || !inputQueue.length) return;
     inputRunning = true;
-    setBusy(true);
+    busy=true;
     clearTimeout(saveTimer);
     const number = inputQueue.shift(),
       oldUndo = state.undoStack;
     await new Promise((resolve) => setTimeout(resolve, 0));
-    const before = undoSnapshot();
+    const previousState = state;
+    let before = null;
     const started = performance.now();
     try {
       const result = await workerRequest("SPIN", {
         number,
         state: { ...state, undoStack: [] },
       });
-      if (result) state = { ...result, undoStack: oldUndo };
+      if (result) state = { ...result.state, undoStack: oldUndo };
       else {
+        before = undoSnapshot();
         spin(number, "TEMPO REAL");
         prepareBlock();
       }
       clearRuntimeCaches();
       const row = state.ledger.at(-1);
+      if (result) {
+        state.undoStack.push({turn:state.totalTurns, number, ops:result.undoOps});
+      } else {
       state.manualLog.push({
         id: Date.now() + "_" + state.totalTurns,
         turn: state.totalTurns,
@@ -12135,12 +12435,13 @@ if(!isCurrentApp())return;
         number,
         ops: inverseChanges(before, undoSnapshot()),
       });
+      }
       state.undoStack = state.undoStack.slice(-70);
       lastInputMs = performance.now() - started;
       pendingReceipts.shift();
       persistPendingInputs();
     } catch (error) {
-      state = { ...before, undoStack: oldUndo };
+      state = before ? { ...before, undoStack: oldUndo } : previousState;
       clearSpatialCaches();
       inputQueue = [];
       pendingReceipts = [];
@@ -12148,12 +12449,10 @@ if(!isCurrentApp())return;
       alert("ERRO AO INSERIR NÚMERO: " + String(error.message || error));
     } finally {
       inputRunning = false;
-      setBusy(false);
+      busy=false;
       render();
       saveAsync();
-      $("receipt").textContent = inputQueue.length
-        ? "FILA: " + inputQueue.join(" • ")
-        : "ÚLTIMO NÚMERO REGISTRADO: " + number;
+
       if (inputQueue.length) drainInputQueue();
     }
   }
@@ -12181,6 +12480,7 @@ if(!isCurrentApp())return;
 
   function clearSide() {
     if (busy || !confirm("ZERAR HISTÓRICO, TREINADORES E REGISTROS?")) return;
+    recoveryLocked = false;
     state = fresh();
     clearSpatialCaches();
     save();
@@ -12235,6 +12535,30 @@ if(!isCurrentApp())return;
     }
   }
 
+  function reanalysisSummaryHTML(){
+    const rows=state.importReanalyses||[];
+    if(!rows.length)return '';
+    const solved=rows.filter(row=>row.status==='REVISED').length;
+    return '<div class="title">REANÁLISE DA IMPORTAÇÃO • RETROSPECTIVA</div><div class="muted">'+
+      solved+' revisões com acerto simulado • '+(rows.length-solved)+' sem solução nas 24 hipóteses. '+
+      'Resultados originais preservados; ajustes só influenciam motores após avaliações posteriores.</div>';
+  }
+  function renderReanalysisLane(ui){
+    if(!ui.reviewCells){
+      const label=document.createElement('div');label.className='muted';
+      label.textContent='REVISÃO DA IMPORTAÇÃO • APÓS CONHECER O RESULTADO';
+      ui.reviewCells=document.createElement('div');ui.reviewCells.className='timelineCells';
+      ui.item.appendChild(label);ui.item.appendChild(ui.reviewCells);
+    }
+    patchHTML(ui.reviewCells,(state.importReanalyses||[]).slice(-20).map(row=>{
+      const solved=row.status==='REVISED',direct=row.result==='GREEN';
+      const text=solved?(direct?'W*':'G1*'):'?';
+      const title='GIRO '+row.turn+' • LOSS original • '+row.attempts.length+' tentativas • '+
+        (solved?'AJUSTE RETROSPECTIVO: '+row.solution.component:'SEM SOLUÇÃO ENCONTRADA');
+      return '<span class="wlCell '+(solved?(direct?'wlWin':'wlGale'):'wlLoss')+'" title="'+esc(title)+'">'+text+'</span>';
+    }).join('')||'<span class="muted">SEM LOSS IMPORTADO PARA REVISAR</span>');
+  }
+
   function renderTimelinePanel() {
     const root = $("timelines");
     if (!root) return;
@@ -12270,6 +12594,7 @@ if(!isCurrentApp())return;
     for (const def of definitions) {
       const rows = timelineSamples(def.id).slice(-20),
         ui = timelineUINodes.get(def.id);
+      if(def.id==='MASTER')renderReanalysisLane(ui);
       const signature = rows
         .map((r) => r.turn + ":" + r.result + ":" + r.closed)
         .join(",");
@@ -12412,7 +12737,6 @@ if(!isCurrentApp())return;
         b.style.background =
           n === 0 ? "#087b50" : RED.has(n) ? "#ac293f" : "#12151b";
         b.onclick = () => {
-          $("focusReceipt").textContent = "NÚMERO " + n + " RECEBIDO";
           addManual(n);
         };
         $("focusKeys").appendChild(b);
@@ -12465,6 +12789,7 @@ if(!isCurrentApp())return;
   }
 
   let pendingReceipts = [];
+  let bootLoading = true;
 
   function patchHTML(element, html) {
     if (element && element.innerHTML !== html) element.innerHTML = html;
@@ -12511,30 +12836,35 @@ if(!isCurrentApp())return;
     patchHTML($("focusLast"), html);
   }
 
+  let queueRevision = 0;
   function persistPendingInputs() {
-if(!isCurrentApp())return;
-
-    try {
-      localStorage.setItem(
-        KEY + "_QUEUE",
-        JSON.stringify({
-          baseTurn: durableTurn,
-          numbers: state.manualLog
-            .filter((r) => r.turn > durableTurn)
-            .map((r) => r.number)
-            .concat(pendingReceipts),
-        }),
-      );
-    } catch (error) {
-      saveError =
-        "SALVAMENTO DA FILA FALHOU: " + String(error.message || error);
+    if(!isCurrentApp() || bootLoading || recoveryLocked)return;
+    queueRevision = Math.max(queueRevision+1,Date.now()*1000);
+    const journal = JSON.stringify({
+      revision:queueRevision, baseTurn:durableTurn,
+      numbers:state.manualLog.filter(row=>row.turn>durableTurn).map(row=>row.number).concat(pendingReceipts)
+    });
+    let saved=false;
+    for(const [storage,name] of [
+      [()=>localStorage,KEY+'_QUEUE'],
+      [()=>typeof sessionStorage==='undefined'?null:sessionStorage,KEY+'_QUEUE_SAFE']
+    ]){
+      try { const target=storage();if(target){target.setItem(name,journal);saved=true;} } catch(error) {}
     }
+    if(!saved){saveError='Não foi possível salvar o número recebido. Mantenha a aba aberta até concluir o processamento.';showSaveHealth();}
   }
   function resumePendingInputs() {
     try {
-      const journal = JSON.parse(
-        localStorage.getItem(KEY + "_QUEUE") || "null",
-      );
+      const journals=[];
+      for(const [storage,name] of [
+        [()=>localStorage,KEY+'_QUEUE'],
+        [()=>typeof sessionStorage==='undefined'?null:sessionStorage,KEY+'_QUEUE_SAFE']
+      ]){
+        try { const value=JSON.parse(storage()?.getItem(name)||'null');if(value)journals.push(value); } catch(error) {}
+      }
+      journals.sort((a,b)=>(b.revision||0)-(a.revision||0));
+      const journal=journals[0];
+      queueRevision=Math.max(queueRevision,journal?.revision||0);
       if (
         !journal ||
         !Number.isInteger(journal.baseTurn) ||
@@ -12563,7 +12893,7 @@ if(!isCurrentApp())return;
     checkpointNext = null,
     checkpointEpoch = 0;
   function saveAsync() {
-if(!isCurrentApp())return;
+if(!isCurrentApp() || recoveryLocked)return;
 
     if (typeof Worker === "undefined") {
       scheduleCheckpointFallback();
@@ -12588,11 +12918,7 @@ if(!isCurrentApp())return;
             if (result.error) saveError = result.error;
             else
               try {
-                localStorage.setItem(KEY, result.packed);
-                pruneSavedVersions();
-                durableTurn = result.turn;
-                saveError = "";
-                persistPendingInputs();
+                if (commitCheckpoint(result.packed, result.turn)) persistPendingInputs();
               } catch (error) {
                 saveError =
                   "SALVAMENTO FALHOU: " + String(error.message || error);
@@ -12789,37 +13115,56 @@ if(!isCurrentApp())return;
     render();
   };
 
-  for (const key of [KEY, ...OLD_KEYS]) {
-    const data = read(key);
-    if (data && Array.isArray(data.history)) {
-      state = normalizeState(data);
-      if (key !== KEY) state.undoStack = [];
-      break;
-    }
-  }
-  durableTurn = state.totalTurns;
-  render();
-  if (state.history.length >= 8 && !state.block.data) {
-    setBusy(true, "PREPARANDO HISTÓRICO");
-    setTimeout(async () => {
-      try {
-        const result = await workerRequest("RESTORE", {
-          state: { ...state, undoStack: [] },
-        });
-        if (result) {
-          const stack = state.undoStack;
-          state = { ...result, undoStack: stack };
-        } else prepareBlock();
-        save();
-      } catch (error) {
-        $("status").textContent = "ERRO: " + String(error.message || error);
-      } finally {
+  async function restoreBootSession() {
+    setBusy(true, 'RECUPERANDO SESSÃO');
+    try {
+      let recovered = read(KEY);
+      const databaseRaw = await readDatabaseCheckpoint();
+      if (!isCurrentApp()) return;
+      if (databaseRaw) {
+        try {
+          const saved = checkpointValue(databaseRaw);
+          if (Array.isArray(saved.data?.history) && (!recovered || saved.revision > sessionRevision)) {
+            recovered = saved.data;
+            sessionRevision = saved.revision;
+            recoveryLocked = false;
+            saveError = '';
+          }
+        } catch (error) {
+          if (!recovered) {
+            recoveryLocked = true;
+            saveError = 'Não foi possível ler a sessão. As cópias existentes foram protegidas.';
+          }
+        }
+      }
+      if (!recovered && !recoveryLocked) {
+        for (const key of OLD_KEYS) {
+          recovered = read(key);
+          if (recovered) { recovered.undoStack = []; break; }
+        }
+      }
+      if (recovered) state = normalizeState(recovered);
+      durableTurn = state.totalTurns;
+      render();
+      if (state.history.length >= 8 && !state.block.data) {
+        const result = await workerRequest('RESTORE', {state:{...state,undoStack:[]}});
+        if (!isCurrentApp()) return;
+        if (result) state = {...result,undoStack:state.undoStack};
+        else prepareBlock();
+      }
+    } catch (error) {
+      saveError = 'RECUPERAÇÃO NÃO CONCLUÍDA: '+String(error.message||error);
+      recoveryLocked = true;
+    } finally {
+      bootLoading = false;
+      if (isCurrentApp()) {
         setBusy(false);
         render();
-        resumePendingInputs();
+        if (!recoveryLocked) resumePendingInputs();
       }
-    }, 0);
-  } else resumePendingInputs();
+    }
+  }
+  restoreBootSession();
   sideWindowAdd("pagehide", () => {
     clearTimeout(saveTimer);
     checkpointSerial++;
@@ -12865,7 +13210,7 @@ return {
  poleCatalogue(){return motorReadings667.polePairs.map(pair=>({...pair}));},
  poleReading(number,numberA,numberB,tolerance){return motorReadings667.polePairReading(state.history.map(ix),ix(number),ix(numberA),ix(numberB),tolerance);},
  arcReading(number,start,width,window=8){return motorReadings667.arcAlternative(state.history,number,start,width,window);},
- masterDiagnostics(){return {choice:copy(masterSelection()),ranking:copy(masterRanking()),bestVariations:VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id)),lessons:copy(state.masterLessons),pendingReviews:state.masterReviews.length};},
+ masterDiagnostics(){return {reanalyses:copy(state.importReanalyses),policies:copy(state.reanalysisPolicies),display:copy(displayedMasterChoice()),choice:copy(masterSelection()),ranking:copy(masterRanking()),bestVariations:VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id)),lessons:copy(state.masterLessons),pendingReviews:state.masterReviews.length};},
  getState:()=>state,
  busy:()=>busy||inputRunning||inputQueue.length>0,
  canEnqueue:()=>appAlive&&state.history.length>=8&&(!busy||inputRunning),
@@ -12876,12 +13221,13 @@ return {
  },
  undoLocal(){undoSide();},
  clearLocal(){
-  state=fresh();clearSpatialCaches();save();pendingReceipts=[];inputQueue=[];persistPendingInputs();render();
+  recoveryLocked=false;state=fresh();clearSpatialCaches();save();pendingReceipts=[];inputQueue=[];persistPendingInputs();render();
  },
  async restoreLocal(){await $('restore').onclick();},
  snapshot:()=>copy(state),
  rollback(snapshot){state=normalizeState(copy(snapshot));clearSpatialCaches();save();persistPendingInputs();render();},
  saveLocal(){return save();},
+ storageHealth(){return saveError;},
  dispose(){
   sideDispose();
   for(const [target,type,handler,options] of sideListeners)target.removeEventListener(type,handler,options);
@@ -12948,7 +13294,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.10</h1>
+<h1>ANÁLISE BETA 6.6.12</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
@@ -12956,6 +13302,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 <button type="button" id="dual-import">IMPORTAR</button><button type="button" id="dual-undo">APAGAR ÚLTIMO</button><button type="button" id="dual-restore">RECUPERAR</button><button type="button" id="dual-clear">ZERAR TUDO</button>
 </div>
 <div class="dual-status" id="dual-status" role="status" aria-live="polite">Duas leituras independentes • um teclado.</div>
+<div id="dual-save-health" class="dual-status" role="alert" hidden></div>
 <details class="audit-details"><summary>Conferir importação e janela</summary><div id="dual-audit-normal"></div><div id="dual-audit-inverted"></div></details>
 </section>
 <section class="panel">
@@ -12987,7 +13334,7 @@ ui('dual-order').onchange=()=>{try{localStorage.setItem(stateKey,ui('dual-order'
 function both(){return [sides.NORMAL,sides.INVERTIDO].filter(Boolean);}
 function running(){return operation||both().some(s=>s.busy());}
 function updateButtons(){
- const blocked=running();
+ const blocked=operation;
  for(const id of ['dual-import','dual-undo','dual-restore','dual-clear'])ui(id).disabled=blocked;
  for(const id of ['dual-controls-normal','dual-controls-inverted','dual-plays','dual-keyboard','dual-timelines'])ui(id).inert=operation;
 }
@@ -13062,7 +13409,7 @@ const coordinator={
   if(!alive||operation||!aligned)return false;
   if(!Number.isInteger(n)||n<0||n>36)return false;
   if(both().length!==2||both().some(s=>!s.canEnqueue())){status('AGUARDE A PREPARAÇÃO DOS DOIS CONJUNTOS OU IMPORTE UM HISTÓRICO.');return false;}
-  expectedTurn++;status('NÚMERO '+n+' RECEBIDO NOS DOIS CONJUNTOS');
+  expectedTurn++;
   for(const side of both())side.enqueue(n);
   updateButtons();watchNumbers();return true;
  },
@@ -13084,7 +13431,13 @@ const coordinator={
    await idle();if(alive&&checkAlignment())status('DUAS SESSÕES RECUPERADAS • GIRO '+expectedTurn);
   }finally{operation=false;if(alive)updateButtons();}
  },
- render(){if(unifiedReady)pairTimelines();},
+ storageChanged(){
+  if(!unifiedReady)return;
+  const warnings=both().map(s=>s.storageHealth()).filter(Boolean);
+  ui('dual-save-health').textContent=[...new Set(warnings)].join(' • ');
+  ui('dual-save-health').hidden=!warnings.length;
+ },
+ render(){if(unifiedReady){pairTimelines();this.storageChanged();}},
  busy:running,prepareHistories,inputNumbers
 };
 for(const [side,id] of [['NORMAL','dual-normal'],['INVERTIDO','dual-inverted']]){
