@@ -1,23 +1,41 @@
-/* ANÁLISE BETA V6.6.8 — ATLAS COMPLETO ATIVO NOS MOTORES.
-1.369 formas relativas distintas: A=0, B=0..36, C=0..36.
-Equivale às 50.653 trincas numéricas ordenadas, incluindo repetições.
-361 pares de amplitudes: 0..18 por 0..18.
-Cada forma contém saltos com sinal, amplitudes, proporção, diferença,
-contração/expansão/manutenção, fechamento, soma assinada, percurso,
-resíduo, voltas algébricas, retorno parcial, contorno, degeneração,
-área, três cordas, três ângulos e perímetro na circunferência unitária.
-Os 1.369 registros e 361 pares são avaliados sem seleção dos mais frequentes.
-Sucessores conhecidos alimentam distribuições relativas antes da geometria.
-Forma sem sucessor observado permanece representada, com contagem zero.
-As comparações por classes de triângulo/amplitude da 6.6.7 foram substituídas
-pelo atlas integral com atributos sem arredondamento para faixas.
-Cadeias 4–8, polos, arcos, perfis dos motores, treinadores, pós-loss,
-duas leituras, controles, persistência e defesas comprometidas preservados.
-Nenhum painel de comparação adicional. Mesma chave de sessão da 6.6.5.
-A enumeração completa refere-se a trincas e pares de amplitudes definidos;
-não significa todas as sequências de qualquer comprimento nem acerto garantido.
+/* V6.6.10 — MASTER: MELHOR VARIAÇÃO E REVISÃO PROSPECTIVA.
+O normal e o inverso mantêm rankings, escolhas e lições independentes.
+O MASTER segue o indicador MELHOR VARIAÇÃO daquele lado: a primeira
+colocada entre as 64 variações, usando o mesmo índice exibido na tela.
+As oito posições e o indicador recebem a mesma memória de avaliações.
+Adaptativas e AUTO conservam seus próprios mecanismos.
+Antes da entrada MASTER, congela alternativas elegíveis e configurações.
+Avalia entrada e defesa somente com os resultados que chegam depois.
+Aprende com GREEN, GREEN G1 e LOSS, sem transformar perdas passadas em vitórias.
+Lições anteriores participam moderadamente do ranking, com regularização;
+a contagem é por decisão MASTER, não pelo número de alternativas da decisão.
+A memória das últimas 120 decisões fica separada do descarte de dez resultados.
+Ciclos abertos, pausa, prioridades pós-loss, duas leituras e controles preservados.
+Uma alternativa acertar retrospectivamente não garante a próxima escolha.
 */
-/* V6.6.8 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* ANÁLISE BETA V6.6.10 — LEITURAS ATIVAS DA JANELA COMPLETA.
+Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
+Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
+sequência numérica, deslocamentos, reflexão, amplitudes, direção,
+fechamento, percurso, interrupção, retomada e mudanças de direção.
+Polos: 1.369 pares ordenados de posições, distâncias 0..18,
+19 tolerâncias 0..18, convergência/divergência, fusão, ruptura,
+retomada, concentração, dispersão e sobreposição explicitamente descrita.
+A sobreposição em tolerâncias largas não representa dois polos distintos.
+Arcos: 37 inícios por 37 larguras e todas as janelas 1..70 disponíveis.
+Roda inteira: 37 parametrizações equivalentes, uma cobertura neutra.
+Não duplica esses casos como observações independentes nem como vitórias.
+Todas as leituras alimentam os pesos antes da geometria de 28 números.
+Nenhum painel novo, botão de ativação ou importação obrigatória.
+Ciclos e defesas comprometidas, treinadores, pós-loss, duas leituras,
+linha do tempo, persistência, teclado e controles anteriores preservados.
+Só padrões anteriores com sucessor conhecido fornecem evidência.
+Cadeia tão longa quanto a janela é descrita sem inventar sucessor histórico.
+Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
+explícitos. Não significa todas as definições matemáticas imagináveis,
+nem cobertura individual de 37, nem melhoria de acerto comprovada.
+*/
+/* V6.6.10 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -31,7 +49,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.8 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.10 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -75,7 +93,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -109,7 +127,7 @@ ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.8",
+  const VERSION = "6.6.10",
     KEY = 'ANALISE_BETA_V664_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=[];
@@ -820,6 +838,123 @@ function createMotorReadings667(wheel, atlas) {
     return relativeForms.map(describe);
   }
 
+  // Capacidade finita explícita: qualquer sequência de até 70 resultados pode
+  // ser descrita. Apenas sequências anteriores com sucessor treinam os pesos.
+  const polePairs = Object.freeze(Array.from({length:1369},(_,id)=>{
+    const a=Math.floor(id/37),b=id%37;
+    return Object.freeze({id,positionA:a,positionB:b,numberA:wheel[a],numberB:wheel[b],
+      separation:distance(a,b),direction:jump(a,b)});
+  }));
+
+  function polePairReading(prefix,next,a,b,tolerance){
+    if(![a,b,next,tolerance].every(Number.isInteger)||a<0||a>36||b<0||b>36||next<0||next>36||tolerance<0||tolerance>18)return null;
+    const da=distance(a,next),db=distance(b,next),insideA=da<=tolerance,insideB=db<=tolerance;
+    const last=prefix.at(-1),previous=prefix.length>1?prefix.at(-2):null;
+    const side=n=>n==null?-1:distance(a,n)>tolerance&&distance(b,n)>tolerance?-1:distance(a,n)<distance(b,n)?0:distance(a,n)>distance(b,n)?1:2;
+    const currentSide=side(next),lastSide=side(last),priorSide=side(previous);
+    let event=currentSide<0?'FORA DOS POLOS':currentSide===2?'SOBREPOSIÇÃO DOS POLOS':lastSide<0?'RETOMADA':lastSide===currentSide?'PERMANÊNCIA':'ALTERNÂNCIA';
+    if(currentSide<0&&lastSide>=0)event='SAÍDA DOS POLOS';
+    if(currentSide<0&&lastSide<0&&priorSide>=0)event='RUPTURA';
+    if(a===b&&currentSide>=0)event='POLO ÚNICO / CONCENTRAÇÃO';
+    const oldSeparation=distance(a,b);
+    const newSeparation=currentSide===0?distance(next,b):currentSide===1?distance(a,next):oldSeparation;
+    const movement=Math.sign(newSeparation-oldSeparation);
+    if(currentSide>=0&&currentSide<2&&oldSeparation>0&&newSeparation===0)event='FUSÃO';
+    else if(event==='ALTERNÂNCIA'&&movement<0)event='CONVERGÊNCIA';
+    else if(event==='ALTERNÂNCIA'&&movement>0)event='DIVERGÊNCIA';
+    return {tolerance,positionA:a,positionB:b,numberA:wheel[a],numberB:wheel[b],
+      separation:oldSeparation,nextSeparation:newSeparation,movement,distanceA:da,distanceB:db,
+      insideA,insideB,overlap:insideA&&insideB,side:currentSide,event,
+      shiftA:currentSide===0?jump(a,next):0,shiftB:currentSide===1?jump(b,next):0};
+  }
+
+  function poleWindowWeights(prefix){
+    const weights=Array(37).fill(8),tolerances=Array.from({length:19},(_,t)=>({tolerance:t,support:0}));
+    if(prefix.length<4)return {name:'POLOS',weights:normalize(weights),support:0,tolerances,pairPositions:1369,separations:19};
+    const current=prefix.slice(-4),[a,b,c,d]=current;
+    const features=q=>({initial:distance(q[0],q[1]),final:distance(q[2],q[3]),
+      shiftA:jump(q[0],q[2]),shiftB:jump(q[1],q[3]),span:jump(q[0],q[1])});
+    const now=features(current);let support=0,samples=0;
+    for(let end=3;end<prefix.length-1;end++){
+      const q=prefix.slice(end-3,end+1),old=features(q);
+      const geometry=Math.exp(-Math.abs(now.initial-old.initial)/6-Math.abs(now.final-old.final)/6-
+        Math.abs(now.shiftA-old.shiftA)/8-Math.abs(now.shiftB-old.shiftB)/8-Math.abs(now.span-old.span)/10);
+      let coefficient=0;
+      for(let t=0;t<=18;t++){
+        const activeNow=Math.abs(now.shiftA)<=t&&Math.abs(now.shiftB)<=t;
+        const activeOld=Math.abs(old.shiftA)<=t&&Math.abs(old.shiftB)<=t;
+        // 0..18 são examinados; sobreposição é explícita e não são 19 ensaios independentes.
+        const overlapNow=now.final<=2*t,overlapOld=old.final<=2*t;
+        const similarity=geometry*(activeNow===activeOld?1:.25)*(overlapNow===overlapOld?1:.5);
+        tolerances[t].support+=similarity;
+        coefficient+=similarity/19;
+      }
+      const mass=coefficient*Math.exp(-(prefix.length-2-end)/28);
+      const next=mod(c+jump(q[2],prefix[end+1]));
+      weights[next]+=mass*37*.7;weights[mod(next-1)]+=mass*37*.15;weights[mod(next+1)]+=mass*37*.15;
+      support+=mass;samples++;
+    }
+    return {name:'POLOS',weights:normalize(weights),support,tolerances,pairPositions:1369,separations:19,samples,
+      current:{...now,numbers:current.map(p=>wheel[p]),movement:Math.sign(now.final-now.initial)}};
+  }
+
+  // Todas as janelas 1..N, todos os 37 inícios, larguras 1..36.
+  // Largura 37 também é representada, mas é neutra: contém a roda inteira.
+  function arcWindowWeights(prefix){
+    const length=prefix.length,weights=Array(37).fill(8),tables=[];
+    const windows=Array.from({length},(_,i)=>i+1);
+    if(!length)return {name:'ARCOS',weights,support:0,windows,sectorCases:1369,uniqueCovers:1333};
+    const eventTables=[],runTables=[];
+    const previousFlags=new Uint8Array(1369),runs=new Uint8Array(1369),seen=new Uint8Array(1369);
+    for(let end=0;end<length;end++){
+      const table=new Uint8Array((end+1)*1369),frequency=new Uint8Array(37);
+      for(let window=1;window<=end+1;window++){
+        frequency[prefix[end-window+1]]++;
+        const offset=(window-1)*1369;
+        for(let start=0;start<37;start++){
+          let count=0;
+          for(let width=1;width<=37;width++){
+            count+=frequency[mod(start+width-1)];
+            table[offset+(width-1)*37+start]=count;
+          }
+        }
+      }
+      tables.push(table);
+      const events=new Uint8Array(1369),runSnapshot=new Uint8Array(1369);
+      for(let width=1;width<=37;width++)for(let start=0;start<37;start++){
+        const id=(width-1)*37+start,inside=Number(mod(prefix[end]-start)<width);
+        // 0=fora,1=entrada,2=permanência,3=saída,4=reentrada.
+        events[id]=inside?(end&&previousFlags[id]?2:seen[id]?4:1):(end&&previousFlags[id]?3:0);
+        runs[id]=end&&previousFlags[id]===inside?runs[id]+1:1;
+        runSnapshot[id]=runs[id];previousFlags[id]=inside;if(inside)seen[id]=1;
+      }
+      eventTables.push(events);runTables.push(runSnapshot);
+    }
+    const current=tables.at(-1),currentEvents=eventTables.at(-1),currentRuns=runTables.at(-1);
+    let support=0,comparisons=0;
+    for(let end=0;end<length-1;end++){
+      let coefficient=0,windowCount=end+1;
+      for(let window=1;window<=windowCount;window++){
+        let sum=0;const offset=(window-1)*1369;
+        // Cada leitura espacial participa uma vez; sem somar como acertos.
+        for(let id=0;id<1332;id++){
+          const delta=Math.abs(current[offset+id]-tables[end][offset+id]);
+          const density=1/(1+delta/window);
+          const transition=currentEvents[id]===eventTables[end][id]?1:.35;
+          const duration=1/(1+Math.abs(currentRuns[id]-runTables[end][id])/window);
+          sum+=density*transition*duration;
+        }
+        coefficient+=sum/1332;comparisons+=1332;
+      }
+      const mass=coefficient/windowCount*Math.exp(-(length-2-end)/28);
+      const next=prefix[end+1];
+      weights[next]+=mass*37*.7;weights[mod(next-1)]+=mass*37*.15;weights[mod(next+1)]+=mass*37*.15;
+      support+=mass;
+    }
+    return {name:'ARCOS',weights:normalize(weights),support,windows,sectorCases:1369,
+      uniqueCovers:1333,comparisons,representedWindowSectorCases:length*1369};
+  }
+
   function poleStep(previous, prefix, next, tolerance) {
     const state = previous ? {
       ...previous,
@@ -878,7 +1013,7 @@ function createMotorReadings667(wheel, atlas) {
     }
     if (!state.active && prefix.length >= 3 && state.event !== 'FUSÃO') {
       const [a, b, c] = prefix.slice(-3);
-      if (distance(a, b) >= Math.max(8, 2 * tolerance + 2) &&
+      if (distance(a, b) >= (tolerance<=8?Math.max(8,2*tolerance+2):0) &&
           distance(a, c) <= tolerance && distance(b, next) <= tolerance) {
         const split = state.concentration != null || state.fromFusion;
         state.anchors = [c, next];
@@ -889,7 +1024,7 @@ function createMotorReadings667(wheel, atlas) {
         state.outside = 0;
         state.active = true;
         state.concentration = null;
-        state.event = split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
+        state.event = tolerance>8&&distance(c,next)<=2*tolerance?'SOBREPOSIÇÃO DOS POLOS':split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
       }
     }
     if(state.active)state.inactiveAge=0;
@@ -971,7 +1106,7 @@ function createMotorReadings667(wheel, atlas) {
     return keys;
   }
 
-  function arcAlternative(history, number, start, width) {
+  function arcAlternative(history, number, start, width, window=8) {
     if (!Number.isInteger(start) || start < 0 || start > 36 || !Number.isInteger(width) || width < 1 || width > 37) return null;
     const prefix = history.slice(-70).map(number => positions[number]);
     const priorInside = prefix.length ? mod(prefix.at(-1) - start) < width : null;
@@ -979,7 +1114,7 @@ function createMotorReadings667(wheel, atlas) {
     const visited = prefix.some(position => mod(position - start) < width);
     const event = inside ? priorInside === true ? 'PERMANÊNCIA' : visited ? 'REENTRADA' : 'ENTRADA'
                          : priorInside === true ? 'SAÍDA' : 'AFASTAMENTO';
-    const sample = prefix.slice(-8);
+    const sample = prefix.slice(-Math.max(1,Math.min(70,Math.trunc(window)||8)));
     const visits = sample.filter(position => mod(position - start) < width).length;
     return { start, startNumber: wheel[start], width, number, inside, event, visits, sample: sample.length };
   }
@@ -1003,14 +1138,19 @@ function createMotorReadings667(wheel, atlas) {
       if(captureModes)modes.push({ id, group, key, anchor, orientation });
     }
     const chains = [];
-    for (let length = 4; length <= Math.min(8, prefix.length); length++) {
+    for (let length = 4; length <= Math.min(70, prefix.length); length++) {
       const chain = prefix.slice(-length);
       const steps = chain.slice(1).map((position, i) => jump(chain[i], position));
       const net = steps.reduce((sum, value) => sum + value, 0);
       const absolute = steps.reduce((sum, value) => sum + Math.abs(value), 0);
       const closure = distance(chain[0], c);
       const trends = steps.slice(1).map((value, i) => Math.sign(Math.abs(value) - Math.abs(steps[i])));
+      mode('CADEIA NUMÉRICA '+length,2,chain.join(','),null);
       mode('CADEIA EXATA ' + length, 2, steps.join(','));
+      const reflected=steps.map(value=>-value).join(',');
+      const ordered=steps.join(',');
+      mode('CADEIA REFLETIDA '+length,2,ordered<reflected?ordered:reflected,c,ordered<reflected?1:-1);
+      mode('CADEIA AMPLITUDES '+length,2,steps.map(Math.abs).join(','));
       mode('CADEIA DIREÇÃO/AMPLITUDE ' + length, 2, steps.map(value => Math.sign(value) + ':' + amplitudeBand(Math.abs(value))).join(','));
       mode('PERCURSO/RETORNO ' + length, 3, [Math.sign(net), Math.floor(Math.abs(net) / 6), Math.floor(absolute / 10), band(closure), trends.join(',')].join('|'), chain[0]);
       chains.push({ length, steps, net, absolute, closure, turns: net / 37, residual: mod(net), trends,
@@ -1019,7 +1159,7 @@ function createMotorReadings667(wheel, atlas) {
         directionChanges: steps.slice(1).filter((value,index)=>Math.sign(value)!==Math.sign(steps[index])).length
       });
     }
-    for (let tolerance = 0; tolerance <= 8; tolerance++) {
+    for (let tolerance = 0; tolerance <= 18; tolerance++) {
       const state = poles[tolerance];
       const relevant = state.anchors && (state.active || state.outside <= 3 || state.concentration != null);
       const key = relevant ? [state.event, band(state.separation || 0), state.movement || 0, Math.min(3, state.outside), state.drift.map(Math.sign).join(',')].join('|') : null;
@@ -1043,7 +1183,7 @@ function createMotorReadings667(wheel, atlas) {
     const key = h.join(',');
     if (cache.has(key)) return cache.get(key);
     const prefix = [];
-    let poles = Array.from({ length: 9 }, () => null);
+    let poles = Array.from({ length: 19 }, () => null);
     let arcs = Array.from({ length: 37 }, () => null);
     const frames = [];
     for (const number of h) {
@@ -1105,13 +1245,22 @@ function createMotorReadings667(wheel, atlas) {
         summaries[3]={...complete,weights:normalize(complete.weights.map((value,j)=>(value+legacy.weights[j])/2)),support:Math.max(complete.support,legacy.support)};
       }else summaries[complete.group]=complete;
     }
+    const completePoles=poleWindowWeights(prefix),completeArcs=arcWindowWeights(prefix);
+    for(const [group,complete] of [[4,completePoles],[5,completeArcs]]){
+      const previous=summaries[group];
+      summaries[group]={name:previous.name,support:Math.max(previous.support,complete.support),modes:previous.modes,
+        weights:normalize(previous.weights.map((value,j)=>(value+complete.weights[j])/2))};
+    }
     const preparedArcs = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
-    const candidates = wheel.map((number, position) => {
+    const candidateCache=new Map();
+    function describeCandidate(number){
+      if(candidateCache.has(number))return candidateCache.get(number);
+      const position=positions[number];if(position==null)return null;
       const futurePoles = poles.map((state, tolerance) => poleStep(state, prefix, position, tolerance));
       const futureArcs = preparedArcs.map(state => consumeArc(state, position));
       const future = makeFrame([...prefix, position], futurePoles, futureArcs, false);
       const last = current.triangle;
-      return { number, position, triangle: future.triangle,
+      const description = { number, position, triangle: future.triangle,
         triangleTransition: last && future.triangle ? { areaChange: Math.sign(future.triangle.area - last.area), closureChange: Math.sign(future.triangle.closure - last.closure), turn: Math.sign(future.triangle.s2), ratio: future.triangle.ratio } : null,
         chains: future.chains,
         poleEvents: futurePoles.map((state, tolerance) => ({ tolerance, event: state.event, movement: state.movement || 0, separation: state.separation == null ? null : state.separation, anchors: state.anchors ? state.anchors.map(p => wheel[p]) : [] })),
@@ -1120,10 +1269,11 @@ function createMotorReadings667(wheel, atlas) {
         historicalSupport: new Set(modes.flatMap(mode => mode.outcomeIndices[position])).size,
         supportingChannels: modes.filter(mode => mode.outcomes[position] > 0).length
       };
-    });
-    const result = { version: '6.6.8', prefix: h, candidates, modes, groups: summaries, exhaustive,
-      candidateCount: candidates.length, channelCount: modes.length, arcSectorCases:1369,
-      interpretationCount: candidates.length * modes.length,
+      candidateCache.set(number,description);return description;
+    }
+    const result = { version: '6.6.10', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+      candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
+      interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
     result.profileCache = new Map();
     cache.set(key, result);
@@ -1164,10 +1314,12 @@ function createMotorReadings667(wheel, atlas) {
       relativeForms:1369, amplitudeForms:361, numericTriples:50653,
       formsEvaluated:reading.exhaustive.formsEvaluated, amplitudesEvaluated:reading.exhaustive.amplitudesEvaluated,
       successorSamples:reading.exhaustive.successorSamples,
+      chainLengths:reading.chainLengths,poleTolerances:19,polePairPositions:1369,poleSeparations:19,
+      arcWindows:reading.completeArcs.windows,arcWindowSectorCases:reading.completeArcs.representedWindowSectorCases||0,
       groups: reading.groups.map(({ name, support, modes }) => ({ name, support, modes })) };
   }
 
-  return { read, weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, poleStep, chooseArc, consumeArc, arcAlternative,
+  return { read, candidate(history,number){return read(history).candidate(number);},weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, polePairs,polePairReading,poleWindowWeights,arcWindowWeights,poleStep, chooseArc, consumeArc, arcAlternative,
     clear() { cache.clear(); kernelCache.clear(); } };
 }
 
@@ -1797,7 +1949,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.8" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.10" };
     spaceCache.set(key, r);
     if (spaceCache.size > 120)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2263,7 +2415,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.8",readingCandidates:37,
+          readingVersion:"6.6.10",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -3369,7 +3521,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function fresh() {
     return {
-      structuralMemoryVersion: "6.6.8",
+      structuralMemoryVersion: "6.6.10",
       structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
@@ -3381,7 +3533,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       undoStack: [],
       strategy: "MASTER",importAudit:null,
       masterChoice: null,
-      masterHistory: [],
+      masterHistory: [], masterLessons:[],masterReviews:[],
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       postLossEnabled: false,
@@ -3466,7 +3618,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       "ledger",
       "autoRows",
       "masterHistory",
-    ])
+    "masterLessons","masterReviews",])
       if (!Array.isArray(r[field])) r[field] = [];
     r.totalTurns = Math.max(
       Number(r.totalTurns) || 0,
@@ -3548,8 +3700,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       r.strategy = "TRAINER";
       r.manual = null;
     }
-    if(data.structuralMemoryVersion!=="6.6.8"){
-      r.structuralMemoryVersion="6.6.8";
+    if(data.structuralMemoryVersion!=="6.6.10"){
+      r.structuralMemoryVersion="6.6.10";
       r.block={...r.block,data:null};
     }
 
@@ -3592,7 +3744,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function compactMotor(m) {
-    const result = { readingVersion:"6.6.8", readingCandidates:37,};
+    const result = { readingVersion:"6.6.10", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3625,7 +3777,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       for (let variation = 1; variation <= 8; variation++) {
         const rows = (
           state.variantBooks[variantBookId(owner.id, variation)]?.rows || []
-        ).filter((r) => r.turn >= cutoff);
+        ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
         if (!rows.length) continue;
         const hits = rows.filter((r) => r.entryHit).length,
           recent = rows.slice(-5);
@@ -3643,7 +3795,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           total: rows.length,
           hits,
           rate,
-          score,
+          score:masterVariationScore(variantBookId(owner.id,variation),score),
           turn: state.totalTurns,
         });
       }
@@ -3982,6 +4134,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       after = [...before, n].slice(-70);
     let result = "AGUARDANDO",
       played = null;
+    const masterReviewDraft=controller==='MASTER'&&phaseBefore==='ENTRY'&&!masterPaused&&block
+      ?prepareMasterReview(timelineForecasts,block):null;
     if (masterPaused) {
       result = "PAUSA MASTER";
     } else if (state.phase === "ENTRY") {
@@ -4052,6 +4206,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     recordMasterCycle(controller, oldCycle, played, result, turn);
     settleTimelineForecasts(timelineForecasts, n, turn, before);
+    advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
     updateStrategyStreaks(turn);
     settleNativeStrategies(
       cs,
@@ -4080,14 +4235,14 @@ const triangleMemory666 = createTriangleMemory666(W);
       : null;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.8", prefix: [...before].slice(-70), beforeTurn: turn-1,
-        candidateCount: 37, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
+        version: "6.6.10", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
         supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
         bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
-        readingSupport: motorReadings667.read(before).candidates.find(option=>option.number===n)?.historicalSupport||0,
+        readingSupport: motorReadings667.candidate(before,n)?.historicalSupport||0,
         chosenCovered: played?.play?.numbers.includes(n) ?? null,
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
@@ -4206,7 +4361,7 @@ state.importAudit=describeImport(clean,opts);
       const variation = index + 1;
       const samples = (
         state.variantBooks[variantBookId(owner, variation)]?.rows || []
-      ).filter((r) => r.turn >= cutoff);
+      ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
       const total = samples.length,
         hits = samples.filter((r) => r.entryHit).length,
         recent = samples.slice(-5);
@@ -4215,7 +4370,7 @@ state.importAudit=describeImport(clean,opts);
         ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
           (recent.length + 2)) *
           0.35;
-      return { variation, total, hits, score, rate: total ? hits / total : 0 };
+      return { variation,total,hits,score:masterVariationScore(variantBookId(owner,variation),score),rate:total?hits/total:0 };
     }).sort(
       (a, b) =>
         b.score - a.score || b.hits - a.hits || a.variation - b.variation,
@@ -4564,19 +4719,142 @@ state.importAudit=describeImport(clean,opts);
       (Number(state.masterResumeTurn) || 0) - (state.totalTurns + 1),
     );
   }
+  /* Cada lado mantém seu próprio ranking, avaliações e memória de decisões.
+     Revisões usam somente jogadas registradas ANTES dos resultados. */
+  function bestMasterVariation(owner, block=currentBlock()) {
+    if(!block)return null;
+    for(const position of variationPerformance(owner)){
+      const forecast=block.variants.find(f=>f.owner===owner&&f.variation===position.variation);
+      if(validPlay(forecast?.choice?.play))return {id:forecast.bankId,
+        name:(VARIANT_OWNERS.find(o=>o.id===owner)?.name||owner)+' • V'+position.variation,
+        owner,variation:position.variation,performancePosition:position.position,
+        performanceScore:position.score};
+    }
+    return null;
+  }
 
-  function masterDefinitions() {
-    return timelineDefinitions().filter(
-      (d) => !["MASTER", "POSTLOSS"].includes(d.id),
-    );
+  function masterCandidateMotor(definition,block=currentBlock()){
+    const id=definition.resolvedId||definition.id;
+    return timelineMotor(id,block);
+  }
+
+  function masterLessonStats(id){
+    const keys=spatialRead(state.history.slice(-70)).keys;
+    let support=0,reward=0,count=0,direct=0,g1=0,loss=0;
+    for(const lesson of state.masterLessons){
+      if(lesson.closedTurn>state.totalTurns||!Object.prototype.hasOwnProperty.call(lesson.outcomes,id))continue;
+      const value=lesson.outcomes[id];
+      const similarity=.25+.75*spatialMatch(lesson.spatialKeys,keys);
+      const recency=Math.exp(-Math.max(0,state.totalTurns-lesson.closedTurn)/70);
+      const weight=similarity*recency;
+      support+=weight;reward+=weight*(value===2?1:value===1?.55:0);count++;
+      if(value===2)direct++;else if(value===1)g1++;else loss++;
+    }
+    const prior=28/37;
+    return {count,support,direct,g1,loss,score:(reward+prior*8)/(support+8)};
+  }
+
+  function prepareMasterReview(forecasts,block){
+    const definitions=masterDefinitions(block);
+    const alternatives=forecasts.filter(f=>f.id!=='POSTLOSS'&&validPlay(f.motor?.play)).map(f=>{
+      const definition=definitions.find(d=>d.id===f.id);
+      const motor=definition?.resolvedId?masterCandidateMotor(definition,block):f.motor;
+      return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
+        phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
+    });
+    return {version:'6.6.10',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+      prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
+      config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
+      forecastFingerprint:importFingerprint(alternatives.map(a=>[a.id,signaturePlay(a.entry.play)])),
+      alternatives,actualResult:null,selectedId:null};
+  }
+
+  function stepMasterAlternative(alternative,review,n,turn,before){
+    if(alternative.result)return;
+    if(alternative.phase==='SECOND_SKIP'){
+      if(alternative.initialSkip)alternative.initialSkip=false;
+      else alternative.phase='ENTRY';
+      return;
+    }
+    if(alternative.phase==='GALE_SKIP'){alternative.phase='GALE';return;}
+    if(alternative.phase==='GALE'){
+      alternative.result=alternative.defense.play.numbers.includes(n)?'GREEN G1':'LOSS';
+      alternative.closedTurn=turn;return;
+    }
+    if(alternative.entry.play.numbers.includes(n)){
+      alternative.result='GREEN';alternative.closedTurn=turn;return;
+    }
+    const history=[...before,n].slice(-70),config=review.config;
+    const existing=state.timelineCycles[alternative.id];
+    const reusable=existing?.turn===turn&&validPlay(existing.defense?.play)&&
+      ['g1','g1Trainer','galeSkip','secondHouse'].every(key=>existing.config?.[key]===config[key])&&
+      (existing.defenseStrategy||alternative.id)===alternative.defenseStrategy&&
+      signaturePlay(existing.entry.play)===signaturePlay(alternative.entry.play);
+    const decision=reusable?{motor:existing.defense}:config.g1Trainer
+      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy)
+      :{motor:config.g1?fineG1(alternative.entry,n,history):copy(alternative.entry)};
+    alternative.defense=copy(decision?.motor||alternative.entry);
+    alternative.phase=config.galeSkip?'GALE_SKIP':'GALE';
+  }
+
+  function advanceMasterReviews(draft,played,controller,oldCycle,result,n,turn,before){
+    if(draft&&played){
+      draft.selectedId=played.postLossTarget?.id||played.masterTarget?.id||null;
+      state.masterReviews.push(draft);
+    }
+    const actualStart=oldCycle?.entryTurn||turn;
+    for(const review of state.masterReviews){
+      for(const alternative of review.alternatives)stepMasterAlternative(alternative,review,n,turn,before);
+      if(controller==='MASTER'&&review.turn===actualStart&&['GREEN','GREEN G1','LOSS'].includes(result)){
+        review.actualResult=result;review.actualClosedTurn=turn;
+      }
+    }
+    const remaining=[];
+    for(const review of state.masterReviews){
+      if(!review.actualResult||review.alternatives.some(a=>!a.result)){remaining.push(review);continue;}
+      const outcomes={};
+      for(const a of review.alternatives)outcomes[a.id]=a.result==='GREEN'?2:a.result==='GREEN G1'?1:0;
+      state.masterLessons.push({version:review.version,turn:review.turn,beforeTurn:review.beforeTurn,
+        closedTurn:turn,actualClosedTurn:review.actualClosedTurn,actualResult:review.actualResult,
+        selectedId:review.selectedId,spatialKeys:review.spatialKeys,forecastFingerprint:review.forecastFingerprint,
+        outcomes,entryWinners:Object.keys(outcomes).filter(id=>outcomes[id]===2),
+        defenseWinners:Object.keys(outcomes).filter(id=>outcomes[id]===1)});
+    }
+    state.masterReviews=remaining;
+    // Memória separada da janela: o descarte de dez não apaga as lições.
+    state.masterLessons=state.masterLessons.slice(-120);
+  }
+
+  function masterVariationScore(id,baseScore){
+    const lesson=masterLessonStats(id),weight=.20*lesson.support/(lesson.support+8);
+    return baseScore*(1-weight)+lesson.score*weight;
+  }
+
+  function masterDefinitions(block=currentBlock()) {
+    const owned=new Set();
+    for(const owner of VARIANT_OWNERS){
+      owned.add(owner.id==='NUMBER'?'NUMBER':'ORIGINAL:'+owner.id);
+      owned.add(owner.id+'@THIRD');
+      for(let variation=1;variation<=8;variation++)owned.add(variantBookId(owner.id,variation));
+    }
+    const candidates=timelineDefinitions().filter(d=>!['MASTER','POSTLOSS'].includes(d.id)&&!owned.has(d.id));
+    const best=VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id,block)).filter(Boolean);
+    const trainer=candidates.find(d=>d.id==='TRAINER');
+    const trainerBase=trainerBaseDefinition();
+    const owner=trainerBase?.type==='VARIANT'?trainerBase.owner:trainerBase?.rule;
+    const replacement=best.find(d=>d.owner===owner);
+    if(trainer&&replacement){trainer.resolvedId=replacement.id;trainer.scoreId=replacement.id;
+      trainer.name='TREINADOR GLOBAL • '+replacement.name;trainer.owner=replacement.owner;trainer.variation=replacement.variation;}
+    return [...best,...candidates];
   }
 
   /* Todos os candidatos são comparados por ciclos completos sob a mesma fórmula. */
   function masterRanking(block = currentBlock()) {
     if (!block) return [];
-    return masterDefinitions()
+    const globalBest=rankBestVariation()||bestMasterVariation(VARIANT_OWNERS[0].id,block);
+    return masterDefinitions(block)
       .map((def) => {
-        const rows = timelineSamples(def.id)
+        const rows = timelineSamples(def.scoreId||def.id)
           .filter((r) => r.closed && r.closedTurn <= state.totalTurns)
           .slice(-30);
         const direct = rows.filter((r) => r.result === "GREEN").length;
@@ -4590,21 +4868,23 @@ state.importAudit=describeImport(clean,opts);
           (0.35 * (hits + base * 6)) / (rows.length + 6) +
           (0.1 * (recentDirect + base * 3)) / (recent.length + 3) -
           (0.15 * recentLoss) / (recent.length + 3);
-        const motor = timelineMotor(def.id, block);
+        const motor = masterCandidateMotor(def, block);
+        const lesson=masterLessonStats(def.resolvedId||def.id);
+        const feedback=.20*lesson.support/(lesson.support+8);
         return {
           ...def,
           total: rows.length,
           direct,
           hits,
           loss: rows.length - hits,
-          score,
+          score:def.performanceScore??(score*(1-feedback)+lesson.score*feedback),baseScore:score,lesson,
           eligible: validPlay(motor?.play),
         };
       })
       .filter((d) => d.eligible)
       .sort(
         (a, b) =>
-          b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
+          Number(b.id===globalBest?.id)-Number(a.id===globalBest?.id)||b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
       );
   }
 
@@ -4644,11 +4924,9 @@ state.importAudit=describeImport(clean,opts);
 
   function masterSelection(block = currentBlock()) {
     if (!block) return null;
-    const definition = masterDefinitions().find(
-      (d) => d.id === state.masterChoice,
-    );
+    const definition = masterRanking(block)[0];
     if (!definition) return null;
-    const motor = timelineMotor(definition.id, block);
+    const motor = masterCandidateMotor(definition, block);
     return validPlay(motor?.play)
       ? {
           ...definition,
@@ -4657,7 +4935,9 @@ state.importAudit=describeImport(clean,opts);
             masterTarget: {
               id: definition.id,
               name: definition.name,
-              defenseStrategy: motor.thirdTarget?.id || definition.id,
+              defenseStrategy: definition.resolvedId||motor.thirdTarget?.id||definition.id,
+              owner:definition.owner||motor.owner||null,variation:definition.variation||motor.variation||null,
+              performancePosition:definition.performancePosition||null,
             },
           },
         }
@@ -5233,7 +5513,7 @@ if(!isCurrentApp())return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.8",readingCandidates:37,
+          readingVersion:"6.6.10",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -5466,7 +5746,7 @@ if(!isCurrentApp())return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.10 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -5500,7 +5780,7 @@ ANÁLISE BETA V6.6.8 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.8",
+    const VERSION = "6.6.10",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -6218,6 +6498,123 @@ function createMotorReadings667(wheel, atlas) {
     return relativeForms.map(describe);
   }
 
+  // Capacidade finita explícita: qualquer sequência de até 70 resultados pode
+  // ser descrita. Apenas sequências anteriores com sucessor treinam os pesos.
+  const polePairs = Object.freeze(Array.from({length:1369},(_,id)=>{
+    const a=Math.floor(id/37),b=id%37;
+    return Object.freeze({id,positionA:a,positionB:b,numberA:wheel[a],numberB:wheel[b],
+      separation:distance(a,b),direction:jump(a,b)});
+  }));
+
+  function polePairReading(prefix,next,a,b,tolerance){
+    if(![a,b,next,tolerance].every(Number.isInteger)||a<0||a>36||b<0||b>36||next<0||next>36||tolerance<0||tolerance>18)return null;
+    const da=distance(a,next),db=distance(b,next),insideA=da<=tolerance,insideB=db<=tolerance;
+    const last=prefix.at(-1),previous=prefix.length>1?prefix.at(-2):null;
+    const side=n=>n==null?-1:distance(a,n)>tolerance&&distance(b,n)>tolerance?-1:distance(a,n)<distance(b,n)?0:distance(a,n)>distance(b,n)?1:2;
+    const currentSide=side(next),lastSide=side(last),priorSide=side(previous);
+    let event=currentSide<0?'FORA DOS POLOS':currentSide===2?'SOBREPOSIÇÃO DOS POLOS':lastSide<0?'RETOMADA':lastSide===currentSide?'PERMANÊNCIA':'ALTERNÂNCIA';
+    if(currentSide<0&&lastSide>=0)event='SAÍDA DOS POLOS';
+    if(currentSide<0&&lastSide<0&&priorSide>=0)event='RUPTURA';
+    if(a===b&&currentSide>=0)event='POLO ÚNICO / CONCENTRAÇÃO';
+    const oldSeparation=distance(a,b);
+    const newSeparation=currentSide===0?distance(next,b):currentSide===1?distance(a,next):oldSeparation;
+    const movement=Math.sign(newSeparation-oldSeparation);
+    if(currentSide>=0&&currentSide<2&&oldSeparation>0&&newSeparation===0)event='FUSÃO';
+    else if(event==='ALTERNÂNCIA'&&movement<0)event='CONVERGÊNCIA';
+    else if(event==='ALTERNÂNCIA'&&movement>0)event='DIVERGÊNCIA';
+    return {tolerance,positionA:a,positionB:b,numberA:wheel[a],numberB:wheel[b],
+      separation:oldSeparation,nextSeparation:newSeparation,movement,distanceA:da,distanceB:db,
+      insideA,insideB,overlap:insideA&&insideB,side:currentSide,event,
+      shiftA:currentSide===0?jump(a,next):0,shiftB:currentSide===1?jump(b,next):0};
+  }
+
+  function poleWindowWeights(prefix){
+    const weights=Array(37).fill(8),tolerances=Array.from({length:19},(_,t)=>({tolerance:t,support:0}));
+    if(prefix.length<4)return {name:'POLOS',weights:normalize(weights),support:0,tolerances,pairPositions:1369,separations:19};
+    const current=prefix.slice(-4),[a,b,c,d]=current;
+    const features=q=>({initial:distance(q[0],q[1]),final:distance(q[2],q[3]),
+      shiftA:jump(q[0],q[2]),shiftB:jump(q[1],q[3]),span:jump(q[0],q[1])});
+    const now=features(current);let support=0,samples=0;
+    for(let end=3;end<prefix.length-1;end++){
+      const q=prefix.slice(end-3,end+1),old=features(q);
+      const geometry=Math.exp(-Math.abs(now.initial-old.initial)/6-Math.abs(now.final-old.final)/6-
+        Math.abs(now.shiftA-old.shiftA)/8-Math.abs(now.shiftB-old.shiftB)/8-Math.abs(now.span-old.span)/10);
+      let coefficient=0;
+      for(let t=0;t<=18;t++){
+        const activeNow=Math.abs(now.shiftA)<=t&&Math.abs(now.shiftB)<=t;
+        const activeOld=Math.abs(old.shiftA)<=t&&Math.abs(old.shiftB)<=t;
+        // 0..18 são examinados; sobreposição é explícita e não são 19 ensaios independentes.
+        const overlapNow=now.final<=2*t,overlapOld=old.final<=2*t;
+        const similarity=geometry*(activeNow===activeOld?1:.25)*(overlapNow===overlapOld?1:.5);
+        tolerances[t].support+=similarity;
+        coefficient+=similarity/19;
+      }
+      const mass=coefficient*Math.exp(-(prefix.length-2-end)/28);
+      const next=mod(c+jump(q[2],prefix[end+1]));
+      weights[next]+=mass*37*.7;weights[mod(next-1)]+=mass*37*.15;weights[mod(next+1)]+=mass*37*.15;
+      support+=mass;samples++;
+    }
+    return {name:'POLOS',weights:normalize(weights),support,tolerances,pairPositions:1369,separations:19,samples,
+      current:{...now,numbers:current.map(p=>wheel[p]),movement:Math.sign(now.final-now.initial)}};
+  }
+
+  // Todas as janelas 1..N, todos os 37 inícios, larguras 1..36.
+  // Largura 37 também é representada, mas é neutra: contém a roda inteira.
+  function arcWindowWeights(prefix){
+    const length=prefix.length,weights=Array(37).fill(8),tables=[];
+    const windows=Array.from({length},(_,i)=>i+1);
+    if(!length)return {name:'ARCOS',weights,support:0,windows,sectorCases:1369,uniqueCovers:1333};
+    const eventTables=[],runTables=[];
+    const previousFlags=new Uint8Array(1369),runs=new Uint8Array(1369),seen=new Uint8Array(1369);
+    for(let end=0;end<length;end++){
+      const table=new Uint8Array((end+1)*1369),frequency=new Uint8Array(37);
+      for(let window=1;window<=end+1;window++){
+        frequency[prefix[end-window+1]]++;
+        const offset=(window-1)*1369;
+        for(let start=0;start<37;start++){
+          let count=0;
+          for(let width=1;width<=37;width++){
+            count+=frequency[mod(start+width-1)];
+            table[offset+(width-1)*37+start]=count;
+          }
+        }
+      }
+      tables.push(table);
+      const events=new Uint8Array(1369),runSnapshot=new Uint8Array(1369);
+      for(let width=1;width<=37;width++)for(let start=0;start<37;start++){
+        const id=(width-1)*37+start,inside=Number(mod(prefix[end]-start)<width);
+        // 0=fora,1=entrada,2=permanência,3=saída,4=reentrada.
+        events[id]=inside?(end&&previousFlags[id]?2:seen[id]?4:1):(end&&previousFlags[id]?3:0);
+        runs[id]=end&&previousFlags[id]===inside?runs[id]+1:1;
+        runSnapshot[id]=runs[id];previousFlags[id]=inside;if(inside)seen[id]=1;
+      }
+      eventTables.push(events);runTables.push(runSnapshot);
+    }
+    const current=tables.at(-1),currentEvents=eventTables.at(-1),currentRuns=runTables.at(-1);
+    let support=0,comparisons=0;
+    for(let end=0;end<length-1;end++){
+      let coefficient=0,windowCount=end+1;
+      for(let window=1;window<=windowCount;window++){
+        let sum=0;const offset=(window-1)*1369;
+        // Cada leitura espacial participa uma vez; sem somar como acertos.
+        for(let id=0;id<1332;id++){
+          const delta=Math.abs(current[offset+id]-tables[end][offset+id]);
+          const density=1/(1+delta/window);
+          const transition=currentEvents[id]===eventTables[end][id]?1:.35;
+          const duration=1/(1+Math.abs(currentRuns[id]-runTables[end][id])/window);
+          sum+=density*transition*duration;
+        }
+        coefficient+=sum/1332;comparisons+=1332;
+      }
+      const mass=coefficient/windowCount*Math.exp(-(length-2-end)/28);
+      const next=prefix[end+1];
+      weights[next]+=mass*37*.7;weights[mod(next-1)]+=mass*37*.15;weights[mod(next+1)]+=mass*37*.15;
+      support+=mass;
+    }
+    return {name:'ARCOS',weights:normalize(weights),support,windows,sectorCases:1369,
+      uniqueCovers:1333,comparisons,representedWindowSectorCases:length*1369};
+  }
+
   function poleStep(previous, prefix, next, tolerance) {
     const state = previous ? {
       ...previous,
@@ -6276,7 +6673,7 @@ function createMotorReadings667(wheel, atlas) {
     }
     if (!state.active && prefix.length >= 3 && state.event !== 'FUSÃO') {
       const [a, b, c] = prefix.slice(-3);
-      if (distance(a, b) >= Math.max(8, 2 * tolerance + 2) &&
+      if (distance(a, b) >= (tolerance<=8?Math.max(8,2*tolerance+2):0) &&
           distance(a, c) <= tolerance && distance(b, next) <= tolerance) {
         const split = state.concentration != null || state.fromFusion;
         state.anchors = [c, next];
@@ -6287,7 +6684,7 @@ function createMotorReadings667(wheel, atlas) {
         state.outside = 0;
         state.active = true;
         state.concentration = null;
-        state.event = split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
+        state.event = tolerance>8&&distance(c,next)<=2*tolerance?'SOBREPOSIÇÃO DOS POLOS':split ? 'NOVOS POLOS APÓS FUSÃO' : 'FORMAÇÃO';
       }
     }
     if(state.active)state.inactiveAge=0;
@@ -6369,7 +6766,7 @@ function createMotorReadings667(wheel, atlas) {
     return keys;
   }
 
-  function arcAlternative(history, number, start, width) {
+  function arcAlternative(history, number, start, width, window=8) {
     if (!Number.isInteger(start) || start < 0 || start > 36 || !Number.isInteger(width) || width < 1 || width > 37) return null;
     const prefix = history.slice(-70).map(number => positions[number]);
     const priorInside = prefix.length ? mod(prefix.at(-1) - start) < width : null;
@@ -6377,7 +6774,7 @@ function createMotorReadings667(wheel, atlas) {
     const visited = prefix.some(position => mod(position - start) < width);
     const event = inside ? priorInside === true ? 'PERMANÊNCIA' : visited ? 'REENTRADA' : 'ENTRADA'
                          : priorInside === true ? 'SAÍDA' : 'AFASTAMENTO';
-    const sample = prefix.slice(-8);
+    const sample = prefix.slice(-Math.max(1,Math.min(70,Math.trunc(window)||8)));
     const visits = sample.filter(position => mod(position - start) < width).length;
     return { start, startNumber: wheel[start], width, number, inside, event, visits, sample: sample.length };
   }
@@ -6401,14 +6798,19 @@ function createMotorReadings667(wheel, atlas) {
       if(captureModes)modes.push({ id, group, key, anchor, orientation });
     }
     const chains = [];
-    for (let length = 4; length <= Math.min(8, prefix.length); length++) {
+    for (let length = 4; length <= Math.min(70, prefix.length); length++) {
       const chain = prefix.slice(-length);
       const steps = chain.slice(1).map((position, i) => jump(chain[i], position));
       const net = steps.reduce((sum, value) => sum + value, 0);
       const absolute = steps.reduce((sum, value) => sum + Math.abs(value), 0);
       const closure = distance(chain[0], c);
       const trends = steps.slice(1).map((value, i) => Math.sign(Math.abs(value) - Math.abs(steps[i])));
+      mode('CADEIA NUMÉRICA '+length,2,chain.join(','),null);
       mode('CADEIA EXATA ' + length, 2, steps.join(','));
+      const reflected=steps.map(value=>-value).join(',');
+      const ordered=steps.join(',');
+      mode('CADEIA REFLETIDA '+length,2,ordered<reflected?ordered:reflected,c,ordered<reflected?1:-1);
+      mode('CADEIA AMPLITUDES '+length,2,steps.map(Math.abs).join(','));
       mode('CADEIA DIREÇÃO/AMPLITUDE ' + length, 2, steps.map(value => Math.sign(value) + ':' + amplitudeBand(Math.abs(value))).join(','));
       mode('PERCURSO/RETORNO ' + length, 3, [Math.sign(net), Math.floor(Math.abs(net) / 6), Math.floor(absolute / 10), band(closure), trends.join(',')].join('|'), chain[0]);
       chains.push({ length, steps, net, absolute, closure, turns: net / 37, residual: mod(net), trends,
@@ -6417,7 +6819,7 @@ function createMotorReadings667(wheel, atlas) {
         directionChanges: steps.slice(1).filter((value,index)=>Math.sign(value)!==Math.sign(steps[index])).length
       });
     }
-    for (let tolerance = 0; tolerance <= 8; tolerance++) {
+    for (let tolerance = 0; tolerance <= 18; tolerance++) {
       const state = poles[tolerance];
       const relevant = state.anchors && (state.active || state.outside <= 3 || state.concentration != null);
       const key = relevant ? [state.event, band(state.separation || 0), state.movement || 0, Math.min(3, state.outside), state.drift.map(Math.sign).join(',')].join('|') : null;
@@ -6441,7 +6843,7 @@ function createMotorReadings667(wheel, atlas) {
     const key = h.join(',');
     if (cache.has(key)) return cache.get(key);
     const prefix = [];
-    let poles = Array.from({ length: 9 }, () => null);
+    let poles = Array.from({ length: 19 }, () => null);
     let arcs = Array.from({ length: 37 }, () => null);
     const frames = [];
     for (const number of h) {
@@ -6503,13 +6905,22 @@ function createMotorReadings667(wheel, atlas) {
         summaries[3]={...complete,weights:normalize(complete.weights.map((value,j)=>(value+legacy.weights[j])/2)),support:Math.max(complete.support,legacy.support)};
       }else summaries[complete.group]=complete;
     }
+    const completePoles=poleWindowWeights(prefix),completeArcs=arcWindowWeights(prefix);
+    for(const [group,complete] of [[4,completePoles],[5,completeArcs]]){
+      const previous=summaries[group];
+      summaries[group]={name:previous.name,support:Math.max(previous.support,complete.support),modes:previous.modes,
+        weights:normalize(previous.weights.map((value,j)=>(value+complete.weights[j])/2))};
+    }
     const preparedArcs = arcs.map((state, index) => chooseArc(state, prefix, index + 1));
-    const candidates = wheel.map((number, position) => {
+    const candidateCache=new Map();
+    function describeCandidate(number){
+      if(candidateCache.has(number))return candidateCache.get(number);
+      const position=positions[number];if(position==null)return null;
       const futurePoles = poles.map((state, tolerance) => poleStep(state, prefix, position, tolerance));
       const futureArcs = preparedArcs.map(state => consumeArc(state, position));
       const future = makeFrame([...prefix, position], futurePoles, futureArcs, false);
       const last = current.triangle;
-      return { number, position, triangle: future.triangle,
+      const description = { number, position, triangle: future.triangle,
         triangleTransition: last && future.triangle ? { areaChange: Math.sign(future.triangle.area - last.area), closureChange: Math.sign(future.triangle.closure - last.closure), turn: Math.sign(future.triangle.s2), ratio: future.triangle.ratio } : null,
         chains: future.chains,
         poleEvents: futurePoles.map((state, tolerance) => ({ tolerance, event: state.event, movement: state.movement || 0, separation: state.separation == null ? null : state.separation, anchors: state.anchors ? state.anchors.map(p => wheel[p]) : [] })),
@@ -6518,10 +6929,11 @@ function createMotorReadings667(wheel, atlas) {
         historicalSupport: new Set(modes.flatMap(mode => mode.outcomeIndices[position])).size,
         supportingChannels: modes.filter(mode => mode.outcomes[position] > 0).length
       };
-    });
-    const result = { version: '6.6.8', prefix: h, candidates, modes, groups: summaries, exhaustive,
-      candidateCount: candidates.length, channelCount: modes.length, arcSectorCases:1369,
-      interpretationCount: candidates.length * modes.length,
+      candidateCache.set(number,description);return description;
+    }
+    const result = { version: '6.6.10', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+      candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
+      interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
     result.profileCache = new Map();
     cache.set(key, result);
@@ -6562,10 +6974,12 @@ function createMotorReadings667(wheel, atlas) {
       relativeForms:1369, amplitudeForms:361, numericTriples:50653,
       formsEvaluated:reading.exhaustive.formsEvaluated, amplitudesEvaluated:reading.exhaustive.amplitudesEvaluated,
       successorSamples:reading.exhaustive.successorSamples,
+      chainLengths:reading.chainLengths,poleTolerances:19,polePairPositions:1369,poleSeparations:19,
+      arcWindows:reading.completeArcs.windows,arcWindowSectorCases:reading.completeArcs.representedWindowSectorCases||0,
       groups: reading.groups.map(({ name, support, modes }) => ({ name, support, modes })) };
   }
 
-  return { read, weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, poleStep, chooseArc, consumeArc, arcAlternative,
+  return { read, candidate(history,number){return read(history).candidate(number);},weights, merge, summary, catalogue, relativeForms, amplitudeForms, fullKernels, polePairs,polePairReading,poleWindowWeights,arcWindowWeights,poleStep, chooseArc, consumeArc, arcAlternative,
     clear() { cache.clear(); kernelCache.clear(); } };
 }
 
@@ -7199,7 +7613,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.8" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.10" };
       spaceCache.set(key, r);
       if (spaceCache.size > 120)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -7673,7 +8087,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.8",readingCandidates:37,
+          readingVersion:"6.6.10",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -8807,7 +9221,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function fresh() {
       return {
-      structuralMemoryVersion: "6.6.8",
+      structuralMemoryVersion: "6.6.10",
       structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
@@ -8819,7 +9233,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         undoStack: [],
         strategy: "MASTER",importAudit:null,
         masterChoice: null,
-        masterHistory: [],
+        masterHistory: [], masterLessons:[],masterReviews:[],
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
         postLossEnabled: false,
@@ -8904,7 +9318,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         "ledger",
         "autoRows",
         "masterHistory",
-      ])
+      "masterLessons","masterReviews",])
         if (!Array.isArray(r[field])) r[field] = [];
       r.totalTurns = Math.max(
         Number(r.totalTurns) || 0,
@@ -8986,8 +9400,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         r.strategy = "TRAINER";
         r.manual = null;
       }
-    if(data.structuralMemoryVersion!=="6.6.8"){
-      r.structuralMemoryVersion="6.6.8";
+    if(data.structuralMemoryVersion!=="6.6.10"){
+      r.structuralMemoryVersion="6.6.10";
       r.block={...r.block,data:null};
     }
 
@@ -9030,7 +9444,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function compactMotor(m) {
-      const result = { readingVersion:"6.6.8", readingCandidates:37,};
+      const result = { readingVersion:"6.6.10", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -9063,7 +9477,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         for (let variation = 1; variation <= 8; variation++) {
           const rows = (
             state.variantBooks[variantBookId(owner.id, variation)]?.rows || []
-          ).filter((r) => r.turn >= cutoff);
+          ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
           if (!rows.length) continue;
           const hits = rows.filter((r) => r.entryHit).length,
             recent = rows.slice(-5);
@@ -9081,7 +9495,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             total: rows.length,
             hits,
             rate,
-            score,
+            score:masterVariationScore(variantBookId(owner.id,variation),score),
             turn: state.totalTurns,
           });
         }
@@ -9424,6 +9838,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         after = [...before, n].slice(-70);
       let result = "AGUARDANDO",
         played = null;
+    const masterReviewDraft=controller==='MASTER'&&phaseBefore==='ENTRY'&&!masterPaused&&block
+      ?prepareMasterReview(timelineForecasts,block):null;
       if (masterPaused) {
         result = "PAUSA MASTER";
       } else if (state.phase === "ENTRY") {
@@ -9494,6 +9910,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       recordMasterCycle(controller, oldCycle, played, result, turn);
       settleTimelineForecasts(timelineForecasts, n, turn, before);
+    advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
       updateStrategyStreaks(turn);
       settleNativeStrategies(
         cs,
@@ -9522,14 +9939,14 @@ const triangleMemory666 = createTriangleMemory666(W);
         : null;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.8", prefix: [...before].slice(-70), beforeTurn: turn-1,
-        candidateCount: 37, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
+        version: "6.6.10", prefix: [...before].slice(-70), beforeTurn: turn-1,
+        candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
         supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
         bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
-        readingSupport: motorReadings667.read(before).candidates.find(option=>option.number===n)?.historicalSupport||0,
+        readingSupport: motorReadings667.candidate(before,n)?.historicalSupport||0,
         chosenCovered: played?.play?.numbers.includes(n) ?? null,
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
@@ -9648,7 +10065,7 @@ state.importAudit=describeImport(clean,opts);
         const variation = index + 1;
         const samples = (
           state.variantBooks[variantBookId(owner, variation)]?.rows || []
-        ).filter((r) => r.turn >= cutoff);
+        ).filter((r) => r.turn >= cutoff && r.turn <= state.totalTurns);
         const total = samples.length,
           hits = samples.filter((r) => r.entryHit).length,
           recent = samples.slice(-5);
@@ -9657,13 +10074,7 @@ state.importAudit=describeImport(clean,opts);
           ((recent.filter((r) => r.entryHit).length + (2 * 28) / 37) /
             (recent.length + 2)) *
             0.35;
-        return {
-          variation,
-          total,
-          hits,
-          score,
-          rate: total ? hits / total : 0,
-        };
+        return { variation,total,hits,score:masterVariationScore(variantBookId(owner,variation),score),rate:total?hits/total:0 };
       }).sort(
         (a, b) =>
           b.score - a.score || b.hits - a.hits || a.variation - b.variation,
@@ -10016,20 +10427,143 @@ state.importAudit=describeImport(clean,opts);
         (Number(state.masterResumeTurn) || 0) - (state.totalTurns + 1),
       );
     }
-
-    function masterDefinitions() {
-      return timelineDefinitions().filter(
-        (d) => !["MASTER", "POSTLOSS"].includes(d.id),
-      );
+  /* Cada lado mantém seu próprio ranking, avaliações e memória de decisões.
+     Revisões usam somente jogadas registradas ANTES dos resultados. */
+  function bestMasterVariation(owner, block=currentBlock()) {
+    if(!block)return null;
+    for(const position of variationPerformance(owner)){
+      const forecast=block.variants.find(f=>f.owner===owner&&f.variation===position.variation);
+      if(validPlay(forecast?.choice?.play))return {id:forecast.bankId,
+        name:(VARIANT_OWNERS.find(o=>o.id===owner)?.name||owner)+' • V'+position.variation,
+        owner,variation:position.variation,performancePosition:position.position,
+        performanceScore:position.score};
     }
+    return null;
+  }
 
-    /* Todos os candidatos são comparados por ciclos completos sob a mesma fórmula. */
+  function masterCandidateMotor(definition,block=currentBlock()){
+    const id=definition.resolvedId||definition.id;
+    return timelineMotor(id,block);
+  }
+
+  function masterLessonStats(id){
+    const keys=spatialRead(state.history.slice(-70)).keys;
+    let support=0,reward=0,count=0,direct=0,g1=0,loss=0;
+    for(const lesson of state.masterLessons){
+      if(lesson.closedTurn>state.totalTurns||!Object.prototype.hasOwnProperty.call(lesson.outcomes,id))continue;
+      const value=lesson.outcomes[id];
+      const similarity=.25+.75*spatialMatch(lesson.spatialKeys,keys);
+      const recency=Math.exp(-Math.max(0,state.totalTurns-lesson.closedTurn)/70);
+      const weight=similarity*recency;
+      support+=weight;reward+=weight*(value===2?1:value===1?.55:0);count++;
+      if(value===2)direct++;else if(value===1)g1++;else loss++;
+    }
+    const prior=28/37;
+    return {count,support,direct,g1,loss,score:(reward+prior*8)/(support+8)};
+  }
+
+  function prepareMasterReview(forecasts,block){
+    const definitions=masterDefinitions(block);
+    const alternatives=forecasts.filter(f=>f.id!=='POSTLOSS'&&validPlay(f.motor?.play)).map(f=>{
+      const definition=definitions.find(d=>d.id===f.id);
+      const motor=definition?.resolvedId?masterCandidateMotor(definition,block):f.motor;
+      return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
+        phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
+    });
+    return {version:'6.6.10',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+      prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
+      config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
+      forecastFingerprint:importFingerprint(alternatives.map(a=>[a.id,signaturePlay(a.entry.play)])),
+      alternatives,actualResult:null,selectedId:null};
+  }
+
+  function stepMasterAlternative(alternative,review,n,turn,before){
+    if(alternative.result)return;
+    if(alternative.phase==='SECOND_SKIP'){
+      if(alternative.initialSkip)alternative.initialSkip=false;
+      else alternative.phase='ENTRY';
+      return;
+    }
+    if(alternative.phase==='GALE_SKIP'){alternative.phase='GALE';return;}
+    if(alternative.phase==='GALE'){
+      alternative.result=alternative.defense.play.numbers.includes(n)?'GREEN G1':'LOSS';
+      alternative.closedTurn=turn;return;
+    }
+    if(alternative.entry.play.numbers.includes(n)){
+      alternative.result='GREEN';alternative.closedTurn=turn;return;
+    }
+    const history=[...before,n].slice(-70),config=review.config;
+    const existing=state.timelineCycles[alternative.id];
+    const reusable=existing?.turn===turn&&validPlay(existing.defense?.play)&&
+      ['g1','g1Trainer','galeSkip','secondHouse'].every(key=>existing.config?.[key]===config[key])&&
+      (existing.defenseStrategy||alternative.id)===alternative.defenseStrategy&&
+      signaturePlay(existing.entry.play)===signaturePlay(alternative.entry.play);
+    const decision=reusable?{motor:existing.defense}:config.g1Trainer
+      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy)
+      :{motor:config.g1?fineG1(alternative.entry,n,history):copy(alternative.entry)};
+    alternative.defense=copy(decision?.motor||alternative.entry);
+    alternative.phase=config.galeSkip?'GALE_SKIP':'GALE';
+  }
+
+  function advanceMasterReviews(draft,played,controller,oldCycle,result,n,turn,before){
+    if(draft&&played){
+      draft.selectedId=played.postLossTarget?.id||played.masterTarget?.id||null;
+      state.masterReviews.push(draft);
+    }
+    const actualStart=oldCycle?.entryTurn||turn;
+    for(const review of state.masterReviews){
+      for(const alternative of review.alternatives)stepMasterAlternative(alternative,review,n,turn,before);
+      if(controller==='MASTER'&&review.turn===actualStart&&['GREEN','GREEN G1','LOSS'].includes(result)){
+        review.actualResult=result;review.actualClosedTurn=turn;
+      }
+    }
+    const remaining=[];
+    for(const review of state.masterReviews){
+      if(!review.actualResult||review.alternatives.some(a=>!a.result)){remaining.push(review);continue;}
+      const outcomes={};
+      for(const a of review.alternatives)outcomes[a.id]=a.result==='GREEN'?2:a.result==='GREEN G1'?1:0;
+      state.masterLessons.push({version:review.version,turn:review.turn,beforeTurn:review.beforeTurn,
+        closedTurn:turn,actualClosedTurn:review.actualClosedTurn,actualResult:review.actualResult,
+        selectedId:review.selectedId,spatialKeys:review.spatialKeys,forecastFingerprint:review.forecastFingerprint,
+        outcomes,entryWinners:Object.keys(outcomes).filter(id=>outcomes[id]===2),
+        defenseWinners:Object.keys(outcomes).filter(id=>outcomes[id]===1)});
+    }
+    state.masterReviews=remaining;
+    // Memória separada da janela: o descarte de dez não apaga as lições.
+    state.masterLessons=state.masterLessons.slice(-120);
+  }
+
+  function masterVariationScore(id,baseScore){
+    const lesson=masterLessonStats(id),weight=.20*lesson.support/(lesson.support+8);
+    return baseScore*(1-weight)+lesson.score*weight;
+  }
+
+  function masterDefinitions(block=currentBlock()) {
+    const owned=new Set();
+    for(const owner of VARIANT_OWNERS){
+      owned.add(owner.id==='NUMBER'?'NUMBER':'ORIGINAL:'+owner.id);
+      owned.add(owner.id+'@THIRD');
+      for(let variation=1;variation<=8;variation++)owned.add(variantBookId(owner.id,variation));
+    }
+    const candidates=timelineDefinitions().filter(d=>!['MASTER','POSTLOSS'].includes(d.id)&&!owned.has(d.id));
+    const best=VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id,block)).filter(Boolean);
+    const trainer=candidates.find(d=>d.id==='TRAINER');
+    const trainerBase=trainerBaseDefinition();
+    const owner=trainerBase?.type==='VARIANT'?trainerBase.owner:trainerBase?.rule;
+    const replacement=best.find(d=>d.owner===owner);
+    if(trainer&&replacement){trainer.resolvedId=replacement.id;trainer.scoreId=replacement.id;
+      trainer.name='TREINADOR GLOBAL • '+replacement.name;trainer.owner=replacement.owner;trainer.variation=replacement.variation;}
+    return [...best,...candidates];
+  }
+
+  /* Todos os candidatos são comparados por ciclos completos sob a mesma fórmula. */
     function masterRanking(block = currentBlock()) {
       if (!block) return [];
-      return masterDefinitions()
-        .map((def) => {
-          const rows = timelineSamples(def.id)
-            .filter((r) => r.closed && r.closedTurn <= state.totalTurns)
+    const globalBest=rankBestVariation()||bestMasterVariation(VARIANT_OWNERS[0].id,block);
+      return masterDefinitions(block)
+      .map((def) => {
+          const rows = timelineSamples(def.scoreId||def.id)
+          .filter((r) => r.closed && r.closedTurn <= state.totalTurns)
             .slice(-30);
           const direct = rows.filter((r) => r.result === "GREEN").length;
           const hits = rows.filter((r) => r.result !== "LOSS").length,
@@ -10044,21 +10578,23 @@ state.importAudit=describeImport(clean,opts);
             (0.35 * (hits + base * 6)) / (rows.length + 6) +
             (0.1 * (recentDirect + base * 3)) / (recent.length + 3) -
             (0.15 * recentLoss) / (recent.length + 3);
-          const motor = timelineMotor(def.id, block);
+          const motor = masterCandidateMotor(def, block);
+        const lesson=masterLessonStats(def.resolvedId||def.id);
+        const feedback=.20*lesson.support/(lesson.support+8);
           return {
             ...def,
             total: rows.length,
             direct,
             hits,
             loss: rows.length - hits,
-            score,
+            score:def.performanceScore??(score*(1-feedback)+lesson.score*feedback),baseScore:score,lesson,
             eligible: validPlay(motor?.play),
           };
         })
         .filter((d) => d.eligible)
         .sort(
           (a, b) =>
-            b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
+            Number(b.id===globalBest?.id)-Number(a.id===globalBest?.id)||b.score - a.score || b.total - a.total || a.id.localeCompare(b.id),
         );
     }
 
@@ -10098,11 +10634,9 @@ state.importAudit=describeImport(clean,opts);
 
     function masterSelection(block = currentBlock()) {
       if (!block) return null;
-      const definition = masterDefinitions().find(
-        (d) => d.id === state.masterChoice,
-      );
+      const definition = masterRanking(block)[0];
       if (!definition) return null;
-      const motor = timelineMotor(definition.id, block);
+      const motor = masterCandidateMotor(definition, block);
       return validPlay(motor?.play)
         ? {
             ...definition,
@@ -10111,7 +10645,9 @@ state.importAudit=describeImport(clean,opts);
               masterTarget: {
                 id: definition.id,
                 name: definition.name,
-                defenseStrategy: motor.thirdTarget?.id || definition.id,
+                defenseStrategy: definition.resolvedId||motor.thirdTarget?.id||definition.id,
+              owner:definition.owner||motor.owner||null,variation:definition.variation||motor.variation||null,
+              performancePosition:definition.performancePosition||null,
               },
             },
           }
@@ -10696,7 +11232,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.8",readingCandidates:37,
+          readingVersion:"6.6.10",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -12326,7 +12862,10 @@ return {
  amplitudeCatalogue(){return motorReadings667.amplitudeForms.map(form=>({...form,occurrences:motorReadings667.read(state.history).exhaustive.amplitudeCounts[form.id]}));},
  motorReadings(number=null){const r=motorReadings667.read(state.history);return number==null?{...motorReadings667.summary(state.history),candidates:r.candidates}:r.candidates.find(option=>option.number===number);},
  auditReading(turn){const row=state.ledger.find(row=>row.turn===turn);if(!row?.readingAudit)return null;return {record:copy(row.readingAudit),outcome:row.number,options:motorReadings667.read(row.readingAudit.prefix).candidates};},
- arcReading(number,start,width){return motorReadings667.arcAlternative(state.history,number,start,width);},
+ poleCatalogue(){return motorReadings667.polePairs.map(pair=>({...pair}));},
+ poleReading(number,numberA,numberB,tolerance){return motorReadings667.polePairReading(state.history.map(ix),ix(number),ix(numberA),ix(numberB),tolerance);},
+ arcReading(number,start,width,window=8){return motorReadings667.arcAlternative(state.history,number,start,width,window);},
+ masterDiagnostics(){return {choice:copy(masterSelection()),ranking:copy(masterRanking()),bestVariations:VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id)),lessons:copy(state.masterLessons),pendingReviews:state.masterReviews.length};},
  getState:()=>state,
  busy:()=>busy||inputRunning||inputQueue.length>0,
  canEnqueue:()=>appAlive&&state.history.length>=8&&(!busy||inputRunning),
@@ -12409,7 +12948,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.8</h1>
+<h1>ANÁLISE BETA 6.6.10</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
