@@ -1,4 +1,18 @@
-/* ANÁLISE BETA 6.6.14 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
+/* V6.6.16 — mesma análise da 6.6.15.
+Históricos normal/inverso com molduras distintas, preservando duas linhas de sete.
+Cores próprias para pós-adaptativo, pós-1 todas, pós-2 todas e pós-3 todas.
+LOSS com vermelho intenso, borda reforçada e contraste interno nos números vermelhos.
+SEGUIR INDICAÇÃO MASTER: executa a candidata indicada em cada leitura, sem pausa Master.
+Cada entrada usa somente a indicação disponível antes do resultado; defesa e ciclo congelados.
+*/
+/* V6.6.16 — incorpora à 6.6.14:
+Pós-loss adaptativo normal/inverso com controles independentes por leitura.
+Pós-1 e pós-2 LOSS finais consecutivos por estratégia, todas as estratégias.
+Prioridade: pós-3, pós-2, adaptativo, pós-1; ciclos comprometidos preservados.
+Últimos 14 em duas linhas de sete; linha da estratégia selecionada abaixo da jogada.
+Análises, bancos, persistência e recalibração a cada dez preservados.
+*/
+/* ANÁLISE BETA 6.6.16 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
 Depois de importar N números, fixa centros/bancos/candidatas para dez resultados.
 Master e prioridades escolhem entre essas candidatas, com avaliação a cada giro.
 No décimo: retira os dez mais antigos e forma novas jogadas com os N atuais.
@@ -6,7 +20,7 @@ Não reimporta, não repete backtest e não apaga a linha do tempo ou o arquivo 
 Defesas comprometidas continuam até encerrar seu ciclo.
 Resultado geral compacto: quatro linhas, com ciclos/W/G1/LOSS/%/indicação Master.
 */
-/* ANÁLISE BETA 6.6.14 — RETOMADA SEM COMPACTAÇÃO NA TELA.
+/* ANÁLISE BETA 6.6.16 — RETOMADA SEM COMPACTAÇÃO NA TELA.
 Trocar de aba não executa mais save()/LZW completo na thread da interface.
 Serialização do checkpoint também ocorre no worker de salvamento.
 Dois calculadores de bancos adicionais por leitura foram eliminados; os mesmos
@@ -15,7 +29,7 @@ Falha do worker não transfere silenciosamente o motor inteiro para o teclado.
 Reinserir o código transfere a sessão em memória sem compactação síncrona.
 Persistência, diário de entradas, linhas do tempo e reanálise preservados.
 */
-/* ANÁLISE BETA 6.6.14 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+/* ANÁLISE BETA 6.6.16 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
 A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
 Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
 Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
@@ -35,7 +49,7 @@ nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 - Falha de leitura protege a cópia existente de gravação vazia automática.
 - Aviso de salvamento permanece visível na tela compartilhada.
 */
-/* ANÁLISE BETA V6.6.14 — SELEÇÃO MASTER CORRIGIDA.
+/* ANÁLISE BETA V6.6.16 — SELEÇÃO MASTER CORRIGIDA.
 Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
 12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
 O MASTER e o controlador pós-loss não disputam consigo mesmos.
@@ -51,7 +65,7 @@ Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
 Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
 Este é um critério comparativo; não garante acerto nem ausência de LOSS.
 */
-/* ANÁLISE BETA V6.6.14 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* ANÁLISE BETA V6.6.16 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -73,7 +87,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.14 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.16 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -87,7 +101,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.14 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.16 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -131,7 +145,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -165,7 +179,7 @@ ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.14",
+  const VERSION = "6.6.16",
     KEY = 'ANALISE_BETA_V664_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=[];
@@ -1309,7 +1323,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.14', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.16', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -1988,7 +2002,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.14" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.16" };
     spaceCache.set(key, r);
     if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2454,7 +2468,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.14",readingCandidates:37,
+          readingVersion:"6.6.16",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -3565,7 +3579,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function fresh() {
     return {
-      structuralMemoryVersion: "6.6.14",
+      structuralMemoryVersion: "6.6.15",
       structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
@@ -3580,8 +3594,12 @@ const triangleMemory666 = createTriangleMemory666(W);
       masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
+      followPreviousSelection: null,
       postLossEnabled: false,
       postThreeEnabled: false,
+      postOneAllEnabled: false,
+      postTwoAllEnabled: false,
+      recoveryUsed: {},
       postThreeUsed: {},
       strategyStreaks: {},
       focusTimelineId: null,
@@ -3683,6 +3701,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       "virtual",
       "groupsOpen",
       "postThreeUsed",
+      "recoveryUsed",
       "strategyStreaks",
     ]) {
       if (!r[field] || typeof r[field] !== "object") r[field] = {};
@@ -3696,6 +3715,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       r.postLossEnabled = true;
     r.postLossEnabled = !!r.postLossEnabled;
     r.postThreeEnabled = !!r.postThreeEnabled;
+    r.postOneAllEnabled = !!r.postOneAllEnabled;
+    r.postTwoAllEnabled = !!r.postTwoAllEnabled;
     if (
       data?.forecastVersion !== VERSION &&
       data?.strategy === "TRAINER" &&
@@ -3725,15 +3746,16 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (r.forecastVersion !== VERSION) {
+    if (!["6.6.15", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
-      r.forecastVersion = VERSION;
     }
+    r.forecastVersion = VERSION;
     r.undoStack = r.undoStack.slice(-70);
     if (
       !VARIANT_OWNERS.some((o) => o.id === r.strategy) &&
       ![
         "MASTER",
+        "FOLLOW_MASTER",
         "TRAINER",
         "POSTLOSS",
         "AUTO",
@@ -3744,8 +3766,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       r.strategy = "TRAINER";
       r.manual = null;
     }
-    if(data.structuralMemoryVersion!=="6.6.14"){
-      r.structuralMemoryVersion="6.6.14";
+    if(data.structuralMemoryVersion!=="6.6.15"){
+      r.structuralMemoryVersion="6.6.15";
       r.block={...r.block,data:null};
     }
 
@@ -3755,9 +3777,11 @@ const triangleMemory666 = createTriangleMemory666(W);
   function settings() {
     return Object.fromEntries(
       [
-        "structuralMemoryEnabled","strategy",
+        "structuralMemoryEnabled","strategy","followPreviousSelection",
         "postLossEnabled",
         "postThreeEnabled",
+        "postOneAllEnabled",
+        "postTwoAllEnabled",
         "rank",
         "manual",
         "adaptive",
@@ -3788,7 +3812,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function compactMotor(m) {
-    const result = { readingVersion:"6.6.14", readingCandidates:37,};
+    const result = { readingVersion:"6.6.16", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3935,6 +3959,33 @@ const triangleMemory666 = createTriangleMemory666(W);
     return { ...choice.motor, autoRank: choice.rank };
   }
 
+  function followIndicationMotor(block = currentBlock()) {
+    if (!block) return null;
+    const indication = state.block.best || masterRanking(block)[0];
+    if (!indication) return null;
+    const motor = masterCandidateMotor(indication, block);
+    if (!validPlay(motor?.play)) return null;
+    return {
+      ...copy(motor),
+      followTarget: {
+        id: indication.id,
+        name: indication.name,
+        defenseStrategy: indication.resolvedId || motor.thirdTarget?.id || indication.id,
+        decisionTurn: state.totalTurns,
+        calibrationTurn: state.block.decisionTurn
+      }
+    };
+  }
+
+  function followIndicationDefinition() {
+    const target = state.cycle?.original?.followTarget || followIndicationMotor()?.followTarget;
+    return {
+      id: target?.defenseStrategy || "FOLLOW_MASTER",
+      name: target ? "SEGUINDO INDICAÇÃO MASTER • " + target.name : "SEGUIR INDICAÇÃO MASTER • AGUARDANDO HISTÓRICO",
+      type: "FOLLOW_MASTER"
+    };
+  }
+
   function activeDefinition() {
     if (
       state.strategy === "MASTER" &&
@@ -3954,9 +4005,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       return {
         id: target.defenseStrategy || target.id,
         name:
-          (target.kind === "POST3"
-            ? "JOGADA PÓS-3 LOSS • "
-            : "JOGADA PÓS-LOSS • ") + target.name,
+          "JOGADA " + recoveryLabel(target) + " • " + target.name,
         type: "POSTLOSS",
       };
     if (
@@ -3970,6 +4019,8 @@ const triangleMemory666 = createTriangleMemory666(W);
           state.cycle.original.globalStrategyTarget.name,
         type: "GLOBAL_STRATEGY",
       };
+    if (state.cycle?.controller === "FOLLOW_MASTER" || (!state.cycle && state.strategy === "FOLLOW_MASTER"))
+      return followIndicationDefinition();
     if (state.cycle?.original?.masterTarget)
       return {
         id: state.cycle.strategy,
@@ -4053,6 +4104,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (state.strategy === "POSTLOSS") return null;
     if (state.strategy === "MASTER")
       return copy(masterSelection()?.motor || null);
+    if (state.strategy === "FOLLOW_MASTER") return followIndicationMotor();
     if(momentIsFixed())return fixedMomentMotor(fixedSelectionId());
     if (state.strategy === "TRAINER") return copy(independentGlobalMotor());
     if (state.variantSelections[activeVariationOwner()] === -3)
@@ -4194,6 +4246,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         if (motor.postLossTarget?.kind === "POST3")
           state.postThreeUsed[motor.postLossTarget.id] =
             motor.postLossTarget.lossTurn;
+        if (["POST1ALL", "POST2ALL"].includes(motor.postLossTarget?.kind))
+          state.recoveryUsed[motor.postLossTarget.kind + ":" + motor.postLossTarget.id] = motor.postLossTarget.lossTurn;
         state.cycle = {
           controller: state.strategy,
           strategy: definitionBefore.id,
@@ -4276,16 +4330,15 @@ const triangleMemory666 = createTriangleMemory666(W);
     );
     const playRoute = played
       ? postLossTarget
-        ? postLossTarget.kind === "POST3"
-          ? "POST3LOSS"
-          : "POSTLOSS"
+        ? postLossTarget.kind === "POST3" ? "POST3LOSS"
+          : ["POST1ALL", "POST2ALL"].includes(postLossTarget.kind) ? postLossTarget.kind : "POSTLOSS"
         : "NORMAL"
       : null;
     const modelHistory=momentIsFixed()?state.block.anchor:before;
     const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.14", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        version: "6.6.16", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -4297,6 +4350,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
       controller,
+      followTarget: copy(oldCycle?.original?.followTarget || played?.followTarget || null),
       masterTarget: copy(
         oldCycle?.original?.masterTarget || played?.masterTarget || null,
       ),
@@ -4364,7 +4418,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','rank','manual','adaptive',
+ for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
  historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
@@ -4699,6 +4753,7 @@ state.importAudit=describeImport(clean,opts);
   function baseActiveDefinition() {
     const owner = activeVariationOwner(),
       defs = definitions();
+    if (state.strategy === "FOLLOW_MASTER") return followIndicationDefinition();
     if (state.strategy === "POSTLOSS")
       return {
         id: "POSTLOSS",
@@ -4755,13 +4810,13 @@ state.importAudit=describeImport(clean,opts);
 
   function resultGroups(rows) {
     return {
-      normal: rows.filter((r) => r.playRoute === "NORMAL"),
-      postLoss: rows.filter((r) => r.playRoute === "POSTLOSS"),
-      postThree: rows.filter((r) => r.playRoute === "POST3LOSS"),
+      normal: rows.filter(r => r.playRoute === "NORMAL"),
+      postLoss: rows.filter(r => r.playRoute === "POSTLOSS"),
+      postOneAll: rows.filter(r => r.playRoute === "POST1ALL"),
+      postTwoAll: rows.filter(r => r.playRoute === "POST2ALL"),
+      postThree: rows.filter(r => r.playRoute === "POST3LOSS"),
       combined: rows,
-      legacy: rows.filter(
-        (r) => !["NORMAL", "POSTLOSS", "POST3LOSS"].includes(r.playRoute),
-      ),
+      legacy: rows.filter(r => !["NORMAL","POSTLOSS","POST1ALL","POST2ALL","POST3LOSS"].includes(r.playRoute))
     };
   }
 
@@ -4914,7 +4969,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.14',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.16',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -5056,11 +5111,11 @@ state.importAudit=describeImport(clean,opts);
 
   function displayedMasterChoice(){
     const cycle=state.cycle;
-    if(cycle?.controller==='MASTER'){
-      const target=cycle.original?.postLossTarget||cycle.original?.masterTarget;
+    if(['MASTER','FOLLOW_MASTER'].includes(cycle?.controller)){
+      const target=cycle.original?.postLossTarget||cycle.original?.followTarget||cycle.original?.masterTarget;
       if(target)return {...target,...masterCandidateStats(target.id),committed:true};
     }
-    if(state.strategy==='MASTER'&&state.phase==='ENTRY'){
+    if(['MASTER','FOLLOW_MASTER'].includes(state.strategy)&&state.phase==='ENTRY'){
       const priority=priorityRecoveryChoice(currentBlock());
       if(priority?.motor?.postLossTarget){
         const target=priority.motor.postLossTarget;
@@ -5807,7 +5862,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.14",readingCandidates:37,
+          readingVersion:"6.6.16",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -5923,14 +5978,60 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
     }
     return null;
   }
+  function recoveryLabel(target) {
+    if (target?.kind === "POST3") return "PÓS-3 LOSS • TODAS";
+    if (target?.kind === "POST2ALL") return "PÓS-2 LOSS • TODAS";
+    if (target?.kind === "POST1ALL") return "PÓS-1 LOSS • TODAS";
+    return "PÓS-LOSS • ADAPTATIVAS";
+  }
+
+  function postLossAllChoice(required, block = currentBlock()) {
+    if (!block) return null;
+    const kind = required === 2 ? "POST2ALL" : "POST1ALL";
+    const candidates = timelineDefinitions()
+      .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL"].includes(def.id))
+      .map(def => {
+        const stats = postLossStats(def.id);
+        const counter = state.strategyStreaks[def.id];
+        return {...def, ...stats,
+          streak: counter?.loss ?? stats.streak,
+          lossTurn: counter?.closedTurn ?? stats.last?.closedTurn};
+      })
+      .filter(candidate => candidate.last?.result === "LOSS" &&
+        candidate.streak >= required && candidate.lossTurn === state.totalTurns &&
+        candidate.lossTurn > (state.recoveryUsed[kind + ":" + candidate.id] || 0))
+      .sort((a,b) => b.score-a.score || b.samples-a.samples || a.id.localeCompare(b.id));
+    for (const candidate of candidates) {
+      const motor = timelineMotor(candidate.id, block);
+      if (!validPlay(motor?.play)) continue;
+      return {...candidate, motor: {...copy(motor), postLossTarget: {
+        kind, id:candidate.id, name:candidate.name, lossTurn:candidate.lossTurn,
+        streak:candidate.streak, samples:candidate.samples,
+        recoveries:candidate.recoveries, repeatLoss:candidate.repeatLoss,
+        score:candidate.score,
+        defenseStrategy:motor.thirdTarget?.id || motor.globalStrategyTarget?.id ||
+          motor.masterTarget?.defenseStrategy || candidate.id
+      }}};
+    }
+    return null;
+  }
+
   function priorityRecoveryChoice(block = currentBlock()) {
+    // Consecutive losses belong to the same strategy. Pending G1 is never LOSS.
+    // Existing committed cycles remain frozen; recovery bypasses only Master rest.
     if (state.postThreeEnabled) {
       const choice = postThreeChoice(block);
       if (choice) return choice;
     }
-    return state.postLossEnabled || state.strategy === "POSTLOSS"
-      ? postLossChoice(block)
-      : null;
+    if (state.postTwoAllEnabled) {
+      const choice = postLossAllChoice(2, block);
+      if (choice) return choice;
+    }
+    if (state.postLossEnabled || state.strategy === "POSTLOSS") {
+      const choice = postLossChoice(block);
+      if (choice) return choice;
+    }
+    return state.postOneAllEnabled ? postLossAllChoice(1, block) : null;
   }
 
   /* Só remove cópias de versões anteriores depois de gravar a sessão completa
@@ -5957,7 +6058,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -5991,7 +6092,7 @@ ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.14",
+    const VERSION = "6.6.16",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7142,7 +7243,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.14', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.16', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -7825,7 +7926,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.14" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.16" };
       spaceCache.set(key, r);
       if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -8299,7 +8400,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.14",readingCandidates:37,
+          readingVersion:"6.6.16",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -9438,7 +9539,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function fresh() {
       return {
-      structuralMemoryVersion: "6.6.14",
+      structuralMemoryVersion: "6.6.15",
       structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
@@ -9453,8 +9554,12 @@ const triangleMemory666 = createTriangleMemory666(W);
         masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
+      followPreviousSelection: null,
         postLossEnabled: false,
         postThreeEnabled: false,
+      postOneAllEnabled: false,
+      postTwoAllEnabled: false,
+      recoveryUsed: {},
         postThreeUsed: {},
         strategyStreaks: {},
         focusTimelineId: null,
@@ -9556,6 +9661,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         "virtual",
         "groupsOpen",
         "postThreeUsed",
+      "recoveryUsed",
         "strategyStreaks",
       ]) {
         if (!r[field] || typeof r[field] !== "object") r[field] = {};
@@ -9569,6 +9675,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         r.postLossEnabled = true;
       r.postLossEnabled = !!r.postLossEnabled;
       r.postThreeEnabled = !!r.postThreeEnabled;
+    r.postOneAllEnabled = !!r.postOneAllEnabled;
+    r.postTwoAllEnabled = !!r.postTwoAllEnabled;
       if (
         data?.forecastVersion !== VERSION &&
         data?.strategy === "TRAINER" &&
@@ -9598,15 +9706,16 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (r.forecastVersion !== VERSION) {
+      if (!["6.6.15", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
-        r.forecastVersion = VERSION;
       }
+      r.forecastVersion = VERSION;
       r.undoStack = r.undoStack.slice(-70);
       if (
         !VARIANT_OWNERS.some((o) => o.id === r.strategy) &&
         ![
           "MASTER",
+          "FOLLOW_MASTER",
           "TRAINER",
           "POSTLOSS",
           "AUTO",
@@ -9617,8 +9726,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         r.strategy = "TRAINER";
         r.manual = null;
       }
-    if(data.structuralMemoryVersion!=="6.6.14"){
-      r.structuralMemoryVersion="6.6.14";
+    if(data.structuralMemoryVersion!=="6.6.15"){
+      r.structuralMemoryVersion="6.6.15";
       r.block={...r.block,data:null};
     }
 
@@ -9628,9 +9737,11 @@ const triangleMemory666 = createTriangleMemory666(W);
     function settings() {
       return Object.fromEntries(
         [
-          "structuralMemoryEnabled","strategy",
+          "structuralMemoryEnabled","strategy","followPreviousSelection",
           "postLossEnabled",
           "postThreeEnabled",
+        "postOneAllEnabled",
+        "postTwoAllEnabled",
           "rank",
           "manual",
           "adaptive",
@@ -9661,7 +9772,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function compactMotor(m) {
-      const result = { readingVersion:"6.6.14", readingCandidates:37,};
+      const result = { readingVersion:"6.6.16", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -9810,6 +9921,33 @@ const triangleMemory666 = createTriangleMemory666(W);
       return { ...choice.motor, autoRank: choice.rank };
     }
 
+    function followIndicationMotor(block = currentBlock()) {
+      if (!block) return null;
+      const indication = state.block.best || masterRanking(block)[0];
+      if (!indication) return null;
+      const motor = masterCandidateMotor(indication, block);
+      if (!validPlay(motor?.play)) return null;
+      return {
+        ...copy(motor),
+        followTarget: {
+          id: indication.id,
+          name: indication.name,
+          defenseStrategy: indication.resolvedId || motor.thirdTarget?.id || indication.id,
+          decisionTurn: state.totalTurns,
+          calibrationTurn: state.block.decisionTurn
+        }
+      };
+    }
+
+    function followIndicationDefinition() {
+      const target = state.cycle?.original?.followTarget || followIndicationMotor()?.followTarget;
+      return {
+        id: target?.defenseStrategy || "FOLLOW_MASTER",
+        name: target ? "SEGUINDO INDICAÇÃO MASTER • " + target.name : "SEGUIR INDICAÇÃO MASTER • AGUARDANDO HISTÓRICO",
+        type: "FOLLOW_MASTER"
+      };
+    }
+
     function activeDefinition() {
       if (
         state.strategy === "MASTER" &&
@@ -9829,9 +9967,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         return {
           id: target.defenseStrategy || target.id,
           name:
-            (target.kind === "POST3"
-              ? "JOGADA PÓS-3 LOSS • "
-              : "JOGADA PÓS-LOSS • ") + target.name,
+            "JOGADA " + recoveryLabel(target) + " • " + target.name,
           type: "POSTLOSS",
         };
       if (
@@ -9845,6 +9981,8 @@ const triangleMemory666 = createTriangleMemory666(W);
             state.cycle.original.globalStrategyTarget.name,
           type: "GLOBAL_STRATEGY",
         };
+      if (state.cycle?.controller === "FOLLOW_MASTER" || (!state.cycle && state.strategy === "FOLLOW_MASTER"))
+        return followIndicationDefinition();
       if (state.cycle?.original?.masterTarget)
         return {
           id: state.cycle.strategy,
@@ -9928,7 +10066,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       if (state.strategy === "POSTLOSS") return null;
       if (state.strategy === "MASTER")
         return copy(masterSelection()?.motor || null);
-      if(momentIsFixed())return fixedMomentMotor(fixedSelectionId());
+      if (state.strategy === "FOLLOW_MASTER") return followIndicationMotor();
+    if(momentIsFixed())return fixedMomentMotor(fixedSelectionId());
     if (state.strategy === "TRAINER") return copy(independentGlobalMotor());
       if (state.variantSelections[activeVariationOwner()] === -3)
         return thirdVariationMotor(activeVariationOwner());
@@ -10071,6 +10210,8 @@ const triangleMemory666 = createTriangleMemory666(W);
           if (motor.postLossTarget?.kind === "POST3")
             state.postThreeUsed[motor.postLossTarget.id] =
               motor.postLossTarget.lossTurn;
+        if (["POST1ALL", "POST2ALL"].includes(motor.postLossTarget?.kind))
+          state.recoveryUsed[motor.postLossTarget.kind + ":" + motor.postLossTarget.id] = motor.postLossTarget.lossTurn;
           state.cycle = {
             controller: state.strategy,
             strategy: definitionBefore.id,
@@ -10153,16 +10294,15 @@ const triangleMemory666 = createTriangleMemory666(W);
       );
       const playRoute = played
         ? postLossTarget
-          ? postLossTarget.kind === "POST3"
-            ? "POST3LOSS"
-            : "POSTLOSS"
+          ? postLossTarget.kind === "POST3" ? "POST3LOSS"
+          : ["POST1ALL", "POST2ALL"].includes(postLossTarget.kind) ? postLossTarget.kind : "POSTLOSS"
           : "NORMAL"
         : null;
       const modelHistory=momentIsFixed()?state.block.anchor:before;
       const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.14", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        version: "6.6.16", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -10174,6 +10314,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
         controller,
+        followTarget: copy(oldCycle?.original?.followTarget || played?.followTarget || null),
         masterTarget: copy(
           oldCycle?.original?.masterTarget || played?.masterTarget || null,
         ),
@@ -10241,7 +10382,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','rank','manual','adaptive',
+ for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
  historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
@@ -10578,6 +10719,7 @@ state.importAudit=describeImport(clean,opts);
     function baseActiveDefinition() {
       const owner = activeVariationOwner(),
         defs = definitions();
+      if (state.strategy === "FOLLOW_MASTER") return followIndicationDefinition();
       if (state.strategy === "POSTLOSS")
         return {
           id: "POSTLOSS",
@@ -10636,13 +10778,13 @@ state.importAudit=describeImport(clean,opts);
 
     function resultGroups(rows) {
       return {
-        normal: rows.filter((r) => r.playRoute === "NORMAL"),
-        postLoss: rows.filter((r) => r.playRoute === "POSTLOSS"),
-        postThree: rows.filter((r) => r.playRoute === "POST3LOSS"),
+        normal: rows.filter(r => r.playRoute === "NORMAL"),
+        postLoss: rows.filter(r => r.playRoute === "POSTLOSS"),
+        postOneAll: rows.filter(r => r.playRoute === "POST1ALL"),
+        postTwoAll: rows.filter(r => r.playRoute === "POST2ALL"),
+        postThree: rows.filter(r => r.playRoute === "POST3LOSS"),
         combined: rows,
-        legacy: rows.filter(
-          (r) => !["NORMAL", "POSTLOSS", "POST3LOSS"].includes(r.playRoute),
-        ),
+        legacy: rows.filter(r => !["NORMAL","POSTLOSS","POST1ALL","POST2ALL","POST3LOSS"].includes(r.playRoute))
       };
     }
 
@@ -10795,7 +10937,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.14',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.16',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -10933,11 +11075,11 @@ state.importAudit=describeImport(clean,opts);
 
   function displayedMasterChoice(){
     const cycle=state.cycle;
-    if(cycle?.controller==='MASTER'){
-      const target=cycle.original?.postLossTarget||cycle.original?.masterTarget;
+    if(['MASTER','FOLLOW_MASTER'].includes(cycle?.controller)){
+      const target=cycle.original?.postLossTarget||cycle.original?.followTarget||cycle.original?.masterTarget;
       if(target)return {...target,...masterCandidateStats(target.id),committed:true};
     }
-    if(state.strategy==='MASTER'&&state.phase==='ENTRY'){
+    if(['MASTER','FOLLOW_MASTER'].includes(state.strategy)&&state.phase==='ENTRY'){
       const priority=priorityRecoveryChoice(currentBlock());
       if(priority?.motor?.postLossTarget){
         const target=priority.motor.postLossTarget;
@@ -11586,7 +11728,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.14",readingCandidates:37,
+          readingVersion:"6.6.16",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -11702,14 +11844,60 @@ state.importAudit=describeImport(clean,opts);
       }
       return null;
     }
+    function recoveryLabel(target) {
+      if (target?.kind === "POST3") return "PÓS-3 LOSS • TODAS";
+      if (target?.kind === "POST2ALL") return "PÓS-2 LOSS • TODAS";
+      if (target?.kind === "POST1ALL") return "PÓS-1 LOSS • TODAS";
+      return "PÓS-LOSS • ADAPTATIVAS";
+    }
+
+    function postLossAllChoice(required, block = currentBlock()) {
+      if (!block) return null;
+      const kind = required === 2 ? "POST2ALL" : "POST1ALL";
+      const candidates = timelineDefinitions()
+        .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL"].includes(def.id))
+        .map(def => {
+          const stats = postLossStats(def.id);
+          const counter = state.strategyStreaks[def.id];
+          return {...def, ...stats,
+            streak: counter?.loss ?? stats.streak,
+            lossTurn: counter?.closedTurn ?? stats.last?.closedTurn};
+        })
+        .filter(candidate => candidate.last?.result === "LOSS" &&
+          candidate.streak >= required && candidate.lossTurn === state.totalTurns &&
+          candidate.lossTurn > (state.recoveryUsed[kind + ":" + candidate.id] || 0))
+        .sort((a,b) => b.score-a.score || b.samples-a.samples || a.id.localeCompare(b.id));
+      for (const candidate of candidates) {
+        const motor = timelineMotor(candidate.id, block);
+        if (!validPlay(motor?.play)) continue;
+        return {...candidate, motor: {...copy(motor), postLossTarget: {
+          kind, id:candidate.id, name:candidate.name, lossTurn:candidate.lossTurn,
+          streak:candidate.streak, samples:candidate.samples,
+          recoveries:candidate.recoveries, repeatLoss:candidate.repeatLoss,
+          score:candidate.score,
+          defenseStrategy:motor.thirdTarget?.id || motor.globalStrategyTarget?.id ||
+            motor.masterTarget?.defenseStrategy || candidate.id
+        }}};
+      }
+      return null;
+    }
+
     function priorityRecoveryChoice(block = currentBlock()) {
+      // Consecutive losses belong to the same strategy. Pending G1 is never LOSS.
+      // Existing committed cycles remain frozen; recovery bypasses only Master rest.
       if (state.postThreeEnabled) {
         const choice = postThreeChoice(block);
         if (choice) return choice;
       }
-      return state.postLossEnabled || state.strategy === "POSTLOSS"
-        ? postLossChoice(block)
-        : null;
+      if (state.postTwoAllEnabled) {
+        const choice = postLossAllChoice(2, block);
+        if (choice) return choice;
+      }
+      if (state.postLossEnabled || state.strategy === "POSTLOSS") {
+        const choice = postLossChoice(block);
+        if (choice) return choice;
+      }
+      return state.postOneAllEnabled ? postLossAllChoice(1, block) : null;
     }
 
     /* Só remove cópias de versões anteriores depois de gravar a sessão completa
@@ -11767,7 +11955,7 @@ state.importAudit=describeImport(clean,opts);
         state.manualLog.push({
           id: Date.now()+"_"+state.totalTurns,turn:state.totalTurns,number:data.number,
           result:row.result,profit:row.profit,strategy:row.strategy,motor:row.motor,
-          phase:row.phase,controller:row.controller,masterTarget:copy(row.masterTarget),
+          phase:row.phase,controller:row.controller,masterTarget:copy(row.masterTarget),followTarget:copy(row.followTarget),
           playRoute:row.playRoute,postLossTarget:copy(row.postLossTarget),timestamp:Date.now()
         });
         state.manualCount++;
@@ -11934,6 +12122,8 @@ state.importAudit=describeImport(clean,opts);
       "trainer",
     );
     master.dataset.choice = "MASTER";
+    const follow = button("SEGUIR INDICAÇÃO MASTER", () => coordinator.toggleFollowIndication(), row, "trainer");
+    follow.dataset.choice = "FOLLOW_MASTER";
     const trainer = button(
       "TREINADOR GLOBAL • ESTRATÉGIA",
       () => changeStrategy("TRAINER"),
@@ -11941,8 +12131,14 @@ state.importAudit=describeImport(clean,opts);
       "trainer",
     );
     trainer.dataset.choice = "TRAINER";
-    const postloss = button("PÓS-LOSS", () => togglePostLoss(), row, "trainer");
-    postloss.dataset.choice = "POSTLOSS";
+    const postloss = button("PÓS-LOSS ADAPTATIVO", () => coordinator.toggleAdaptive("NORMAL"), row, "trainer");
+    postloss.dataset.choice = "POSTLOSS_NORMAL";
+    const postInverse = button("PÓS-LOSS ADAPTATIVO INVERSO", () => coordinator.toggleAdaptive("INVERTIDO"), row, "trainer");
+    postInverse.dataset.choice = "POSTLOSS_INVERTIDO";
+    for (const [field, label] of [["postTwoAllEnabled", "PÓS-2 LOSS • TODAS"], ["postOneAllEnabled", "PÓS-1 LOSS • TODAS"]]) {
+      const control = button(label, () => toggleRecovery(field), row, "trainer");
+      control.dataset.choice = field;
+    }
     const postThree = button(
       "PÓS-3 LOSS • TODAS",
       () => togglePostThree(),
@@ -12005,6 +12201,32 @@ state.importAudit=describeImport(clean,opts);
       }
       custom.appendChild(cr);
     }
+  }
+
+  function toggleFollowIndicationLocal() {
+    if (busy) return;
+    if (!cycleIsFree()) {
+      alert("AGUARDE ENCERRAR O CICLO ATUAL.");
+      return;
+    }
+    if (state.strategy === "FOLLOW_MASTER") {
+      const saved = state.followPreviousSelection;
+      if (saved && saved.strategy !== "FOLLOW_MASTER") {
+        for (const field of ["strategy","rank","manual","adaptive","activeCreated","variantSelections"])
+          if (saved[field] !== undefined) state[field] = copy(saved[field]);
+      } else state.strategy = "TRAINER";
+      state.followPreviousSelection = null;
+    } else {
+      state.followPreviousSelection = Object.fromEntries(
+        ["strategy","rank","manual","adaptive","activeCreated","variantSelections"]
+          .map(field => [field, copy(state[field])])
+      );
+      state.strategy = "FOLLOW_MASTER";
+      state.manual = null;
+    }
+    state.focusTimelineId = null;
+    scheduleSave();
+    render();
   }
 
   function changeStrategy(strategy, adaptive = null, created = null) {
@@ -12122,9 +12344,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       (motor?.key || "AGUARDANDO ATUALIZAÇÃO") +
       (state.cycle?.decision ? " • G1 " + state.cycle.decision.mode : "");
     patchHTML($("centers"), centersHTML(motor?.play));
-    $("coverage").textContent = motor
-      ? "28 COBERTOS • 9 DESCOBERTOS: " + missing(motor.play).join(" • ")
-      : "IMPORTE DE 8 A 70 RESULTADOS.";
+
     for (const b of document.querySelectorAll("[data-choice]"))
       b.classList.toggle(
         "active",
@@ -12149,6 +12369,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
         state.strategy === "CREATED" &&
           state.activeCreated === "CREATED:" + b.dataset.created,
       );
+    refreshRecoveryButtons();
     updateVariantButtons();
     updateVariationRanks();
     renderTimelinePanel();
@@ -12161,14 +12382,11 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     if (
       state.strategy === "POSTLOSS" ||
       state.postLossEnabled ||
-      state.postThreeEnabled
+      state.postThreeEnabled || state.postOneAllEnabled || state.postTwoAllEnabled
     ) {
       const target =
         state.cycle?.original?.postLossTarget || motor?.postLossTarget;
-      const prefix =
-        target?.kind === "POST3"
-          ? "JOGADA PÓS-3 LOSS • PRIORIDADE"
-          : "JOGADA PÓS-LOSS • ADAPTATIVAS";
+      const prefix = "JOGADA " + recoveryLabel(target);
       if (target)
         $("selected").textContent =
           prefix +
@@ -12185,13 +12403,11 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       else if (state.strategy !== "POSTLOSS")
         $("selected").textContent +=
           (state.postLossEnabled ? " • PÓS-LOSS LIGADO" : "") +
-          (state.postThreeEnabled ? " • PÓS-3 LOSS LIGADO" : "");
+          (state.postThreeEnabled ? " • PÓS-3 LOSS LIGADO" : "") +
+          (state.postOneAllEnabled ? " • PÓS-1 LOSS TODAS LIGADO" : "") +
+          (state.postTwoAllEnabled ? " • PÓS-2 LOSS TODAS LIGADO" : "");
       else $("selected").textContent = prefix + " • AGUARDANDO LOSS FINAL";
-      if (!motor)
-        $("coverage").textContent =
-          state.strategy === "POSTLOSS"
-            ? "Aguarda um LOSS final. Sem mínimo de ciclos."
-            : "Preparando a próxima jogada do Treinador Global.";
+
     }
     renderLastNumbers();
     $("general").hidden = !state.open.general;
@@ -12204,7 +12420,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     const target =
       state.cycle?.original?.postLossTarget || motor?.postLossTarget;
     $("selected").className =
-      "playNotice " + (target ? "postLossNotice" : "normalNotice");
+      "playNotice " + playAppearance(target, state.strategy === "FOLLOW_MASTER" || state.cycle?.controller === "FOLLOW_MASTER");
     if (
       state.strategy === "MASTER" &&
       !state.cycle &&
@@ -12218,14 +12434,21 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       $("selected").className = "playNotice normalNotice";
       $("cycleInfo").textContent =
         "CICLO ENCERRADO • MASTER AGUARDA DOIS RESULTADOS COMPLETOS";
-      $("coverage").textContent =
-        "PAUSA MASTER: registre os resultados, sem nova entrada.";
+
     } else if (state.strategy === "MASTER" && motor?.masterTarget) {
       $("selected").textContent =
         "MASTER ESCOLHEU: " + motor.masterTarget.name + " • " + state.phase;
     }
+    if (!target && (state.strategy === "FOLLOW_MASTER" || state.cycle?.controller === "FOLLOW_MASTER")) {
+      const following = state.cycle?.original?.followTarget || motor?.followTarget;
+      $("selected").textContent = following
+        ? "SEGUINDO INDICAÇÃO MASTER • " + following.name + " • " + state.phase
+        : "SEGUIR INDICAÇÃO MASTER • AGUARDANDO INDICAÇÃO";
+    }
     if(state.structuralMemoryEnabled)$("selected").textContent+=" • TRIANGULAÇÃO EXPERIMENTAL";
 
+    $("centers").dataset.playAppearance = playAppearance(target, state.strategy === "FOLLOW_MASTER");
+    renderSelectedTimeline(motor);
     renderFocusGame(motor);
     $("stake").value = state.stake;
     $("multiplier").value = state.multiplier;
@@ -12396,6 +12619,7 @@ if(!isCurrentApp())return;
         phase: row.phase,
         controller: row.controller,
         masterTarget: copy(row.masterTarget),
+        followTarget: copy(row.followTarget),
         playRoute: row.playRoute,
         postLossTarget: copy(row.postLossTarget),
         timestamp: Date.now(),
@@ -12591,6 +12815,31 @@ if(!isCurrentApp())return;
     }
   }
 
+  function playAppearance(target, following = false) {
+    if (target?.kind === "POST3") return "postThreeNotice";
+    if (target?.kind === "POST2ALL") return "postTwoNotice";
+    if (target?.kind === "POST1ALL") return "postOneNotice";
+    if (target) return "postAdaptiveNotice";
+    return following ? "followNotice" : "normalNotice";
+  }
+
+  function toggleRecovery(field) {
+    if (busy) return;
+    if (!cycleIsFree()) { alert("AGUARDE ENCERRAR O CICLO ATUAL."); return; }
+    if (!["postOneAllEnabled", "postTwoAllEnabled"].includes(field)) return;
+    state[field] = !state[field]; state.manual = null;
+    scheduleSave(); render();
+  }
+  function refreshRecoveryButtons() {
+    for (const b of document.querySelectorAll("[data-choice]")) {
+      if (b.dataset.choice === "POSTLOSS_NORMAL" || b.dataset.choice === "POSTLOSS_INVERTIDO") {
+        const reading = b.dataset.choice.slice(9);
+        b.classList.toggle("active", !!(coordinator.adaptiveEnabled?.(reading) ?? (reading === side && state.postLossEnabled)));
+      } else if (["postOneAllEnabled", "postTwoAllEnabled"].includes(b.dataset.choice))
+        b.classList.toggle("active", !!state[b.dataset.choice]);
+    }
+  }
+
   function togglePostLoss() {
     if (busy) return;
     if (!cycleIsFree()) {
@@ -12616,6 +12865,22 @@ if(!isCurrentApp())return;
     state.manual = null;
     scheduleSave();
     render();
+  }
+
+  function selectedTimelineIdentity(motor) {
+    const original = state.cycle?.original || motor;
+    const target = original?.postLossTarget || original?.followTarget || original?.masterTarget;
+    if (target?.id) return {id:target.id, name:target.name};
+    if (state.strategy === "MASTER") return {id:"MASTER", name:"TREINADOR GLOBAL MASTER"};
+    if (state.strategy === "TRAINER") return {id:"TRAINER", name:"TREINADOR GLOBAL"};
+    const id = original?.thirdTarget?.id || (original?.bankId && original.bankId !== "GLOBAL" ? original.bankId : fixedSelectionId());
+    const definition = timelineDefinitions().find(def => def.id === id);
+    return {id, name:definition?.name || baseActiveDefinition().name};
+  }
+  function renderSelectedTimeline(motor) {
+    const identity = selectedTimelineIdentity(motor);
+    patchHTML($("coverage"), '<div class="selectedTimelineLabel">' + esc(identity.name || "JOGADA SELECIONADA") +
+      '</div><div class="timelineCells" aria-label="Linha do tempo da jogada selecionada">' + timelineCellsHTML(identity.id) + '</div>');
   }
 
   function timelineCellsHTML(id) {
@@ -12731,9 +12996,10 @@ if(!isCurrentApp())return;
     patchHTML($("focusLast"), $("last").innerHTML);
     $("focusMode").textContent = $("selected").textContent;
     $("focusMode").className =
-      "playNotice " + (target ? "postLossNotice" : "normalNotice");
+      "playNotice " + playAppearance(target, state.strategy === "FOLLOW_MASTER" || state.cycle?.controller === "FOLLOW_MASTER");
     patchHTML($("focusCenters"), centersHTML(motor?.play));
-    $("focusCoverage").textContent = $("coverage").textContent;
+    $("focusCenters").dataset.playAppearance = playAppearance(target, state.strategy === "FOLLOW_MASTER");
+    patchHTML($("focusCoverage"), $("coverage").innerHTML);
     for (const b of document.querySelectorAll("[data-focus-number]"))
       b.disabled = busy && !inputRunning;
     if (!inputRunning) $("focusReceipt").textContent = $("receipt").textContent;
@@ -12742,12 +13008,12 @@ if(!isCurrentApp())return;
   function resultsSeparatedHTML(rows) {
     const groups=resultGroups(rows),best=displayedMasterChoice();
     const indication=best?esc(best.name):'AGUARDANDO';
-    const lines=[['NORMAL',groups.normal],['PÓS-LOSS',groups.postLoss],['PÓS-3',groups.postThree],['TOTAL',groups.combined]];
+    const lines=[['NORMAL',groups.normal],['PÓS-ADAPT.',groups.postLoss],['PÓS-1 TODAS',groups.postOneAll],['PÓS-2 TODAS',groups.postTwoAll],['PÓS-3',groups.postThree],['TOTAL',groups.combined]];
     return '<table class="resultTable"><thead><tr><th>GRUPO</th><th title="Ciclos encerrados">CIC.</th><th title="GREEN direto + GREEN G1">GREEN</th><th title="GREEN de primeira">1ª</th><th>G1</th><th>LOSS</th><th>%</th><th>INDICAÇÃO MASTER</th></tr></thead><tbody>'+
       lines.map(([name,sample],index)=>{
         const m=metrics(sample);
         return '<tr><th scope="row">'+name+'</th><td>'+m.total+'</td><td class="good">'+(m.green+m.g1)+'</td><td class="good">'+m.green+'</td><td>'+m.g1+'</td><td class="bad">'+m.loss+'</td><td>'+(m.total?Math.round(100*(m.green+m.g1)/m.total)+'%':'—')+'</td>'+
-          (index===0?'<td rowspan="4" class="masterIndication">'+indication+'</td>':'')+'</tr>';
+          (index===0?'<td rowspan="'+lines.length+'" class="masterIndication">'+indication+'</td>':'')+'</tr>';
       }).join('')+'</tbody></table>';
   }
 
@@ -13165,6 +13431,9 @@ function importHistory(numbers){return coordinator.import(numbers);}
 const sideDispose=globalThis['__analiseBetaDispose_'+side];
 return {
  side,root,
+ toggleFollowLocal:toggleFollowIndicationLocal,
+ toggleAdaptiveRecovery:togglePostLoss,
+ refreshRecoveryControls:refreshRecoveryButtons,
  styles:()=>root.querySelector('style').textContent,
  element:id=>$(id),
  mount(id,target){const element=$(id);if(!element)return null;document.registerScope(element);target.appendChild(element);return element;},
@@ -13242,11 +13511,19 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 #beta-dual-app .center strong{font-size:clamp(21px,5.5vw,29px)}
 #beta-dual-app .center small{font-size:8px}
 #beta-dual-app .playNotice{font-size:12px;padding:7px;margin:5px 0;border-width:2px}
-#beta-dual-app .history-lane{display:flex;align-items:center;gap:5px;margin:7px 0;min-width:0}
-#beta-dual-app .history-lane .history{flex:1;display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:2px;min-width:0}
-#beta-dual-app .history-lane .chip{min-width:0;padding:4px 0;border-width:1px;border-radius:3px}
-#beta-dual-app .history-lane .chip b{font-size:clamp(10px,2.6vw,15px);line-height:1.2}
+#beta-dual-app .history-lane{display:flex;align-items:center;gap:5px;margin:7px 0;min-width:0;border:2px solid #46d9ff;border-radius:7px;padding:6px;background:#112c3c}
+#beta-dual-app .history-lane.reverse{border-color:#b28cff;background:#251d3a}
+#beta-dual-app .history-reading-label{display:block;font-size:10px;font-weight:bold;letter-spacing:.4px;margin:0 0 5px;color:#77e5ff}
+#beta-dual-app .reverse .history-reading-label{color:#c9acff}
+#beta-dual-app .history-lane .history{flex:1;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;min-width:0}
+#beta-dual-app .history-lane .chip{min-width:0;padding:5px 0;border-width:2px;border-radius:4px}
+#beta-dual-app .history-lane .chip b{font-size:clamp(18px,5vw,23px);line-height:1.15}
 #beta-dual-app .history-lane .chip small{display:none}
+#beta-dual-app .focusGame .history{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+#beta-dual-app .focusGame .chip{min-width:0;padding:5px 0}
+#beta-dual-app .focusGame .chip b{font-size:20px}
+#beta-dual-app .selectedTimelineLabel{font-size:11px;color:#b5dcf3;margin:5px 0}
+#beta-dual-app [id="coverage"] .timelineCells{min-height:25px;flex-wrap:wrap;gap:3px}
 #beta-dual-app .timeline-pair{margin:7px 0;border:1px solid #366181;border-radius:7px;overflow:hidden}
 #beta-dual-app .timelineItem{padding:0 7px;background:#11283a;border-left:4px solid #59d3ff}
 #beta-dual-app .timelineItem.reverse-lane{background:#182b45;border-left-color:#4483ee}
@@ -13256,6 +13533,19 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 #beta-dual-app .reverse-lane .timelineRow{padding-top:3px;padding-bottom:7px}
 #beta-dual-app .focusGame .keys,#beta-dual-app .focusGame [id="focusReceipt"]{display:none}
 #beta-dual-app .history-lane .history [title]{cursor:default}
+
+#beta-dual-app .postAdaptiveNotice{background:#352147;color:#f3e5ff;border:3px solid #cf98ff}
+#beta-dual-app .postOneNotice{background:#3b3217;color:#fff0b6;border:3px solid #ffd34e}
+#beta-dual-app .postTwoNotice{background:#43291b;color:#ffe1ca;border:3px solid #ff913d}
+#beta-dual-app .postThreeNotice{background:#431e30;color:#ffe0ef;border:3px solid #ff72ac}
+#beta-dual-app .followNotice{background:#163a36;color:#cefff0;border:2px solid #56e3b8}
+#beta-dual-app .centers[data-play-appearance="postAdaptiveNotice"] .center{border:2px solid #cf98ff}
+#beta-dual-app .centers[data-play-appearance="postOneNotice"] .center{border:2px solid #ffd34e}
+#beta-dual-app .centers[data-play-appearance="postTwoNotice"] .center{border:2px solid #ff913d}
+#beta-dual-app .centers[data-play-appearance="postThreeNotice"] .center{border:2px solid #ff72ac}
+#beta-dual-app .centers[data-play-appearance="followNotice"] .center{border:2px solid #56e3b8}
+#beta-dual-app .history-lane .chip.loss,#beta-dual-app .focusGame .chip.loss{border:3px solid #ff0038;outline:2px solid #ff0038;outline-offset:1px;box-shadow:inset 0 0 0 1px #fff}
+#beta-dual-app .wlLoss{background:#ff0038;color:#fff;border-color:#ff6688}
 #beta-dual-app [hidden]{display:none!important}
 #beta-dual-app .control-label{font-size:11px;color:#b5dcf3;padding:6px 0}
 #beta-dual-app .audit-details .muted{font-size:10px}
@@ -13263,7 +13553,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.14</h1>
+<h1>ANÁLISE BETA 6.6.16</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
@@ -13286,8 +13576,8 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </section>
 <section class="panel"><div class="title">TECLADO 0–36</div><div id="dual-keyboard"></div></section>
 <section class="panel" id="dual-last-panel"><div class="title">ÚLTIMOS 14 NÚMEROS</div>
-<div class="history-lane"><span class="reading-dot" title="Normal" aria-label="Normal"></span><div id="dual-last-normal"></div></div>
-<div class="history-lane reverse"><span class="reading-dot" title="Inversa" aria-label="Inversa"></span><div id="dual-last-inverted"></div></div>
+<div class="history-lane"><span class="reading-dot" title="Normal" aria-label="Normal"></span><div id="dual-last-normal"><span class="history-reading-label">NORMAL</span></div></div>
+<div class="history-lane reverse"><span class="reading-dot" title="Inversa" aria-label="Inversa"></span><div id="dual-last-inverted"><span class="history-reading-label">INVERSA</span></div></div>
 </section>
 <section class="panel"><button class="head" id="dual-timeline-toggle">LINHAS DO TEMPO • NORMAL / INVERSA <span>− / +</span></button><div class="muted">W = direto • G1 = defesa • R = LOSS final. Linha de cima: normal. Linha azul de baixo: inversa.</div><div id="dual-timelines"></div></section>
 <section class="panel"><div class="title">FICHAS / G1</div><div class="row" id="dual-financial"></div></section>
@@ -13350,6 +13640,22 @@ async function watchNumbers(){
  monitoring=false;
 }
 const coordinator={
+ toggleFollowIndication(){
+  if (!alive || running()) return;
+  if (both().some(engine => engine.getState().phase !== 'ENTRY' || engine.getState().cycle)) {
+   alert('AGUARDE ENCERRAR O CICLO ATUAL NAS DUAS LEITURAS.');
+   return;
+  }
+  const enable = both().some(engine => engine.getState().strategy !== 'FOLLOW_MASTER');
+  for (const engine of both())
+   if ((engine.getState().strategy === 'FOLLOW_MASTER') !== enable) engine.toggleFollowLocal();
+ },
+ adaptiveEnabled(reading){return !!sides[reading]?.getState().postLossEnabled;},
+ toggleAdaptive(reading){
+  if (!alive || running() || !sides[reading]) return;
+  sides[reading].toggleAdaptiveRecovery();
+  both().forEach(engine => engine.refreshRecoveryControls());
+ },
  async import(numbers){
   if(!alive||running())return false;
   if(!Array.isArray(numbers))throw Error('HISTÓRICO INVÁLIDO.');
@@ -13451,7 +13757,7 @@ function mountUnified(){
   const input=sides.NORMAL.element(id),previous=input.onchange;
   input.onchange=()=>{previous?.();const s=sides.NORMAL.getState();sides.INVERTIDO.setFinancial(s.stake,s.multiplier);};
  }
- unifiedReady=true;pairTimelines();
+ unifiedReady=true;pairTimelines();both().forEach(engine=>engine.refreshRecoveryControls());
 }
 mountUnified();
 ui('dual-control-side').onchange=()=>{const inverse=ui('dual-control-side').value==='INVERTIDO';ui('dual-controls-normal').hidden=inverse;ui('dual-controls-inverted').hidden=!inverse;};
