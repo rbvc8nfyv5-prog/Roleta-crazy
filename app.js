@@ -1,4 +1,21 @@
-/* ANÁLISE BETA 6.6.12 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+/* ANÁLISE BETA 6.6.14 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
+Depois de importar N números, fixa centros/bancos/candidatas para dez resultados.
+Master e prioridades escolhem entre essas candidatas, com avaliação a cada giro.
+No décimo: retira os dez mais antigos e forma novas jogadas com os N atuais.
+Não reimporta, não repete backtest e não apaga a linha do tempo ou o arquivo manual.
+Defesas comprometidas continuam até encerrar seu ciclo.
+Resultado geral compacto: quatro linhas, com ciclos/W/G1/LOSS/%/indicação Master.
+*/
+/* ANÁLISE BETA 6.6.14 — RETOMADA SEM COMPACTAÇÃO NA TELA.
+Trocar de aba não executa mais save()/LZW completo na thread da interface.
+Serialização do checkpoint também ocorre no worker de salvamento.
+Dois calculadores de bancos adicionais por leitura foram eliminados; os mesmos
+65 bancos e todas as análises são calculados pelo worker de cada leitura.
+Falha do worker não transfere silenciosamente o motor inteiro para o teclado.
+Reinserir o código transfere a sessão em memória sem compactação síncrona.
+Persistência, diário de entradas, linhas do tempo e reanálise preservados.
+*/
+/* ANÁLISE BETA 6.6.14 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
 A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
 Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
 Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
@@ -18,7 +35,7 @@ nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 - Falha de leitura protege a cópia existente de gravação vazia automática.
 - Aviso de salvamento permanece visível na tela compartilhada.
 */
-/* ANÁLISE BETA V6.6.12 — SELEÇÃO MASTER CORRIGIDA.
+/* ANÁLISE BETA V6.6.14 — SELEÇÃO MASTER CORRIGIDA.
 Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
 12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
 O MASTER e o controlador pós-loss não disputam consigo mesmos.
@@ -34,7 +51,7 @@ Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
 Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
 Este é um critério comparativo; não garante acerto nem ausência de LOSS.
 */
-/* ANÁLISE BETA V6.6.12 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* ANÁLISE BETA V6.6.14 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -56,7 +73,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.12 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.14 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -70,7 +87,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.12 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.14 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -114,7 +131,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -148,7 +165,7 @@ ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-  const VERSION = "6.6.12",
+  const VERSION = "6.6.14",
     KEY = 'ANALISE_BETA_V664_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=[];
@@ -1292,7 +1309,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.12', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.14', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -1959,7 +1976,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     return { shares, details, samples, confidence };
   }
 
-  function spatialRead(h) {
+  function spatialRead(h, forceHistorical = false) {
+    if(!forceHistorical&&momentIsFixed())h=state.block.anchor;
     h = h.slice(-WINDOW);
     const key = h.join(",");
     if (spaceCache.has(key)) return spaceCache.get(key);
@@ -1970,7 +1988,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.12" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.14" };
     spaceCache.set(key, r);
     if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2436,7 +2454,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.12",readingCandidates:37,
+          readingVersion:"6.6.14",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -2580,6 +2598,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function bestNumberCombination(h) {
+    if(momentIsFixed())return fixedMomentMotor("NUMBER");
     if (h.length < 8) return null;
     const trigger = h.at(-1),
       best = rankNumberCombinations(h, trigger)[0];
@@ -2689,6 +2708,10 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function chooseMotor(def, cs, previous) {
     if (!cs.length) return null;
+    if(momentIsFixed()&&!variantEvaluationContext){
+      const id=def.id||(def.rule?'ORIGINAL:'+def.rule:def.rank?'RANK:'+def.rank:null);
+      if(id)return fixedMomentMotor(id);
+    }
     const fixed = cs[clamp(state.rank - 1, 0, cs.length - 1)];
     if (def.rank) return cs[clamp(def.rank - 1, 0, cs.length - 1)];
     if (def.rule === "FIXED") return chooseAutoMotor(cs);
@@ -3542,7 +3565,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function fresh() {
     return {
-      structuralMemoryVersion: "6.6.12",
+      structuralMemoryVersion: "6.6.14",
       structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
@@ -3721,8 +3744,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       r.strategy = "TRAINER";
       r.manual = null;
     }
-    if(data.structuralMemoryVersion!=="6.6.12"){
-      r.structuralMemoryVersion="6.6.12";
+    if(data.structuralMemoryVersion!=="6.6.14"){
+      r.structuralMemoryVersion="6.6.14";
       r.block={...r.block,data:null};
     }
 
@@ -3765,7 +3788,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function compactMotor(m) {
-    const result = { readingVersion:"6.6.12", readingCandidates:37,};
+    const result = { readingVersion:"6.6.14", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3793,10 +3816,47 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   
 
+    // Só o Master/ranking acompanha os resultados no intervalo. Os centros de
+  // cada candidata permanecem os mesmos até completar os dez lançamentos.
+  function momentIsFixed(){
+    return !state.importTrainingActive&&!!state.block.data&&Array.isArray(state.block.fixedForecasts);
+  }
+  function fixedMomentMotor(id){
+    const item=state.block.fixedForecasts?.find(row=>row.id===id);
+    return item?copy(item.motor):null;
+  }
+  function fixedSelectionId(){
+    if(state.strategy==='AUTO')return 'RANK:'+state.rank;
+    if(state.strategy==='ADAPTIVE')return 'ADAPTIVE:'+state.adaptive;
+    if(state.strategy==='CREATED')return state.activeCreated;
+    if(['TRAINER','NUMBER'].includes(state.strategy))return state.strategy;
+    const owner=activeVariationOwner();
+    if(owner){const variation=chosenVariation(owner);
+      return state.variantSelections[owner]===-3?owner+'@THIRD':variation?variantBookId(owner,variation):'ORIGINAL:'+owner;
+    }
+    return 'ORIGINAL:'+state.strategy;
+  }
+  function freezeMomentForecasts(){
+    // Esta função é chamada uma vez na importação e após cada dez números.
+    // Não reproduz giros antigos e não altera o resultado de nenhuma entrada.
+    state.block.fixedForecasts=null;
+    const block=currentBlock();
+    const forecasts=snapshotTimelineForecasts(block).filter(row=>!['MASTER','POSTLOSS'].includes(row.id));
+    state.block.policyForecasts=state.reanalysisPolicies.map(policy=>({
+      id:policy.id,play:geometry(reanalysisWeights(state.block.anchor,policy.group,policy.level))
+    }));
+    state.block.fixedForecasts=forecasts;
+    state.block.calibrations=(Number(state.block.calibrations)||0)+1;
+    state.block.calibration={turn:state.totalTurns,startTurn:state.historyTurns[0]||1,
+      size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
+  }
+
   function prepareBlock() {
     if (state.history.length < 8) return null;
-    if (state.block.data && state.block.decisionTurn === state.totalTurns)
+    if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
       return currentBlock();
+    state.block.fixedForecasts=null;
+    state.block.policyForecasts=null;
     state.block.anchor = [...state.history].slice(-70);
     state.block.decisionTurn = state.totalTurns;
     variantForecastCache.clear();
@@ -3818,6 +3878,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     updateNumberChoice();
     updateTrainer();
     blockRuntimeKey = null;
+    freezeMomentForecasts();
     updateMaster(currentBlock());
     return currentBlock();
   }
@@ -3992,6 +4053,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (state.strategy === "POSTLOSS") return null;
     if (state.strategy === "MASTER")
       return copy(masterSelection()?.motor || null);
+    if(momentIsFixed())return fixedMomentMotor(fixedSelectionId());
     if (state.strategy === "TRAINER") return copy(independentGlobalMotor());
     if (state.variantSelections[activeVariationOwner()] === -3)
       return thirdVariationMotor(activeVariationOwner());
@@ -4219,16 +4281,18 @@ const triangleMemory666 = createTriangleMemory666(W);
           : "POSTLOSS"
         : "NORMAL"
       : null;
+    const modelHistory=momentIsFixed()?state.block.anchor:before;
+    const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.12", prefix: [...before].slice(-70), beforeTurn: turn-1,
-        candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
-        supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
+        version: "6.6.14", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
+        supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
         bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
-        readingSupport: motorReadings667.candidate(before,n)?.historicalSupport||0,
+        readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play?.numbers.includes(n) ?? null,
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
@@ -4275,15 +4339,20 @@ const triangleMemory666 = createTriangleMemory666(W);
         blockRuntimeData = null;
         variantForecastCache.clear();
         pruneRolling();
+        clearSpatialCaches();
+        state.block.fixedForecasts=null;state.block.policyForecasts=null;
       }
     }
 
-    // O descarte continua em dez; a previsão seguinte nunca usa o bloco anterior.
-    state.block.data = null;
-    blockRuntimeKey = null;
-    blockRuntimeData = null;
-    variantForecastCache.clear();
-    state.block.best = rankBestVariation();
+    // Durante o bloco as jogadas são fixas. O Master pode mudar de candidata.
+    if(source==='HISTÓRICO'){
+      state.block.data=null;
+      state.block.fixedForecasts=null;
+      blockRuntimeKey=null;blockRuntimeData=null;variantForecastCache.clear();
+      state.block.best=null;
+    }else if(state.block.data){
+      updateMaster(currentBlock());
+    }
     return state.ledger.at(-1);
   }
 
@@ -4327,6 +4396,7 @@ state.importAudit=describeImport(clean,opts);
   function chosenVariation(owner) {
     const value = state.variantSelections[owner];
     if (value === -3) {
+      if(momentIsFixed())return fixedMomentMotor(owner+'@THIRD')?.thirdTarget?.variation||0;
       const ranked = variationPerformance(owner);
       return ranked.some((r) => r.total) ? ranked[2].variation : 0;
     }
@@ -4394,6 +4464,11 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function snapshotTimelineForecasts(block) {
+    if(momentIsFixed()){
+      const fixed=copy(state.block.fixedForecasts), recovery=postLossChoice(block)?.motor;
+      if(validPlay(recovery?.play))fixed.push({id:'POSTLOSS',motor:copy(recovery),defenseStrategy:recovery.postLossTarget?.defenseStrategy||'POSTLOSS'});
+      return fixed;
+    }
     if (!block) return [];
     const forecasts = [];
     const append = (id, motor) => {
@@ -4493,6 +4568,7 @@ state.importAudit=describeImport(clean,opts);
   }
   /* O terceiro é uma posição acompanhada dentro do proprietário, não uma V fixa. */
   function thirdVariationMotor(owner, block = currentBlock()) {
+    if(momentIsFixed())return fixedMomentMotor(owner+"@THIRD");
     const ranked = variationPerformance(owner);
     if (!ranked.some((r) => r.total)) return null;
     const variation = ranked[2].variation;
@@ -4508,6 +4584,7 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function timelineMotor(id, block = currentBlock()) {
+    if(momentIsFixed()&&!["MASTER","POSTLOSS"].includes(id))return fixedMomentMotor(id);
     if (!block) return null;
     if (id.endsWith("@THIRD"))
       return thirdVariationMotor(id.slice(0, -6), block);
@@ -4719,7 +4796,7 @@ state.importAudit=describeImport(clean,opts);
   const REANALYSIS_COMPONENTS = ['triangle','chain','pole','arc','route','recent'];
   const REANALYSIS_LEVELS = [.35,.55,.75,.90];
   function reanalysisWeights(prefix, group, level) {
-    const h=prefix.slice(-70), reading=spatialRead(h);
+    const h=prefix.slice(-70), reading=spatialRead(h,true);
     const recent=Array(37).fill(.1);
     for(let age=0;age<h.length;age++){
       const mass=Math.exp(-age/12);
@@ -4734,7 +4811,8 @@ state.importAudit=describeImport(clean,opts);
   function validateReanalysisPolicies(prefix,number,turn){
     for(const policy of state.reanalysisPolicies){
       if(policy.createdTurn>=turn)continue;
-      const play=geometry(reanalysisWeights(prefix,policy.group,policy.level));
+      const play=momentIsFixed()?state.block.policyForecasts?.find(row=>row.id===policy.id)?.play
+        :geometry(reanalysisWeights(prefix,policy.group,policy.level));
       if(!validPlay(play))continue;
       const hit=play.numbers.includes(number);
       policy.evaluations++;
@@ -4836,7 +4914,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.12',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.14',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -5087,11 +5165,11 @@ state.importAudit=describeImport(clean,opts);
   /* Caches dependentes do estado são renovados; análises puras por histórico
    exato continuam disponíveis para reutilização, sem alterar os cálculos. */
   function clearRuntimeCaches() {
-    motorDiversityCache.clear();
-    variantForecastCache.clear();
-    blockRuntimeKey = null;
-    blockRuntimeData = null;
+    motorDiversityCache.clear();variantForecastCache.clear();
+    const key=state.block.revision+'|'+state.block.decisionTurn;
+    if(!state.block.data||blockRuntimeKey!==key){blockRuntimeKey=null;blockRuntimeData=null;}
   }
+
 
   /* Checkpoints completos. LZW síncrono reduz o espaço ocupado sem cortar histórico,
    treinamento, ciclos ou desfazer. A fila possui seu próprio diário causal. */
@@ -5729,7 +5807,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.12",readingCandidates:37,
+          readingVersion:"6.6.14",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -5751,96 +5829,13 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
     return forecasts;
   }
 
-  /* Dois calculadores persistentes repartem as oito famílias de estratégias.
-   Nenhuma combinação é reutilizada de um resultado anterior. */
-  let bankCalculators = null,
-    bankRequestId = 0;
-  function createBankCalculator() {
-    const url = URL.createObjectURL(
-      new Blob(["(" + analysisBackground.toString() + ")();"], {
-        type: "text/javascript",
-      }),
-    );
-    const worker = new Worker(url);
-    URL.revokeObjectURL(url);
-    const requests = new Map();
-    worker.onmessage = (event) => {
-      const data = event.data,
-        request = requests.get(data.id);
-      if (!request) return;
-      requests.delete(data.id);
-      data.error
-        ? request.reject(Error(data.error))
-        : request.resolve(data.variants);
-    };
-    worker.onerror = () => {
-      worker.terminate();
-      for (const request of requests.values())
-        request.reject(Error("Calculador indisponível."));
-      requests.clear();
-      bankCalculators = null;
-    };
-    return { worker, requests };
-  }
-  function requestBankCalculation(calculator, owners) {
-    return new Promise((resolve, reject) => {
-      const id = ++bankRequestId;
-      calculator.requests.set(id, { resolve, reject });
-      calculator.worker.postMessage({
-        id,
-        action: "BANKS",
-        state: { ...state, undoStack: [] },
-        owners,
-      });
-    });
-  }
+
   async function prepareBlockParallel() {
-    if (state.history.length < 8) return null;
-    if (state.block.data && state.block.decisionTurn === state.totalTurns)
-      return currentBlock();
-    if (typeof Worker === "undefined" || typeof Blob === "undefined")
-      return prepareBlock();
-    try {
-      if (!bankCalculators)
-        bankCalculators = [createBankCalculator(), createBankCalculator()];
-      const groups = [
-        VARIANT_OWNERS.filter((_, i) => i % 2 === 0).map((o) => o.id),
-        VARIANT_OWNERS.filter((_, i) => i % 2 === 1).map((o) => o.id),
-      ];
-      const pending = Promise.all(
-        bankCalculators.map((calculator, i) =>
-          requestBankCalculation(calculator, groups[i]),
-        ),
-      );
-      const anchor = [...state.history].slice(-70),
-        global = motors(anchor);
-      const partitions = await pending;
-      const byId = new Map(partitions.flat().map((f) => [f.bankId, f]));
-      const variants = [];
-      for (const owner of VARIANT_OWNERS)
-        for (let variation = 1; variation <= 8; variation++) {
-          const id = variantBookId(owner.id, variation),
-            forecast = byId.get(id);
-          if (!forecast) throw Error("Variação ausente: " + id);
-          variants.push(forecast);
-        }
-      state.block.anchor = anchor;
-      state.block.decisionTurn = state.totalTurns;
-      state.block.data = { global: global.map(compactMotor), variants };
-      state.block.best = rankBestVariation();
-      registerNumberCombination(anchor, state.totalTurns);
-      updateNumberChoice();
-      updateTrainer();
-      blockRuntimeKey = null;
-      updateMaster(currentBlock());
-      return currentBlock();
-    } catch (error) {
-      if (bankCalculators)
-        for (const calculator of bankCalculators) calculator.worker.terminate();
-      bankCalculators = null;
-      return prepareBlock();
-    }
+    // Um único calculador por leitura; todos os 65 bancos continuam ativos.
+    // prepareBlock conserva a mesma busca, pesos, ordenação e regras.
+    return prepareBlock();
   }
+
 
   /* Os contadores de sequência não são apagados pelo descarte da janela. */
   function updateStrategyStreaks(turn = state.totalTurns) {
@@ -5962,7 +5957,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.14 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -5996,7 +5991,7 @@ ANÁLISE BETA V6.6.12 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
 */
-    const VERSION = "6.6.12",
+    const VERSION = "6.6.14",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7147,7 +7142,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.12', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.14', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -7815,7 +7810,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       return { shares, details, samples, confidence };
     }
 
-    function spatialRead(h) {
+    function spatialRead(h, forceHistorical = false) {
+    if(!forceHistorical&&momentIsFixed())h=state.block.anchor;
       h = h.slice(-WINDOW);
       const key = h.join(",");
       if (spaceCache.has(key)) return spaceCache.get(key);
@@ -7829,7 +7825,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.12" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.14" };
       spaceCache.set(key, r);
       if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -8303,7 +8299,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.12",readingCandidates:37,
+          readingVersion:"6.6.14",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -8450,6 +8446,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function bestNumberCombination(h) {
+    if(momentIsFixed())return fixedMomentMotor("NUMBER");
       if (h.length < 8) return null;
       const trigger = h.at(-1),
         best = rankNumberCombinations(h, trigger)[0];
@@ -8559,6 +8556,10 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function chooseMotor(def, cs, previous) {
       if (!cs.length) return null;
+      if(momentIsFixed()&&!variantEvaluationContext){
+        const id=def.id||(def.rule?'ORIGINAL:'+def.rule:def.rank?'RANK:'+def.rank:null);
+        if(id)return fixedMomentMotor(id);
+      }
       const fixed = cs[clamp(state.rank - 1, 0, cs.length - 1)];
       if (def.rank) return cs[clamp(def.rank - 1, 0, cs.length - 1)];
       if (def.rule === "FIXED") return chooseAutoMotor(cs);
@@ -9437,7 +9438,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function fresh() {
       return {
-      structuralMemoryVersion: "6.6.12",
+      structuralMemoryVersion: "6.6.14",
       structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
@@ -9616,8 +9617,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         r.strategy = "TRAINER";
         r.manual = null;
       }
-    if(data.structuralMemoryVersion!=="6.6.12"){
-      r.structuralMemoryVersion="6.6.12";
+    if(data.structuralMemoryVersion!=="6.6.14"){
+      r.structuralMemoryVersion="6.6.14";
       r.block={...r.block,data:null};
     }
 
@@ -9660,7 +9661,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function compactMotor(m) {
-      const result = { readingVersion:"6.6.12", readingCandidates:37,};
+      const result = { readingVersion:"6.6.14", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -9688,11 +9689,48 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     
 
-    function prepareBlock() {
+      // Só o Master/ranking acompanha os resultados no intervalo. Os centros de
+  // cada candidata permanecem os mesmos até completar os dez lançamentos.
+  function momentIsFixed(){
+    return !state.importTrainingActive&&!!state.block.data&&Array.isArray(state.block.fixedForecasts);
+  }
+  function fixedMomentMotor(id){
+    const item=state.block.fixedForecasts?.find(row=>row.id===id);
+    return item?copy(item.motor):null;
+  }
+  function fixedSelectionId(){
+    if(state.strategy==='AUTO')return 'RANK:'+state.rank;
+    if(state.strategy==='ADAPTIVE')return 'ADAPTIVE:'+state.adaptive;
+    if(state.strategy==='CREATED')return state.activeCreated;
+    if(['TRAINER','NUMBER'].includes(state.strategy))return state.strategy;
+    const owner=activeVariationOwner();
+    if(owner){const variation=chosenVariation(owner);
+      return state.variantSelections[owner]===-3?owner+'@THIRD':variation?variantBookId(owner,variation):'ORIGINAL:'+owner;
+    }
+    return 'ORIGINAL:'+state.strategy;
+  }
+  function freezeMomentForecasts(){
+    // Esta função é chamada uma vez na importação e após cada dez números.
+    // Não reproduz giros antigos e não altera o resultado de nenhuma entrada.
+    state.block.fixedForecasts=null;
+    const block=currentBlock();
+    const forecasts=snapshotTimelineForecasts(block).filter(row=>!['MASTER','POSTLOSS'].includes(row.id));
+    state.block.policyForecasts=state.reanalysisPolicies.map(policy=>({
+      id:policy.id,play:geometry(reanalysisWeights(state.block.anchor,policy.group,policy.level))
+    }));
+    state.block.fixedForecasts=forecasts;
+    state.block.calibrations=(Number(state.block.calibrations)||0)+1;
+    state.block.calibration={turn:state.totalTurns,startTurn:state.historyTurns[0]||1,
+      size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
+  }
+
+  function prepareBlock() {
       if (state.history.length < 8) return null;
-      if (state.block.data && state.block.decisionTurn === state.totalTurns)
+      if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
         return currentBlock();
-      state.block.anchor = [...state.history].slice(-70);
+      state.block.fixedForecasts=null;
+    state.block.policyForecasts=null;
+    state.block.anchor = [...state.history].slice(-70);
       state.block.decisionTurn = state.totalTurns;
       variantForecastCache.clear();
       const variants = allVariantForecasts(state.block.anchor),
@@ -9713,6 +9751,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       updateNumberChoice();
       updateTrainer();
       blockRuntimeKey = null;
+      freezeMomentForecasts();
       updateMaster(currentBlock());
       return currentBlock();
     }
@@ -9889,7 +9928,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       if (state.strategy === "POSTLOSS") return null;
       if (state.strategy === "MASTER")
         return copy(masterSelection()?.motor || null);
-      if (state.strategy === "TRAINER") return copy(independentGlobalMotor());
+      if(momentIsFixed())return fixedMomentMotor(fixedSelectionId());
+    if (state.strategy === "TRAINER") return copy(independentGlobalMotor());
       if (state.variantSelections[activeVariationOwner()] === -3)
         return thirdVariationMotor(activeVariationOwner());
       const direct = selectedVariantForecast();
@@ -10118,16 +10158,18 @@ const triangleMemory666 = createTriangleMemory666(W);
             : "POSTLOSS"
           : "NORMAL"
         : null;
+      const modelHistory=momentIsFixed()?state.block.anchor:before;
+      const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.12", prefix: [...before].slice(-70), beforeTurn: turn-1,
-        candidateCount: 37, chainMaximum:before.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:before.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(before).formsEvaluated, channelCount: motorReadings667.summary(before).channelCount,
-        supportedGroups: motorReadings667.summary(before).groups.filter(group=>group.support>0).map(group=>group.name),
+        version: "6.6.14", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
+        supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
         bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
-        readingSupport: motorReadings667.candidate(before,n)?.historicalSupport||0,
+        readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play?.numbers.includes(n) ?? null,
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
@@ -10174,16 +10216,21 @@ const triangleMemory666 = createTriangleMemory666(W);
           blockRuntimeData = null;
           variantForecastCache.clear();
           pruneRolling();
+          clearSpatialCaches();
+          state.block.fixedForecasts=null;state.block.policyForecasts=null;
         }
       }
 
-      // O descarte continua em dez; a previsão seguinte nunca usa o bloco anterior.
-      state.block.data = null;
-      blockRuntimeKey = null;
-      blockRuntimeData = null;
-      variantForecastCache.clear();
-      state.block.best = rankBestVariation();
-      return state.ledger.at(-1);
+      // Durante o bloco as jogadas são fixas. O Master pode mudar de candidata.
+    if(source==='HISTÓRICO'){
+      state.block.data=null;
+      state.block.fixedForecasts=null;
+      blockRuntimeKey=null;blockRuntimeData=null;variantForecastCache.clear();
+      state.block.best=null;
+    }else if(state.block.data){
+      updateMaster(currentBlock());
+    }
+    return state.ledger.at(-1);
     }
 
     
@@ -10226,6 +10273,7 @@ state.importAudit=describeImport(clean,opts);
     function chosenVariation(owner) {
       const value = state.variantSelections[owner];
       if (value === -3) {
+        if(momentIsFixed())return fixedMomentMotor(owner+'@THIRD')?.thirdTarget?.variation||0;
         const ranked = variationPerformance(owner);
         return ranked.some((r) => r.total) ? ranked[2].variation : 0;
       }
@@ -10293,6 +10341,11 @@ state.importAudit=describeImport(clean,opts);
     }
 
     function snapshotTimelineForecasts(block) {
+    if(momentIsFixed()){
+      const fixed=copy(state.block.fixedForecasts), recovery=postLossChoice(block)?.motor;
+      if(validPlay(recovery?.play))fixed.push({id:'POSTLOSS',motor:copy(recovery),defenseStrategy:recovery.postLossTarget?.defenseStrategy||'POSTLOSS'});
+      return fixed;
+    }
       if (!block) return [];
       const forecasts = [];
       const append = (id, motor) => {
@@ -10394,6 +10447,7 @@ state.importAudit=describeImport(clean,opts);
     }
     /* O terceiro é uma posição acompanhada dentro do proprietário, não uma V fixa. */
     function thirdVariationMotor(owner, block = currentBlock()) {
+    if(momentIsFixed())return fixedMomentMotor(owner+"@THIRD");
       const ranked = variationPerformance(owner);
       if (!ranked.some((r) => r.total)) return null;
       const variation = ranked[2].variation;
@@ -10409,6 +10463,7 @@ state.importAudit=describeImport(clean,opts);
     }
 
     function timelineMotor(id, block = currentBlock()) {
+    if(momentIsFixed()&&!["MASTER","POSTLOSS"].includes(id))return fixedMomentMotor(id);
       if (!block) return null;
       if (id.endsWith("@THIRD"))
         return thirdVariationMotor(id.slice(0, -6), block);
@@ -10622,7 +10677,7 @@ state.importAudit=describeImport(clean,opts);
   const REANALYSIS_COMPONENTS = ['triangle','chain','pole','arc','route','recent'];
   const REANALYSIS_LEVELS = [.35,.55,.75,.90];
   function reanalysisWeights(prefix, group, level) {
-    const h=prefix.slice(-70), reading=spatialRead(h);
+    const h=prefix.slice(-70), reading=spatialRead(h,true);
     const recent=Array(37).fill(.1);
     for(let age=0;age<h.length;age++){
       const mass=Math.exp(-age/12);
@@ -10637,7 +10692,8 @@ state.importAudit=describeImport(clean,opts);
   function validateReanalysisPolicies(prefix,number,turn){
     for(const policy of state.reanalysisPolicies){
       if(policy.createdTurn>=turn)continue;
-      const play=geometry(reanalysisWeights(prefix,policy.group,policy.level));
+      const play=momentIsFixed()?state.block.policyForecasts?.find(row=>row.id===policy.id)?.play
+        :geometry(reanalysisWeights(prefix,policy.group,policy.level));
       if(!validPlay(play))continue;
       const hit=play.numbers.includes(number);
       policy.evaluations++;
@@ -10739,7 +10795,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.12',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.14',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -10986,11 +11042,11 @@ state.importAudit=describeImport(clean,opts);
     /* Caches dependentes do estado são renovados; análises puras por histórico
    exato continuam disponíveis para reutilização, sem alterar os cálculos. */
     function clearRuntimeCaches() {
-      motorDiversityCache.clear();
-      variantForecastCache.clear();
-      blockRuntimeKey = null;
-      blockRuntimeData = null;
-    }
+    motorDiversityCache.clear();variantForecastCache.clear();
+    const key=state.block.revision+'|'+state.block.decisionTurn;
+    if(!state.block.data||blockRuntimeKey!==key){blockRuntimeKey=null;blockRuntimeData=null;}
+  }
+
 
     /* Checkpoints completos. LZW síncrono reduz o espaço ocupado sem cortar histórico,
    treinamento, ciclos ou desfazer. A fila possui seu próprio diário causal. */
@@ -11530,7 +11586,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.12",readingCandidates:37,
+          readingVersion:"6.6.14",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -11552,97 +11608,13 @@ state.importAudit=describeImport(clean,opts);
       return forecasts;
     }
 
-    /* Dois calculadores persistentes repartem as oito famílias de estratégias.
-   Nenhuma combinação é reutilizada de um resultado anterior. */
-    let bankCalculators = null,
-      bankRequestId = 0;
-    function createBankCalculator() {
-      const url = URL.createObjectURL(
-        new Blob(["(" + analysisBackground.toString() + ")();"], {
-          type: "text/javascript",
-        }),
-      );
-      const worker = new Worker(url);
-      URL.revokeObjectURL(url);
-      const requests = new Map();
-      worker.onmessage = (event) => {
-        const data = event.data,
-          request = requests.get(data.id);
-        if (!request) return;
-        requests.delete(data.id);
-        data.error
-          ? request.reject(Error(data.error))
-          : request.resolve(data.variants);
-      };
-      worker.onerror = () => {
-        worker.terminate();
-        for (const request of requests.values())
-          request.reject(Error("Calculador indisponível."));
-        requests.clear();
-        bankCalculators = null;
-      };
-      return { worker, requests };
-    }
-    function requestBankCalculation(calculator, owners) {
-      return new Promise((resolve, reject) => {
-        const id = ++bankRequestId;
-        calculator.requests.set(id, { resolve, reject });
-        calculator.worker.postMessage({
-          id,
-          action: "BANKS",
-          state: { ...state, undoStack: [] },
-          owners,
-        });
-      });
-    }
+  
     async function prepareBlockParallel() {
-      if (state.history.length < 8) return null;
-      if (state.block.data && state.block.decisionTurn === state.totalTurns)
-        return currentBlock();
-      if (typeof Worker === "undefined" || typeof Blob === "undefined")
-        return prepareBlock();
-      try {
-        if (!bankCalculators)
-          bankCalculators = [createBankCalculator(), createBankCalculator()];
-        const groups = [
-          VARIANT_OWNERS.filter((_, i) => i % 2 === 0).map((o) => o.id),
-          VARIANT_OWNERS.filter((_, i) => i % 2 === 1).map((o) => o.id),
-        ];
-        const pending = Promise.all(
-          bankCalculators.map((calculator, i) =>
-            requestBankCalculation(calculator, groups[i]),
-          ),
-        );
-        const anchor = [...state.history].slice(-70),
-          global = motors(anchor);
-        const partitions = await pending;
-        const byId = new Map(partitions.flat().map((f) => [f.bankId, f]));
-        const variants = [];
-        for (const owner of VARIANT_OWNERS)
-          for (let variation = 1; variation <= 8; variation++) {
-            const id = variantBookId(owner.id, variation),
-              forecast = byId.get(id);
-            if (!forecast) throw Error("Variação ausente: " + id);
-            variants.push(forecast);
-          }
-        state.block.anchor = anchor;
-        state.block.decisionTurn = state.totalTurns;
-        state.block.data = { global: global.map(compactMotor), variants };
-        state.block.best = rankBestVariation();
-        registerNumberCombination(anchor, state.totalTurns);
-        updateNumberChoice();
-        updateTrainer();
-        blockRuntimeKey = null;
-        updateMaster(currentBlock());
-        return currentBlock();
-      } catch (error) {
-        if (bankCalculators)
-          for (const calculator of bankCalculators)
-            calculator.worker.terminate();
-        bankCalculators = null;
-        return prepareBlock();
-      }
-    }
+    // Um único calculador por leitura; todos os 65 bancos continuam ativos.
+    // prepareBlock conserva a mesma busca, pesos, ordenação e regras.
+    return prepareBlock();
+  }
+
 
     /* Os contadores de sequência não são apagados pelo descarte da janela. */
     function updateStrategyStreaks(turn = state.totalTurns) {
@@ -12139,7 +12111,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       state.block.pending +
       "/10 • " +
       (state.block.data
-        ? "JOGADA ATUALIZADA • RETIRA DEZ ANTIGOS A CADA DEZ NOVOS"
+        ? "JOGADAS FIXAS • RECALIBRA AO COMPLETAR DEZ NOVOS"
         : "PREPARANDO PRÓXIMA JOGADA");
     $("cycleInfo").textContent = cycleIsFree()
       ? "CICLO LIVRE"
@@ -12227,8 +12199,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       patchHTML($("general"),
         '<div class="title">RESULTADOS DA JANELA</div>' +
         resultsSeparatedHTML(state.ledger) +
-        '<div class="title">MANUAIS ARQUIVADOS</div>' +
-        resultsSeparatedHTML(state.manualLog)+reanalysisSummaryHTML());
+        '<details><summary>MANUAIS ARQUIVADOS</summary>'+resultsSeparatedHTML(state.manualLog)+'</details>'+reanalysisSummaryHTML());
     }
     const target =
       state.cycle?.original?.postLossTarget || motor?.postLossTarget;
@@ -12296,7 +12267,7 @@ if(!isCurrentApp())return;
 
   function workerRequest(action, payload) {
     if (typeof Worker === "undefined" || workerDisabled)
-      return Promise.resolve(null);
+      return Promise.reject(Error('O cálculo em segundo plano está indisponível. A sessão foi preservada.'));
     return new Promise((resolve, reject) => {
       try {
         if (!workerClient) {
@@ -12323,7 +12294,7 @@ if(!isCurrentApp())return;
             workerClient.terminate();
             workerClient = null;
             for (const request of clientRequests.values())
-              request.resolve(null);
+              request.reject(Error('O calculador foi interrompido pelo navegador. A sessão foi preservada.'));
             clientRequests.clear();
           };
         }
@@ -12332,7 +12303,7 @@ if(!isCurrentApp())return;
         workerClient.postMessage({ id, action, ...payload });
       } catch (error) {
         workerDisabled = true;
-        resolve(null);
+        reject(Error('Não foi possível iniciar o calculador em segundo plano: '+String(error.message||error)));
       }
     });
   }
@@ -12444,7 +12415,6 @@ if(!isCurrentApp())return;
       state = before ? { ...before, undoStack: oldUndo } : previousState;
       clearSpatialCaches();
       inputQueue = [];
-      pendingReceipts = [];
       persistPendingInputs();
       alert("ERRO AO INSERIR NÚMERO: " + String(error.message || error));
     } finally {
@@ -12470,7 +12440,7 @@ if(!isCurrentApp())return;
           clean.length +
           " RESULTADOS? A JANELA TERÁ " +
           clean.length +
-          " NÚMEROS E RETIRARÁ DEZ ANTIGOS A CADA DEZ NOVOS. A PRÓXIMA JOGADA ATUALIZA A CADA NÚMERO.",
+          " NÚMEROS E RETIRARÁ DEZ ANTIGOS A CADA DEZ NOVOS. AS JOGADAS FICAM FIXAS POR DEZ NÚMEROS; O MASTER ESCOLHE ENTRE ELAS.",
       )
     )
       return;
@@ -12524,9 +12494,10 @@ if(!isCurrentApp())return;
             "."
           : "Sem observações ainda.";
       }
-      ui.third.textContent =
-        "3º POR DESEMPENHO • " +
-        (ready ? "V" + ranked[2].variation : "AGUARDANDO TESTES");
+      const pinned=momentIsFixed()?fixedMomentMotor(owner.id+'@THIRD')?.thirdTarget?.variation:null;
+      ui.third.textContent=momentIsFixed()
+        ?'3º FIXADO NO BLOCO • '+(pinned?'V'+pinned:'AGUARDANDO RECALIBRAÇÃO')
+        :'3º POR DESEMPENHO • '+(ready?'V'+ranked[2].variation:'AGUARDANDO TESTES');
       const order = ranked.map((r) => r.variation).join(",");
       if (ui.order !== order) {
         for (const r of ranked) ui.row.appendChild(ui.buttons.get(r.variation));
@@ -12769,23 +12740,15 @@ if(!isCurrentApp())return;
   }
 
   function resultsSeparatedHTML(rows) {
-    const groups = resultGroups(rows),
-      legacy = metrics(groups.legacy).total;
-    return (
-      '<div class="title">NORMAL</div>' +
-      metricsHTML(groups.normal) +
-      '<div class="title postLossText">PÓS-LOSS • ADAPTATIVAS</div>' +
-      metricsHTML(groups.postLoss) +
-      '<div class="title postLossText">PÓS-3 LOSS • TODAS</div>' +
-      metricsHTML(groups.postThree) +
-      '<div class="title">NORMAL + PÓS-LOSS + PÓS-3 LOSS • TOTAL</div>' +
-      metricsHTML(groups.combined) +
-      (legacy
-        ? '<div class="muted">' +
-          legacy +
-          " ciclos anteriores sem identificação de normal/pós-loss permanecem somente no total.</div>"
-        : "")
-    );
+    const groups=resultGroups(rows),best=displayedMasterChoice();
+    const indication=best?esc(best.name):'AGUARDANDO';
+    const lines=[['NORMAL',groups.normal],['PÓS-LOSS',groups.postLoss],['PÓS-3',groups.postThree],['TOTAL',groups.combined]];
+    return '<table class="resultTable"><thead><tr><th>GRUPO</th><th title="Ciclos encerrados">CIC.</th><th title="GREEN direto + GREEN G1">GREEN</th><th title="GREEN de primeira">1ª</th><th>G1</th><th>LOSS</th><th>%</th><th>INDICAÇÃO MASTER</th></tr></thead><tbody>'+
+      lines.map(([name,sample],index)=>{
+        const m=metrics(sample);
+        return '<tr><th scope="row">'+name+'</th><td>'+m.total+'</td><td class="good">'+(m.green+m.g1)+'</td><td class="good">'+m.green+'</td><td>'+m.g1+'</td><td class="bad">'+m.loss+'</td><td>'+(m.total?Math.round(100*(m.green+m.g1)/m.total)+'%':'—')+'</td>'+
+          (index===0?'<td rowspan="4" class="masterIndication">'+indication+'</td>':'')+'</tr>';
+      }).join('')+'</tbody></table>';
   }
 
   let pendingReceipts = [];
@@ -12902,9 +12865,13 @@ if(!isCurrentApp() || recoveryLocked)return;
     try {
       if (!checkpointWorker) {
         const source =
-          "const packSession=" +
-          packSession.toString() +
-          ";self.onmessage=e=>{try{self.postMessage({id:e.data.id,epoch:e.data.epoch,turn:e.data.turn,packed:packSession(e.data.raw)});}catch(error){self.postMessage({id:e.data.id,epoch:e.data.epoch,error:String(error.message||error)});}};";
+          'const W='+JSON.stringify(W)+';'+
+          'const mod=n=>(n%37+37)%37;const ix=n=>W.indexOf(n);'+
+          neighbors.toString()+';'+validPlay.toString()+';'+signaturePlay.toString()+';'+
+          'const packSession='+packSession.toString()+';'+
+          'self.onmessage=e=>{try{const raw=JSON.stringify(e.data.state,(k,v)=>validPlay(v)?{__betaPlay:signaturePlay(v),score:v.score}:v);'+
+          'self.postMessage({id:e.data.id,epoch:e.data.epoch,turn:e.data.turn,packed:packSession(raw)});'+
+          '}catch(error){self.postMessage({id:e.data.id,epoch:e.data.epoch,error:String(error.message||error)});}};';
         const url = URL.createObjectURL(
           new Blob([source], { type: "text/javascript" }),
         );
@@ -12926,10 +12893,7 @@ if(!isCurrentApp())return;
           }
           const next = checkpointNext;
           checkpointNext = null;
-          if (next && next.id === checkpointSerial) {
-            checkpointBusy = true;
-            checkpointWorker.postMessage(next);
-          }
+          if (next) saveAsync();
         };
         checkpointWorker.onerror = () => {
           checkpointWorker.terminate();
@@ -12941,11 +12905,8 @@ if(!isCurrentApp())return;
       }
       const id = ++checkpointSerial,
         turn = state.totalTurns;
-      const raw = JSON.stringify(state, (k, v) =>
-        validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
-      );
-      const message = { id, epoch: checkpointEpoch, turn, raw };
-      if (checkpointBusy) checkpointNext = message;
+      const message = { id, epoch: checkpointEpoch, turn, state };
+      if (checkpointBusy) checkpointNext = true;
       else {
         checkpointBusy = true;
         checkpointWorker.postMessage(message);
@@ -12955,15 +12916,11 @@ if(!isCurrentApp())return;
     }
   }
   function scheduleCheckpointFallback() {
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      if (inputRunning || busy) {
-        scheduleCheckpointFallback();
-        return;
-      }
-      save();
-      persistPendingInputs();
-    }, 250);
+    // Uma falha do compactador não deve provocar uma compactação pesada
+    // síncrona na volta à aba. O diário conserva os números ainda não salvos.
+    persistPendingInputs();
+    saveError='O salvamento em segundo plano foi interrompido. Mantenha a aba aberta e use RECUPERAR HISTÓRICO para retomar.';
+    showSaveHealth();
   }
 
   function togglePostThree() {
@@ -12980,6 +12937,11 @@ if(!isCurrentApp())return;
 
   document.body.innerHTML = `
 <style>${css}
+.resultTable{width:100%;min-width:0;table-layout:fixed;font-size:11px;margin:8px 0}
+.resultTable th,.resultTable td{padding:5px 2px;text-align:center;overflow-wrap:anywhere}
+.resultTable th:first-child{width:17%;text-align:left}
+.resultTable th:last-child{width:25%}
+.resultTable .masterIndication{font-size:11px;line-height:1.5;vertical-align:middle}
 :host{display:block;color:#f4f7fb;font:13px Arial,sans-serif}
 #paste,#import,#restore,#undo,#clear{display:none}
 
@@ -13020,7 +12982,7 @@ if(!isCurrentApp())return;
 </style>
 <main class="app">
 <h1>${side} • ANÁLISE BETA V${VERSION}</h1>
-<div class="sub">8 VARIAÇÕES POR ORIGINAL E TREINADOR NÚMEROS • 12 MOTORES PRÓPRIOS POR VARIAÇÃO<br>PRÓXIMA JOGADA A CADA NÚMERO • DESCARTE EM DEZ • JANELA ATÉ 70</div>
+<div class="sub">8 VARIAÇÕES POR ORIGINAL E TREINADOR NÚMEROS • 12 MOTORES PRÓPRIOS POR VARIAÇÃO<br>JOGADAS FIXAS POR DEZ • MASTER COMPARA A CADA GIRO • DESCARTE EM DEZ • JANELA ATÉ 70</div>
 <section class="panel">
 <div class="title">LEITURA ${side}</div>
 <textarea id="paste" placeholder="Cole de 8 a 70 números, do mais antigo ao mais recente"></textarea>
@@ -13075,6 +13037,9 @@ if(!isCurrentApp())return;
   $("import").onclick = () => importHistory(parseInput($("paste").value));
   $("restore").onclick = async () => {
     if (busy) return;
+    if(workerDisabled){
+      workerClient?.terminate();workerClient=null;workerDisabled=false;clientRequests.clear();
+    }
     for (const key of [KEY, ...OLD_KEYS]) {
       const data = read(key);
       if (data && Array.isArray(data.history)) {
@@ -13084,11 +13049,15 @@ if(!isCurrentApp())return;
         if (!state.block.data) {
           setBusy(true, "RECUPERANDO");
           await waitFrame();
-          prepareBlock();
-          setBusy(false);
+          try{
+            const stack=state.undoStack;
+            const restored=await workerRequest('RESTORE',{state:{...state,undoStack:[]}});
+            state={...restored,undoStack:stack};
+          }finally{setBusy(false);}
         }
         save();
         render();
+        resumePendingInputs();
         return;
       }
     }
@@ -13118,8 +13087,10 @@ if(!isCurrentApp())return;
   async function restoreBootSession() {
     setBusy(true, 'RECUPERANDO SESSÃO');
     try {
-      let recovered = read(KEY);
-      const databaseRaw = await readDatabaseCheckpoint();
+      let recovered = globalThis['__analiseBetaTransfer_'+side] || read(KEY);
+      const handoff = !!globalThis['__analiseBetaTransfer_'+side];
+      delete globalThis['__analiseBetaTransfer_'+side];
+      const databaseRaw = handoff ? null : await readDatabaseCheckpoint();
       if (!isCurrentApp()) return;
       if (databaseRaw) {
         try {
@@ -13165,24 +13136,21 @@ if(!isCurrentApp())return;
     }
   }
   restoreBootSession();
-  sideWindowAdd("pagehide", () => {
-    clearTimeout(saveTimer);
-    checkpointSerial++;
-    save();
+  // O checkpoint completo já é agendado após cada alteração. Ao trocar de
+  // aba, grava somente o diário curto. Não compacta, recalcula ou redesenha.
+  function recordLifecycleJournal(){
+    if(!isCurrentApp())return;
     persistPendingInputs();
-  });
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") {
-      clearTimeout(saveTimer);
-      checkpointSerial++;
-      save();
-      persistPendingInputs();
-    }
+  }
+  sideWindowAdd('pagehide',recordLifecycleJournal);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='hidden')recordLifecycleJournal();
   });
 
 globalThis['__analiseBetaDispose_'+side]=()=>{
  if(!appAlive)return;
- clearTimeout(saveTimer);save();persistPendingInputs();appAlive=false;
+ clearTimeout(saveTimer);persistPendingInputs();
+ globalThis['__analiseBetaTransfer_'+side]=state;appAlive=false;
  if(workerClient)workerClient.terminate();
  if(checkpointWorker)checkpointWorker.terminate();
  clientRequests.clear();
@@ -13210,6 +13178,7 @@ return {
  poleCatalogue(){return motorReadings667.polePairs.map(pair=>({...pair}));},
  poleReading(number,numberA,numberB,tolerance){return motorReadings667.polePairReading(state.history.map(ix),ix(number),ix(numberA),ix(numberB),tolerance);},
  arcReading(number,start,width,window=8){return motorReadings667.arcAlternative(state.history,number,start,width,window);},
+ momentDiagnostics(){return {calibration:copy(state.block.calibration),pending:state.block.pending,calibrations:state.block.calibrations,fixed:copy(state.block.fixedForecasts)};},
  masterDiagnostics(){return {reanalyses:copy(state.importReanalyses),policies:copy(state.reanalysisPolicies),display:copy(displayedMasterChoice()),choice:copy(masterSelection()),ranking:copy(masterRanking()),bestVariations:VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id)),lessons:copy(state.masterLessons),pendingReviews:state.masterReviews.length};},
  getState:()=>state,
  busy:()=>busy||inputRunning||inputQueue.length>0,
@@ -13294,7 +13263,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.12</h1>
+<h1>ANÁLISE BETA 6.6.14</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
