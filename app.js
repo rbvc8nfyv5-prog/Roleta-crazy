@@ -1,18 +1,34 @@
-/* V6.6.16 — mesma análise da 6.6.15.
+/* V6.6.18 — cobertura de 31 números, base integral V6.6.17.
+Cada nova entrada/defesa: cinco blocos de cinco e dois blocos de três, sem repetição.
+31 cobertos e seis descobertos; 12 motores distintos com união de 37 números.
+Quadro de fichas / G1 retirado. Controles e funcionamento das defesas preservados.
+Reorganização de dez em dez, Master, seguir indicação, pós-loss e cores mantidos.
+Dados de versões anteriores permanecem identificados pelas jogadas originais;
+ciclos já comprometidos terminam com a cobertura que foi registrada na entrada.
+*/
+/* V6.6.18 — botão REORGANIZAR DE 10 EM 10.
+Ligado: na calibração existente, ordena uma cópia da leitura em blocos de até dez.
+NORMAL crescente; INVERTIDO decrescente. Duplicatas são preservadas.
+Só dados já recebidos entram na organização, inclusive a sobra final disponível.
+O botão é aplicado na próxima importação/recalibração, sem cálculo adicional ao clicar.
+Desligado: a próxima leitura volta à ordem original de cada lado.
+Histórico real, resultados, linhas W/G1/LOSS, G1 comprometido e análises preservados.
+*/
+/* V6.6.18 — mesma análise da 6.6.15.
 Históricos normal/inverso com molduras distintas, preservando duas linhas de sete.
 Cores próprias para pós-adaptativo, pós-1 todas, pós-2 todas e pós-3 todas.
 LOSS com vermelho intenso, borda reforçada e contraste interno nos números vermelhos.
 SEGUIR INDICAÇÃO MASTER: executa a candidata indicada em cada leitura, sem pausa Master.
 Cada entrada usa somente a indicação disponível antes do resultado; defesa e ciclo congelados.
 */
-/* V6.6.16 — incorpora à 6.6.14:
+/* V6.6.18 — incorpora à 6.6.14:
 Pós-loss adaptativo normal/inverso com controles independentes por leitura.
 Pós-1 e pós-2 LOSS finais consecutivos por estratégia, todas as estratégias.
 Prioridade: pós-3, pós-2, adaptativo, pós-1; ciclos comprometidos preservados.
 Últimos 14 em duas linhas de sete; linha da estratégia selecionada abaixo da jogada.
 Análises, bancos, persistência e recalibração a cada dez preservados.
 */
-/* ANÁLISE BETA 6.6.16 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
+/* ANÁLISE BETA 6.6.18 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
 Depois de importar N números, fixa centros/bancos/candidatas para dez resultados.
 Master e prioridades escolhem entre essas candidatas, com avaliação a cada giro.
 No décimo: retira os dez mais antigos e forma novas jogadas com os N atuais.
@@ -20,7 +36,7 @@ Não reimporta, não repete backtest e não apaga a linha do tempo ou o arquivo 
 Defesas comprometidas continuam até encerrar seu ciclo.
 Resultado geral compacto: quatro linhas, com ciclos/W/G1/LOSS/%/indicação Master.
 */
-/* ANÁLISE BETA 6.6.16 — RETOMADA SEM COMPACTAÇÃO NA TELA.
+/* ANÁLISE BETA 6.6.18 — RETOMADA SEM COMPACTAÇÃO NA TELA.
 Trocar de aba não executa mais save()/LZW completo na thread da interface.
 Serialização do checkpoint também ocorre no worker de salvamento.
 Dois calculadores de bancos adicionais por leitura foram eliminados; os mesmos
@@ -29,7 +45,7 @@ Falha do worker não transfere silenciosamente o motor inteiro para o teclado.
 Reinserir o código transfere a sessão em memória sem compactação síncrona.
 Persistência, diário de entradas, linhas do tempo e reanálise preservados.
 */
-/* ANÁLISE BETA 6.6.16 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+/* ANÁLISE BETA 6.6.18 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
 A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
 Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
 Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
@@ -49,7 +65,7 @@ nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 - Falha de leitura protege a cópia existente de gravação vazia automática.
 - Aviso de salvamento permanece visível na tela compartilhada.
 */
-/* ANÁLISE BETA V6.6.16 — SELEÇÃO MASTER CORRIGIDA.
+/* ANÁLISE BETA V6.6.18 — SELEÇÃO MASTER CORRIGIDA.
 Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
 12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
 O MASTER e o controlador pós-loss não disputam consigo mesmos.
@@ -65,7 +81,7 @@ Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
 Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
 Este é um critério comparativo; não garante acerto nem ausência de LOSS.
 */
-/* ANÁLISE BETA V6.6.16 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* ANÁLISE BETA V6.6.18 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -77,7 +93,7 @@ A sobreposição em tolerâncias largas não representa dois polos distintos.
 Arcos: 37 inícios por 37 larguras e todas as janelas 1..70 disponíveis.
 Roda inteira: 37 parametrizações equivalentes, uma cobertura neutra.
 Não duplica esses casos como observações independentes nem como vitórias.
-Todas as leituras alimentam os pesos antes da geometria de 28 números.
+Todas as leituras alimentam os pesos antes da geometria de 31 números.
 Nenhum painel novo, botão de ativação ou importação obrigatória.
 Ciclos e defesas comprometidas, treinadores, pós-loss, duas leituras,
 linha do tempo, persistência, teclado e controles anteriores preservados.
@@ -87,7 +103,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.16 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.18 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -101,7 +117,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.16 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.18 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -145,7 +161,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.18 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -169,7 +185,7 @@ ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 - Somente Treinador Global e Treinador Global Números.
 - Oito variações por original e Treinador Números.
 - Cada variação conserva NORMAL, DINAMICO, RX_NORMAL e RX_DINAMICO, C4/C5/C6.
-- Cada conjunto tem 12 coberturas distintas de 28 e cobre a roda inteira, 37/37.
+- Cada conjunto tem 12 coberturas distintas de 31 e cobre a roda inteira, 37/37.
 - Janela importada de 8 a 70; entram 10 novos, saem 10 antigos.
 - Análises e próxima jogada atualizadas a cada número; descarte de dez a cada dez.
 - Jogada e defesa comprometidas preservadas, inclusive na virada do bloco.
@@ -177,12 +193,12 @@ ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 - Processamento em segundo plano quando disponível; número recebido aparece imediatamente.
 - Análises de triangulação, amplitude, percurso, encadeamento, polos e arcos mantidas.
 
-Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
+Cobertura conjunta não transforma uma jogada de 31 em cobertura individual de 37.
 */
-  const VERSION = "6.6.16",
-    KEY = 'ANALISE_BETA_V664_DUAL_'+side,
+  const VERSION = "6.6.18",
+    KEY = 'ANALISE_BETA_31_DUAL_'+side,
     WINDOW = 70;
-  const OLD_KEYS=[];
+  const OLD_KEYS=['ANALISE_BETA_V664_DUAL_'+side];
   const W = [
     32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24,
     16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26, 0,
@@ -307,7 +323,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       .join("|");
   }
 
-  function validPlay(p) {
+  function validLegacyPlay(p) {
     return (
       !!p &&
       typeof p === "object" &&
@@ -330,13 +346,37 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
     );
   }
 
+  function validPlay(p) {
+    return (
+      !!p &&
+      typeof p === "object" &&
+      Array.isArray(p.numbers) &&
+      p.numbers.length === 31 &&
+      p.numbers.every((n) => Number.isInteger(n) && n >= 0 && n <= 36) &&
+      new Set(p.numbers).size === 31 &&
+      Array.isArray(p.blocks) &&
+      p.blocks.length === 7 &&
+      new Set(p.blocks.flatMap(block => block.numbers)).size === 31 &&
+      p.blocks.filter((b) => b.radius === 2).length === 5 &&
+      p.blocks.filter((b) => b.radius === 1).length === 2 &&
+      p.blocks.every(
+        (b) =>
+          Number.isInteger(b.center) &&
+          ix(b.center) >= 0 &&
+          Array.isArray(b.numbers) &&
+          b.numbers.join(",") === neighbors(b.center, b.radius).join(","),
+      ) &&
+      p.blocks.flatMap((b) => b.numbers).every((n) => p.numbers.includes(n))
+    );
+  }
+
   function restoreShape(shape, score) {
     const blocks = shape.split("|").map((part) => {
       const [radius, center] = part.split(":").map(Number);
       return { center, radius, numbers: neighbors(center, radius) };
     });
     const play = { blocks, numbers: blocks.flatMap((b) => b.numbers), score };
-    if (!validPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
+    if (!validPlay(play) && !validLegacyPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
     return play;
   }
 
@@ -1272,7 +1312,7 @@ function createMotorReadings667(wheel, atlas) {
         const index=(mode.fixedWidth-1)*37+start;
         for(let end=2;end<h.length-1;end++){
           if(frames[end].fixedKeys[index]!==current.fixedKeys[index])continue;
-          const mass=Math.exp(-(h.length-2-end)/28)/37;
+          const mass=Math.exp(-(h.length-2-end)/31)/37;
           const center=positions[h[end+1]];
           mode.support+=mass;indices.add(end);
           mode.outcomeIndices[center].push(end);mode.outcomes[center]++;
@@ -1323,7 +1363,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.16', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.18', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -2002,7 +2042,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.16" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.18" };
     spaceCache.set(key, r);
     if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2065,7 +2105,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       hits,
       loss: total - hits,
       support,
-      score: (weightedHits + (28 / 37) * 8) / (support + 8),
+      score: (weightedHits + (31 / 37) * 8) / (support + 8),
     };
   }
 
@@ -2209,7 +2249,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   let diversitySafety = null;
 
-  const MAX_MOTOR_OVERLAP = 24;
+  const MAX_MOTOR_OVERLAP = 28;
 
   function coverageCode(play) {
     return [...play.numbers].sort((a, b) => a - b).join(",");
@@ -2222,19 +2262,19 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function sharedCoverage(a, b) {
-    return 19 + population32(a.low & b.low) + population32(a.high & b.high);
+    return 25 + population32(a.low & b.low) + population32(a.high & b.high);
   }
 
   function gapGeometry(gaps, start) {
     let position = start;
     const blocks = [];
-    for (let k = 0; k < 6; k++) {
-      const radius = k === 0 ? 1 : 2;
+    for (let k = 0; k < 7; k++) {
+      const radius = k < 2 ? 1 : 2;
       const center = W[mod(position + radius)];
-      blocks.push({ center, radius, numbers: neighbors(center, radius) });
+      blocks.push({center, radius, numbers:neighbors(center, radius)});
       position += radius * 2 + 1 + gaps[k];
     }
-    return { blocks, numbers: blocks.flatMap((b) => b.numbers), score: 0 };
+    return {blocks, numbers:blocks.flatMap(block => block.numbers), score:0};
   }
 
   function motorCoverageAudit(motors) {
@@ -2271,20 +2311,20 @@ const triangleMemory666 = createTriangleMemory666(W);
   function diversityCandidates() {
     if (diversityPool) return diversityPool;
     const patterns = [
-      [9, 0, 0, 0, 0, 0],
-      [6, 3, 0, 0, 0, 0],
-      [4, 1, 1, 1, 1, 1],
-      [3, 2, 1, 1, 1, 1],
-      [3, 3, 3, 0, 0, 0],
-      [2, 2, 2, 1, 1, 1],
-      [5, 2, 2, 0, 0, 0],
-      [4, 3, 2, 0, 0, 0],
+      [6, 0, 0, 0, 0, 0, 0],
+      [4, 2, 0, 0, 0, 0, 0],
+      [3, 3, 0, 0, 0, 0, 0],
+      [2, 2, 2, 0, 0, 0, 0],
+      [2, 1, 1, 1, 1, 0, 0],
+      [1, 1, 1, 1, 1, 1, 0],
+      [3, 1, 1, 1, 0, 0, 0],
+      [4, 1, 1, 0, 0, 0, 0],
     ];
     const shapes = new Map(),
       pool = new Map();
     for (const pattern of patterns)
-      for (let rotation = 0; rotation < 6; rotation++) {
-        const gaps = pattern.map((_, i) => pattern[(i + rotation) % 6]);
+      for (let rotation = 0; rotation < 7; rotation++) {
+        const gaps = pattern.map((_, i) => pattern[(i + rotation) % 7]);
         shapes.set(gaps.join(","), gaps);
         shapes.set([...gaps].reverse().join(","), [...gaps].reverse());
       }
@@ -2378,7 +2418,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           let complementary = 0;
           for (const n of candidate.play.numbers)
             complementary += 1 / (1 + counts[n]);
-          const value = values[index][j] + (0.045 * complementary) / 28;
+          const value = values[index][j] + (0.045 * complementary) / 31;
           if (value > bestValue + 1e-12) {
             best = j;
             bestValue = value;
@@ -2468,7 +2508,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.16",readingCandidates:37,
+          readingVersion:"6.6.18",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -2483,7 +2523,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       m.rank = i + 1;
     });
     motorDiversityCache.set(cacheKey, copy(result));
-    if (motorDiversityCache.size > 24)
+    if (motorDiversityCache.size > MAX_MOTOR_OVERLAP)
       motorDiversityCache.delete(motorDiversityCache.keys().next().value);
     return result;
   }
@@ -2578,7 +2618,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       } else missedNumbers.push(t.next);
     }
     const total = transitions.length,
-      base = 28 / 37,
+      base = 31 / 37,
       historical = (matches + base * 3) / (total + 3),
       recent = (weightedMatches + base * 2) / (totalWeight + 2),
       numericalScore = historical * 0.65 + recent * 0.35,
@@ -2976,7 +3016,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           recent = rows.slice(-12),
           hits = rows.filter((r) => r.hit).length,
           hits12 = recent.filter((r) => r.hit).length,
-          base = 28 / 37,
+          base = 31 / 37,
           historical = (hits + base * 12) / (rows.length + 12),
           short = (hits12 + base * 8) / (recent.length + 8),
           coverage = h.length
@@ -3084,15 +3124,11 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function profit(result) {
-    const u = Number(state.stake) || 1,
-      g = Number(state.multiplier) || 1;
-    return result === "GREEN"
-      ? 8 * u
-      : result === "GREEN G1"
-        ? (8 * g - 28) * u
-        : result === "LOSS"
-          ? -28 * (1 + g) * u
-          : 0;
+    const unit = Number(state.stake) || 1;
+    const multiplier = Number(state.multiplier) || 1;
+    return result === "GREEN" ? 5 * unit
+      : result === "GREEN G1" ? (5 * multiplier - 31) * unit
+      : result === "LOSS" ? -31 * (1 + multiplier) * unit : 0;
   }
 
   function settlePending(n, turn) {
@@ -3428,10 +3464,10 @@ const triangleMemory666 = createTriangleMemory666(W);
           recent = rows.slice(-5),
           rank = i + 1;
         const direct =
-          (rows.filter((r) => r.rankHits[rank]).length + (4 * 28) / 37) /
+          (rows.filter((r) => r.rankHits[rank]).length + (4 * 31) / 37) /
           (rows.length + 4);
         const short =
-          (recent.filter((r) => r.rankHits[rank]).length + (2 * 28) / 37) /
+          (recent.filter((r) => r.rankHits[rank]).length + (2 * 31) / 37) /
           (recent.length + 2);
         return { motor, rank, score: direct * 0.55 + short * 0.45 };
       })
@@ -3580,6 +3616,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   function fresh() {
     return {
       structuralMemoryVersion: "6.6.15",
+      coverageSize: 31,
       structuralMemoryEnabled: false,
       forecastVersion: VERSION,
       history: [],
@@ -3595,6 +3632,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       followPreviousSelection: null,
+      reorganizeTenEnabled: false,
+      reorganizeTenDirection: typeof side !== "undefined" && side === "INVERTIDO" ? -1 : 1,
       postLossEnabled: false,
       postThreeEnabled: false,
       postOneAllEnabled: false,
@@ -3713,6 +3752,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
       r.postLossEnabled = true;
+    r.reorganizeTenEnabled = !!r.reorganizeTenEnabled;
+    r.reorganizeTenDirection = r.reorganizeTenDirection === -1 ? -1 : 1;
     r.postLossEnabled = !!r.postLossEnabled;
     r.postThreeEnabled = !!r.postThreeEnabled;
     r.postOneAllEnabled = !!r.postOneAllEnabled;
@@ -3746,10 +3787,18 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     r.forecastVersion = VERSION;
+    if (data.coverageSize !== 31) {
+      r.block.data = null;
+      r.block.fixedForecasts = null;
+      r.block.policyForecasts = null;
+      r.block.best = null;
+      r.undoStack = []; // Old geometry deltas cannot restore a 31-number bank.
+    }
+    r.coverageSize = 31;
     r.undoStack = r.undoStack.slice(-70);
     if (
       !VARIANT_OWNERS.some((o) => o.id === r.strategy) &&
@@ -3777,7 +3826,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   function settings() {
     return Object.fromEntries(
       [
-        "structuralMemoryEnabled","strategy","followPreviousSelection",
+        "structuralMemoryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection",
         "postLossEnabled",
         "postThreeEnabled",
         "postOneAllEnabled",
@@ -3812,7 +3861,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function compactMotor(m) {
-    const result = { readingVersion:"6.6.16", readingCandidates:37,};
+    const result = { readingVersion:"6.6.18", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -3875,7 +3924,37 @@ const triangleMemory666 = createTriangleMemory666(W);
       size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
   }
 
+  function reorganizedMotorReading(numbers) {
+    if (!state.reorganizeTenEnabled) return [...numbers];
+    const organized = [];
+    const direction = state.reorganizeTenDirection === -1 ? -1 : 1;
+    for (let start = 0; start < numbers.length; start += 10) {
+      const block = numbers.slice(start, start + 10);
+      block.sort((a, b) => direction * (a - b));
+      organized.push(...block);
+    }
+    return organized;
+  }
+
   function prepareBlock() {
+    if (state.history.length < 8) return null;
+    if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
+      return currentBlock();
+    const received = state.history;
+    // This is the same existing calibration, using a different order of known data.
+    // Runs on import / the tenth new result. There is no extra backtest or engine.
+    state.history = reorganizedMotorReading(received);
+    try {
+      const block = buildMomentBlock();
+      state.block.reorganizedActive = !!state.reorganizeTenEnabled;
+      state.block.reorganizedDirection = state.reorganizeTenDirection;
+      return block;
+    } finally {
+      state.history = received;
+    }
+  }
+
+  function buildMomentBlock() {
     if (state.history.length < 8) return null;
     if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
       return currentBlock();
@@ -3943,10 +4022,10 @@ const triangleMemory666 = createTriangleMemory666(W);
           rows = state.autoRows.slice(-30),
           recent = rows.slice(-5);
         const score =
-          ((rows.filter((r) => r.hits[rank]).length + (4 * 28) / 37) /
+          ((rows.filter((r) => r.hits[rank]).length + (4 * 31) / 37) /
             (rows.length + 4)) *
             0.6 +
-          ((recent.filter((r) => r.hits[rank]).length + (2 * 28) / 37) /
+          ((recent.filter((r) => r.hits[rank]).length + (2 * 31) / 37) /
             (recent.length + 2)) *
             0.4;
         return { motor, rank, score };
@@ -4046,7 +4125,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         ...def,
         total: rows.length,
         hits,
-        score: (hits + (8 * 28) / 37) / (rows.length + 8),
+        score: (hits + (8 * 31) / 37) / (rows.length + 8),
       };
     });
     for (const f of state.block.data?.variants || []) {
@@ -4060,7 +4139,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         variation: f.variation,
         total: rows.length,
         hits,
-        score: (hits + (8 * 28) / 37) / (rows.length + 8),
+        score: (hits + (8 * 31) / 37) / (rows.length + 8),
       });
     }
     return base.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
@@ -4334,11 +4413,13 @@ const triangleMemory666 = createTriangleMemory666(W);
           : ["POST1ALL", "POST2ALL"].includes(postLossTarget.kind) ? postLossTarget.kind : "POSTLOSS"
         : "NORMAL"
       : null;
-    const modelHistory=momentIsFixed()?state.block.anchor:before;
-    const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
+    const modelHistory=(momentIsFixed() || state.block.reorganizedActive)?state.block.anchor:before;
+    const modelTurn=(momentIsFixed() || state.block.reorganizedActive)?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.16", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        version: "6.6.18", ordering: state.block.reorganizedActive
+          ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : "RECEIVED",
+        prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -4418,7 +4499,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['structuralMemoryEnabled','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
  historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
@@ -4672,7 +4753,7 @@ state.importAudit=describeImport(clean,opts);
     const direct = following.filter((r) => r.result === "GREEN").length;
     const recent = following.slice(-5),
       recentHits = recent.filter((r) => r.result !== "LOSS").length;
-    const base = 28 / 37;
+    const base = 31 / 37;
     const recovery = (recoveries + 4 * base) / (following.length + 4);
     const short = (recentHits + 3 * base) / (recent.length + 3);
     const first = (direct + 3 * base) / (following.length + 3);
@@ -4877,7 +4958,7 @@ state.importAudit=describeImport(clean,opts);
   }
   function applyReanalysisMemory(weights,h){
     if(!state.reanalysisPolicies?.length)return weights;
-    const base=28/37, mean=avg(weights)||1;
+    const base=31/37, mean=avg(weights)||1;
     for(const policy of state.reanalysisPolicies){
       // Só resultados POSTERIORES à descoberta autorizam influência.
       if(policy.evaluations<4)continue;
@@ -4957,7 +5038,7 @@ state.importAudit=describeImport(clean,opts);
       support+=weight;reward+=weight*(value===2?1:value===1?.55:0);count++;
       if(value===2)direct++;else if(value===1)g1++;else loss++;
     }
-    const prior=28/37;
+    const prior=31/37;
     return {count,support,direct,g1,loss,score:(reward+prior*8)/(support+8)};
   }
 
@@ -4969,7 +5050,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.16',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.18',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -5072,7 +5153,7 @@ state.importAudit=describeImport(clean,opts);
     for(let i=finished.length-1;i>=0&&finished[i].result==='LOSS';i--)lossStreak++;
     const baseScore=.60*windowScore(5,3)+.25*windowScore(15,10)+.15*windowScore(30,20)-.08*Math.min(3,lossStreak);
     const lesson=masterLessonStats(id);
-    const feedback=.10*(lesson.score-28/37)*lesson.support/(lesson.support+8);
+    const feedback=.10*(lesson.score-31/37)*lesson.support/(lesson.support+8);
     const result = {total:rows.length,closedTotal:finished.length,direct,g1,loss,hits:direct+g1,
       pending:rows.length-finished.length,firstMiss:rows.length-direct,lossStreak,
       recentDirect:recent.filter(row=>closed(row)&&row.result==='GREEN').length,
@@ -5422,7 +5503,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       if (typeof checkpointSerial !== "undefined") checkpointSerial++;
       if (typeof checkpointEpoch !== "undefined") checkpointEpoch++;
       const raw = JSON.stringify(state, (k, v) =>
-        validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
+        (validPlay(v) || validLegacyPlay(v)) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
       );
       return commitCheckpoint(packSession(raw), state.totalTurns);
     } catch (error) {
@@ -5431,62 +5512,71 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
     }
   }
 
-  /* Busca geométrica original validada: cinco blocos de cinco e um de três,
+  /* Busca geométrica original validada: cinco blocos de cinco e dois de três,
    sem reaproveitar combinações intermediárias da busca otimizada. */
   function rawGeometry(weights, mandatory = []) {
-    const score = (b) => ({
-        ...b,
-        lowMask: Number(b.mask & 0xffffffffn) >>> 0,
-        highMask: Number(b.mask >> 32n),
-        value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
-      }),
-      fives = FIVE.map(score).sort((a, b) => b.value - a.value),
-      threes = THREE.map(score)
-        .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
-        .sort((a, b) => b.value - a.value);
+    // Five sectors of five plus two of three, all disjoint: 31 covered, six gaps.
+    // The first three-number sector is the anchor. Its 37 starts enumerate the
+    // circle; a small dynamic program places the remaining six sectors exactly.
+    const prefix = new Float64Array(75);
+    for (let p = 0; p < 74; p++) prefix[p + 1] = prefix[p] + (weights[p % 37] || 0);
+    const scoreAt = (start, length) => prefix[start + length] - prefix[start];
+    const slots = 84; // 6 five-sector counts × 2 second-small counts × 7 gap counts.
     let best = null;
-    for (const small of threes) {
-      let beam = [{ blocks: [small], lowMask: small.lowMask, highMask: small.highMask, score: small.value }];
-      for (let step = 0; step < 5; step++) {
-        const next = [];
-        for (const item of beam)
-          for (const b of fives) {
-            if ((item.lowMask & b.lowMask) !== 0 || (item.highMask & b.highMask) !== 0) continue;
-            next.push({
-              blocks: [...item.blocks, b],
-              lowMask: (item.lowMask | b.lowMask) >>> 0,
-              highMask: item.highMask | b.highMask,
-              score: item.score + b.value,
-            });
+    for (let start = 0; start < 37; start++) {
+      const firstCenter = W[mod(start + 1)];
+      if (!mandatory.every(number => neighbors(firstCenter, 1).includes(number))) continue;
+      const values = new Float64Array(slots);
+      values.fill(-Infinity);
+      const parent = new Int16Array(slots);
+      parent.fill(-1);
+      const widths = new Int8Array(slots);
+      values[0] = scoreAt(start, 3);
+      for (let five = 0; five <= 5; five++) {
+        for (let small = 0; small <= 1; small++) {
+          for (let gaps = 0; gaps <= 6; gaps++) {
+            const index = five * 14 + small * 7 + gaps;
+            const value = values[index];
+            if (!Number.isFinite(value)) continue;
+            const position = 3 + five * 5 + small * 3 + gaps;
+            const offer = (next, width, score) => {
+              if (score > values[next] + 1e-12) {
+                values[next] = score;
+                parent[next] = index;
+                widths[next] = width;
+              }
+            };
+            if (gaps < 6) offer(index + 1, 0, value);
+            if (five < 5 && position + 5 <= 37)
+              offer(index + 14, 5, value + scoreAt(start + position, 5));
+            if (small < 1 && position + 3 <= 37)
+              offer(index + 7, 3, value + scoreAt(start + position, 3));
           }
-        next.sort((a, b) => b.score - a.score);
-        beam = [];
-        const seen = new Set();
-        for (const item of next) {
-          const k = item.highMask + ":" + item.lowMask;
-          if (seen.has(k)) continue;
-          seen.add(k);
-          beam.push(item);
-          if (beam.length >= 6) break;
         }
-        if (!beam.length) break;
       }
-      for (const item of beam)
-        if (item.blocks.length === 6 && (!best || item.score > best.score))
-          best = item;
+      for (let gaps = 0; gaps <= 6; gaps++) {
+        const last = 5 * 14 + 7 + gaps;
+        if (!Number.isFinite(values[last]) || (best && values[last] <= best.score + 1e-12)) continue;
+        const placed = [];
+        for (let index = last; parent[index] >= 0; index = parent[index]) {
+          const width = widths[index];
+          if (!width) continue;
+          const previous = parent[index];
+          const five = Math.floor(previous / 14);
+          const rest = previous % 14;
+          const small = Math.floor(rest / 7);
+          const usedGaps = rest % 7;
+          const position = 3 + five * 5 + small * 3 + usedGaps;
+          const radius = (width - 1) / 2;
+          const center = W[mod(start + position + radius)];
+          placed.push({center, radius, numbers:neighbors(center, radius)});
+        }
+        const blocks = [{center:firstCenter, radius:1, numbers:neighbors(firstCenter, 1)}, ...placed.reverse()];
+        const play = {blocks, numbers:blocks.flatMap(block => block.numbers), score:values[last]};
+        if (validPlay(play)) best = play;
+      }
     }
-    if (!best) return null;
-    const blocks = best.blocks.map((b) => ({
-        center: b.center,
-        radius: b.radius,
-        numbers: [...b.numbers],
-      })),
-      p = {
-        blocks,
-        numbers: blocks.flatMap((b) => b.numbers),
-        score: best.score,
-      };
-    return validPlay(p) ? p : null;
+    return best;
   }
 
   /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
@@ -5542,7 +5632,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
         let best = null,
           value = -Infinity;
         for (const item of candidates[i]) {
-          if (selected.some((c) => c && sharedCoverage(c, item.candidate) > 24))
+          if (selected.some((c) => c && sharedCoverage(c, item.candidate) > MAX_MOTOR_OVERLAP))
             continue;
           let newNumbers = 0;
           for (const n of item.candidate.play.numbers)
@@ -5676,7 +5766,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               selected.some(
                 (m) =>
                   m &&
-                  sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+                  sharedCoverage(diversityCandidate(m.play), candidate) > 30,
               )
             )
               continue;
@@ -5756,7 +5846,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
                 selected.some(
                   (m) =>
                     m &&
-                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+                    sharedCoverage(diversityCandidate(m.play), candidate) > 30,
                 )
               )
                 continue;
@@ -5862,7 +5952,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.16",readingCandidates:37,
+          readingVersion:"6.6.18",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -6039,6 +6129,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
   function pruneSavedVersions() {
     if (!localStorage.getItem(KEY)) return;
     for (const oldKey of OLD_KEYS) {
+      if (oldKey.startsWith("ANALISE_BETA_V664_DUAL_")) continue;
       try {
         localStorage.removeItem?.(oldKey);
         localStorage.removeItem?.(oldKey + "_QUEUE");
@@ -6058,7 +6149,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.18 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -6082,7 +6173,7 @@ ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 - Somente Treinador Global e Treinador Global Números.
 - Oito variações por original e Treinador Números.
 - Cada variação conserva NORMAL, DINAMICO, RX_NORMAL e RX_DINAMICO, C4/C5/C6.
-- Cada conjunto tem 12 coberturas distintas de 28 e cobre a roda inteira, 37/37.
+- Cada conjunto tem 12 coberturas distintas de 31 e cobre a roda inteira, 37/37.
 - Janela importada de 8 a 70; entram 10 novos, saem 10 antigos.
 - Análises e próxima jogada atualizadas a cada número; descarte de dez a cada dez.
 - Jogada e defesa comprometidas preservadas, inclusive na virada do bloco.
@@ -6090,9 +6181,9 @@ ANÁLISE BETA V6.6.16 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 - Processamento em segundo plano quando disponível; número recebido aparece imediatamente.
 - Análises de triangulação, amplitude, percurso, encadeamento, polos e arcos mantidas.
 
-Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 37.
+Cobertura conjunta não transforma uma jogada de 31 em cobertura individual de 37.
 */
-    const VERSION = "6.6.16",
+    const VERSION = "6.6.18",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -6220,7 +6311,7 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
         .join("|");
     }
 
-    function validPlay(p) {
+    function validLegacyPlay(p) {
       return (
         !!p &&
         typeof p === "object" &&
@@ -6243,13 +6334,37 @@ Cobertura conjunta não transforma uma jogada de 28 em cobertura individual de 3
       );
     }
 
+    function validPlay(p) {
+      return (
+        !!p &&
+        typeof p === "object" &&
+        Array.isArray(p.numbers) &&
+        p.numbers.length === 31 &&
+        p.numbers.every((n) => Number.isInteger(n) && n >= 0 && n <= 36) &&
+        new Set(p.numbers).size === 31 &&
+        Array.isArray(p.blocks) &&
+        p.blocks.length === 7 &&
+      new Set(p.blocks.flatMap(block => block.numbers)).size === 31 &&
+        p.blocks.filter((b) => b.radius === 2).length === 5 &&
+        p.blocks.filter((b) => b.radius === 1).length === 2 &&
+        p.blocks.every(
+          (b) =>
+            Number.isInteger(b.center) &&
+            ix(b.center) >= 0 &&
+            Array.isArray(b.numbers) &&
+            b.numbers.join(",") === neighbors(b.center, b.radius).join(","),
+        ) &&
+        p.blocks.flatMap((b) => b.numbers).every((n) => p.numbers.includes(n))
+      );
+    }
+
     function restoreShape(shape, score) {
       const blocks = shape.split("|").map((part) => {
         const [radius, center] = part.split(":").map(Number);
         return { center, radius, numbers: neighbors(center, radius) };
       });
       const play = { blocks, numbers: blocks.flatMap((b) => b.numbers), score };
-      if (!validPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
+      if (!validPlay(play) && !validLegacyPlay(play)) throw Error("GEOMETRIA SALVA INVÁLIDA.");
       return play;
     }
 
@@ -7192,7 +7307,7 @@ function createMotorReadings667(wheel, atlas) {
         const index=(mode.fixedWidth-1)*37+start;
         for(let end=2;end<h.length-1;end++){
           if(frames[end].fixedKeys[index]!==current.fixedKeys[index])continue;
-          const mass=Math.exp(-(h.length-2-end)/28)/37;
+          const mass=Math.exp(-(h.length-2-end)/31)/37;
           const center=positions[h[end+1]];
           mode.support+=mass;indices.add(end);
           mode.outcomeIndices[center].push(end);mode.outcomes[center]++;
@@ -7243,7 +7358,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.16', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.18', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -7926,7 +8041,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.16" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.18" };
       spaceCache.set(key, r);
       if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -7989,7 +8104,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         hits,
         loss: total - hits,
         support,
-        score: (weightedHits + (28 / 37) * 8) / (support + 8),
+        score: (weightedHits + (31 / 37) * 8) / (support + 8),
       };
     }
 
@@ -8134,7 +8249,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     let diversitySafety = null;
 
-    const MAX_MOTOR_OVERLAP = 24;
+    const MAX_MOTOR_OVERLAP = 28;
 
     function coverageCode(play) {
       return [...play.numbers].sort((a, b) => a - b).join(",");
@@ -8147,19 +8262,19 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function sharedCoverage(a, b) {
-      return 19 + population32(a.low & b.low) + population32(a.high & b.high);
+      return 25 + population32(a.low & b.low) + population32(a.high & b.high);
     }
 
     function gapGeometry(gaps, start) {
       let position = start;
       const blocks = [];
-      for (let k = 0; k < 6; k++) {
-        const radius = k === 0 ? 1 : 2;
+      for (let k = 0; k < 7; k++) {
+        const radius = k < 2 ? 1 : 2;
         const center = W[mod(position + radius)];
-        blocks.push({ center, radius, numbers: neighbors(center, radius) });
+        blocks.push({center, radius, numbers:neighbors(center, radius)});
         position += radius * 2 + 1 + gaps[k];
       }
-      return { blocks, numbers: blocks.flatMap((b) => b.numbers), score: 0 };
+      return {blocks, numbers:blocks.flatMap(block => block.numbers), score:0};
     }
 
     function motorCoverageAudit(motors) {
@@ -8198,20 +8313,20 @@ const triangleMemory666 = createTriangleMemory666(W);
     function diversityCandidates() {
       if (diversityPool) return diversityPool;
       const patterns = [
-        [9, 0, 0, 0, 0, 0],
-        [6, 3, 0, 0, 0, 0],
-        [4, 1, 1, 1, 1, 1],
-        [3, 2, 1, 1, 1, 1],
-        [3, 3, 3, 0, 0, 0],
-        [2, 2, 2, 1, 1, 1],
-        [5, 2, 2, 0, 0, 0],
-        [4, 3, 2, 0, 0, 0],
+        [6, 0, 0, 0, 0, 0, 0],
+        [4, 2, 0, 0, 0, 0, 0],
+        [3, 3, 0, 0, 0, 0, 0],
+        [2, 2, 2, 0, 0, 0, 0],
+        [2, 1, 1, 1, 1, 0, 0],
+        [1, 1, 1, 1, 1, 1, 0],
+        [3, 1, 1, 1, 0, 0, 0],
+        [4, 1, 1, 0, 0, 0, 0],
       ];
       const shapes = new Map(),
         pool = new Map();
       for (const pattern of patterns)
-        for (let rotation = 0; rotation < 6; rotation++) {
-          const gaps = pattern.map((_, i) => pattern[(i + rotation) % 6]);
+        for (let rotation = 0; rotation < 7; rotation++) {
+          const gaps = pattern.map((_, i) => pattern[(i + rotation) % 7]);
           shapes.set(gaps.join(","), gaps);
           shapes.set([...gaps].reverse().join(","), [...gaps].reverse());
         }
@@ -8310,7 +8425,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             let complementary = 0;
             for (const n of candidate.play.numbers)
               complementary += 1 / (1 + counts[n]);
-            const value = values[index][j] + (0.045 * complementary) / 28;
+            const value = values[index][j] + (0.045 * complementary) / 31;
             if (value > bestValue + 1e-12) {
               best = j;
               bestValue = value;
@@ -8400,7 +8515,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.16",readingCandidates:37,
+          readingVersion:"6.6.18",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -8415,7 +8530,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         m.rank = i + 1;
       });
       motorDiversityCache.set(cacheKey, copy(result));
-      if (motorDiversityCache.size > 24)
+      if (motorDiversityCache.size > MAX_MOTOR_OVERLAP)
         motorDiversityCache.delete(motorDiversityCache.keys().next().value);
       return result;
     }
@@ -8513,7 +8628,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         } else missedNumbers.push(t.next);
       }
       const total = transitions.length,
-        base = 28 / 37,
+        base = 31 / 37,
         historical = (matches + base * 3) / (total + 3),
         recent = (weightedMatches + base * 2) / (totalWeight + 2),
         numericalScore = historical * 0.65 + recent * 0.35,
@@ -8915,7 +9030,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             recent = rows.slice(-12),
             hits = rows.filter((r) => r.hit).length,
             hits12 = recent.filter((r) => r.hit).length,
-            base = 28 / 37,
+            base = 31 / 37,
             historical = (hits + base * 12) / (rows.length + 12),
             short = (hits12 + base * 8) / (recent.length + 8),
             coverage = h.length
@@ -9024,15 +9139,11 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function profit(result) {
-      const u = Number(state.stake) || 1,
-        g = Number(state.multiplier) || 1;
-      return result === "GREEN"
-        ? 8 * u
-        : result === "GREEN G1"
-          ? (8 * g - 28) * u
-          : result === "LOSS"
-            ? -28 * (1 + g) * u
-            : 0;
+      const unit = Number(state.stake) || 1;
+      const multiplier = Number(state.multiplier) || 1;
+      return result === "GREEN" ? 5 * unit
+        : result === "GREEN G1" ? (5 * multiplier - 31) * unit
+        : result === "LOSS" ? -31 * (1 + multiplier) * unit : 0;
     }
 
     function settlePending(n, turn) {
@@ -9386,10 +9497,10 @@ const triangleMemory666 = createTriangleMemory666(W);
             recent = rows.slice(-5),
             rank = i + 1;
           const direct =
-            (rows.filter((r) => r.rankHits[rank]).length + (4 * 28) / 37) /
+            (rows.filter((r) => r.rankHits[rank]).length + (4 * 31) / 37) /
             (rows.length + 4);
           const short =
-            (recent.filter((r) => r.rankHits[rank]).length + (2 * 28) / 37) /
+            (recent.filter((r) => r.rankHits[rank]).length + (2 * 31) / 37) /
             (recent.length + 2);
           return { motor, rank, score: direct * 0.55 + short * 0.45 };
         })
@@ -9540,6 +9651,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     function fresh() {
       return {
       structuralMemoryVersion: "6.6.15",
+      coverageSize: 31,
       structuralMemoryEnabled: false,
         forecastVersion: VERSION,
         history: [],
@@ -9555,6 +9667,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
       followPreviousSelection: null,
+      reorganizeTenEnabled: false,
+      reorganizeTenDirection: typeof side !== "undefined" && side === "INVERTIDO" ? -1 : 1,
         postLossEnabled: false,
         postThreeEnabled: false,
       postOneAllEnabled: false,
@@ -9673,7 +9787,9 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       if (data?.postLossEnabled === undefined && r.strategy === "POSTLOSS")
         r.postLossEnabled = true;
-      r.postLossEnabled = !!r.postLossEnabled;
+      r.reorganizeTenEnabled = !!r.reorganizeTenEnabled;
+    r.reorganizeTenDirection = r.reorganizeTenDirection === -1 ? -1 : 1;
+    r.postLossEnabled = !!r.postLossEnabled;
       r.postThreeEnabled = !!r.postThreeEnabled;
     r.postOneAllEnabled = !!r.postOneAllEnabled;
     r.postTwoAllEnabled = !!r.postTwoAllEnabled;
@@ -9706,11 +9822,19 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       r.forecastVersion = VERSION;
-      r.undoStack = r.undoStack.slice(-70);
+      if (data.coverageSize !== 31) {
+      r.block.data = null;
+      r.block.fixedForecasts = null;
+      r.block.policyForecasts = null;
+      r.block.best = null;
+      r.undoStack = []; // Old geometry deltas cannot restore a 31-number bank.
+    }
+    r.coverageSize = 31;
+    r.undoStack = r.undoStack.slice(-70);
       if (
         !VARIANT_OWNERS.some((o) => o.id === r.strategy) &&
         ![
@@ -9737,7 +9861,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     function settings() {
       return Object.fromEntries(
         [
-          "structuralMemoryEnabled","strategy","followPreviousSelection",
+          "structuralMemoryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection",
           "postLossEnabled",
           "postThreeEnabled",
         "postOneAllEnabled",
@@ -9772,7 +9896,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function compactMotor(m) {
-      const result = { readingVersion:"6.6.16", readingCandidates:37,};
+      const result = { readingVersion:"6.6.18", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -9835,7 +9959,37 @@ const triangleMemory666 = createTriangleMemory666(W);
       size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
   }
 
+  function reorganizedMotorReading(numbers) {
+    if (!state.reorganizeTenEnabled) return [...numbers];
+    const organized = [];
+    const direction = state.reorganizeTenDirection === -1 ? -1 : 1;
+    for (let start = 0; start < numbers.length; start += 10) {
+      const block = numbers.slice(start, start + 10);
+      block.sort((a, b) => direction * (a - b));
+      organized.push(...block);
+    }
+    return organized;
+  }
+
   function prepareBlock() {
+    if (state.history.length < 8) return null;
+    if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
+      return currentBlock();
+    const received = state.history;
+    // This is the same existing calibration, using a different order of known data.
+    // Runs on import / the tenth new result. There is no extra backtest or engine.
+    state.history = reorganizedMotorReading(received);
+    try {
+      const block = buildMomentBlock();
+      state.block.reorganizedActive = !!state.reorganizeTenEnabled;
+      state.block.reorganizedDirection = state.reorganizeTenDirection;
+      return block;
+    } finally {
+      state.history = received;
+    }
+  }
+
+  function buildMomentBlock() {
       if (state.history.length < 8) return null;
       if (state.block.data && (!state.importTrainingActive || state.block.decisionTurn === state.totalTurns))
         return currentBlock();
@@ -9903,10 +10057,10 @@ const triangleMemory666 = createTriangleMemory666(W);
             rows = state.autoRows.slice(-30),
             recent = rows.slice(-5);
           const score =
-            ((rows.filter((r) => r.hits[rank]).length + (4 * 28) / 37) /
+            ((rows.filter((r) => r.hits[rank]).length + (4 * 31) / 37) /
               (rows.length + 4)) *
               0.6 +
-            ((recent.filter((r) => r.hits[rank]).length + (2 * 28) / 37) /
+            ((recent.filter((r) => r.hits[rank]).length + (2 * 31) / 37) /
               (recent.length + 2)) *
               0.4;
           return { motor, rank, score };
@@ -10008,7 +10162,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           ...def,
           total: rows.length,
           hits,
-          score: (hits + (8 * 28) / 37) / (rows.length + 8),
+          score: (hits + (8 * 31) / 37) / (rows.length + 8),
         };
       });
       for (const f of state.block.data?.variants || []) {
@@ -10022,7 +10176,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           variation: f.variation,
           total: rows.length,
           hits,
-          score: (hits + (8 * 28) / 37) / (rows.length + 8),
+          score: (hits + (8 * 31) / 37) / (rows.length + 8),
         });
       }
       return base.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
@@ -10298,11 +10452,13 @@ const triangleMemory666 = createTriangleMemory666(W);
           : ["POST1ALL", "POST2ALL"].includes(postLossTarget.kind) ? postLossTarget.kind : "POSTLOSS"
           : "NORMAL"
         : null;
-      const modelHistory=momentIsFixed()?state.block.anchor:before;
-      const modelTurn=momentIsFixed()?state.block.decisionTurn:turn-1;
+      const modelHistory=(momentIsFixed() || state.block.reorganizedActive)?state.block.anchor:before;
+      const modelTurn=(momentIsFixed() || state.block.reorganizedActive)?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.16", prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
+        version: "6.6.18", ordering: state.block.reorganizedActive
+          ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : "RECEIVED",
+        prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
@@ -10382,7 +10538,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['structuralMemoryEnabled','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['structuralMemoryEnabled','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
  historyId:importFingerprint(numbers),settingsId:importFingerprint(config),config};
@@ -10638,7 +10794,7 @@ state.importAudit=describeImport(clean,opts);
       const direct = following.filter((r) => r.result === "GREEN").length;
       const recent = following.slice(-5),
         recentHits = recent.filter((r) => r.result !== "LOSS").length;
-      const base = 28 / 37;
+      const base = 31 / 37;
       const recovery = (recoveries + 4 * base) / (following.length + 4);
       const short = (recentHits + 3 * base) / (recent.length + 3);
       const first = (direct + 3 * base) / (following.length + 3);
@@ -10845,7 +11001,7 @@ state.importAudit=describeImport(clean,opts);
   }
   function applyReanalysisMemory(weights,h){
     if(!state.reanalysisPolicies?.length)return weights;
-    const base=28/37, mean=avg(weights)||1;
+    const base=31/37, mean=avg(weights)||1;
     for(const policy of state.reanalysisPolicies){
       // Só resultados POSTERIORES à descoberta autorizam influência.
       if(policy.evaluations<4)continue;
@@ -10925,7 +11081,7 @@ state.importAudit=describeImport(clean,opts);
       support+=weight;reward+=weight*(value===2?1:value===1?.55:0);count++;
       if(value===2)direct++;else if(value===1)g1++;else loss++;
     }
-    const prior=28/37;
+    const prior=31/37;
     return {count,support,direct,g1,loss,score:(reward+prior*8)/(support+8)};
   }
 
@@ -10937,7 +11093,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.16',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.18',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -11038,7 +11194,7 @@ state.importAudit=describeImport(clean,opts);
     for(let i=finished.length-1;i>=0&&finished[i].result==='LOSS';i--)lossStreak++;
     const baseScore=.60*windowScore(5,3)+.25*windowScore(15,10)+.15*windowScore(30,20)-.08*Math.min(3,lossStreak);
     const lesson=masterLessonStats(id);
-    const feedback=.10*(lesson.score-28/37)*lesson.support/(lesson.support+8);
+    const feedback=.10*(lesson.score-31/37)*lesson.support/(lesson.support+8);
     return {total:rows.length,closedTotal:finished.length,direct,g1,loss,hits:direct+g1,
       pending:rows.length-finished.length,firstMiss:rows.length-direct,lossStreak,
       recentDirect:recent.filter(row=>closed(row)&&row.result==='GREEN').length,
@@ -11278,7 +11434,7 @@ state.importAudit=describeImport(clean,opts);
         if (typeof checkpointSerial !== "undefined") checkpointSerial++;
         if (typeof checkpointEpoch !== "undefined") checkpointEpoch++;
         const raw = JSON.stringify(state, (k, v) =>
-          validPlay(v) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
+          (validPlay(v) || validLegacyPlay(v)) ? { __betaPlay: signaturePlay(v), score: v.score } : v,
         );
         localStorage.setItem(KEY, packSession(raw));
         pruneSavedVersions();
@@ -11291,62 +11447,71 @@ state.importAudit=describeImport(clean,opts);
       }
     }
 
-    /* Busca geométrica original validada: cinco blocos de cinco e um de três,
+    /* Busca geométrica original validada: cinco blocos de cinco e dois de três,
    sem reaproveitar combinações intermediárias da busca otimizada. */
     function rawGeometry(weights, mandatory = []) {
-      const score = (b) => ({
-          ...b,
-          lowMask: Number(b.mask & 0xffffffffn) >>> 0,
-          highMask: Number(b.mask >> 32n),
-          value: b.numbers.reduce((s, n) => s + (weights[ix(n)] || 0), 0),
-        }),
-        fives = FIVE.map(score).sort((a, b) => b.value - a.value),
-        threes = THREE.map(score)
-          .filter((b) => mandatory.every((n) => b.numbers.includes(n)))
-          .sort((a, b) => b.value - a.value);
+      // Five sectors of five plus two of three, all disjoint: 31 covered, six gaps.
+      // The first three-number sector is the anchor. Its 37 starts enumerate the
+      // circle; a small dynamic program places the remaining six sectors exactly.
+      const prefix = new Float64Array(75);
+      for (let p = 0; p < 74; p++) prefix[p + 1] = prefix[p] + (weights[p % 37] || 0);
+      const scoreAt = (start, length) => prefix[start + length] - prefix[start];
+      const slots = 84; // 6 five-sector counts × 2 second-small counts × 7 gap counts.
       let best = null;
-      for (const small of threes) {
-        let beam = [{ blocks: [small], lowMask: small.lowMask, highMask: small.highMask, score: small.value }];
-        for (let step = 0; step < 5; step++) {
-          const next = [];
-          for (const item of beam)
-            for (const b of fives) {
-              if ((item.lowMask & b.lowMask) !== 0 || (item.highMask & b.highMask) !== 0) continue;
-              next.push({
-                blocks: [...item.blocks, b],
-                lowMask: (item.lowMask | b.lowMask) >>> 0,
-              highMask: item.highMask | b.highMask,
-                score: item.score + b.value,
-              });
+      for (let start = 0; start < 37; start++) {
+        const firstCenter = W[mod(start + 1)];
+        if (!mandatory.every(number => neighbors(firstCenter, 1).includes(number))) continue;
+        const values = new Float64Array(slots);
+        values.fill(-Infinity);
+        const parent = new Int16Array(slots);
+        parent.fill(-1);
+        const widths = new Int8Array(slots);
+        values[0] = scoreAt(start, 3);
+        for (let five = 0; five <= 5; five++) {
+          for (let small = 0; small <= 1; small++) {
+            for (let gaps = 0; gaps <= 6; gaps++) {
+              const index = five * 14 + small * 7 + gaps;
+              const value = values[index];
+              if (!Number.isFinite(value)) continue;
+              const position = 3 + five * 5 + small * 3 + gaps;
+              const offer = (next, width, score) => {
+                if (score > values[next] + 1e-12) {
+                  values[next] = score;
+                  parent[next] = index;
+                  widths[next] = width;
+                }
+              };
+              if (gaps < 6) offer(index + 1, 0, value);
+              if (five < 5 && position + 5 <= 37)
+                offer(index + 14, 5, value + scoreAt(start + position, 5));
+              if (small < 1 && position + 3 <= 37)
+                offer(index + 7, 3, value + scoreAt(start + position, 3));
             }
-          next.sort((a, b) => b.score - a.score);
-          beam = [];
-          const seen = new Set();
-          for (const item of next) {
-            const k = item.highMask + ":" + item.lowMask;
-            if (seen.has(k)) continue;
-            seen.add(k);
-            beam.push(item);
-            if (beam.length >= 6) break;
           }
-          if (!beam.length) break;
         }
-        for (const item of beam)
-          if (item.blocks.length === 6 && (!best || item.score > best.score))
-            best = item;
+        for (let gaps = 0; gaps <= 6; gaps++) {
+          const last = 5 * 14 + 7 + gaps;
+          if (!Number.isFinite(values[last]) || (best && values[last] <= best.score + 1e-12)) continue;
+          const placed = [];
+          for (let index = last; parent[index] >= 0; index = parent[index]) {
+            const width = widths[index];
+            if (!width) continue;
+            const previous = parent[index];
+            const five = Math.floor(previous / 14);
+            const rest = previous % 14;
+            const small = Math.floor(rest / 7);
+            const usedGaps = rest % 7;
+            const position = 3 + five * 5 + small * 3 + usedGaps;
+            const radius = (width - 1) / 2;
+            const center = W[mod(start + position + radius)];
+            placed.push({center, radius, numbers:neighbors(center, radius)});
+          }
+          const blocks = [{center:firstCenter, radius:1, numbers:neighbors(firstCenter, 1)}, ...placed.reverse()];
+          const play = {blocks, numbers:blocks.flatMap(block => block.numbers), score:values[last]};
+          if (validPlay(play)) best = play;
+        }
       }
-      if (!best) return null;
-      const blocks = best.blocks.map((b) => ({
-          center: b.center,
-          radius: b.radius,
-          numbers: [...b.numbers],
-        })),
-        p = {
-          blocks,
-          numbers: blocks.flatMap((b) => b.numbers),
-          score: best.score,
-        };
-      return validPlay(p) ? p : null;
+      return best;
     }
 
     /* Seleção parcial exata: somente os 96 melhores são ordenados e materializados.
@@ -11403,7 +11568,7 @@ state.importAudit=describeImport(clean,opts);
             value = -Infinity;
           for (const item of candidates[i]) {
             if (
-              selected.some((c) => c && sharedCoverage(c, item.candidate) > 24)
+              selected.some((c) => c && sharedCoverage(c, item.candidate) > MAX_MOTOR_OVERLAP)
             )
               continue;
             let newNumbers = 0;
@@ -11538,7 +11703,7 @@ state.importAudit=describeImport(clean,opts);
                 selected.some(
                   (m) =>
                     m &&
-                    sharedCoverage(diversityCandidate(m.play), candidate) > 27,
+                    sharedCoverage(diversityCandidate(m.play), candidate) > 30,
                 )
               )
                 continue;
@@ -11620,8 +11785,7 @@ state.importAudit=describeImport(clean,opts);
                   selected.some(
                     (m) =>
                       m &&
-                      sharedCoverage(diversityCandidate(m.play), candidate) >
-                        27,
+                      sharedCoverage(diversityCandidate(m.play), candidate) > 30,
                   )
                 )
                   continue;
@@ -11728,7 +11892,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.16",readingCandidates:37,
+          readingVersion:"6.6.18",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -11905,6 +12069,7 @@ state.importAudit=describeImport(clean,opts);
     function pruneSavedVersions() {
       if (!localStorage.getItem(KEY)) return;
       for (const oldKey of OLD_KEYS) {
+      if (oldKey.startsWith("ANALISE_BETA_V664_DUAL_")) continue;
         try {
           localStorage.removeItem?.(oldKey);
           localStorage.removeItem?.(oldKey + "_QUEUE");
@@ -12031,7 +12196,7 @@ state.importAudit=describeImport(clean,opts);
     return { total: closed.length, green, g1, loss, net };
   }
   const css = `
-*{box-sizing:border-box}body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}.app{max-width:1100px;margin:auto;padding:12px}h1{font-size:24px;text-align:center;color:#59e5ff;margin:15px 0 5px}.sub{text-align:center;font-size:11px;color:#b3c7d9;line-height:1.7;margin-bottom:15px}.panel{background:#1d2938;border:1px solid #405a73;border-radius:11px;padding:12px;margin:10px 0}.title{color:#47e1f8;font-size:12px;font-weight:bold;margin:13px 0}.row{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}.btn{background:#304359;border:1px solid #708aa6;border-radius:7px;color:white;padding:10px;font-size:11px;font-weight:bold;cursor:pointer}.btn.active{background:#087e9c;border-color:#4eeaff}.btn.trainer{background:#263f4c;border-color:#4d8191}.btn.trainer.active,.btn.trainer.on{background:#086c4d;border:2px solid #42ffb0;box-shadow:0 0 13px #27e99a77,inset 0 0 8px #27e99a33}.btn.number.active{background:#705200;border:2px solid #ffdf60;box-shadow:0 0 16px #ffce3677}.btn.number10.active{background:#512884;border:2px solid #d6a3ff;box-shadow:0 0 16px #ae67ff77}.btn:disabled,.key:disabled{opacity:.35;cursor:not-allowed}textarea{width:100%;height:88px;padding:10px;border-radius:8px;background:#0c1623;border:1px solid #62758b;color:white}.status{font-size:12px;color:#b5d7e8;padding:9px 0;overflow-wrap:anywhere}.windowBox{background:#102b2c;border:1px solid #32bba2;border-radius:9px;padding:12px;margin:10px 0}.windowBox strong{font-size:27px;color:#54f0c3}.bar{height:10px;background:#34475a;border-radius:20px;overflow:hidden;margin:10px 0}.barfill{height:100%;background:#31dca9}.centers{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:12px 0}.center{min-height:86px;min-width:0;padding:8px 2px;border:2px solid #20d7f4;border-radius:9px;background:#086c91;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}.center.short{background:#d2a62b;border-color:#ffe28a;color:#111}.center strong{font-size:clamp(27px,5vw,43px);line-height:1;font-weight:900}.center small{font-size:9px;font-weight:bold}.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.key{touch-action:manipulation;height:44px;border:1px solid #71849b;border-radius:7px;color:white;font-size:16px;font-weight:bold;cursor:pointer}.key.zero{grid-column:span 6}.history{display:flex;flex-wrap:wrap;gap:5px}.chip{min-width:47px;padding:8px;border:2px solid #667f99;border-radius:7px;text-align:center}.chip b{display:block;font-size:18px}.chip small{font-size:9px}.chip.green{border:3px solid #29e99a}.chip.loss{border:3px solid #ff416e}.chip.gale{border:3px solid #ffe045}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.metric{background:#293c51;border-radius:8px;padding:11px 5px;text-align:center}.metric small{display:block;font-size:9px;color:#bbd0e2}.metric b{display:block;font-size:22px;margin-top:5px}.good{color:#4ee4a4}.bad{color:#ff778c}.box{background:#132235;border:1px solid #46617d;border-radius:9px;padding:12px;margin:9px 0;line-height:1.7;overflow-wrap:anywhere}.g1card{background:#142438;border:1px solid #55728f;border-radius:9px;padding:12px;margin:9px 0}.g1card.selected{border:2px solid #38e6aa;background:#10382e}.cloud{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}.cloud span{display:inline-flex;min-width:36px;height:36px;align-items:center;justify-content:center;background:#2b4058;border:1px solid #64829f;border-radius:7px;font-weight:bold}.cloud span.danger{background:#69283e;border-color:#ff6989}.tablewrap{overflow:auto}table{width:100%;min-width:610px;border-collapse:collapse;font-size:11px}td,th{padding:9px;text-align:left;border-bottom:1px solid #41556e}th{color:#57def4}.listrow{border-bottom:1px solid #35485d;padding:9px 2px;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.muted{color:#b1c7d9;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.head{width:100%;background:#2c4056;color:white;border:1px solid #66829f;border-radius:8px;padding:12px;font-weight:bold;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px}.hide{display:none}input[type=number]{width:110px;padding:9px;background:#101b2a;color:white;border:1px solid #637b95;border-radius:7px}select{padding:10px;background:#101b2a;color:white;border:1px solid #8d6eb0;border-radius:7px;max-width:100%}.play10{position:relative;min-height:86px}#centers{position:relative}.reject10{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:3;background:#d20b2b;color:white;border:2px solid #ff8c9c;text-align:center;font-size:clamp(19px,5vw,31px);font-weight:900;padding:8px 4px;box-shadow:0 3px 18px #000b;pointer-events:none}.reject10 small{display:block;font-size:10px;line-height:1.4;margin-top:3px}.triangleDrawing{max-width:540px;margin:10px auto}.triangleDrawing svg{display:block;width:100%;height:auto}@media(max-width:600px){.center{min-height:79px}.center strong{font-size:clamp(25px,7vw,37px)}.center small{font-size:8px}.btn{font-size:10px;padding:9px}}
+*{box-sizing:border-box}body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}.app{max-width:1100px;margin:auto;padding:12px}h1{font-size:24px;text-align:center;color:#59e5ff;margin:15px 0 5px}.sub{text-align:center;font-size:11px;color:#b3c7d9;line-height:1.7;margin-bottom:15px}.panel{background:#1d2938;border:1px solid #405a73;border-radius:11px;padding:12px;margin:10px 0}.title{color:#47e1f8;font-size:12px;font-weight:bold;margin:13px 0}.row{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}.btn{background:#304359;border:1px solid #708aa6;border-radius:7px;color:white;padding:10px;font-size:11px;font-weight:bold;cursor:pointer}.btn.active{background:#087e9c;border-color:#4eeaff}.btn.trainer{background:#263f4c;border-color:#4d8191}.btn.trainer.active,.btn.trainer.on{background:#086c4d;border:2px solid #42ffb0;box-shadow:0 0 13px #27e99a77,inset 0 0 8px #27e99a33}.btn.number.active{background:#705200;border:2px solid #ffdf60;box-shadow:0 0 16px #ffce3677}.btn.number10.active{background:#512884;border:2px solid #d6a3ff;box-shadow:0 0 16px #ae67ff77}.btn:disabled,.key:disabled{opacity:.35;cursor:not-allowed}textarea{width:100%;height:88px;padding:10px;border-radius:8px;background:#0c1623;border:1px solid #62758b;color:white}.status{font-size:12px;color:#b5d7e8;padding:9px 0;overflow-wrap:anywhere}.windowBox{background:#102b2c;border:1px solid #32bba2;border-radius:9px;padding:12px;margin:10px 0}.windowBox strong{font-size:27px;color:#54f0c3}.bar{height:10px;background:#34475a;border-radius:20px;overflow:hidden;margin:10px 0}.barfill{height:100%;background:#31dca9}.centers{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:12px 0}.center{min-height:86px;min-width:0;padding:8px 2px;border:2px solid #20d7f4;border-radius:9px;background:#086c91;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}.center.short{background:#d2a62b;border-color:#ffe28a;color:#111}.center strong{font-size:clamp(27px,5vw,43px);line-height:1;font-weight:900}.center small{font-size:9px;font-weight:bold}.keys{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}.key{touch-action:manipulation;height:44px;border:1px solid #71849b;border-radius:7px;color:white;font-size:16px;font-weight:bold;cursor:pointer}.key.zero{grid-column:span 6}.history{display:flex;flex-wrap:wrap;gap:5px}.chip{min-width:47px;padding:8px;border:2px solid #667f99;border-radius:7px;text-align:center}.chip b{display:block;font-size:18px}.chip small{font-size:9px}.chip.green{border:3px solid #29e99a}.chip.loss{border:3px solid #ff416e}.chip.gale{border:3px solid #ffe045}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.metric{background:#293c51;border-radius:8px;padding:11px 5px;text-align:center}.metric small{display:block;font-size:9px;color:#bbd0e2}.metric b{display:block;font-size:22px;margin-top:5px}.good{color:#4ee4a4}.bad{color:#ff778c}.box{background:#132235;border:1px solid #46617d;border-radius:9px;padding:12px;margin:9px 0;line-height:1.7;overflow-wrap:anywhere}.g1card{background:#142438;border:1px solid #55728f;border-radius:9px;padding:12px;margin:9px 0}.g1card.selected{border:2px solid #38e6aa;background:#10382e}.cloud{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0}.cloud span{display:inline-flex;min-width:36px;height:36px;align-items:center;justify-content:center;background:#2b4058;border:1px solid #64829f;border-radius:7px;font-weight:bold}.cloud span.danger{background:#69283e;border-color:#ff6989}.tablewrap{overflow:auto}table{width:100%;min-width:610px;border-collapse:collapse;font-size:11px}td,th{padding:9px;text-align:left;border-bottom:1px solid #41556e}th{color:#57def4}.listrow{border-bottom:1px solid #35485d;padding:9px 2px;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.muted{color:#b1c7d9;font-size:11px;line-height:1.7;overflow-wrap:anywhere}.head{width:100%;background:#2c4056;color:white;border:1px solid #66829f;border-radius:8px;padding:12px;font-weight:bold;text-align:left;cursor:pointer;display:flex;justify-content:space-between;gap:8px}.hide{display:none}input[type=number]{width:110px;padding:9px;background:#101b2a;color:white;border:1px solid #637b95;border-radius:7px}select{padding:10px;background:#101b2a;color:white;border:1px solid #8d6eb0;border-radius:7px;max-width:100%}.play10{position:relative;min-height:86px}#centers{position:relative}.reject10{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);z-index:3;background:#d20b2b;color:white;border:2px solid #ff8c9c;text-align:center;font-size:clamp(19px,5vw,31px);font-weight:900;padding:8px 4px;box-shadow:0 3px 18px #000b;pointer-events:none}.reject10 small{display:block;font-size:10px;line-height:1.4;margin-top:3px}.triangleDrawing{max-width:540px;margin:10px auto}.triangleDrawing svg{display:block;width:100%;height:auto}@media(max-width:600px){.center{min-height:79px}.center strong{font-size:clamp(25px,7vw,37px)}.center small{font-size:8px}.btn{font-size:10px;padding:9px}}
 `;
   const variationUINodes = new Map();
   const timelineUINodes = new Map();
@@ -12124,6 +12289,8 @@ state.importAudit=describeImport(clean,opts);
     master.dataset.choice = "MASTER";
     const follow = button("SEGUIR INDICAÇÃO MASTER", () => coordinator.toggleFollowIndication(), row, "trainer");
     follow.dataset.choice = "FOLLOW_MASTER";
+    const reorder = button("REORGANIZAR DE 10 EM 10", () => coordinator.toggleReorganization(), row, "trainer");
+    reorder.dataset.choice = "REORGANIZE_TEN";
     const trainer = button(
       "TREINADOR GLOBAL • ESTRATÉGIA",
       () => changeStrategy("TRAINER"),
@@ -12448,6 +12615,13 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     if(state.structuralMemoryEnabled)$("selected").textContent+=" • TRIANGULAÇÃO EXPERIMENTAL";
 
     $("centers").dataset.playAppearance = playAppearance(target, state.strategy === "FOLLOW_MASTER");
+    if (state.block.reorganizedActive) {
+      $("selected").textContent += state.block.reorganizedDirection === -1
+        ? " • LEITURA DECRESCENTE DE 10 EM 10" : " • LEITURA CRESCENTE DE 10 EM 10";
+    }
+    if (!!state.block.reorganizedActive !== !!state.reorganizeTenEnabled)
+      $("selected").textContent += state.reorganizeTenEnabled
+        ? " • REORGANIZAÇÃO NA PRÓXIMA RECALIBRAÇÃO" : " • ORDEM ORIGINAL NA PRÓXIMA RECALIBRAÇÃO";
     renderSelectedTimeline(motor);
     renderFocusGame(motor);
     $("stake").value = state.stake;
@@ -12835,6 +13009,10 @@ if(!isCurrentApp())return;
       if (b.dataset.choice === "POSTLOSS_NORMAL" || b.dataset.choice === "POSTLOSS_INVERTIDO") {
         const reading = b.dataset.choice.slice(9);
         b.classList.toggle("active", !!(coordinator.adaptiveEnabled?.(reading) ?? (reading === side && state.postLossEnabled)));
+      } else if (b.dataset.choice === "REORGANIZE_TEN") {
+        b.classList.toggle("active", !!state.reorganizeTenEnabled);
+        b.setAttribute("aria-pressed", String(!!state.reorganizeTenEnabled));
+        b.textContent = state.reorganizeTenEnabled ? "REORGANIZAR DE 10 EM 10 • LIGADO" : "REORGANIZAR DE 10 EM 10";
       } else if (["postOneAllEnabled", "postTwoAllEnabled"].includes(b.dataset.choice))
         b.classList.toggle("active", !!state[b.dataset.choice]);
     }
@@ -13133,9 +13311,9 @@ if(!isCurrentApp() || recoveryLocked)return;
         const source =
           'const W='+JSON.stringify(W)+';'+
           'const mod=n=>(n%37+37)%37;const ix=n=>W.indexOf(n);'+
-          neighbors.toString()+';'+validPlay.toString()+';'+signaturePlay.toString()+';'+
+          neighbors.toString()+';'+validPlay.toString()+';'+validLegacyPlay.toString()+';'+signaturePlay.toString()+';'+
           'const packSession='+packSession.toString()+';'+
-          'self.onmessage=e=>{try{const raw=JSON.stringify(e.data.state,(k,v)=>validPlay(v)?{__betaPlay:signaturePlay(v),score:v.score}:v);'+
+          'self.onmessage=e=>{try{const raw=JSON.stringify(e.data.state,(k,v)=>(validPlay(v)||validLegacyPlay(v))?{__betaPlay:signaturePlay(v),score:v.score}:v);'+
           'self.postMessage({id:e.data.id,epoch:e.data.epoch,turn:e.data.turn,packed:packSession(raw)});'+
           '}catch(error){self.postMessage({id:e.data.id,epoch:e.data.epoch,error:String(error.message||error)});}};';
         const url = URL.createObjectURL(
@@ -13261,7 +13439,7 @@ if(!isCurrentApp())return;
 <section class="panel"><div class="title">TECLADO 0–36</div><div id="receipt" aria-live="polite"></div><div class="keys" id="keys"></div></section>
 <section class="panel"><div class="title">ÚLTIMOS 14 NÚMEROS</div><div class="history" id="last"></div></section>
 <section class="panel"><button class="head" id="timelineToggle">LINHAS DO TEMPO • TODAS AS ESTRATÉGIAS <span>− / +</span></button><div class="muted">CICLOS VIRTUAIS: W VERDE = DIRETO; G1 AMARELO = DEFESA; R VERMELHO = LOSS FINAL. ÚLTIMOS 20 CICLOS. MAIS RECENTE À DIREITA.</div><div id="focusGame" class="focusGame" hidden></div><div id="timelines"></div></section>
-<section class="panel"><div class="title">FICHAS / G1</div><div class="row"><label>VALOR DA FICHA <input id="stake" type="number" min=".01" step=".01"></label><label>MULTIPLICADOR G1 <input id="multiplier" type="number" min=".01" step=".01"></label></div></section>
+<div hidden><input id="stake" type="number"><input id="multiplier" type="number"></div>
 <section class="panel"><button class="head" id="generalToggle">RESULTADO GERAL <span>− / +</span></button><div id="general"></div></section>
 </main>`;
 
@@ -13432,6 +13610,11 @@ const sideDispose=globalThis['__analiseBetaDispose_'+side];
 return {
  side,root,
  toggleFollowLocal:toggleFollowIndicationLocal,
+ setReorganization(enabled){
+  state.reorganizeTenEnabled = !!enabled;
+  state.reorganizeTenDirection = side === "INVERTIDO" ? -1 : 1;
+  scheduleSave(); render();
+ },
  toggleAdaptiveRecovery:togglePostLoss,
  refreshRecoveryControls:refreshRecoveryButtons,
  styles:()=>root.querySelector('style').textContent,
@@ -13506,7 +13689,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 #beta-dual-app .reading-mark{font-size:11px;color:#b5dcf3;display:flex;align-items:center;gap:6px;margin-bottom:4px}
 #beta-dual-app .reading-dot{display:inline-block;width:10px;height:10px;background:#59d3ff;border-radius:2px;flex:none}
 #beta-dual-app .reverse .reading-dot{background:#4483ee}
-#beta-dual-app .centers{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:7px 0}
+#beta-dual-app .centers{grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin:7px 0}
 #beta-dual-app .center{min-height:57px;padding:5px 1px;gap:3px;border-width:1px}
 #beta-dual-app .center strong{font-size:clamp(21px,5.5vw,29px)}
 #beta-dual-app .center small{font-size:8px}
@@ -13553,7 +13736,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.16</h1>
+<h1>ANÁLISE BETA 6.6.18</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
@@ -13580,7 +13763,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 <div class="history-lane reverse"><span class="reading-dot" title="Inversa" aria-label="Inversa"></span><div id="dual-last-inverted"><span class="history-reading-label">INVERSA</span></div></div>
 </section>
 <section class="panel"><button class="head" id="dual-timeline-toggle">LINHAS DO TEMPO • NORMAL / INVERSA <span>− / +</span></button><div class="muted">W = direto • G1 = defesa • R = LOSS final. Linha de cima: normal. Linha azul de baixo: inversa.</div><div id="dual-timelines"></div></section>
-<section class="panel"><div class="title">FICHAS / G1</div><div class="row" id="dual-financial"></div></section>
+
 <section class="panel"><button class="head" id="dual-general-toggle">RESULTADO GERAL <span>− / +</span></button><div id="dual-general"><details open><summary>NORMAL</summary><div id="dual-result-normal"></div></details><details><summary>INVERSA</summary><div id="dual-result-inverted"></div></details></div></section>
 <div id="dual-normal" hidden></div><div id="dual-inverted" hidden></div>
 </main>
@@ -13640,6 +13823,11 @@ async function watchNumbers(){
  monitoring=false;
 }
 const coordinator={
+ toggleReorganization(){
+  if (!alive || running()) return;
+  const enabled = both().some(engine => !engine.getState().reorganizeTenEnabled);
+  both().forEach(engine => engine.setReorganization(enabled));
+ },
  toggleFollowIndication(){
   if (!alive || running()) return;
   if (both().some(engine => engine.getState().phase !== 'ENTRY' || engine.getState().cycle)) {
@@ -13751,12 +13939,6 @@ function mountUnified(){
   engine.mount('focusGame',ui('dual-timelines'));
  }
  for(const id of ['receipt','keys'])sides.NORMAL.mount(id,ui('dual-keyboard'));
- for(const [id,label] of [['stake','VALOR DA FICHA'],['multiplier','MULTIPLICADOR G1']]){
-  const wrapper=nativeDocument.createElement('label');wrapper.textContent=label;
-  sides.NORMAL.mount(id,wrapper);ui('dual-financial').appendChild(wrapper);
-  const input=sides.NORMAL.element(id),previous=input.onchange;
-  input.onchange=()=>{previous?.();const s=sides.NORMAL.getState();sides.INVERTIDO.setFinancial(s.stake,s.multiplier);};
- }
  unifiedReady=true;pairTimelines();both().forEach(engine=>engine.refreshRecoveryControls());
 }
 mountUnified();
