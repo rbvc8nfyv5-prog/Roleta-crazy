@@ -1,4 +1,4 @@
-/* V6.6.30 — VISUAL DOS ÚLTIMOS 14 NO MODO TERMINAIS.
+/* V6.6.31 — VISUAL DOS ÚLTIMOS 14 NO MODO TERMINAIS.
 Segunda borda independente: primeiro terminal laranja, segundo rosa, terceiro azul.
 Inclui os vizinhos de cada terminal e respeita a atribuição sequencial pelas sobras.
 Algarismo azul: acerto por centro com vizinho, incluindo o centro. Amarelo: alvo isolado.
@@ -6,7 +6,7 @@ Algarismo branco: não coberto. Borda de GREEN/G1/LOSS permanece no quadro inter
 Normal, inverso, quadro expandido e rotação usam a jogada efetivamente exibida.
 Fora de TERMINAIS, visual anterior preservado. Nenhum cálculo ou resultado é alterado.
 */
-/* V6.6.30 — botão ROTAÇÃO opcional, por leitura.
+/* V6.6.31 — botão ROTAÇÃO opcional, por leitura.
 Compara o resultado com os centros efetivamente exibidos na jogada anterior.
 Usa o menor deslocamento de até duas casas na ordem W; aplica o mesmo a todos os centros.
 Valor positivo: direita em W; negativo: esquerda. Centro exato ou sem alvo até2: offset0.
@@ -14,7 +14,7 @@ Não acumula offsets. A próxima entrada usa o último deslocamento medido.
 G1 já comprometido é preservado. Sem reconstruir os bancos de motores.
 Terminais, normais, inversos, desfazer e armazenamento conservam sua cobertura.
 */
-/* V6.6.30 — TRÊS TERMINAIS ESCOLHIDOS PELAS SOBRAS DOS ÚLTIMOS 14.
+/* V6.6.31 — TRÊS TERMINAIS ESCOLHIDOS PELAS SOBRAS DOS ÚLTIMOS 14.
 1º: cobre mais ocorrências entre os 14 conhecidos, com um vizinho de cada lado.
 2º: cobre mais ocorrências somente entre as que o primeiro não cobriu.
 3º: cobre mais ocorrências somente entre as que os dois anteriores não cobriram.
@@ -22,7 +22,7 @@ Cada ocorrência é atribuída uma única vez. Empates usam apenas a sobra de ca
 Mantidos 33 números, 12 motores, agrupamento da22, leitura a cada giro e G1 comprometido.
 Os demais módulos mantêm suas regras. Contagens históricas não garantem o próximo giro.
 */
-/* V6.6.30 — TERMINAIS PELO MOMENTO DOS ÚLTIMOS 14.
+/* V6.6.31 — TERMINAIS PELO MOMENTO DOS ÚLTIMOS 14.
 1º e 2º: maior contagem direta de cobertura com um vizinho na janela de 14.
 3º: maior quantidade de resultados adicionais fora da cobertura dos dois primeiros.
 Empates: últimos cinco, última ocorrência e dígito; complemento usa ganho adicional.
@@ -30,26 +30,26 @@ Acompanha cada giro apenas no módulo terminais. Outros bancos seguem dez em dez
 Contagens e janela utilizadas registradas antes do próximo resultado. G1 preservado.
 As contagens são históricas; não são garantia do próximo número.
 */
-/* V6.6.30 — somente agrupamento das sobras amarelas.
+/* V6.6.31 — somente agrupamento das sobras amarelas.
 Preserva todos os alvos com vizinho que a 22 original já apresentava.
 Agrupa apenas três amarelos consecutivos na roda; os demais continuam amarelos.
 Nenhum alvo azul é desmontado para procurar outra montagem.
-Mantém os mesmos números, motores e análises da 22. Entrega identificada como 6.6.30.
+Mantém os mesmos números, motores e análises da 22. Entrega identificada como 6.6.31.
 */
-/* V6.6.30 — base integral V6.6.21; alteração somente na apresentação dos terminais.
+/* V6.6.31 — base integral V6.6.21; alteração somente na apresentação dos terminais.
 Terminais usados continuam no quadro da indicação, sem repetição em cartões grandes.
 Alvos numéricos com um vizinho ficam azuis; números isolados ficam amarelos, SEM VIZINHO.
 Os alvos exibidos cobrem exatamente os mesmos 33 números, sem sobreposição ou aposta dupla.
 Motores, ranking, leitura, defesas, histórico e persistência conservam seus critérios.
 */
-/* V6.6.30 — base integral V6.6.19 com 33 números.
+/* V6.6.31 — base integral V6.6.19 com 33 números.
 Novo botão TERMINAIS: dez grupos numéricos 0–9, com um vizinho em cada lado na roda.
 Compara as 120 trincas pelos resultados conhecidos e concentração relativa à cobertura.
 Preserva a união dos três terminais; completa até 33 números com a leitura dos motores.
 Seleção exclusiva; normal e inverso independentes; G1 próprio e linha do tempo causal.
 Demais estratégias, suas geometrias e critérios de seleção permanecem preservados.
 */
-/* V6.6.30 — base V6.6.18, agora 33 números sem repetição.
+/* V6.6.31 — base V6.6.18, agora 33 números sem repetição.
 Seis centros com dois vizinhos (6 × 5) e um com um vizinho (3): quatro descobertos.
 Leitura inversa mantida em cada recalibração, mesmo após sair todo o histórico importado.
 Treinador reavalia as candidatas já calculadas a cada resultado; bancos continuam fixos por dez.
@@ -57,7 +57,7 @@ NORMAL e INVERTIDO têm estados e rankings independentes; escolhas iguais não s
 Ciclos e G1 comprometidos continuam congelados. Nenhum resultado histórico é reescrito.
 Quadro financeiro segue retirado; pós-loss, seguir indicação, reorganização e cores preservados.
 */
-/* V6.6.30 — cobertura de 33 números, base integral V6.6.17.
+/* V6.6.31 — cobertura de 33 números, base integral V6.6.17.
 Cada nova entrada/defesa: seis blocos de cinco e um bloco de três, sem repetição.
 33 cobertos e quatro descobertos; 12 motores distintos com união de 37 números.
 Quadro de fichas / G1 retirado. Controles e funcionamento das defesas preservados.
@@ -65,7 +65,7 @@ Reorganização de dez em dez, Master, seguir indicação, pós-loss e cores man
 Dados de versões anteriores permanecem identificados pelas jogadas originais;
 ciclos já comprometidos terminam com a cobertura que foi registrada na entrada.
 */
-/* V6.6.30 — botão REORGANIZAR DE 10 EM 10.
+/* V6.6.31 — botão REORGANIZAR DE 10 EM 10.
 Ligado: na calibração existente, ordena uma cópia da leitura em blocos de até dez.
 NORMAL crescente; INVERTIDO decrescente. Duplicatas são preservadas.
 Só dados já recebidos entram na organização, inclusive a sobra final disponível.
@@ -73,21 +73,21 @@ O botão é aplicado na próxima importação/recalibração, sem cálculo adici
 Desligado: a próxima leitura volta à ordem original de cada lado.
 Histórico real, resultados, linhas W/G1/LOSS, G1 comprometido e análises preservados.
 */
-/* V6.6.30 — mesma análise da 6.6.15.
+/* V6.6.31 — mesma análise da 6.6.15.
 Históricos normal/inverso com molduras distintas, preservando duas linhas de sete.
 Cores próprias para pós-adaptativo, pós-1 todas, pós-2 todas e pós-3 todas.
 LOSS com vermelho intenso, borda reforçada e contraste interno nos números vermelhos.
 SEGUIR INDICAÇÃO MASTER: executa a candidata indicada em cada leitura, sem pausa Master.
 Cada entrada usa somente a indicação disponível antes do resultado; defesa e ciclo congelados.
 */
-/* V6.6.30 — incorpora à 6.6.14:
+/* V6.6.31 — incorpora à 6.6.14:
 Pós-loss adaptativo normal/inverso com controles independentes por leitura.
 Pós-1 e pós-2 LOSS finais consecutivos por estratégia, todas as estratégias.
 Prioridade: pós-3, pós-2, adaptativo, pós-1; ciclos comprometidos preservados.
 Últimos 14 em duas linhas de sete; linha da estratégia selecionada abaixo da jogada.
 Análises, bancos, persistência e recalibração a cada dez preservados.
 */
-/* ANÁLISE BETA 6.6.30 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
+/* ANÁLISE BETA 6.6.31 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
 Depois de importar N números, fixa centros/bancos/candidatas para dez resultados.
 Master e prioridades escolhem entre essas candidatas, com avaliação a cada giro.
 No décimo: retira os dez mais antigos e forma novas jogadas com os N atuais.
@@ -95,7 +95,7 @@ Não reimporta, não repete backtest e não apaga a linha do tempo ou o arquivo 
 Defesas comprometidas continuam até encerrar seu ciclo.
 Resultado geral compacto: quatro linhas, com ciclos/W/G1/LOSS/%/indicação Master.
 */
-/* ANÁLISE BETA 6.6.30 — RETOMADA SEM COMPACTAÇÃO NA TELA.
+/* ANÁLISE BETA 6.6.31 — RETOMADA SEM COMPACTAÇÃO NA TELA.
 Trocar de aba não executa mais save()/LZW completo na thread da interface.
 Serialização do checkpoint também ocorre no worker de salvamento.
 Dois calculadores de bancos adicionais por leitura foram eliminados; os mesmos
@@ -104,7 +104,7 @@ Falha do worker não transfere silenciosamente o motor inteiro para o teclado.
 Reinserir o código transfere a sessão em memória sem compactação síncrona.
 Persistência, diário de entradas, linhas do tempo e reanálise preservados.
 */
-/* ANÁLISE BETA 6.6.30 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+/* ANÁLISE BETA 6.6.31 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
 A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
 Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
 Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
@@ -124,7 +124,7 @@ nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 - Falha de leitura protege a cópia existente de gravação vazia automática.
 - Aviso de salvamento permanece visível na tela compartilhada.
 */
-/* ANÁLISE BETA V6.6.30 — SELEÇÃO MASTER CORRIGIDA.
+/* ANÁLISE BETA V6.6.31 — SELEÇÃO MASTER CORRIGIDA.
 Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
 12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
 O MASTER e o controlador pós-loss não disputam consigo mesmos.
@@ -140,7 +140,7 @@ Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
 Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
 Este é um critério comparativo; não garante acerto nem ausência de LOSS.
 */
-/* ANÁLISE BETA V6.6.30 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* ANÁLISE BETA V6.6.31 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -162,7 +162,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.30 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.31 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -176,7 +176,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.30 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.31 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -220,7 +220,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.31 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -254,7 +254,7 @@ ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.30",
+  const VERSION = "6.6.31",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -1829,7 +1829,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.30', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.31', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -2508,7 +2508,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.30" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.31" };
     spaceCache.set(key, r);
     if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2974,7 +2974,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.30",readingCandidates:37,
+          readingVersion:"6.6.31",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -3645,7 +3645,9 @@ const triangleMemory666 = createTriangleMemory666(W);
   function openRealGale(motor, n, after, turn) {
     const strategy = state.cycle.strategy;
     state.cycle.trigger = n;
-    const d = standardDecision(motor, n, after, strategy);
+    const d = state.playLock?.motor
+      ? {motor:copy(state.playLock.motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
+      : standardDecision(motor, n, after, strategy);
     state.cycle.decision = d;
     state.defense = copy(d?.motor || motor);
     state.phase = state.galeSkip ? "GALE_SKIP" : "GALE";
@@ -4098,6 +4100,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       structuralMemoryVersion: "6.6.15",
       coverageSize: 33,
       rotationEnabled:false,
+      playLock:null,
       rotation:{offset:0,center:null,distance:null,outcome:null,turn:null,status:"AGUARDANDO"},
       readingSide: typeof side !== "undefined" && side === "INVERTIDO" ? "INVERTIDO" : "NORMAL",
       analysisSourceOrder: "CHRONOLOGICAL",
@@ -4185,6 +4188,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     for (const key of Object.keys(r))
       if (data?.[key] !== undefined) r[key] = data[key];
     r.history = cleanNumbers(r.history);
+    if(r.playLock&&!validPlay(r.playLock.motor?.play))r.playLock=null;
     if (r.history.length > 79) r.history = r.history.slice(-70);
     for (const field of [
       "historyTurns",
@@ -4275,7 +4279,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     r.forecastVersion = VERSION;
@@ -4355,7 +4359,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function compactMotor(m) {
     if (["TERMINALS33","ROTATED33"].includes(m?.play?.kind)) return copy(m);
-    const result = { readingVersion:"6.6.30", readingCandidates:37,};
+    const result = { readingVersion:"6.6.31", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -4571,6 +4575,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeDefinition() {
+    if(state.playLock?.definition)return copy(state.playLock.definition);
     if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
     if (
@@ -4658,7 +4663,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeMotor(cs = currentBlock()?.global || []) {
-    return applyRotation(activeMotorBase(cs));
+    return state.playLock?.motor?copy(state.playLock.motor):applyRotation(activeMotorBase(cs));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -4815,7 +4820,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       definitionBefore = activeDefinition();
     const controller = oldCycle?.controller || state.strategy;
     const masterPaused =
-      state.strategy === "MASTER" &&
+      !state.playLock?.motor && state.strategy === "MASTER" &&
       state.phase === "ENTRY" &&
       masterRestRemaining() > 0 &&
       !priorityRecoveryChoice(block);
@@ -4861,11 +4866,11 @@ const triangleMemory666 = createTriangleMemory666(W);
         }
       }
     } else if (state.phase === "SECOND_SKIP") {
-      played = copy(state.defense);
+      played = copy(state.playLock?.motor||state.defense);
       result = "CASA PULADA";
       state.phase = "SECOND_ENTRY";
     } else if (state.phase === "SECOND_ENTRY") {
-      played = copy(state.defense);
+      played = copy(state.playLock?.motor||state.defense);
       if (played?.play.numbers.includes(n)) {
         result = "GREEN";
         state.phase = "ENTRY";
@@ -4876,11 +4881,11 @@ const triangleMemory666 = createTriangleMemory666(W);
         openRealGale(played, n, after, turn);
       }
     } else if (state.phase === "GALE_SKIP") {
-      played = copy(state.defense);
+      played = copy(state.playLock?.motor||state.defense);
       result = "GALE PULADO";
       state.phase = "GALE";
     } else if (state.phase === "GALE") {
-      played = copy(state.defense);
+      played = copy(state.playLock?.motor||state.defense);
       result = played?.play.numbers.includes(n) ? "GREEN G1" : "LOSS";
       state.realG1.push({
         turn,
@@ -4928,7 +4933,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.30", ordering: state.block.reorganizedActive
+        version: "6.6.31", ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -5591,7 +5596,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.30',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.31',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -6485,7 +6490,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.30",readingCandidates:37,
+          readingVersion:"6.6.31",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -6682,7 +6687,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.31 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -6716,7 +6721,7 @@ ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.30",
+    const VERSION = "6.6.31",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -8298,7 +8303,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.30', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.31', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -8981,7 +8986,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.30" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.31" };
       spaceCache.set(key, r);
       if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -9455,7 +9460,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.30",readingCandidates:37,
+          readingVersion:"6.6.31",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -10134,7 +10139,9 @@ const triangleMemory666 = createTriangleMemory666(W);
     function openRealGale(motor, n, after, turn) {
       const strategy = state.cycle.strategy;
       state.cycle.trigger = n;
-      const d = standardDecision(motor, n, after, strategy);
+      const d = state.playLock?.motor
+      ? {motor:copy(state.playLock.motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
+      : standardDecision(motor, n, after, strategy);
       state.cycle.decision = d;
       state.defense = copy(d?.motor || motor);
       state.phase = state.galeSkip ? "GALE_SKIP" : "GALE";
@@ -10607,6 +10614,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       structuralMemoryVersion: "6.6.15",
       coverageSize: 33,
       rotationEnabled:false,
+      playLock:null,
       rotation:{offset:0,center:null,distance:null,outcome:null,turn:null,status:"AGUARDANDO"},
       readingSide: typeof side !== "undefined" && side === "INVERTIDO" ? "INVERTIDO" : "NORMAL",
       analysisSourceOrder: "CHRONOLOGICAL",
@@ -10694,6 +10702,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       for (const key of Object.keys(r))
         if (data?.[key] !== undefined) r[key] = data[key];
       r.history = cleanNumbers(r.history);
+    if(r.playLock&&!validPlay(r.playLock.motor?.play))r.playLock=null;
       if (r.history.length > 79) r.history = r.history.slice(-70);
       for (const field of [
         "historyTurns",
@@ -10784,7 +10793,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       r.forecastVersion = VERSION;
@@ -10864,7 +10873,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function compactMotor(m) {
     if (["TERMINALS33","ROTATED33"].includes(m?.play?.kind)) return copy(m);
-      const result = { readingVersion:"6.6.30", readingCandidates:37,};
+      const result = { readingVersion:"6.6.31", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -11082,6 +11091,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function activeDefinition() {
+    if(state.playLock?.definition)return copy(state.playLock.definition);
     if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
       if (
@@ -11169,7 +11179,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function activeMotor(cs = currentBlock()?.global || []) {
-    return applyRotation(activeMotorBase(cs));
+    return state.playLock?.motor?copy(state.playLock.motor):applyRotation(activeMotorBase(cs));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -11328,7 +11338,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         definitionBefore = activeDefinition();
       const controller = oldCycle?.controller || state.strategy;
       const masterPaused =
-        state.strategy === "MASTER" &&
+        !state.playLock?.motor && state.strategy === "MASTER" &&
         state.phase === "ENTRY" &&
         masterRestRemaining() > 0 &&
         !priorityRecoveryChoice(block);
@@ -11374,11 +11384,11 @@ const triangleMemory666 = createTriangleMemory666(W);
           }
         }
       } else if (state.phase === "SECOND_SKIP") {
-        played = copy(state.defense);
+        played = copy(state.playLock?.motor||state.defense);
         result = "CASA PULADA";
         state.phase = "SECOND_ENTRY";
       } else if (state.phase === "SECOND_ENTRY") {
-        played = copy(state.defense);
+        played = copy(state.playLock?.motor||state.defense);
         if (played?.play.numbers.includes(n)) {
           result = "GREEN";
           state.phase = "ENTRY";
@@ -11389,11 +11399,11 @@ const triangleMemory666 = createTriangleMemory666(W);
           openRealGale(played, n, after, turn);
         }
       } else if (state.phase === "GALE_SKIP") {
-        played = copy(state.defense);
+        played = copy(state.playLock?.motor||state.defense);
         result = "GALE PULADO";
         state.phase = "GALE";
       } else if (state.phase === "GALE") {
-        played = copy(state.defense);
+        played = copy(state.playLock?.motor||state.defense);
         result = played?.play.numbers.includes(n) ? "GREEN G1" : "LOSS";
         state.realG1.push({
           turn,
@@ -11441,7 +11451,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.30", ordering: state.block.reorganizedActive
+        version: "6.6.31", ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -12108,7 +12118,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.30',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.31',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -12899,7 +12909,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.30",readingCandidates:37,
+          readingVersion:"6.6.31",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -13405,6 +13415,20 @@ state.importAudit=describeImport(clean,opts);
     }
   }
 
+  function togglePlayLockLocal() {
+    if(busy||inputRunning||inputQueue.length)return false;
+    if(state.playLock){
+      state.playLock=null;
+    }else{
+      const block=currentBlock();
+      const motor=state.defense||state.cycle?.original||(block?activeMotor(block.global):null);
+      if(!validPlay(motor?.play))return false;
+      state.playLock={motor:copy(motor),definition:copy(activeDefinition()),
+        notice:$("selected")?.textContent||"",turn:state.totalTurns};
+    }
+    scheduleSave();render();return true;
+  }
+
   function setRotationLocal(enabled) {
     if(busy || !cycleIsFree())return false;
     state.rotationEnabled=!!enabled;
@@ -13445,7 +13469,7 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function changeStrategy(strategy, adaptive = null, created = null) {
-    if (busy) return;
+    if (busy || state.playLock?.motor) return;
     if (!cycleIsFree()) {
       alert("AGUARDE ENCERRAR O CICLO ATUAL.");
       return;
@@ -13530,6 +13554,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     const block = currentBlock(),
       definition = activeDefinition();
     const motor =
+      state.playLock?.motor ||
       state.defense ||
       state.cycle?.original ||
       (block ? activeMotor(block.global) : null);
@@ -13672,6 +13697,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
         : "TERMINAIS • AGUARDANDO HISTÓRICO";
       $("selected").className="playNotice terminalNotice";
     }
+    if(state.playLock?.notice)$("selected").textContent=state.playLock.notice;
     $("centers").classList.toggle("terminalCenters",(motor?.play?.kind === "TERMINALS33" || motor?.play?.base?.kind === "TERMINALS33"));
     if(state.structuralMemoryEnabled)$("selected").textContent+=" • TRIANGULAÇÃO EXPERIMENTAL";
 
@@ -14156,7 +14182,7 @@ if(!isCurrentApp())return;
   }
 
   function selectTimeline(id) {
-    if (busy) return;
+    if (busy || state.playLock?.motor) return;
     if (!cycleIsFree()) {
       alert("AGUARDE ENCERRAR O CICLO ATUAL PARA TROCAR A ESTRATÉGIA.");
       return;
@@ -14279,7 +14305,7 @@ if(!isCurrentApp())return;
 
   function terminalHistoryContext() {
     if(!["TERMINALS","TERMINAL_SUGGESTION"].includes(state.strategy))return null;
-    const motor=state.defense || state.cycle?.original ||
+    const motor=state.playLock?.motor || state.defense || state.cycle?.original ||
       (currentBlock()?activeMotor(currentBlock().global):null);
     const play=motor?.play;
     const base=play?.kind==="ROTATED33"?play.base:play;
@@ -14748,6 +14774,7 @@ return {
  momentDiagnostics(){return {calibration:copy(state.block.calibration),pending:state.block.pending,calibrations:state.block.calibrations,fixed:copy(state.block.fixedForecasts)};},
  masterDiagnostics(){return {reanalyses:copy(state.importReanalyses),policies:copy(state.reanalysisPolicies),display:copy(displayedMasterChoice()),choice:copy(masterSelection()),ranking:copy(masterRanking()),bestVariations:VARIANT_OWNERS.map(owner=>bestMasterVariation(owner.id)),lessons:copy(state.masterLessons),pendingReviews:state.masterReviews.length};},
  setRotationLocal,
+ togglePlayLockLocal,
  getState:()=>state,
  busy:()=>busy||inputRunning||inputQueue.length>0,
  canEnqueue:()=>appAlive&&state.history.length>=8&&(!busy||inputRunning),
@@ -14806,6 +14833,9 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 #beta-dual-app .reading-card{border:1px solid #4386ad;border-left:5px solid #59d3ff;background:#122b3e;border-radius:7px;padding:8px;margin:7px 0;min-width:0}
 #beta-dual-app .reading-card.reverse{border-left-color:#4483ee;background:#182b45}
 #beta-dual-app .reading-mark{font-size:11px;color:#b5dcf3;display:flex;align-items:center;gap:6px;margin-bottom:4px}
+#beta-dual-app .play-lock{min-height:36px;padding:6px 10px;border:1px solid #6689a4;border-radius:6px;background:#203c51;color:#d9edfa;font-weight:bold}
+#beta-dual-app .play-lock[aria-pressed="true"]{background:#0a704e;border:2px solid #55ffb5;color:#fff;box-shadow:0 0 10px #35e99977}
+#beta-dual-app .play-lock[aria-pressed="true"] .reading-dot{background:#55ffb5}
 #beta-dual-app .reading-dot{display:inline-block;width:10px;height:10px;background:#59d3ff;border-radius:2px;flex:none}
 #beta-dual-app .reverse .reading-dot{background:#4483ee}
 #beta-dual-app .terminalNotice{background:#113c42;color:#b1fff1;border:3px solid #4ce8c4}
@@ -14868,7 +14898,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.30</h1>
+<h1>ANÁLISE BETA 6.6.31</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
@@ -14886,8 +14916,8 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </section>
 <section class="panel" id="dual-plays">
 <div class="title">JOGADAS</div>
-<div class="reading-card"><div class="reading-mark"><span class="reading-dot"></span>NORMAL</div><div id="dual-play-normal"></div></div>
-<div class="reading-card reverse"><div class="reading-mark"><span class="reading-dot"></span>INVERSA</div><div id="dual-play-inverted"></div></div>
+<div class="reading-card"><button type="button" class="reading-mark play-lock" id="dual-lock-normal" aria-pressed="false" aria-label="Travar jogada normal"><span class="reading-dot"></span>NORMAL</button><div id="dual-play-normal"></div></div>
+<div class="reading-card reverse"><button type="button" class="reading-mark play-lock" id="dual-lock-inverted" aria-pressed="false" aria-label="Travar jogada inversa"><span class="reading-dot"></span>INVERSA</button><div id="dual-play-inverted"></div></div>
 </section>
 <section class="panel"><div class="title">TECLADO 0–36</div><div id="dual-keyboard"></div></section>
 <section class="panel" id="dual-last-panel"><div class="title">ÚLTIMOS 14 NÚMEROS</div>
@@ -14907,7 +14937,17 @@ try{const saved=localStorage.getItem(stateKey);if(['OLDEST','NEWEST'].includes(s
 ui('dual-order').onchange=()=>{try{localStorage.setItem(stateKey,ui('dual-order').value);}catch{}};
 function both(){return [sides.NORMAL,sides.INVERTIDO].filter(Boolean);}
 function running(){return operation||both().some(s=>s.busy());}
+function syncPlayLocks(){
+ for(const [side,tail]of [['NORMAL','normal'],['INVERTIDO','inverted']]){
+  const engine=sides[side],button=ui('dual-lock-'+tail);if(!engine||!button)continue;
+  const locked=!!engine.getState().playLock;
+  button.setAttribute('aria-pressed',String(locked));
+  button.setAttribute('aria-label',(locked?'Soltar':'Travar')+' jogada '+(side==='NORMAL'?'normal':'inversa'));
+  button.disabled=running();
+ }
+}
 function updateButtons(){
+ syncPlayLocks();
  const blocked=operation;
  for(const id of ['dual-import','dual-undo','dual-restore','dual-clear'])ui(id).disabled=blocked;
  for(const id of ['dual-controls-normal','dual-controls-inverted','dual-plays','dual-keyboard','dual-timelines'])ui(id).inert=operation;
@@ -15040,7 +15080,7 @@ const coordinator={
   ui('dual-save-health').textContent=[...new Set(warnings)].join(' • ');
   ui('dual-save-health').hidden=!warnings.length;
  },
- render(){if(unifiedReady){pairTimelines();this.storageChanged();}},
+ render(){if(unifiedReady){pairTimelines();syncPlayLocks();this.storageChanged();}},
  busy:running,prepareHistories,inputNumbers
 };
 for(const [side,id] of [['NORMAL','dual-normal'],['INVERTIDO','dual-inverted']]){
@@ -15068,6 +15108,10 @@ function mountUnified(){
  ui('dual-base-style').textContent=sides.NORMAL.styles();
  for(const [side,tail] of [['NORMAL','normal'],['INVERTIDO','inverted']]){
   const engine=sides[side];
+  const lock=ui('dual-lock-'+tail),locked=!!engine.getState().playLock;
+  lock.setAttribute('aria-pressed',String(locked));
+  lock.setAttribute('aria-label',(locked?'Soltar':'Travar')+' jogada '+(side==='NORMAL'?'normal':'inversa'));
+  lock.disabled=engine.busy()||operation;
   for(const id of ['strategies','options'])engine.mount(id,ui('dual-controls-'+tail));
   for(const id of ['selected','centers','coverage'])engine.mount(id,ui('dual-play-'+tail));
   for(const id of ['status','importAudit','counter','windowInfo','cycleInfo'])engine.mount(id,ui('dual-audit-'+tail));
@@ -15082,6 +15126,9 @@ function mountUnified(){
  unifiedReady=true;pairTimelines();both().forEach(engine=>engine.refreshRecoveryControls());
 }
 mountUnified();
+for(const [side,tail]of [['NORMAL','normal'],['INVERTIDO','inverted']]){
+ ui('dual-lock-'+tail).onclick=()=>{if(!running()){sides[side].togglePlayLockLocal();syncPlayLocks();}};
+}
 ui('dual-control-side').onchange=()=>{const inverse=ui('dual-control-side').value==='INVERTIDO';ui('dual-controls-normal').hidden=inverse;ui('dual-controls-inverted').hidden=!inverse;};
 ui('dual-timeline-toggle').onclick=()=>{ui('dual-timelines').hidden=!ui('dual-timelines').hidden;};
 ui('dual-general-toggle').onclick=()=>{ui('dual-general').hidden=!ui('dual-general').hidden;};
