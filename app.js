@@ -1,4 +1,4 @@
-/* V6.6.29 — VISUAL DOS ÚLTIMOS 14 NO MODO TERMINAIS.
+/* V6.6.30 — VISUAL DOS ÚLTIMOS 14 NO MODO TERMINAIS.
 Segunda borda independente: primeiro terminal laranja, segundo rosa, terceiro azul.
 Inclui os vizinhos de cada terminal e respeita a atribuição sequencial pelas sobras.
 Algarismo azul: acerto por centro com vizinho, incluindo o centro. Amarelo: alvo isolado.
@@ -6,7 +6,7 @@ Algarismo branco: não coberto. Borda de GREEN/G1/LOSS permanece no quadro inter
 Normal, inverso, quadro expandido e rotação usam a jogada efetivamente exibida.
 Fora de TERMINAIS, visual anterior preservado. Nenhum cálculo ou resultado é alterado.
 */
-/* V6.6.29 — botão ROTAÇÃO opcional, por leitura.
+/* V6.6.30 — botão ROTAÇÃO opcional, por leitura.
 Compara o resultado com os centros efetivamente exibidos na jogada anterior.
 Usa o menor deslocamento de até duas casas na ordem W; aplica o mesmo a todos os centros.
 Valor positivo: direita em W; negativo: esquerda. Centro exato ou sem alvo até2: offset0.
@@ -14,7 +14,7 @@ Não acumula offsets. A próxima entrada usa o último deslocamento medido.
 G1 já comprometido é preservado. Sem reconstruir os bancos de motores.
 Terminais, normais, inversos, desfazer e armazenamento conservam sua cobertura.
 */
-/* V6.6.29 — TRÊS TERMINAIS ESCOLHIDOS PELAS SOBRAS DOS ÚLTIMOS 14.
+/* V6.6.30 — TRÊS TERMINAIS ESCOLHIDOS PELAS SOBRAS DOS ÚLTIMOS 14.
 1º: cobre mais ocorrências entre os 14 conhecidos, com um vizinho de cada lado.
 2º: cobre mais ocorrências somente entre as que o primeiro não cobriu.
 3º: cobre mais ocorrências somente entre as que os dois anteriores não cobriram.
@@ -22,7 +22,7 @@ Cada ocorrência é atribuída uma única vez. Empates usam apenas a sobra de ca
 Mantidos 33 números, 12 motores, agrupamento da22, leitura a cada giro e G1 comprometido.
 Os demais módulos mantêm suas regras. Contagens históricas não garantem o próximo giro.
 */
-/* V6.6.29 — TERMINAIS PELO MOMENTO DOS ÚLTIMOS 14.
+/* V6.6.30 — TERMINAIS PELO MOMENTO DOS ÚLTIMOS 14.
 1º e 2º: maior contagem direta de cobertura com um vizinho na janela de 14.
 3º: maior quantidade de resultados adicionais fora da cobertura dos dois primeiros.
 Empates: últimos cinco, última ocorrência e dígito; complemento usa ganho adicional.
@@ -30,26 +30,26 @@ Acompanha cada giro apenas no módulo terminais. Outros bancos seguem dez em dez
 Contagens e janela utilizadas registradas antes do próximo resultado. G1 preservado.
 As contagens são históricas; não são garantia do próximo número.
 */
-/* V6.6.29 — somente agrupamento das sobras amarelas.
+/* V6.6.30 — somente agrupamento das sobras amarelas.
 Preserva todos os alvos com vizinho que a 22 original já apresentava.
 Agrupa apenas três amarelos consecutivos na roda; os demais continuam amarelos.
 Nenhum alvo azul é desmontado para procurar outra montagem.
-Mantém os mesmos números, motores e análises da 22. Entrega identificada como 6.6.29.
+Mantém os mesmos números, motores e análises da 22. Entrega identificada como 6.6.30.
 */
-/* V6.6.29 — base integral V6.6.21; alteração somente na apresentação dos terminais.
+/* V6.6.30 — base integral V6.6.21; alteração somente na apresentação dos terminais.
 Terminais usados continuam no quadro da indicação, sem repetição em cartões grandes.
 Alvos numéricos com um vizinho ficam azuis; números isolados ficam amarelos, SEM VIZINHO.
 Os alvos exibidos cobrem exatamente os mesmos 33 números, sem sobreposição ou aposta dupla.
 Motores, ranking, leitura, defesas, histórico e persistência conservam seus critérios.
 */
-/* V6.6.29 — base integral V6.6.19 com 33 números.
+/* V6.6.30 — base integral V6.6.19 com 33 números.
 Novo botão TERMINAIS: dez grupos numéricos 0–9, com um vizinho em cada lado na roda.
 Compara as 120 trincas pelos resultados conhecidos e concentração relativa à cobertura.
 Preserva a união dos três terminais; completa até 33 números com a leitura dos motores.
 Seleção exclusiva; normal e inverso independentes; G1 próprio e linha do tempo causal.
 Demais estratégias, suas geometrias e critérios de seleção permanecem preservados.
 */
-/* V6.6.29 — base V6.6.18, agora 33 números sem repetição.
+/* V6.6.30 — base V6.6.18, agora 33 números sem repetição.
 Seis centros com dois vizinhos (6 × 5) e um com um vizinho (3): quatro descobertos.
 Leitura inversa mantida em cada recalibração, mesmo após sair todo o histórico importado.
 Treinador reavalia as candidatas já calculadas a cada resultado; bancos continuam fixos por dez.
@@ -57,7 +57,7 @@ NORMAL e INVERTIDO têm estados e rankings independentes; escolhas iguais não s
 Ciclos e G1 comprometidos continuam congelados. Nenhum resultado histórico é reescrito.
 Quadro financeiro segue retirado; pós-loss, seguir indicação, reorganização e cores preservados.
 */
-/* V6.6.29 — cobertura de 33 números, base integral V6.6.17.
+/* V6.6.30 — cobertura de 33 números, base integral V6.6.17.
 Cada nova entrada/defesa: seis blocos de cinco e um bloco de três, sem repetição.
 33 cobertos e quatro descobertos; 12 motores distintos com união de 37 números.
 Quadro de fichas / G1 retirado. Controles e funcionamento das defesas preservados.
@@ -65,7 +65,7 @@ Reorganização de dez em dez, Master, seguir indicação, pós-loss e cores man
 Dados de versões anteriores permanecem identificados pelas jogadas originais;
 ciclos já comprometidos terminam com a cobertura que foi registrada na entrada.
 */
-/* V6.6.29 — botão REORGANIZAR DE 10 EM 10.
+/* V6.6.30 — botão REORGANIZAR DE 10 EM 10.
 Ligado: na calibração existente, ordena uma cópia da leitura em blocos de até dez.
 NORMAL crescente; INVERTIDO decrescente. Duplicatas são preservadas.
 Só dados já recebidos entram na organização, inclusive a sobra final disponível.
@@ -73,21 +73,21 @@ O botão é aplicado na próxima importação/recalibração, sem cálculo adici
 Desligado: a próxima leitura volta à ordem original de cada lado.
 Histórico real, resultados, linhas W/G1/LOSS, G1 comprometido e análises preservados.
 */
-/* V6.6.29 — mesma análise da 6.6.15.
+/* V6.6.30 — mesma análise da 6.6.15.
 Históricos normal/inverso com molduras distintas, preservando duas linhas de sete.
 Cores próprias para pós-adaptativo, pós-1 todas, pós-2 todas e pós-3 todas.
 LOSS com vermelho intenso, borda reforçada e contraste interno nos números vermelhos.
 SEGUIR INDICAÇÃO MASTER: executa a candidata indicada em cada leitura, sem pausa Master.
 Cada entrada usa somente a indicação disponível antes do resultado; defesa e ciclo congelados.
 */
-/* V6.6.29 — incorpora à 6.6.14:
+/* V6.6.30 — incorpora à 6.6.14:
 Pós-loss adaptativo normal/inverso com controles independentes por leitura.
 Pós-1 e pós-2 LOSS finais consecutivos por estratégia, todas as estratégias.
 Prioridade: pós-3, pós-2, adaptativo, pós-1; ciclos comprometidos preservados.
 Últimos 14 em duas linhas de sete; linha da estratégia selecionada abaixo da jogada.
 Análises, bancos, persistência e recalibração a cada dez preservados.
 */
-/* ANÁLISE BETA 6.6.29 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
+/* ANÁLISE BETA 6.6.30 — JOGADAS FIXAS E RECALIBRAÇÃO EM DEZ.
 Depois de importar N números, fixa centros/bancos/candidatas para dez resultados.
 Master e prioridades escolhem entre essas candidatas, com avaliação a cada giro.
 No décimo: retira os dez mais antigos e forma novas jogadas com os N atuais.
@@ -95,7 +95,7 @@ Não reimporta, não repete backtest e não apaga a linha do tempo ou o arquivo 
 Defesas comprometidas continuam até encerrar seu ciclo.
 Resultado geral compacto: quatro linhas, com ciclos/W/G1/LOSS/%/indicação Master.
 */
-/* ANÁLISE BETA 6.6.29 — RETOMADA SEM COMPACTAÇÃO NA TELA.
+/* ANÁLISE BETA 6.6.30 — RETOMADA SEM COMPACTAÇÃO NA TELA.
 Trocar de aba não executa mais save()/LZW completo na thread da interface.
 Serialização do checkpoint também ocorre no worker de salvamento.
 Dois calculadores de bancos adicionais por leitura foram eliminados; os mesmos
@@ -104,7 +104,7 @@ Falha do worker não transfere silenciosamente o motor inteiro para o teclado.
 Reinserir o código transfere a sessão em memória sem compactação síncrona.
 Persistência, diário de entradas, linhas do tempo e reanálise preservados.
 */
-/* ANÁLISE BETA 6.6.29 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
+/* ANÁLISE BETA 6.6.30 — REANÁLISE DA IMPORTAÇÃO E APRESENTAÇÃO ÚNICA.
 A revisão restaura o prefixo anterior à entrada: 6 componentes x 4 intensidades.
 Tentativas e jogadas ficam registradas; acerto revisado não apaga o LOSS original.
 Uma hipótese ajustada ao passado começa com ZERO validações; somente os giros
@@ -124,7 +124,7 @@ nem avisos de recebido/concluído no teclado. Persistência 6.6.11 preservada.
 - Falha de leitura protege a cópia existente de gravação vazia automática.
 - Aviso de salvamento permanece visível na tela compartilhada.
 */
-/* ANÁLISE BETA V6.6.29 — SELEÇÃO MASTER CORRIGIDA.
+/* ANÁLISE BETA V6.6.30 — SELEÇÃO MASTER CORRIGIDA.
 Mesmo ranking para todos os candidatos elegíveis: BASE, V1–V8,
 12 adaptativas, AUTO 1–4, terceiro automático, personalizadas e treinadores.
 O MASTER e o controlador pós-loss não disputam consigo mesmos.
@@ -140,7 +140,7 @@ Ciclo/G1 comprometido não troca; nenhum resultado futuro participa do ranking.
 Atlas, encadeamentos, polos, arcos, controles e persistência preservados.
 Este é um critério comparativo; não garante acerto nem ausência de LOSS.
 */
-/* ANÁLISE BETA V6.6.29 — LEITURAS ATIVAS DA JANELA COMPLETA.
+/* ANÁLISE BETA V6.6.30 — LEITURAS ATIVAS DA JANELA COMPLETA.
 Atlas integral de 1.369 formas de triangulação e 361 pares de amplitudes.
 Encadeamentos de todos os comprimentos 4..70 disponíveis na janela:
 sequência numérica, deslocamentos, reflexão, amplitudes, direção,
@@ -162,7 +162,7 @@ Escopo: leitura dentro da janela de até 70 resultados, com estes critérios
 explícitos. Não significa todas as definições matemáticas imagináveis,
 nem cobertura individual de 37, nem melhoria de acerto comprovada.
 */
-/* V6.6.29 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
+/* V6.6.30 — MEMÓRIA CAUSAL DO QUARTO RESULTADO.
 Acrescenta trinca→quarto, forma girada/refletida, amplitude/proporção,
 encadeamento de 4–8, fechamento/contorno, sucessores de arcos e polos.
 Atlas: 1.369 formas relativas, equivalentes a 50.653 trincas numéricas.
@@ -176,7 +176,7 @@ A tela compacta, os dois sentidos, um teclado, as estratégias e as defesas
 comprometidas permanecem. Sessões da 6.6.5 são retomadas sem reimportação.
 Resultados anteriores não são recalculados como se usassem o novo motor.
 */
-/* ANÁLISE BETA 6.6.29 — DUAS LEITURAS EM UMA TELA COMPACTA.
+/* ANÁLISE BETA 6.6.30 — DUAS LEITURAS EM UMA TELA COMPACTA.
 BASE: 6.6.4, com os cálculos da 6.6.1 preservados.
 NORMAL: histórico na ordem cronológica escolhida na importação.
 INVERTIDO: os mesmos resultados em ordem reversa, com treinamento próprio.
@@ -220,7 +220,7 @@ let appAlive=true;
 function isCurrentApp(){return appAlive;}
 
   /*
-ANÁLISE BETA V6.6.29 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -254,7 +254,7 @@ ANÁLISE BETA V6.6.29 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.29",
+  const VERSION = "6.6.30",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -427,6 +427,88 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       ) &&
       p.blocks.flatMap((b) => b.numbers).every((n) => p.numbers.includes(n))
     );
+  }
+
+  function terminalSuggestionDefinition() {
+    return {id:"TERMINAL_SUGGESTION", name:"SUGESTÃO • TRÊS TERMINAIS", type:"TERMINALS"};
+  }
+
+  // Project each strategy's actual reading into terminal groups. The first button
+  // keeps its existing last-14 rule; this pool uses the strategy to resolve ties
+  // and to complete its own 33-pocket coverage. No future outcomes enter here.
+  function projectTerminalSuggestion(source, template, history, identity) {
+    if(!validPlay(source?.play)||!template)return null;
+    const support=W.map(number=>{
+      const coverage=source.play.numbers.includes(number)?1:0;
+      return coverage+source.play.blocks.reduce((sum,block)=>sum+1/(1+distance(number,block.center)),0)/source.play.blocks.length;
+    });
+    const used=new Set(),digits=[],groups=Array.from({length:10},(_,digit)=>terminalGroup(digit));
+    let remaining=history.map((_,i)=>i);
+    for(let step=0;step<3;step++){
+      const ranked=groups.filter(group=>!used.has(group.digit)).map(group=>({
+        ...group,added:remaining.filter(i=>group.numbers.includes(history[i])),
+        support:avg(group.numbers.map(number=>support[ix(number)]))
+      })).sort((a,b)=>b.added.length-a.added.length||b.support-a.support||
+        b.added.filter(i=>i>=history.length-5).length-a.added.filter(i=>i>=history.length-5).length||a.digit-b.digit);
+      const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
+      const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
+    }
+    const core=new Set(digits.flatMap(digit=>groups[digit].numbers));
+    const completion=W.filter(number=>!core.has(number)).sort((a,b)=>support[ix(b)]-support[ix(a)]||ix(a)-ix(b)).slice(0,33-core.size);
+    const covered=new Set([...core,...completion]);
+    const blocks=[...W.filter(number=>digits.includes(number%10)).map(center=>({center,radius:1,numbers:neighbors(center,1)})),
+      ...completion.map(center=>({center,radius:0,numbers:[center]}))];
+    const play={kind:"TERMINALS33",terminalDigits:digits,completion,blocks,
+      numbers:W.filter(number=>covered.has(number)),score:avg([...covered].map(number=>support[ix(number)]))};
+    if(!validTerminalPlay(play))throw Error("SUGESTÃO DE TERMINAIS INVÁLIDA");
+    return {...copy(template),key:"TERMINAL_SUGGESTION::"+identity.id,play,
+      terminalDigits:digits,terminalSelection:null,
+      terminalProfile:{family:FAMILIES.includes(source.family)?source.family:template.terminalProfile.family,
+        radius:RADII.includes(source.radius)?source.radius:template.terminalProfile.radius},
+      terminalSuggestionTarget:{id:identity.id,name:identity.name},
+      terminalSourceKey:source.key,score:play.score};
+  }
+
+  let terminalSuggestionCache=null;
+  function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
+    if(!block||state.history.length<8)return [];
+    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn;
+    if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
+      return terminalSuggestionCache.rows;
+    const native=nativeForecasts||snapshotTimelineForecastsBase(block);
+    const names=new Map(timelineDefinitions().map(def=>[def.id,def.name]));
+    const template=terminalBank()[0],history=state.history.slice(-14);
+    const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
+    const master=masterSelection(block)?.motor;
+    if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
+    const seen=new Set(),rows=[];
+    for(const candidate of candidates){
+      if(seen.has(candidate.id))continue;seen.add(candidate.id);
+      const motor=projectTerminalSuggestion(candidate.motor,template,history,
+        {id:candidate.id,name:names.get(candidate.id)||candidate.id});
+      if(motor)rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+    }
+    terminalSuggestionCache={state,signature,rows};
+    return rows;
+  }
+
+  function terminalSuggestionRanking(block=currentBlock(), nativeForecasts=null) {
+    return terminalSuggestionCandidates(block,nativeForecasts).map(candidate=>{
+      const observations=state.ledger.filter(row=>row.terminalSuggestionHits&&candidate.id in row.terminalSuggestionHits).slice(-30);
+      function rate(limit,decay){
+        const sample=observations.slice(-limit);let mass=0,hits=0;
+        for(let i=0;i<sample.length;i++){const w=Math.exp(-(sample.length-1-i)/decay);mass+=w;if(sample[i].terminalSuggestionHits[candidate.id])hits+=w;}
+        return (hits+(33/37)*4)/(mass+4);
+      }
+      return {...candidate,tests:observations.length,
+        score:rate(5,3)*.65+rate(14,8)*.25+rate(30,18)*.10};
+    }).sort((a,b)=>b.score-a.score||b.motor.score-a.motor.score||a.id.localeCompare(b.id));
+  }
+
+  function terminalSuggestionMotor(block=currentBlock(), nativeForecasts=null) {
+    const chosen=terminalSuggestionRanking(block,nativeForecasts)[0];
+    return chosen?{...copy(chosen.motor),terminalSuggestionTarget:{id:chosen.id,name:chosen.name},
+      terminalSuggestionScore:chosen.score,terminalSuggestionTests:chosen.tests}:null;
   }
 
   function terminalDefinition() {
@@ -1747,7 +1829,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.29', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.30', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -2426,7 +2508,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           raw.components.reduce((s, w, k) => s + w[j] * adaptive.shares[k], 0),
         ),
       ),
-      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.29" };
+      r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.30" };
     spaceCache.set(key, r);
     if (spaceCache.size > 40)
       spaceCache.delete(spaceCache.keys().next().value);
@@ -2892,7 +2974,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           triangleKey: triangleContext(h),
           spatialKeys: [...s.keys],
           spatialVersion: VERSION,
-          readingVersion:"6.6.29",readingCandidates:37,
+          readingVersion:"6.6.30",readingCandidates:37,
           componentShares: [...s.adaptive.shares],
           adaptiveSamples: s.adaptive.samples,
         });
@@ -4193,7 +4275,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     r.forecastVersion = VERSION;
@@ -4215,6 +4297,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         "MASTER",
         "FOLLOW_MASTER",
         "TERMINALS",
+        "TERMINAL_SUGGESTION",
         "TRAINER",
         "POSTLOSS",
         "AUTO",
@@ -4272,7 +4355,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
   function compactMotor(m) {
     if (["TERMINALS33","ROTATED33"].includes(m?.play?.kind)) return copy(m);
-    const result = { readingVersion:"6.6.29", readingCandidates:37,};
+    const result = { readingVersion:"6.6.30", readingCandidates:37,};
     for (const field of [
       "key",
       "rank",
@@ -4488,6 +4571,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeDefinition() {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
     if (
       state.strategy === "MASTER" &&
@@ -4578,6 +4662,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionMotor();
     if (state.strategy === "TERMINALS") return terminalMotor();
     const recovery = priorityRecoveryChoice();
     if (recovery) return copy(recovery.motor);
@@ -4724,6 +4809,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const cs = block?.global || [],
       forecasts = block?.variants || [];
     const timelineForecasts = snapshotTimelineForecasts(block);
+    const terminalSuggestionDraft=terminalSuggestionCandidates(block);
     const phaseBefore = state.phase,
       oldCycle = copy(state.cycle),
       definitionBefore = activeDefinition();
@@ -4738,7 +4824,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     let result = "AGUARDANDO",
       played = null;
     const masterReviewDraft=controller==='MASTER'&&phaseBefore==='ENTRY'&&!masterPaused&&block
-      ?prepareMasterReview(timelineForecasts.filter(forecast=>forecast.id!=="TERMINALS"),block):null;
+      ?prepareMasterReview(timelineForecasts.filter(forecast=>!["TERMINALS","TERMINAL_SUGGESTION"].includes(forecast.id)),block):null;
     if (masterPaused) {
       result = "PAUSA MASTER";
     } else if (state.phase === "ENTRY") {
@@ -4842,7 +4928,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.29", ordering: state.block.reorganizedActive
+        version: "6.6.30", ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -4875,6 +4961,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       spatialKeys: [...spatial.keys],
       terminalNumberClass: recordedNumberClass(played?.play, n),
 
+      terminalSuggestionHits:Object.fromEntries(terminalSuggestionDraft.map(candidate=>[candidate.id,applyRotation(candidate.motor).play.numbers.includes(n)])),
       motorHits,terminalHits,terminalRule:"GREEDY_UNCOVERED_LAST14_V2",
       autoRank: played?.autoRank || null,
     });
@@ -4996,6 +5083,7 @@ state.importAudit=describeImport(clean,opts);
       { id: "TRAINER", name: "TREINADOR GLOBAL • ESTRATÉGIA" },
       { id: "POSTLOSS", name: "PÓS-LOSS" },
       terminalDefinition(),
+      terminalSuggestionDefinition(),
       ...VARIANT_OWNERS.flatMap((o) => [
         {
           id: o.id === "NUMBER" ? "NUMBER" : "ORIGINAL:" + o.id,
@@ -5032,7 +5120,10 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function snapshotTimelineForecasts(block) {
-    return snapshotTimelineForecastsBase(block).map(row=>({...row,motor:applyRotation(row.motor)}));
+    const native=snapshotTimelineForecastsBase(block);
+    const suggestion=terminalSuggestionMotor(block,native);
+    if(suggestion)native.push({id:"TERMINAL_SUGGESTION",motor:suggestion,defenseStrategy:"TERMINAL_SUGGESTION"});
+    return native.map(row=>({...row,motor:applyRotation(row.motor)}));
   }
 
   function snapshotTimelineForecastsBase(block) {
@@ -5165,6 +5256,7 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function timelineMotorBase(id, block = currentBlock()) {
+    if(id === "TERMINAL_SUGGESTION") return terminalSuggestionMotor(block);
     if(id === "TERMINALS") return terminalMotor();
     if(momentIsFixed()&&!["MASTER","POSTLOSS","TRAINER"].includes(id))return fixedMomentMotor(id);
     if (!block) return null;
@@ -5279,6 +5371,7 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function baseActiveDefinition() {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
     const owner = activeVariationOwner(),
       defs = definitions();
@@ -5498,7 +5591,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.29',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.30',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -5618,7 +5711,7 @@ state.importAudit=describeImport(clean,opts);
   function masterDefinitions(block=currentBlock()){
     // O controlador MASTER não se compara consigo mesmo. Pós-loss continua
     // como prioridade independente sobre a escolha normal, quando ativado.
-    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS'].includes(def.id));
+    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS','TERMINAL_SUGGESTION'].includes(def.id));
   }
 
   function masterRanking(block=currentBlock()){
@@ -6392,7 +6485,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
               componentShares: [...spatial.adaptive.shares],
               adaptiveSamples: spatial.adaptive.samples,
               spatialVersion: VERSION,
-          readingVersion:"6.6.29",readingCandidates:37,
+          readingVersion:"6.6.30",readingCandidates:37,
             });
           }
         const cs = fastIndependentMotors(proposals);
@@ -6460,7 +6553,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
   function postThreeChoice(block = currentBlock()) {
     if (!block) return null;
     const candidates = timelineDefinitions()
-      .filter((d) => !["POSTLOSS", "POST3LOSS"].includes(d.id))
+      .filter((d) => !["POSTLOSS", "POST3LOSS", "TERMINAL_SUGGESTION"].includes(d.id))
       .map((def) => {
         const stats = postLossStats(def.id),
           counter = state.strategyStreaks[def.id];
@@ -6519,7 +6612,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
     if (!block) return null;
     const kind = required === 2 ? "POST2ALL" : "POST1ALL";
     const candidates = timelineDefinitions()
-      .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL"].includes(def.id))
+      .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL", "TERMINAL_SUGGESTION"].includes(def.id))
       .map(def => {
         const stats = postLossStats(def.id);
         const counter = state.strategyStreaks[def.id];
@@ -6589,7 +6682,7 @@ if(!isCurrentApp() || recoveryLocked || bootLoading)return false;
       setItem() {},
     };
     /*
-ANÁLISE BETA V6.6.29 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
+ANÁLISE BETA V6.6.30 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 - Pós-loss atravessa a pausa MASTER; PÓS-3 LOSS independente, todas as estratégias e prioridade máxima.
 - Sequências de LOSS finais sobrevivem ao descarte da janela; checkpoint sem fila ilimitada.
@@ -6623,7 +6716,7 @@ ANÁLISE BETA V6.6.29 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.29",
+    const VERSION = "6.6.30",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -6796,6 +6889,88 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         ) &&
         p.blocks.flatMap((b) => b.numbers).every((n) => p.numbers.includes(n))
       );
+    }
+
+    function terminalSuggestionDefinition() {
+      return {id:"TERMINAL_SUGGESTION", name:"SUGESTÃO • TRÊS TERMINAIS", type:"TERMINALS"};
+    }
+
+    // Project each strategy's actual reading into terminal groups. The first button
+    // keeps its existing last-14 rule; this pool uses the strategy to resolve ties
+    // and to complete its own 33-pocket coverage. No future outcomes enter here.
+    function projectTerminalSuggestion(source, template, history, identity) {
+      if(!validPlay(source?.play)||!template)return null;
+      const support=W.map(number=>{
+        const coverage=source.play.numbers.includes(number)?1:0;
+        return coverage+source.play.blocks.reduce((sum,block)=>sum+1/(1+distance(number,block.center)),0)/source.play.blocks.length;
+      });
+      const used=new Set(),digits=[],groups=Array.from({length:10},(_,digit)=>terminalGroup(digit));
+      let remaining=history.map((_,i)=>i);
+      for(let step=0;step<3;step++){
+        const ranked=groups.filter(group=>!used.has(group.digit)).map(group=>({
+          ...group,added:remaining.filter(i=>group.numbers.includes(history[i])),
+          support:avg(group.numbers.map(number=>support[ix(number)]))
+        })).sort((a,b)=>b.added.length-a.added.length||b.support-a.support||
+          b.added.filter(i=>i>=history.length-5).length-a.added.filter(i=>i>=history.length-5).length||a.digit-b.digit);
+        const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
+        const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
+      }
+      const core=new Set(digits.flatMap(digit=>groups[digit].numbers));
+      const completion=W.filter(number=>!core.has(number)).sort((a,b)=>support[ix(b)]-support[ix(a)]||ix(a)-ix(b)).slice(0,33-core.size);
+      const covered=new Set([...core,...completion]);
+      const blocks=[...W.filter(number=>digits.includes(number%10)).map(center=>({center,radius:1,numbers:neighbors(center,1)})),
+        ...completion.map(center=>({center,radius:0,numbers:[center]}))];
+      const play={kind:"TERMINALS33",terminalDigits:digits,completion,blocks,
+        numbers:W.filter(number=>covered.has(number)),score:avg([...covered].map(number=>support[ix(number)]))};
+      if(!validTerminalPlay(play))throw Error("SUGESTÃO DE TERMINAIS INVÁLIDA");
+      return {...copy(template),key:"TERMINAL_SUGGESTION::"+identity.id,play,
+        terminalDigits:digits,terminalSelection:null,
+        terminalProfile:{family:FAMILIES.includes(source.family)?source.family:template.terminalProfile.family,
+          radius:RADII.includes(source.radius)?source.radius:template.terminalProfile.radius},
+        terminalSuggestionTarget:{id:identity.id,name:identity.name},
+        terminalSourceKey:source.key,score:play.score};
+    }
+
+    let terminalSuggestionCache=null;
+    function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
+      if(!block||state.history.length<8)return [];
+      const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn;
+      if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
+        return terminalSuggestionCache.rows;
+      const native=nativeForecasts||snapshotTimelineForecastsBase(block);
+      const names=new Map(timelineDefinitions().map(def=>[def.id,def.name]));
+      const template=terminalBank()[0],history=state.history.slice(-14);
+      const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
+      const master=masterSelection(block)?.motor;
+      if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
+      const seen=new Set(),rows=[];
+      for(const candidate of candidates){
+        if(seen.has(candidate.id))continue;seen.add(candidate.id);
+        const motor=projectTerminalSuggestion(candidate.motor,template,history,
+          {id:candidate.id,name:names.get(candidate.id)||candidate.id});
+        if(motor)rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+      }
+      terminalSuggestionCache={state,signature,rows};
+      return rows;
+    }
+
+    function terminalSuggestionRanking(block=currentBlock(), nativeForecasts=null) {
+      return terminalSuggestionCandidates(block,nativeForecasts).map(candidate=>{
+        const observations=state.ledger.filter(row=>row.terminalSuggestionHits&&candidate.id in row.terminalSuggestionHits).slice(-30);
+        function rate(limit,decay){
+          const sample=observations.slice(-limit);let mass=0,hits=0;
+          for(let i=0;i<sample.length;i++){const w=Math.exp(-(sample.length-1-i)/decay);mass+=w;if(sample[i].terminalSuggestionHits[candidate.id])hits+=w;}
+          return (hits+(33/37)*4)/(mass+4);
+        }
+        return {...candidate,tests:observations.length,
+          score:rate(5,3)*.65+rate(14,8)*.25+rate(30,18)*.10};
+      }).sort((a,b)=>b.score-a.score||b.motor.score-a.motor.score||a.id.localeCompare(b.id));
+    }
+
+    function terminalSuggestionMotor(block=currentBlock(), nativeForecasts=null) {
+      const chosen=terminalSuggestionRanking(block,nativeForecasts)[0];
+      return chosen?{...copy(chosen.motor),terminalSuggestionTarget:{id:chosen.id,name:chosen.name},
+        terminalSuggestionScore:chosen.score,terminalSuggestionTests:chosen.tests}:null;
     }
 
     function terminalDefinition() {
@@ -8123,7 +8298,7 @@ function createMotorReadings667(wheel, atlas) {
       };
       candidateCache.set(number,description);return description;
     }
-    const result = { version: '6.6.29', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
+    const result = { version: '6.6.30', prefix: h, get candidates(){return wheel.map(describeCandidate);},candidate:describeCandidate,modes, groups: summaries, exhaustive, completePoles,completeArcs,
       candidateCount:37, channelCount: modes.length, arcSectorCases:1369,chainLengths:Array.from({length:Math.max(0,h.length-3)},(_,i)=>i+4),
       interpretationCount:37 * modes.length,
       status: 'LEITURA ATIVA — HIPÓTESES NÃO SÃO ACERTOS' };
@@ -8806,7 +8981,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             ),
           ),
         ),
-        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.29" };
+        r = { ...raw, adaptive, weights: motorReadings667.merge(weights,h), readingVersion:"6.6.30" };
       spaceCache.set(key, r);
       if (spaceCache.size > 40)
         spaceCache.delete(spaceCache.keys().next().value);
@@ -9280,7 +9455,7 @@ const triangleMemory666 = createTriangleMemory666(W);
             triangleKey: triangleContext(h),
             spatialKeys: [...s.keys],
             spatialVersion: VERSION,
-          readingVersion:"6.6.29",readingCandidates:37,
+          readingVersion:"6.6.30",readingCandidates:37,
             componentShares: [...s.adaptive.shares],
             adaptiveSamples: s.adaptive.samples,
           });
@@ -10609,7 +10784,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       r.forecastVersion = VERSION;
@@ -10631,6 +10806,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           "MASTER",
           "FOLLOW_MASTER",
           "TERMINALS",
+        "TERMINAL_SUGGESTION",
           "TRAINER",
           "POSTLOSS",
           "AUTO",
@@ -10688,7 +10864,7 @@ const triangleMemory666 = createTriangleMemory666(W);
 
     function compactMotor(m) {
     if (["TERMINALS33","ROTATED33"].includes(m?.play?.kind)) return copy(m);
-      const result = { readingVersion:"6.6.29", readingCandidates:37,};
+      const result = { readingVersion:"6.6.30", readingCandidates:37,};
       for (const field of [
         "key",
         "rank",
@@ -10906,6 +11082,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function activeDefinition() {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
       if (
         state.strategy === "MASTER" &&
@@ -10996,6 +11173,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionMotor();
     if (state.strategy === "TERMINALS") return terminalMotor();
       const recovery = priorityRecoveryChoice();
       if (recovery) return copy(recovery.motor);
@@ -11144,6 +11322,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       const cs = block?.global || [],
         forecasts = block?.variants || [];
       const timelineForecasts = snapshotTimelineForecasts(block);
+    const terminalSuggestionDraft=terminalSuggestionCandidates(block);
       const phaseBefore = state.phase,
         oldCycle = copy(state.cycle),
         definitionBefore = activeDefinition();
@@ -11158,7 +11337,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       let result = "AGUARDANDO",
         played = null;
     const masterReviewDraft=controller==='MASTER'&&phaseBefore==='ENTRY'&&!masterPaused&&block
-      ?prepareMasterReview(timelineForecasts.filter(forecast=>forecast.id!=="TERMINALS"),block):null;
+      ?prepareMasterReview(timelineForecasts.filter(forecast=>!["TERMINALS","TERMINAL_SUGGESTION"].includes(forecast.id)),block):null;
       if (masterPaused) {
         result = "PAUSA MASTER";
       } else if (state.phase === "ENTRY") {
@@ -11262,7 +11441,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.29", ordering: state.block.reorganizedActive
+        version: "6.6.30", ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -11295,7 +11474,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         spatialKeys: [...spatial.keys],
         terminalNumberClass: recordedNumberClass(played?.play, n),
 
-        motorHits,terminalHits,terminalRule:"GREEDY_UNCOVERED_LAST14_V2",
+        terminalSuggestionHits:Object.fromEntries(terminalSuggestionDraft.map(candidate=>[candidate.id,applyRotation(candidate.motor).play.numbers.includes(n)])),
+      motorHits,terminalHits,terminalRule:"GREEDY_UNCOVERED_LAST14_V2",
         autoRank: played?.autoRank || null,
       });
       learnRotation(played,n,turn,phaseBefore,result);
@@ -11416,6 +11596,7 @@ state.importAudit=describeImport(clean,opts);
         { id: "TRAINER", name: "TREINADOR GLOBAL • ESTRATÉGIA" },
         { id: "POSTLOSS", name: "PÓS-LOSS" },
       terminalDefinition(),
+      terminalSuggestionDefinition(),
         ...VARIANT_OWNERS.flatMap((o) => [
           {
             id: o.id === "NUMBER" ? "NUMBER" : "ORIGINAL:" + o.id,
@@ -11452,7 +11633,10 @@ state.importAudit=describeImport(clean,opts);
     }
 
     function snapshotTimelineForecasts(block) {
-    return snapshotTimelineForecastsBase(block).map(row=>({...row,motor:applyRotation(row.motor)}));
+    const native=snapshotTimelineForecastsBase(block);
+    const suggestion=terminalSuggestionMotor(block,native);
+    if(suggestion)native.push({id:"TERMINAL_SUGGESTION",motor:suggestion,defenseStrategy:"TERMINAL_SUGGESTION"});
+    return native.map(row=>({...row,motor:applyRotation(row.motor)}));
   }
 
   function snapshotTimelineForecastsBase(block) {
@@ -11587,6 +11771,7 @@ state.importAudit=describeImport(clean,opts);
   }
 
   function timelineMotorBase(id, block = currentBlock()) {
+    if(id === "TERMINAL_SUGGESTION") return terminalSuggestionMotor(block);
     if(id === "TERMINALS") return terminalMotor();
     if(momentIsFixed()&&!["MASTER","POSTLOSS","TRAINER"].includes(id))return fixedMomentMotor(id);
       if (!block) return null;
@@ -11701,6 +11886,7 @@ state.importAudit=describeImport(clean,opts);
     }
 
     function baseActiveDefinition() {
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
       const owner = activeVariationOwner(),
         defs = definitions();
@@ -11922,7 +12108,7 @@ state.importAudit=describeImport(clean,opts);
       return {id:f.id,entry:copy(motor),defenseStrategy:definition?.resolvedId||f.defenseStrategy||f.id,
         phase:state.secondHouse?'SECOND_SKIP':'ENTRY',initialSkip:!!state.secondHouse,result:null};
     });
-    return {version:'6.6.29',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
+    return {version:'6.6.30',turn:state.totalTurns+1,beforeTurn:state.totalTurns,
       imported:!!state.importTrainingActive,observations:[],
       prefix:[...state.history].slice(-70),spatialKeys:[...spatialRead(state.history.slice(-70)).keys],
       config:{g1:state.g1,g1Trainer:state.g1Trainer,galeSkip:state.galeSkip,secondHouse:state.secondHouse},
@@ -12038,7 +12224,7 @@ state.importAudit=describeImport(clean,opts);
   function masterDefinitions(block=currentBlock()){
     // O controlador MASTER não se compara consigo mesmo. Pós-loss continua
     // como prioridade independente sobre a escolha normal, quando ativado.
-    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS'].includes(def.id));
+    return timelineDefinitions().filter(def=>!['MASTER','POSTLOSS','TERMINAL_SUGGESTION'].includes(def.id));
   }
 
   function masterRanking(block=currentBlock()){
@@ -12713,7 +12899,7 @@ state.importAudit=describeImport(clean,opts);
                 componentShares: [...spatial.adaptive.shares],
                 adaptiveSamples: spatial.adaptive.samples,
                 spatialVersion: VERSION,
-          readingVersion:"6.6.29",readingCandidates:37,
+          readingVersion:"6.6.30",readingCandidates:37,
               });
             }
           const cs = fastIndependentMotors(proposals);
@@ -12781,7 +12967,7 @@ state.importAudit=describeImport(clean,opts);
     function postThreeChoice(block = currentBlock()) {
       if (!block) return null;
       const candidates = timelineDefinitions()
-        .filter((d) => !["POSTLOSS", "POST3LOSS"].includes(d.id))
+        .filter((d) => !["POSTLOSS", "POST3LOSS", "TERMINAL_SUGGESTION"].includes(d.id))
         .map((def) => {
           const stats = postLossStats(def.id),
             counter = state.strategyStreaks[def.id];
@@ -12840,7 +13026,7 @@ state.importAudit=describeImport(clean,opts);
       if (!block) return null;
       const kind = required === 2 ? "POST2ALL" : "POST1ALL";
       const candidates = timelineDefinitions()
-        .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL"].includes(def.id))
+        .filter(def => !["POSTLOSS", "POST3LOSS", "POST1ALL", "POST2ALL", "TERMINAL_SUGGESTION"].includes(def.id))
         .map(def => {
           const stats = postLossStats(def.id);
           const counter = state.strategyStreaks[def.id];
@@ -13150,6 +13336,8 @@ state.importAudit=describeImport(clean,opts);
     postThree.dataset.choice = "POST3LOSS";
     const terminalButton=button("TERMINAIS • 3 COM 1 VIZINHO",()=>changeStrategy("TERMINALS"),row,"trainer");
     terminalButton.dataset.choice="TERMINALS";
+    const suggestionButton=button("SUGESTÃO • TRÊS TERMINAIS",()=>changeStrategy("TERMINAL_SUGGESTION"),row,"trainer");
+    suggestionButton.dataset.choice="TERMINAL_SUGGESTION";
     const terminalPicker=document.createElement("select");
     terminalPicker.id="terminalMotorPicker";
     terminalPicker.setAttribute("aria-label","Motor da estratégia terminais");
@@ -13263,7 +13451,7 @@ state.importAudit=describeImport(clean,opts);
       return;
     }
     state.strategy = strategy;
-    if(strategy === "TERMINALS") {state.postLossEnabled=false;state.postThreeEnabled=false;state.postOneAllEnabled=false;state.postTwoAllEnabled=false;}
+    if(["TERMINALS","TERMINAL_SUGGESTION"].includes(strategy)) {state.postLossEnabled=false;state.postThreeEnabled=false;state.postOneAllEnabled=false;state.postTwoAllEnabled=false;}
     state.focusTimelineId = null;
     state.adaptive = adaptive || state.adaptive;
     state.activeCreated = created;
@@ -13475,24 +13663,13 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
         ? "SEGUINDO INDICAÇÃO MASTER • " + following.name + " • " + state.phase
         : "SEGUIR INDICAÇÃO MASTER • AGUARDANDO INDICAÇÃO";
     }
-    if (state.strategy === "TERMINALS") {
+    if (["TERMINALS","TERMINAL_SUGGESTION"].includes(state.strategy)) {
       const play=motor?.play?.kind==="ROTATED33"?motor.play.base:motor?.play;
-      $("selected").textContent=play?.kind === "TERMINALS33"
-        ? (motor?.play?.kind==="ROTATED33"?"TERMINAIS BASE: ":"TERMINAIS USADOS: ")+play.terminalDigits.join(" • ")+" • "+motor.terminalProfile.family+" C"+motor.terminalProfile.radius+" • 1 VIZINHO • "+state.phase+
-          (state.cycle?.decision ? " • G1 "+state.cycle.decision.mode : "")
+      const chosen=state.cycle?.original?.terminalSuggestionTarget||motor?.terminalSuggestionTarget;
+      const strategyName=chosen?.name||((motor?.terminalProfile?.family||"NORMAL")+" C"+(motor?.terminalProfile?.radius||5));
+      $("selected").textContent=play?.kind==="TERMINALS33"
+        ? "TERMINAIS USADOS: "+play.terminalDigits.join(" • ")+" • ESTRATÉGIA: "+strategyName
         : "TERMINAIS • AGUARDANDO HISTÓRICO";
-      const counts=motor?.terminalSelection;
-      if(counts?.rule === "GREEDY_UNCOVERED_LAST14_V2"){
-        $("selected").textContent+=" • ÚLTIMOS "+counts.samples+
-          " • 1º T"+counts.first.digit+": "+counts.first.hits+
-          " • 2º T"+counts.second.digit+": +"+counts.second.hits+" NA SOBRA"+
-          " • 3º T"+counts.third.digit+": +"+counts.third.hits+" NA SOBRA FINAL"+
-          " • TERMINAIS: "+counts.coveredResults+"/"+counts.samples+
-          " • SOBRAM "+counts.remainingAfterThird;
-      }else if(counts){
-        $("selected").textContent+=" • LEITURA DO CICLO ANTERIOR";
-      }
-      if(state.cycle)$("selected").textContent+=" • JOGADA DO CICLO PRESERVADA";
       $("selected").className="playNotice terminalNotice";
     }
     $("centers").classList.toggle("terminalCenters",(motor?.play?.kind === "TERMINALS33" || motor?.play?.base?.kind === "TERMINALS33"));
@@ -13945,6 +14122,7 @@ if(!isCurrentApp())return;
     if (target?.id) return {id:target.id, name:target.name};
     if (state.strategy === "MASTER") return {id:"MASTER", name:"TREINADOR GLOBAL MASTER"};
     if (state.strategy === "TRAINER") return {id:"TRAINER", name:"TREINADOR GLOBAL"};
+    if (state.strategy === "TERMINAL_SUGGESTION") return terminalSuggestionDefinition();
     if (state.strategy === "TERMINALS") return terminalDefinition();
     const id = original?.thirdTarget?.id || (original?.bankId && original.bankId !== "GLOBAL" ? original.bankId : fixedSelectionId());
     const definition = timelineDefinitions().find(def => def.id === id);
@@ -13986,7 +14164,7 @@ if(!isCurrentApp())return;
     if (!timelineDefinitions().some((d) => d.id === id)) return;
     if (id === "MASTER") state.strategy = "MASTER";
     else if (id === "TRAINER") state.strategy = "TRAINER";
-    else if (id === "TERMINALS") {state.strategy="TERMINALS";state.postLossEnabled=false;state.postThreeEnabled=false;state.postOneAllEnabled=false;state.postTwoAllEnabled=false;}
+    else if (["TERMINALS","TERMINAL_SUGGESTION"].includes(id)) {state.strategy=id;state.postLossEnabled=false;state.postThreeEnabled=false;state.postOneAllEnabled=false;state.postTwoAllEnabled=false;}
     else if (id === "POSTLOSS") {
       state.strategy = "POSTLOSS";
       state.postLossEnabled = true;
@@ -14100,7 +14278,7 @@ if(!isCurrentApp())return;
   }
 
   function terminalHistoryContext() {
-    if(state.strategy!=="TERMINALS")return null;
+    if(!["TERMINALS","TERMINAL_SUGGESTION"].includes(state.strategy))return null;
     const motor=state.defense || state.cycle?.original ||
       (currentBlock()?activeMotor(currentBlock().global):null);
     const play=motor?.play;
@@ -14690,7 +14868,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.29</h1>
+<h1>ANÁLISE BETA 6.6.30</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
