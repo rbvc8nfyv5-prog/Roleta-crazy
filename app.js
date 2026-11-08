@@ -1,3 +1,14 @@
+/* ANÁLISE BETA 6.6.39 — REGRAS DA INDICAÇÃO MASTER NA SUGESTÃO DE TERMINAIS.
+   Normal: mesma indicação por bloco. Inversa: mesma atualização antes do giro.
+   A memória de falhas do trio usa o mesmo critério do Master e ajusta os 33,
+   sem remover nenhum número dos três terminais escolhidos.
+   O mesmo critério contextual da Reconstrução vale para o G1 da Sugestão.
+*/
+/* ANÁLISE BETA 6.6.38 — SUGESTÃO DE TERMINAIS PELA INDICAÇÃO MASTER.
+   O mesmo motor indicado no Normal/Inversa é a fonte do trio e do encaixe de 33.
+   Sem ranking separado para escolher a fonte da sugestão.
+   Terminais fixos, geometria e regras de G1 preservados.
+*/
 /* ANÁLISE BETA 6.6.37 — INDICAÇÃO MASTER E DEFESA G1
    Normal: entrada no bloco de dez, sem mudar ranking ou cobertura.
    Inversa: pesos do motor indicado atualizados a cada giro; cobertura exata de 33.
@@ -261,7 +272,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.37",
+  const VERSION = "6.6.39",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -491,7 +502,14 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
       const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
     }
-    const play=packTerminalTrio(digits,support);
+    let play=packTerminalTrio(digits,support), terminalReading=null;
+    if(identity.id==="MASTER" && state.strategy==="TERMINAL_SUGGESTION" &&
+        state.readingSide==="INVERTIDO" && !state.importTrainingActive){
+      const adjusted=support.slice();
+      terminalReading=followContextWeights(adjusted,state.history,play,state.terminalEntryMemory);
+      if(terminalReading.protected.length)play=packTerminalTrio(digits,adjusted);
+      terminalReading.included=terminalReading.protected.filter(n=>play.numbers.includes(n));
+    }
     if(!validTerminalPlay(play))throw Error("SUGESTÃO DE TERMINAIS INVÁLIDA");
     return {...copy(template),key:"TERMINAL_SUGGESTION::"+identity.id,play,
       terminalDigits:digits,terminalSelection:null,
@@ -499,13 +517,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       terminalProfile:{family:FAMILIES.includes(source.family)?source.family:template.terminalProfile.family,
         radius:RADII.includes(source.radius)?source.radius:template.terminalProfile.radius},
       terminalSuggestionTarget:{id:identity.id,name:identity.name},
-      terminalSourceKey:source.key,score:play.score};
+      terminalSourceKey:source.key,terminalReading,score:play.score};
   }
 
   let terminalSuggestionCache=null;
   function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
     if(!block||state.history.length<8)return [];
-    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey();
+    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"");
     if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
       return terminalSuggestionCache.rows;
     const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -513,14 +531,18 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     const template=terminalBank()[0],history=state.history.slice(-14);
     const fixedOrder=fixedTerminalOrder(history,state.fixedTerminalTrio);
     const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
-    const master=masterSelection(block)?.motor;
+    const master=followIndicationMotor(block);
     if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
     const seen=new Set(),rows=[];
     for(const candidate of candidates){
       if(seen.has(candidate.id))continue;seen.add(candidate.id);
       const motor=projectTerminalSuggestion(candidate.motor,template,history,
-        {id:candidate.id,name:names.get(candidate.id)||candidate.id},fixedOrder);
-      if(motor)rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+        {id:candidate.id,name:candidate.id==="MASTER" && master?.followTarget
+          ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder);
+        if(motor){
+          if(candidate.id==="MASTER")motor.terminalMasterIndication=copy(master.followTarget);
+          rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+        }
     }
     terminalSuggestionCache={state,signature,rows};
     return rows;
@@ -541,9 +563,8 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   }
 
   function terminalSuggestionMotor(block=currentBlock(), nativeForecasts=null) {
-    const chosen=terminalSuggestionRanking(block,nativeForecasts)[0];
-    return chosen?{...copy(chosen.motor),terminalSuggestionTarget:{id:chosen.id,name:chosen.name},
-      terminalSuggestionScore:chosen.score,terminalSuggestionTests:chosen.tests}:null;
+    const chosen=terminalSuggestionCandidates(block,nativeForecasts).find(candidate=>candidate.id==="MASTER");
+    return chosen?copy(chosen.motor):null;
   }
 
   const terminalCoverageCache=new WeakMap();
@@ -3934,8 +3955,10 @@ const triangleMemory666 = createTriangleMemory666(W);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
       : standardDecision(motor, n, after, strategy,
-        !state.importTrainingActive && state.cycle.controller==="FOLLOW_MASTER" &&
-        !!motor.followTarget && !terminalPlay(motor.play)));
+        !state.importTrainingActive && (
+          (state.cycle.controller==="FOLLOW_MASTER" && !!motor.followTarget && !terminalPlay(motor.play)) ||
+          (state.cycle.controller==="TERMINAL_SUGGESTION" && !!motor.terminalMasterIndication && terminalPlay(motor.play))
+        )));
     state.cycle.decision = d;
     state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -4410,7 +4433,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
       masterChoice: null,
       masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
-      followEntryMemory: [], followPreview: null,
+      followEntryMemory: [], terminalEntryMemory: [], followPreview: null,
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -4482,10 +4505,12 @@ const triangleMemory666 = createTriangleMemory666(W);
     for (const key of Object.keys(r))
       if (data?.[key] !== undefined) r[key] = data[key];
     r.history = cleanNumbers(r.history);
-    r.followEntryMemory = Array.isArray(r.followEntryMemory) ? r.followEntryMemory.filter(row=>
-      Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
-      row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
-      Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+    for (const field of ["followEntryMemory","terminalEntryMemory"]) {
+      r[field] = Array.isArray(r[field]) ? r[field].filter(row=>
+        Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
+        row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+        Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+    }
     if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.permanenceEnabled=!!r.permanenceEnabled;
@@ -4585,9 +4610,10 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
+    if (r.forecastVersion !== VERSION) r.followPreview=null;
     r.forecastVersion = VERSION;
     r.rotationEnabled=!!r.rotationEnabled;
     r.rotation={...fresh().rotation,...(data.rotation||{})};
@@ -4863,23 +4889,26 @@ const triangleMemory666 = createTriangleMemory666(W);
     return [direction(a,b),direction(b,c),distance(a,c)];
   }
 
-  function recordFollowEntry(before, played, n, turn, result) {
-    if (!played?.followTarget || !["GREEN","GALE"].includes(result) ||
-        !validPlay(played.play) || terminalPlay(played.play)) return;
+  function recordFollowEntry(before, played, n, turn, result, controller) {
+    if (!["GREEN","GALE"].includes(result) || !validPlay(played?.play)) return;
+    const terminal=controller==="TERMINAL_SUGGESTION" &&
+      !!played.terminalMasterIndication && terminalPlay(played.play);
+    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget && !terminalPlay(played.play);
+    if(!terminal&&!follow)return;
     const shape=followContext(before);
     if (!shape) return;
-    const entries=state.followEntryMemory;
+    const entries=terminal?state.terminalEntryMemory:state.followEntryMemory;
     entries.push({turn,shape,next:direction(before.at(-1),n),
       hit:result==="GREEN",excluded:missing(played.play)});
     if (entries.length>120) entries.shift();
   }
 
-  function followContextWeights(weights,before,basePlay) {
+  function followContextWeights(weights,before,basePlay,memory=state.followEntryMemory) {
     const shape=followContext(before);
     if (!shape) return {samples:0,protected:[]};
     const mass=Array(37).fill(0),hits=Array(37).fill(0),misses=Array(37).fill(0);
     let samples=0,total=0;
-    for (const r of state.followEntryMemory) {
+    for (const r of memory) {
       if (r.turn>state.totalTurns) continue;
       const [a,b,close]=r.shape;
       const d=Math.abs(a-shape[0])+Math.abs(b-shape[1])+Math.abs(close-shape[2]);
@@ -4923,7 +4952,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function prepareFollowPreview(block=currentBlock()) {
-    if (state.readingSide!=="INVERTIDO" || state.strategy!=="FOLLOW_MASTER" || state.importTrainingActive || !block) return;
+    if (state.readingSide!=="INVERTIDO" || !["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy) || state.importTrainingActive || !block) return;
     const m=followIndicationMotor(block,false);
     if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
     const key=followPreviewKey(m);
@@ -5343,8 +5372,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       state.cycle = null;
       state.defense = null;
     }
-    if (controller==="FOLLOW_MASTER" && phaseBefore==="ENTRY")
-      recordFollowEntry(before,played,n,turn,result);
+    if (phaseBefore==="ENTRY" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(controller))
+      recordFollowEntry(before,played,n,turn,result,controller);
     recordMasterCycle(controller, oldCycle, played, result, turn);
     settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -5411,6 +5440,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       play: played?.play || null,
       spatialKeys: [...spatial.keys],
       terminalNumberClass: recordedNumberClass(played?.play, n),
+        terminalMasterIndication: copy(played?.terminalMasterIndication||null),
+        terminalReading: copy(played?.terminalReading||null),
       terminalCoverage:played?.terminalCoverage||"ALL",
       ...(state.fixedTerminalTrio?{terminalTrioKey:terminalTrioKey()}:{}),
       ...(currentTerminalCoverage()==="BLUE"?{terminalSuggestionBlueHits:Object.fromEntries(terminalSuggestionDraft.map(candidate=>[candidate.id,coverageHit(applyRotation(candidate.motor).play,n,"BLUE")]))}:{}),
@@ -7189,7 +7220,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.37",
+    const VERSION = "6.6.39",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7419,7 +7450,14 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
         const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
       }
-      const play=packTerminalTrio(digits,support);
+      let play=packTerminalTrio(digits,support), terminalReading=null;
+      if(identity.id==="MASTER" && state.strategy==="TERMINAL_SUGGESTION" &&
+          state.readingSide==="INVERTIDO" && !state.importTrainingActive){
+        const adjusted=support.slice();
+        terminalReading=followContextWeights(adjusted,state.history,play,state.terminalEntryMemory);
+        if(terminalReading.protected.length)play=packTerminalTrio(digits,adjusted);
+        terminalReading.included=terminalReading.protected.filter(n=>play.numbers.includes(n));
+      }
       if(!validTerminalPlay(play))throw Error("SUGESTÃO DE TERMINAIS INVÁLIDA");
       return {...copy(template),key:"TERMINAL_SUGGESTION::"+identity.id,play,
         terminalDigits:digits,terminalSelection:null,
@@ -7427,13 +7465,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         terminalProfile:{family:FAMILIES.includes(source.family)?source.family:template.terminalProfile.family,
           radius:RADII.includes(source.radius)?source.radius:template.terminalProfile.radius},
         terminalSuggestionTarget:{id:identity.id,name:identity.name},
-        terminalSourceKey:source.key,score:play.score};
+        terminalSourceKey:source.key,terminalReading,score:play.score};
     }
 
     let terminalSuggestionCache=null;
     function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
       if(!block||state.history.length<8)return [];
-      const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey();
+      const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"");
       if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
         return terminalSuggestionCache.rows;
       const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -7441,14 +7479,18 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const template=terminalBank()[0],history=state.history.slice(-14);
     const fixedOrder=fixedTerminalOrder(history,state.fixedTerminalTrio);
       const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
-      const master=masterSelection(block)?.motor;
+      const master=followIndicationMotor(block);
       if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
       const seen=new Set(),rows=[];
       for(const candidate of candidates){
         if(seen.has(candidate.id))continue;seen.add(candidate.id);
         const motor=projectTerminalSuggestion(candidate.motor,template,history,
-          {id:candidate.id,name:names.get(candidate.id)||candidate.id},fixedOrder);
-        if(motor)rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+          {id:candidate.id,name:candidate.id==="MASTER" && master?.followTarget
+            ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder);
+          if(motor){
+            if(candidate.id==="MASTER")motor.terminalMasterIndication=copy(master.followTarget);
+            rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
+          }
       }
       terminalSuggestionCache={state,signature,rows};
       return rows;
@@ -7469,9 +7511,8 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     }
 
     function terminalSuggestionMotor(block=currentBlock(), nativeForecasts=null) {
-      const chosen=terminalSuggestionRanking(block,nativeForecasts)[0];
-      return chosen?{...copy(chosen.motor),terminalSuggestionTarget:{id:chosen.id,name:chosen.name},
-        terminalSuggestionScore:chosen.score,terminalSuggestionTests:chosen.tests}:null;
+      const chosen=terminalSuggestionCandidates(block,nativeForecasts).find(candidate=>candidate.id==="MASTER");
+      return chosen?copy(chosen.motor):null;
     }
 
   const terminalCoverageCache=new WeakMap();
@@ -10889,8 +10930,10 @@ const triangleMemory666 = createTriangleMemory666(W);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
       : standardDecision(motor, n, after, strategy,
-        !state.importTrainingActive && state.cycle.controller==="FOLLOW_MASTER" &&
-        !!motor.followTarget && !terminalPlay(motor.play)));
+        !state.importTrainingActive && (
+          (state.cycle.controller==="FOLLOW_MASTER" && !!motor.followTarget && !terminalPlay(motor.play)) ||
+          (state.cycle.controller==="TERMINAL_SUGGESTION" && !!motor.terminalMasterIndication && terminalPlay(motor.play))
+        )));
       state.cycle.decision = d;
       state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -11385,7 +11428,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
         masterChoice: null,
         masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
-        followEntryMemory: [], followPreview: null,
+        followEntryMemory: [], terminalEntryMemory: [], followPreview: null,
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -11457,10 +11500,12 @@ const triangleMemory666 = createTriangleMemory666(W);
       for (const key of Object.keys(r))
         if (data?.[key] !== undefined) r[key] = data[key];
       r.history = cleanNumbers(r.history);
-      r.followEntryMemory = Array.isArray(r.followEntryMemory) ? r.followEntryMemory.filter(row=>
-        Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
-        row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
-        Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+      for (const field of ["followEntryMemory","terminalEntryMemory"]) {
+        r[field] = Array.isArray(r[field]) ? r[field].filter(row=>
+          Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
+          row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+          Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+      }
       if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.permanenceEnabled=!!r.permanenceEnabled;
@@ -11560,10 +11605,11 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
-      r.forecastVersion = VERSION;
+      if (r.forecastVersion !== VERSION) r.followPreview=null;
+    r.forecastVersion = VERSION;
     r.rotationEnabled=!!r.rotationEnabled;
     r.rotation={...fresh().rotation,...(data.rotation||{})};
     if(!Number.isInteger(r.rotation.offset)||Math.abs(r.rotation.offset)>2)r.rotation.offset=0;
@@ -11840,23 +11886,26 @@ const triangleMemory666 = createTriangleMemory666(W);
     return [direction(a,b),direction(b,c),distance(a,c)];
   }
 
-  function recordFollowEntry(before, played, n, turn, result) {
-    if (!played?.followTarget || !["GREEN","GALE"].includes(result) ||
-        !validPlay(played.play) || terminalPlay(played.play)) return;
+  function recordFollowEntry(before, played, n, turn, result, controller) {
+    if (!["GREEN","GALE"].includes(result) || !validPlay(played?.play)) return;
+    const terminal=controller==="TERMINAL_SUGGESTION" &&
+      !!played.terminalMasterIndication && terminalPlay(played.play);
+    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget && !terminalPlay(played.play);
+    if(!terminal&&!follow)return;
     const shape=followContext(before);
     if (!shape) return;
-    const entries=state.followEntryMemory;
+    const entries=terminal?state.terminalEntryMemory:state.followEntryMemory;
     entries.push({turn,shape,next:direction(before.at(-1),n),
       hit:result==="GREEN",excluded:missing(played.play)});
     if (entries.length>120) entries.shift();
   }
 
-  function followContextWeights(weights,before,basePlay) {
+  function followContextWeights(weights,before,basePlay,memory=state.followEntryMemory) {
     const shape=followContext(before);
     if (!shape) return {samples:0,protected:[]};
     const mass=Array(37).fill(0),hits=Array(37).fill(0),misses=Array(37).fill(0);
     let samples=0,total=0;
-    for (const r of state.followEntryMemory) {
+    for (const r of memory) {
       if (r.turn>state.totalTurns) continue;
       const [a,b,close]=r.shape;
       const d=Math.abs(a-shape[0])+Math.abs(b-shape[1])+Math.abs(close-shape[2]);
@@ -11900,7 +11949,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function prepareFollowPreview(block=currentBlock()) {
-    if (state.readingSide!=="INVERTIDO" || state.strategy!=="FOLLOW_MASTER" || state.importTrainingActive || !block) return;
+    if (state.readingSide!=="INVERTIDO" || !["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy) || state.importTrainingActive || !block) return;
     const m=followIndicationMotor(block,false);
     if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
     const key=followPreviewKey(m);
@@ -12322,8 +12371,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         state.cycle = null;
         state.defense = null;
       }
-      if (controller==="FOLLOW_MASTER" && phaseBefore==="ENTRY")
-        recordFollowEntry(before,played,n,turn,result);
+      if (phaseBefore==="ENTRY" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(controller))
+        recordFollowEntry(before,played,n,turn,result,controller);
       recordMasterCycle(controller, oldCycle, played, result, turn);
       settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -12390,6 +12439,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         play: played?.play || null,
         spatialKeys: [...spatial.keys],
         terminalNumberClass: recordedNumberClass(played?.play, n),
+        terminalMasterIndication: copy(played?.terminalMasterIndication||null),
+        terminalReading: copy(played?.terminalReading||null),
       terminalCoverage:played?.terminalCoverage||"ALL",
       ...(state.fixedTerminalTrio?{terminalTrioKey:terminalTrioKey()}:{}),
       ...(currentTerminalCoverage()==="BLUE"?{terminalSuggestionBlueHits:Object.fromEntries(terminalSuggestionDraft.map(candidate=>[candidate.id,coverageHit(applyRotation(candidate.motor).play,n,"BLUE")]))}:{}),
@@ -14068,7 +14119,7 @@ state.importAudit=describeImport(clean,opts);
           return;
         }
         const before = undoSnapshot();
-        if (state.phase==="ENTRY" && state.strategy==="FOLLOW_MASTER") prepareFollowPreview();
+        if (state.phase==="ENTRY" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy)) prepareFollowPreview();
         spin(data.number, "TEMPO REAL");
         if (!state.block.data && state.history.length >= 8) await prepareBlockParallel();
         prepareFollowPreview();
@@ -14465,6 +14516,19 @@ state.importAudit=describeImport(clean,opts);
     render();
   }
 
+  function refreshTerminalMasterPreview() {
+    if(state.strategy!=="TERMINAL_SUGGESTION" || state.readingSide!=="INVERTIDO" || state.history.length<8)return false;
+    setBusy(true,"PREPARANDO SUGESTÃO DO MASTER");
+    workerRequest("RESTORE",{state:{...state,undoStack:[]}}).then(result=>{
+      if(isCurrentApp() && result)state.followPreview=result.followPreview;
+    }).catch(error=>{
+      if(isCurrentApp())alert(String(error.message||error));
+    }).finally(()=>{
+      if(isCurrentApp()){setBusy(false);scheduleSave();render();}
+    });
+    return true;
+  }
+
   function changeStrategy(strategy, adaptive = null, created = null) {
     if (busy || state.playLock?.motor) return;
     if (!cycleIsFree()) {
@@ -14477,6 +14541,7 @@ state.importAudit=describeImport(clean,opts);
     state.adaptive = adaptive || state.adaptive;
     state.activeCreated = created;
     state.manual = null;
+    if(refreshTerminalMasterPreview())return;
     scheduleSave();
     render();
   }
@@ -15236,6 +15301,7 @@ if(!isCurrentApp())return;
     state.manual = null;
     state.focusTimelineId = id;
     state.open.timeline = true;
+    if(refreshTerminalMasterPreview())return;
     scheduleSave();
     render();
   }
@@ -15738,7 +15804,7 @@ if(!isCurrentApp())return;
       durableTurn = state.totalTurns;
       render();
       if (state.history.length >= 8 && (!state.block.data ||
-          (state.readingSide==="INVERTIDO" && state.strategy==="FOLLOW_MASTER" && !state.followPreview))) {
+          (state.readingSide==="INVERTIDO" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy) && !state.followPreview))) {
         const result = await workerRequest('RESTORE', {state:{...state,undoStack:[]}});
         if (!isCurrentApp()) return;
         if (result) state = {...result,undoStack:state.undoStack};
@@ -15948,7 +16014,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.37</h1>
+<h1>ANÁLISE BETA 6.6.39</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
