@@ -1,3 +1,10 @@
+/* ANÁLISE BETA 6.6.40 — REGRAS COMUNS PARA TODOS OS MOTORES E JOGADAS.
+   A leitura Normal mantém seu fluxo por bloco. A Inversa usa os giros conhecidos
+   até a entrada, com memória de acertos e falhas por jogada.
+   O mesmo critério de G1 vale nos modos com treinador. Na Inversa vence a
+   defesa mais bem avaliada. Travas, rotação, permanência e segundo giro
+   conservam as regras do modo; jogos já comprometidos não são remontados.
+*/
 /* ANÁLISE BETA 6.6.39 — REGRAS DA INDICAÇÃO MASTER NA SUGESTÃO DE TERMINAIS.
    Normal: mesma indicação por bloco. Inversa: mesma atualização antes do giro.
    A memória de falhas do trio usa o mesmo critério do Master e ajusta os 33,
@@ -272,7 +279,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.39",
+  const VERSION = "6.6.40",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -698,7 +705,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   }
   function preparePermanenceForecasts(block) {
     if(!state.permanenceEnabled||!block||state.permanence.session)return [];
-    const book=permanenceBook(),source=coverageMotor(applyRotation(activeMotorBase(block.global))),forecasts=[];
+    const book=permanenceBook(),source=coverageMotor(applyRotation(unifiedMotor(activeMotorBase(block.global),block))),forecasts=[];
     for(const mode of book.modes){
       const id=permanenceId(book,mode.period);
       if(!state.timelineCycles[id]&&(mode.period===1||mode.remaining<=0||!validPlay(mode.held?.play))){
@@ -3860,7 +3867,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       c !== frozen &&
       c.total < 8 &&
       c.numberTotal < 4 &&
-      c.score - frozen.score < 0.025 && !c.reconstructionBonus
+      c.score - frozen.score < 0.025 && !c.reconstructionBonus &&
+        !(followContextual && state.readingSide==="INVERTIDO")
     )
       c = frozen;
     return {
@@ -3955,10 +3963,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
       : standardDecision(motor, n, after, strategy,
-        !state.importTrainingActive && (
-          (state.cycle.controller==="FOLLOW_MASTER" && !!motor.followTarget && !terminalPlay(motor.play)) ||
-          (state.cycle.controller==="TERMINAL_SUGGESTION" && !!motor.terminalMasterIndication && terminalPlay(motor.play))
-        )));
+        !state.importTrainingActive));
     state.cycle.decision = d;
     state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -4334,21 +4339,21 @@ const triangleMemory666 = createTriangleMemory666(W);
       : null;
   }
 
-  function settleVariantForecasts(forecasts, n, turn, before) {
+  function settleVariantForecasts(forecasts, n, turn, before, block=currentBlock()) {
     for (const f of forecasts) {
       const book = variantBook(f.owner, f.variation),
         motorHits = {},
         rankHits = {};
       for (const m of f.motors) {
         const motorKey = m.family + "_" + m.radius;
-        motorHits[motorKey] = m.play.numbers.includes(n);
+        motorHits[motorKey] = unifiedMotor(m,block,f.bankId+":"+motorKey).play.numbers.includes(n);
         if (m.rank <= 4) rankHits[m.rank] = motorHits[motorKey];
       }
       book.rows.push({
         turn,
         motorHits,
         rankHits,
-        entryHit: f.choice.play.numbers.includes(n),
+        entryHit: unifiedMotor(f.choice,block,f.bankId).play.numbers.includes(n),
         selectedKey: f.choice.key,
         spatialKeys: [...spatialRead(before).keys],
       });
@@ -4433,7 +4438,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
       masterChoice: null,
       masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
-      followEntryMemory: [], terminalEntryMemory: [], followPreview: null,
+      followEntryMemory: [], terminalEntryMemory: [], strategyEntryMemory: {}, followPreview: null,
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -4510,6 +4515,15 @@ const triangleMemory666 = createTriangleMemory666(W);
         Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
         row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
         Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+    }
+    const rawEntryMemory=r.strategyEntryMemory;
+    r.strategyEntryMemory={};
+    if(rawEntryMemory && typeof rawEntryMemory==="object"){
+      for(const [id,rows] of Object.entries(rawEntryMemory).filter(([id,rows])=>id!=="__proto__" && Array.isArray(rows)).slice(-48)){
+        r.strategyEntryMemory[id]=rows.filter(row=>Number.isInteger(row?.turn) && Array.isArray(row.shape) &&
+          row.shape.length===3 && row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+          Number.isInteger(row.next)&&Math.abs(row.next)<=18).slice(-120);
+      }
     }
     if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
@@ -4610,7 +4624,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -4893,11 +4907,17 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (!["GREEN","GALE"].includes(result) || !validPlay(played?.play)) return;
     const terminal=controller==="TERMINAL_SUGGESTION" &&
       !!played.terminalMasterIndication && terminalPlay(played.play);
-    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget && !terminalPlay(played.play);
-    if(!terminal&&!follow)return;
+    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget;
     const shape=followContext(before);
     if (!shape) return;
-    const entries=terminal?state.terminalEntryMemory:state.followEntryMemory;
+    let entries=terminal?state.terminalEntryMemory:follow?state.followEntryMemory:null;
+    if(!entries){
+      const key=unifiedEntryKey(played);
+      entries=state.strategyEntryMemory[key]||[];
+      delete state.strategyEntryMemory[key];
+      state.strategyEntryMemory[key]=entries;
+      for(const old of Object.keys(state.strategyEntryMemory).slice(0,-48))delete state.strategyEntryMemory[old];
+    }
     entries.push({turn,shape,next:direction(before.at(-1),n),
       hit:result==="GREEN",excluded:missing(played.play)});
     if (entries.length>120) entries.shift();
@@ -4945,6 +4965,89 @@ const triangleMemory666 = createTriangleMemory666(W);
       ? variantAnalyticalWeights(h,family,radius,m.owner,m.variation,base,spatialRead(h)) : base;
   }
 
+  // Leitura comum da Indicação Master, aplicada à previsão de cada motor.
+  // O motor continua escolhendo a família, a variação e os alvos do seu modo.
+  let unifiedCacheState=null, unifiedCacheKey="", unifiedPlays=new Map(), unifiedPrefix=null;
+  function unifiedEntryKey(m,id=null){
+    if(m?.postLossTarget)return "PÓS:"+m.postLossTarget.kind+":"+m.postLossTarget.id;
+    if(m?.masterTarget)return "MASTER:"+m.masterTarget.id;
+    if(m?.globalStrategyTarget)return "TRAINER:"+m.globalStrategyTarget.id;
+    if(id)return id;
+    if(state.manual)return "MANUAL:"+state.manual;
+    return fixedSelectionId();
+  }
+  function canRefreshUnified(block) {
+    return state.readingSide==="INVERTIDO" && !state.importTrainingActive && !!block &&
+      !state.playLock && !state.rotationEnabled && !state.permanenceEnabled && !state.secondHouse;
+  }
+  function syncUnifiedMoment(){
+    const signature=JSON.stringify([state.totalTurns,state.block.decisionTurn,
+      state.block.revision,state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled]);
+    if(unifiedCacheState!==state || unifiedCacheKey!==signature){
+      unifiedCacheState=state;unifiedCacheKey=signature;unifiedPlays=new Map();
+      const before=state.history.slice(-WINDOW);
+      unifiedPrefix={before,h:reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW)),weights:new Map()};
+    }
+  }
+  function deriveUnifiedPlay(m,block,memory,terminal=false) {
+    syncUnifiedMoment();
+    const {before,h,weights:weightCache}=unifiedPrefix;
+    let weights, method="PESOS DO MOTOR";
+    const oldReading=readingFollowLive;
+    readingFollowLive=true;
+    try {
+      const bankKey=m.bankId||"GLOBAL";
+      const shapeKey=m.family && m.radius?"":coverageCode(m.play);
+      const key=[m.key,bankKey,m.owner,m.variation,shapeKey].join("|");
+      const stored=weightCache.get(key);
+      if(stored){
+        weights=stored.weights.slice();method=stored.method;
+      }else{
+        weights=followLiveWeights(m,h);
+        if(!weights && ["UNION","CONSENSUS"].includes(m.key)){
+          method="PESOS DA COMPOSIÇÃO";
+          const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
+          const members=m.key==="UNION"?bank.slice(0,3):bank;
+          weights=Array(37).fill(0);
+          for(const member of members){
+            const w=followLiveWeights(member,h),p=w?geometry(w):member.play;
+            for(const n of p.numbers)weights[ix(n)]+=1/(1+member.rank*.1);
+          }
+          applySpatial(weights,h,.25);
+        }
+        if(!weights){
+          method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
+          weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
+          applySpatial(weights,h,.30);
+        }
+        weightCache.set(key,{weights:weights.slice(),method});
+      }
+      const pack=w=>terminal?packTerminalTrio(m.play.terminalDigits,w):geometry(w);
+      const base=pack(weights);
+      if(!validPlay(base))return null;
+      const context=followContextWeights(weights,before,base,memory);
+      const play=context.protected.length?pack(weights):base;
+      if(!validPlay(play))return null;
+      context.included=context.protected.filter(n=>play.numbers.includes(n));
+      return {play,audit:{through:state.totalTurns,windowSize:before.length,method,
+        previousExcluded:missing(m.play),excluded:missing(play),...context}};
+    } finally {readingFollowLive=oldReading;}
+  }
+
+  function unifiedMotor(m,block=currentBlock(),id=null) {
+    if(!canRefreshUnified(block)||!validPlay(m?.play)||m.followReading||m.terminalMasterIndication)return m;
+    const terminal=terminalPlay(m.play),route=unifiedEntryKey(m,id);
+    const memory=m.followTarget?state.followEntryMemory:(state.strategyEntryMemory[route]||[]);
+    const key=JSON.stringify([route,m.key,m.bankId,m.owner,m.variation,coverageCode(m.play),m.play.terminalDigits]);
+    syncUnifiedMoment();
+    const live=unifiedPlays.get(key);
+    if(live)return {...m,play:live.play,score:live.play.score,unifiedReading:live.audit};
+    const next=deriveUnifiedPlay(m,block,memory,terminal);
+    if(!next)return m;
+    unifiedPlays.set(key,next);
+    return {...m,play:next.play,score:next.play.score,unifiedReading:next.audit};
+  }
+
   function followPreviewKey(m) {
     return JSON.stringify([VERSION,state.totalTurns,state.block.revision,state.block.decisionTurn,
       state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled,
@@ -4957,39 +5060,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
     const key=followPreviewKey(m);
     if (state.followPreview?.key===key) return;
-    // O prefixo é do giro mais recente conhecido; a ordem da Inversa
-    // respeita a configuração usada na calibração do bloco.
-    const before=state.history.slice(-WINDOW);
-    const h=reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW));
-    readingFollowLive=true;
-    let play, context, method="PESOS DO MOTOR";
-    try {
-      let weights=followLiveWeights(m,h);
-      if (!weights && ["UNION","CONSENSUS"].includes(m.key)) {
-        method="PESOS DA COMPOSIÇÃO";
-        const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
-        const members=m.key==="UNION"?bank.slice(0,3):bank;
-        weights=Array(37).fill(0);
-        for (const member of members) {
-          const w=followLiveWeights(member,h), p=w?geometry(w):member.play;
-          for (const n of p.numbers) weights[ix(n)]+=1/(1+member.rank*.1);
-        }
-        applySpatial(weights,h,.25);
-      }
-      if (!weights) {
-        method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
-        weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
-        applySpatial(weights,h,.30);
-      }
-      const unadjusted=geometry(weights);
-      if (!validPlay(unadjusted)) {state.followPreview=null; return;}
-      context=followContextWeights(weights,before,unadjusted);
-      play=context.protected.length?geometry(weights):unadjusted;
-      context.included=context.protected.filter(n=>play?.numbers.includes(n));
-    } finally { readingFollowLive=false; }
-    state.followPreview=validPlay(play)?{key,play,audit:{
-      through:state.totalTurns,windowSize:before.length,method,previousExcluded:missing(m.play),excluded:missing(play),...context
-    }}:null;
+    const next=deriveUnifiedPlay(m,block,state.followEntryMemory);
+    state.followPreview=next?{key,...next}:null;
   }
 
   function followPreviewMotor(m) {
@@ -5133,7 +5205,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function activeMotor(cs = currentBlock()?.global || []) {
-    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(activeMotorBase(cs)));
+    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(unifiedMotor(activeMotorBase(cs))));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -5204,10 +5276,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     for (const def of [...definitions(), { id: "NUMBER", type: "NUMBER" }]) {
       const v = virtualCycle(def.id);
       if (v.phase === "ENTRY") {
-        const m =
-          def.type === "NUMBER"
-            ? numberBefore
-            : chooseMotor(def, cs, v.previous);
+        const m = unifiedMotor(def.type === "NUMBER" ? numberBefore : chooseMotor(def, cs, v.previous),currentBlock(),def.id);
         if (!m) continue;
         v.previous = m.key;
         v.entryTrigger = trigger;
@@ -5239,7 +5308,7 @@ const triangleMemory666 = createTriangleMemory666(W);
               uncovered: missing(o.motor.play),
               spatialKeys: [...spatialRead(after).keys],
             });
-          const decision = chooseG1(m, n, after, def.id);
+          const decision = chooseG1(m, n, after, def.id, !state.importTrainingActive);
           v.defense = decision?.motor || fineG1(m, n, after) || copy(m);
         }
       } else {
@@ -5372,8 +5441,6 @@ const triangleMemory666 = createTriangleMemory666(W);
       state.cycle = null;
       state.defense = null;
     }
-    if (phaseBefore==="ENTRY" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(controller))
-      recordFollowEntry(before,played,n,turn,result,controller);
     recordMasterCycle(controller, oldCycle, played, result, turn);
     settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -5387,10 +5454,10 @@ const triangleMemory666 = createTriangleMemory666(W);
       trigger,
       spatial,
     );
-    settleVariantForecasts(forecasts, n, turn, before.slice(-70));
-    const terminalHits=Object.fromEntries(terminalBank().map(motor=>[motor.key,motor.play.numbers.includes(n)]));
+    settleVariantForecasts(forecasts, n, turn, before.slice(-70),block);
+    const terminalHits=Object.fromEntries(terminalBank().map(motor=>[motor.key,unifiedMotor(motor,block,"TERMINALS:"+motor.key).play.numbers.includes(n)]));
     const motorHits = {};
-    for (const m of cs) motorHits[m.key] = m.play.numbers.includes(n);
+    for (const m of cs) motorHits[m.key] = unifiedMotor(m,block,"MANUAL:"+m.key).play.numbers.includes(n);
     const hits = {};
     for (const m of cs.slice(0, 4)) hits[m.rank] = motorHits[m.key];
     if (cs.length) state.autoRows.push({ turn, hits });
@@ -5414,11 +5481,12 @@ const triangleMemory666 = createTriangleMemory666(W);
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
-        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
-          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
+        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motorHits[motor.key]).map(motor=>motor.key)},
+          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>unifiedMotor(motor,block,forecast.bankId+":"+motor.family+"_"+motor.radius).play.numbers.includes(n)).map(motor=>motor.key)}))],
         readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play ? motorHit(played,n) : null,
         followReading: copy(played?.followReading||null),
+        unifiedReading: copy(played?.unifiedReading||null),
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
       controller,
@@ -5455,6 +5523,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     state.ledger[state.ledger.length-1].rotationApplied=copy(played?.rotationTarget||null);
     state.ledger[state.ledger.length-1].rotationNext=state.rotationEnabled?copy(state.rotation):null;
     if(before.length>=8)validateReanalysisPolicies(before,n,turn);
+    if (["ENTRY","SECOND_ENTRY"].includes(phaseBefore))
+      recordFollowEntry(before,played,n,turn,result,controller);
     state.totalTurns = turn;
     state.history.push(n);
     state.historyTurns.push(turn);
@@ -5612,7 +5682,7 @@ state.importAudit=describeImport(clean,opts);
     const native=snapshotTimelineForecastsBase(block);
     const suggestion=terminalSuggestionMotor(block,native);
     if(suggestion)native.push({id:"TERMINAL_SUGGESTION",motor:suggestion,defenseStrategy:"TERMINAL_SUGGESTION"});
-    return native.map(row=>({...row,motor:applyRotation(row.motor)}));
+    return native.map(row=>({...row,motor:applyRotation(unifiedMotor(row.motor,block,row.id))}));
   }
 
   function snapshotTimelineForecastsBase(block) {
@@ -5719,7 +5789,7 @@ state.importAudit=describeImport(clean,opts);
         const decision = independent || (cycle.permanencePeriod>1
           ? {motor:copy(cycle.entry),mode:"CONGELADA"}
           : config.g1Trainer
-          ? chooseG1(cycle.entry, n, h, cycle.defenseStrategy || f.id)
+          ? chooseG1(cycle.entry, n, h, cycle.defenseStrategy || f.id, !state.importTrainingActive)
           : {
               motor: config.g1 ? fineG1(cycle.entry, n, h) : copy(cycle.entry),
             });
@@ -6125,7 +6195,7 @@ state.importAudit=describeImport(clean,opts);
       (existing.defenseStrategy||alternative.id)===alternative.defenseStrategy&&
       signaturePlay(existing.entry.play)===signaturePlay(alternative.entry.play);
     const decision=reusable?{motor:existing.defense}:config.g1Trainer
-      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy)
+      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy,!state.importTrainingActive)
       :{motor:config.g1?fineG1(alternative.entry,n,history):copy(alternative.entry)};
     alternative.defense=copy(decision?.motor||alternative.entry);
     alternative.phase=config.galeSkip?'GALE_SKIP':'GALE';
@@ -7220,7 +7290,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.39",
+    const VERSION = "6.6.40",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7646,7 +7716,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     }
     function preparePermanenceForecasts(block) {
       if(!state.permanenceEnabled||!block||state.permanence.session)return [];
-      const book=permanenceBook(),source=coverageMotor(applyRotation(activeMotorBase(block.global))),forecasts=[];
+      const book=permanenceBook(),source=coverageMotor(applyRotation(unifiedMotor(activeMotorBase(block.global),block))),forecasts=[];
       for(const mode of book.modes){
         const id=permanenceId(book,mode.period);
         if(!state.timelineCycles[id]&&(mode.period===1||mode.remaining<=0||!validPlay(mode.held?.play))){
@@ -10835,7 +10905,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         c !== frozen &&
         c.total < 8 &&
         c.numberTotal < 4 &&
-        c.score - frozen.score < 0.025 && !c.reconstructionBonus
+        c.score - frozen.score < 0.025 && !c.reconstructionBonus &&
+        !(followContextual && state.readingSide==="INVERTIDO")
       )
         c = frozen;
       return {
@@ -10930,10 +11001,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
       : standardDecision(motor, n, after, strategy,
-        !state.importTrainingActive && (
-          (state.cycle.controller==="FOLLOW_MASTER" && !!motor.followTarget && !terminalPlay(motor.play)) ||
-          (state.cycle.controller==="TERMINAL_SUGGESTION" && !!motor.terminalMasterIndication && terminalPlay(motor.play))
-        )));
+        !state.importTrainingActive));
       state.cycle.decision = d;
       state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -11329,21 +11397,21 @@ const triangleMemory666 = createTriangleMemory666(W);
         : null;
     }
 
-    function settleVariantForecasts(forecasts, n, turn, before) {
+    function settleVariantForecasts(forecasts, n, turn, before, block=currentBlock()) {
       for (const f of forecasts) {
         const book = variantBook(f.owner, f.variation),
           motorHits = {},
           rankHits = {};
         for (const m of f.motors) {
           const motorKey = m.family + "_" + m.radius;
-          motorHits[motorKey] = m.play.numbers.includes(n);
+          motorHits[motorKey] = unifiedMotor(m,block,f.bankId+":"+motorKey).play.numbers.includes(n);
           if (m.rank <= 4) rankHits[m.rank] = motorHits[motorKey];
         }
         book.rows.push({
           turn,
           motorHits,
           rankHits,
-          entryHit: f.choice.play.numbers.includes(n),
+          entryHit: unifiedMotor(f.choice,block,f.bankId).play.numbers.includes(n),
           selectedKey: f.choice.key,
           spatialKeys: [...spatialRead(before).keys],
         });
@@ -11428,7 +11496,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
         masterChoice: null,
         masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
-        followEntryMemory: [], terminalEntryMemory: [], followPreview: null,
+        followEntryMemory: [], terminalEntryMemory: [], strategyEntryMemory: {}, followPreview: null,
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -11505,6 +11573,15 @@ const triangleMemory666 = createTriangleMemory666(W);
           Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
           row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
           Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+      }
+      const rawEntryMemory=r.strategyEntryMemory;
+      r.strategyEntryMemory={};
+      if(rawEntryMemory && typeof rawEntryMemory==="object"){
+        for(const [id,rows] of Object.entries(rawEntryMemory).filter(([id,rows])=>id!=="__proto__" && Array.isArray(rows)).slice(-48)){
+          r.strategyEntryMemory[id]=rows.filter(row=>Number.isInteger(row?.turn) && Array.isArray(row.shape) &&
+            row.shape.length===3 && row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+            Number.isInteger(row.next)&&Math.abs(row.next)<=18).slice(-120);
+        }
       }
       if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
@@ -11605,7 +11682,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -11890,11 +11967,17 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (!["GREEN","GALE"].includes(result) || !validPlay(played?.play)) return;
     const terminal=controller==="TERMINAL_SUGGESTION" &&
       !!played.terminalMasterIndication && terminalPlay(played.play);
-    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget && !terminalPlay(played.play);
-    if(!terminal&&!follow)return;
+    const follow=controller==="FOLLOW_MASTER" && !!played.followTarget;
     const shape=followContext(before);
     if (!shape) return;
-    const entries=terminal?state.terminalEntryMemory:state.followEntryMemory;
+    let entries=terminal?state.terminalEntryMemory:follow?state.followEntryMemory:null;
+    if(!entries){
+      const key=unifiedEntryKey(played);
+      entries=state.strategyEntryMemory[key]||[];
+      delete state.strategyEntryMemory[key];
+      state.strategyEntryMemory[key]=entries;
+      for(const old of Object.keys(state.strategyEntryMemory).slice(0,-48))delete state.strategyEntryMemory[old];
+    }
     entries.push({turn,shape,next:direction(before.at(-1),n),
       hit:result==="GREEN",excluded:missing(played.play)});
     if (entries.length>120) entries.shift();
@@ -11942,6 +12025,89 @@ const triangleMemory666 = createTriangleMemory666(W);
       ? variantAnalyticalWeights(h,family,radius,m.owner,m.variation,base,spatialRead(h)) : base;
   }
 
+  // Leitura comum da Indicação Master, aplicada à previsão de cada motor.
+  // O motor continua escolhendo a família, a variação e os alvos do seu modo.
+  let unifiedCacheState=null, unifiedCacheKey="", unifiedPlays=new Map(), unifiedPrefix=null;
+  function unifiedEntryKey(m,id=null){
+    if(m?.postLossTarget)return "PÓS:"+m.postLossTarget.kind+":"+m.postLossTarget.id;
+    if(m?.masterTarget)return "MASTER:"+m.masterTarget.id;
+    if(m?.globalStrategyTarget)return "TRAINER:"+m.globalStrategyTarget.id;
+    if(id)return id;
+    if(state.manual)return "MANUAL:"+state.manual;
+    return fixedSelectionId();
+  }
+  function canRefreshUnified(block) {
+    return state.readingSide==="INVERTIDO" && !state.importTrainingActive && !!block &&
+      !state.playLock && !state.rotationEnabled && !state.permanenceEnabled && !state.secondHouse;
+  }
+  function syncUnifiedMoment(){
+    const signature=JSON.stringify([state.totalTurns,state.block.decisionTurn,
+      state.block.revision,state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled]);
+    if(unifiedCacheState!==state || unifiedCacheKey!==signature){
+      unifiedCacheState=state;unifiedCacheKey=signature;unifiedPlays=new Map();
+      const before=state.history.slice(-WINDOW);
+      unifiedPrefix={before,h:reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW)),weights:new Map()};
+    }
+  }
+  function deriveUnifiedPlay(m,block,memory,terminal=false) {
+    syncUnifiedMoment();
+    const {before,h,weights:weightCache}=unifiedPrefix;
+    let weights, method="PESOS DO MOTOR";
+    const oldReading=readingFollowLive;
+    readingFollowLive=true;
+    try {
+      const bankKey=m.bankId||"GLOBAL";
+      const shapeKey=m.family && m.radius?"":coverageCode(m.play);
+      const key=[m.key,bankKey,m.owner,m.variation,shapeKey].join("|");
+      const stored=weightCache.get(key);
+      if(stored){
+        weights=stored.weights.slice();method=stored.method;
+      }else{
+        weights=followLiveWeights(m,h);
+        if(!weights && ["UNION","CONSENSUS"].includes(m.key)){
+          method="PESOS DA COMPOSIÇÃO";
+          const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
+          const members=m.key==="UNION"?bank.slice(0,3):bank;
+          weights=Array(37).fill(0);
+          for(const member of members){
+            const w=followLiveWeights(member,h),p=w?geometry(w):member.play;
+            for(const n of p.numbers)weights[ix(n)]+=1/(1+member.rank*.1);
+          }
+          applySpatial(weights,h,.25);
+        }
+        if(!weights){
+          method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
+          weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
+          applySpatial(weights,h,.30);
+        }
+        weightCache.set(key,{weights:weights.slice(),method});
+      }
+      const pack=w=>terminal?packTerminalTrio(m.play.terminalDigits,w):geometry(w);
+      const base=pack(weights);
+      if(!validPlay(base))return null;
+      const context=followContextWeights(weights,before,base,memory);
+      const play=context.protected.length?pack(weights):base;
+      if(!validPlay(play))return null;
+      context.included=context.protected.filter(n=>play.numbers.includes(n));
+      return {play,audit:{through:state.totalTurns,windowSize:before.length,method,
+        previousExcluded:missing(m.play),excluded:missing(play),...context}};
+    } finally {readingFollowLive=oldReading;}
+  }
+
+  function unifiedMotor(m,block=currentBlock(),id=null) {
+    if(!canRefreshUnified(block)||!validPlay(m?.play)||m.followReading||m.terminalMasterIndication)return m;
+    const terminal=terminalPlay(m.play),route=unifiedEntryKey(m,id);
+    const memory=m.followTarget?state.followEntryMemory:(state.strategyEntryMemory[route]||[]);
+    const key=JSON.stringify([route,m.key,m.bankId,m.owner,m.variation,coverageCode(m.play),m.play.terminalDigits]);
+    syncUnifiedMoment();
+    const live=unifiedPlays.get(key);
+    if(live)return {...m,play:live.play,score:live.play.score,unifiedReading:live.audit};
+    const next=deriveUnifiedPlay(m,block,memory,terminal);
+    if(!next)return m;
+    unifiedPlays.set(key,next);
+    return {...m,play:next.play,score:next.play.score,unifiedReading:next.audit};
+  }
+
   function followPreviewKey(m) {
     return JSON.stringify([VERSION,state.totalTurns,state.block.revision,state.block.decisionTurn,
       state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled,
@@ -11954,39 +12120,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
     const key=followPreviewKey(m);
     if (state.followPreview?.key===key) return;
-    // O prefixo é do giro mais recente conhecido; a ordem da Inversa
-    // respeita a configuração usada na calibração do bloco.
-    const before=state.history.slice(-WINDOW);
-    const h=reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW));
-    readingFollowLive=true;
-    let play, context, method="PESOS DO MOTOR";
-    try {
-      let weights=followLiveWeights(m,h);
-      if (!weights && ["UNION","CONSENSUS"].includes(m.key)) {
-        method="PESOS DA COMPOSIÇÃO";
-        const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
-        const members=m.key==="UNION"?bank.slice(0,3):bank;
-        weights=Array(37).fill(0);
-        for (const member of members) {
-          const w=followLiveWeights(member,h), p=w?geometry(w):member.play;
-          for (const n of p.numbers) weights[ix(n)]+=1/(1+member.rank*.1);
-        }
-        applySpatial(weights,h,.25);
-      }
-      if (!weights) {
-        method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
-        weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
-        applySpatial(weights,h,.30);
-      }
-      const unadjusted=geometry(weights);
-      if (!validPlay(unadjusted)) {state.followPreview=null; return;}
-      context=followContextWeights(weights,before,unadjusted);
-      play=context.protected.length?geometry(weights):unadjusted;
-      context.included=context.protected.filter(n=>play?.numbers.includes(n));
-    } finally { readingFollowLive=false; }
-    state.followPreview=validPlay(play)?{key,play,audit:{
-      through:state.totalTurns,windowSize:before.length,method,previousExcluded:missing(m.play),excluded:missing(play),...context
-    }}:null;
+    const next=deriveUnifiedPlay(m,block,state.followEntryMemory);
+    state.followPreview=next?{key,...next}:null;
   }
 
   function followPreviewMotor(m) {
@@ -12130,7 +12265,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function activeMotor(cs = currentBlock()?.global || []) {
-    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(activeMotorBase(cs)));
+    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(unifiedMotor(activeMotorBase(cs))));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -12201,10 +12336,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       for (const def of [...definitions(), { id: "NUMBER", type: "NUMBER" }]) {
         const v = virtualCycle(def.id);
         if (v.phase === "ENTRY") {
-          const m =
-            def.type === "NUMBER"
-              ? numberBefore
-              : chooseMotor(def, cs, v.previous);
+          const m = unifiedMotor(def.type === "NUMBER" ? numberBefore : chooseMotor(def, cs, v.previous),currentBlock(),def.id);
           if (!m) continue;
           v.previous = m.key;
           v.entryTrigger = trigger;
@@ -12236,7 +12368,7 @@ const triangleMemory666 = createTriangleMemory666(W);
                 uncovered: missing(o.motor.play),
                 spatialKeys: [...spatialRead(after).keys],
               });
-            const decision = chooseG1(m, n, after, def.id);
+            const decision = chooseG1(m, n, after, def.id, !state.importTrainingActive);
             v.defense = decision?.motor || fineG1(m, n, after) || copy(m);
           }
         } else {
@@ -12371,8 +12503,6 @@ const triangleMemory666 = createTriangleMemory666(W);
         state.cycle = null;
         state.defense = null;
       }
-      if (phaseBefore==="ENTRY" && ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(controller))
-        recordFollowEntry(before,played,n,turn,result,controller);
       recordMasterCycle(controller, oldCycle, played, result, turn);
       settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -12386,10 +12516,10 @@ const triangleMemory666 = createTriangleMemory666(W);
         trigger,
         spatial,
       );
-      settleVariantForecasts(forecasts, n, turn, before.slice(-70));
-      const terminalHits=Object.fromEntries(terminalBank().map(motor=>[motor.key,motor.play.numbers.includes(n)]));
+      settleVariantForecasts(forecasts, n, turn, before.slice(-70),block);
+      const terminalHits=Object.fromEntries(terminalBank().map(motor=>[motor.key,unifiedMotor(motor,block,"TERMINALS:"+motor.key).play.numbers.includes(n)]));
     const motorHits = {};
-      for (const m of cs) motorHits[m.key] = m.play.numbers.includes(n);
+      for (const m of cs) motorHits[m.key] = unifiedMotor(m,block,"MANUAL:"+m.key).play.numbers.includes(n);
       const hits = {};
       for (const m of cs.slice(0, 4)) hits[m.rank] = motorHits[m.key];
       if (cs.length) state.autoRows.push({ turn, hits });
@@ -12413,11 +12543,12 @@ const triangleMemory666 = createTriangleMemory666(W);
         supportedGroups: motorReadings667.summary(modelHistory).groups.filter(group=>group.support>0).map(group=>group.name),
         coveredByMotors: Object.keys(motorHits).filter(key=>motorHits[key]),
         selectedBank: oldCycle?.original?.bankId||played?.bankId||"GLOBAL",
-        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)},
-          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
+        bankAlternatives: [{bankId:"GLOBAL",coveredBy:cs.filter(motor=>motorHits[motor.key]).map(motor=>motor.key)},
+          ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>unifiedMotor(motor,block,forecast.bankId+":"+motor.family+"_"+motor.radius).play.numbers.includes(n)).map(motor=>motor.key)}))],
         readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play ? motorHit(played,n) : null,
         followReading: copy(played?.followReading||null),
+        unifiedReading: copy(played?.unifiedReading||null),
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
         controller,
@@ -12454,6 +12585,8 @@ const triangleMemory666 = createTriangleMemory666(W);
     state.ledger[state.ledger.length-1].rotationApplied=copy(played?.rotationTarget||null);
     state.ledger[state.ledger.length-1].rotationNext=state.rotationEnabled?copy(state.rotation):null;
     if(before.length>=8)validateReanalysisPolicies(before,n,turn);
+    if (["ENTRY","SECOND_ENTRY"].includes(phaseBefore))
+      recordFollowEntry(before,played,n,turn,result,controller);
     state.totalTurns = turn;
       state.history.push(n);
       state.historyTurns.push(turn);
@@ -12611,7 +12744,7 @@ state.importAudit=describeImport(clean,opts);
     const native=snapshotTimelineForecastsBase(block);
     const suggestion=terminalSuggestionMotor(block,native);
     if(suggestion)native.push({id:"TERMINAL_SUGGESTION",motor:suggestion,defenseStrategy:"TERMINAL_SUGGESTION"});
-    return native.map(row=>({...row,motor:applyRotation(row.motor)}));
+    return native.map(row=>({...row,motor:applyRotation(unifiedMotor(row.motor,block,row.id))}));
   }
 
   function snapshotTimelineForecastsBase(block) {
@@ -12718,7 +12851,7 @@ state.importAudit=describeImport(clean,opts);
         const decision = independent || (cycle.permanencePeriod>1
           ? {motor:copy(cycle.entry),mode:"CONGELADA"}
           : config.g1Trainer
-            ? chooseG1(cycle.entry, n, h, cycle.defenseStrategy || f.id)
+            ? chooseG1(cycle.entry, n, h, cycle.defenseStrategy || f.id, !state.importTrainingActive)
             : {
                 motor: config.g1
                   ? fineG1(cycle.entry, n, h)
@@ -13128,7 +13261,7 @@ state.importAudit=describeImport(clean,opts);
       (existing.defenseStrategy||alternative.id)===alternative.defenseStrategy&&
       signaturePlay(existing.entry.play)===signaturePlay(alternative.entry.play);
     const decision=reusable?{motor:existing.defense}:config.g1Trainer
-      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy)
+      ?chooseG1(alternative.entry,n,history,alternative.defenseStrategy,!state.importTrainingActive)
       :{motor:config.g1?fineG1(alternative.entry,n,history):copy(alternative.entry)};
     alternative.defense=copy(decision?.motor||alternative.entry);
     alternative.phase=config.galeSkip?'GALE_SKIP':'GALE';
@@ -16014,7 +16147,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.39</h1>
+<h1>ANÁLISE BETA 6.6.40</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
