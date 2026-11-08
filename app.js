@@ -1,3 +1,15 @@
+/* ANÁLISE BETA 6.6.49 — balanceamento automático entre 0–18 e 19–36.
+   Cada motor recalibra o peso das duas faixas com os resultados conhecidos.
+   Master e Sugestão atualizam a cobertura de 33 a cada nova entrada. */
+/* ANÁLISE BETA 6.6.46 — PERFIL CALIBRADO.
+   A entrada por giro usa pesos específicos por estratégia e leitura.
+   Base, calibrado e reforçado mantêm placares e trios independentes.
+   A calibração é histórica e não usa o resultado do giro em avaliação.
+*/
+/* ANÁLISE BETA 6.6.45 — COMPLEMENTO EM TESTE.
+   Preserva os 33 da entrada principal. Compara o peso reforçado em paralelo,
+   com placar próprio e previsão montada antes de cada giro.
+*/
 /* ANÁLISE BETA 6.6.44 — ENTRADA POR GIRO.
    Seguir Indicação Master e Sugestão de Três Terminais têm placar próprio
    para o teste isolado dos pesos: nova entrada por giro, sem contar o G1.
@@ -299,7 +311,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.44",
+  const VERSION = "6.6.49",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -622,13 +634,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   }
 
   const TERMINAL_SUGGESTION_RULE="TRIOS_INDEPENDENTES_PROXIMO_V1";
-    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(useIntegratedLowWeight()?"_BAIXOS":"");}
+    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+"_"+BALANCED_WEIGHT_RULE;}
   let terminalSuggestionCache=null;
   function terminalSuggestionCandidates(block=currentBlock(),nativeForecasts=null) {
     if(!block||state.history.length<8)return [];
     const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
     const signature=JSON.stringify([state.totalTurns,state.history,state.block.decisionTurn,terminalTrioKey(),
-      previous,currentTerminalCoverage(),useIntegratedLowWeight(),state.trainerChoice,state.globalStrategyPrevious]);
+      previous,currentTerminalCoverage(),state.trainerChoice,state.globalStrategyPrevious]);
     if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
       return terminalSuggestionCache.rows;
     const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -643,7 +655,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const motor=projectTerminalSuggestion(candidate.motor,template,
         {id:candidate.id,name:names.get(candidate.id)||candidate.id},fixedOrder,previous,projections,search);
       if(motor){
-        const weighted=applyLowNumberWeight(motor,state.history,{changeTrio:true,previous});
+        const weighted=applyBalancedWeight(motor,state.history,{changeTrio:true,previous});
         rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor:weighted});
       }
     }
@@ -724,7 +736,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     if(!state.permanenceEnabled||!terminalPlay(original?.play)||(record&&state.playLock))return null;
     const coverage=original.terminalCoverage||currentTerminalCoverage(),key=permanenceContext();
     const book=g1CoverageBook(key),candidates=g1Candidates(h),source=original.terminalSuggestionTarget?.id;
-    const same=candidates.find(row=>row.id===source)?.motor||applyRotation(applyLowNumberWeight(fixedTerminalMotor(h,original.fixedTerminalTrio||null,[],original.terminalProfile),h,{stage:"RECONSTRUÇÃO"}))||original;
+    const same=candidates.find(row=>row.id===source)?.motor||applyRotation(applyBalancedWeight(fixedTerminalMotor(h,original.fixedTerminalTrio||null,[],original.terminalProfile),h,{stage:"RECONSTRUÇÃO"}))||original;
     const other=candidates.filter(row=>row.id!==source).map(row=>({...row,score:g1CoverageRate(book.strategies[row.id]||[],row.motor,coverage)}))
       .sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id))[0]?.motor||same;
     const choices=[{id:"FROZEN",label:"MANTER COBERTURA",motor:original},{id:"RECALCULATE",label:"RECALCULAR TERMINAIS",motor:same},{id:"OTHER",label:"OUTRA ESTRATÉGIA",motor:other}];
@@ -912,10 +924,32 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:score??avg(numbers.map(number=>weights[ix(number)]||0))};
   }
 
-  // Montagem comum: 60% preferência linear por 0–36, 25% transições
-  // do histórico disponível e 15% cobertura proposta pelo próprio motor.
-  const LOW_NUMBER_WEIGHT_RULE="NUMEROS_BAIXOS_60_25_15";
-  const LOW_NUMBER_PRIOR=W.map(n=>.60*(37-n)/703);
+  const BALANCED_WEIGHT_RULE="BAIXOS_ALTOS_V1";
+  const HIGH_NUMBER_START=19;
+
+  // Cada faixa tem de 42% a 58% do peso. A amostra recente ajusta a divisão
+  // e o motor mantém a ordem de preferência entre números da mesma faixa.
+  function balanceNumberWeights(weights,history){
+    const recent=history.slice(-14);
+    const lowCount=recent.filter(n=>n<HIGH_NUMBER_START).length;
+    const lowShare=clamp((10+lowCount)/(20+recent.length),.42,.58);
+    let lowMass=0,highMass=0;
+    for(let i=0;i<W.length;i++){
+      if(W[i]<HIGH_NUMBER_START)lowMass+=weights[i];
+      else highMass+=weights[i];
+    }
+    const total=lowMass+highMass||1;
+    return W.map((n,i)=>n<HIGH_NUMBER_START
+      ? lowShare*total*(lowMass?weights[i]/lowMass:1/19)
+      : (1-lowShare)*total*(highMass?weights[i]/highMass:1/18));
+  }
+
+  function excludesOnlyOneRange(outside,offset=0){
+    const [a,b,c,d]=outside;
+    const low=W[mod(a+offset)]<HIGH_NUMBER_START;
+    return low===(W[mod(b+offset)]<HIGH_NUMBER_START)&&
+      low===(W[mod(c+offset)]<HIGH_NUMBER_START)&&low===(W[mod(d+offset)]<HIGH_NUMBER_START);
+  }
   let lowNumberTrioOptions=null;
   let lowNumberWeightCache=new Map(),lowNumberWeightPrefix=null;
 
@@ -924,11 +958,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return lowNumberTrioOptions=terminalTrioSets().map(row=>({...row,...layoutsForTerminalTrio(row.digits)}));
   }
 
-  function lowNumberTerminalPlan(weights,trio,previous,preferred) {
+  function lowNumberTerminalPlan(weights,trio,previous,preferred,offset) {
     const blue=currentTerminalCoverage()==="BLUE";
     const favored=new Set(preferred.map(ix));
     const rows=trio?[{digits:trio,...layoutsForTerminalTrio(trio)}]:availableLowNumberTrios();
-    let best=null,bestCost=Infinity,bestMiss=Infinity,bestExact=-Infinity;
+    let best=null,bestCost=Infinity,bestMiss=Infinity,bestExact=-Infinity,bestSkew=Infinity;
     for(const row of rows){
       if(!trio&&previous&&row.digits.filter(d=>previous.includes(d)).length>1)continue;
       let exact=0;
@@ -939,8 +973,10 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         if(miss>bestMiss)continue;
         const [x,y,z]=layout.short;
         const cost=weights[a]+weights[b]+weights[c]+weights[d]+(blue?weights[x]+weights[y]+weights[z]:0);
-        if(miss<bestMiss||cost<bestCost-1e-12||(Math.abs(cost-bestCost)<=1e-12&&exact>bestExact+1e-12)){
-          best={row,layout};bestCost=cost;bestMiss=miss;bestExact=exact;
+        const skew=Number(excludesOnlyOneRange(layout.outside,offset));
+        if(miss<bestMiss||skew<bestSkew||(skew===bestSkew&&
+            (cost<bestCost-1e-12||(Math.abs(cost-bestCost)<=1e-12&&exact>bestExact+1e-12)))){
+          best={row,layout};bestCost=cost;bestMiss=miss;bestExact=exact;bestSkew=skew;
         }
       }
     }
@@ -955,40 +991,40 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:1-bestCost};
   }
 
-  // O ciclo de referência continua atualizando a indicação anterior ao peso.
-  // A cobertura efetivamente exibida e seu placar são decididos em separado.
+  // A entrada por giro usa a leitura automática. Permanência e segunda
+  // casa seguem o ciclo do modo escolhido e usam os pesos dos mesmos motores.
   function isolatedEntryActive(){
-    return !!state.isolatedEntryEnabled&&!!state.lowNumberWeightEnabled&&
-      !state.permanenceEnabled&&!state.secondHouse&&
+    return !state.permanenceEnabled&&!state.secondHouse&&
       ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy);
   }
-  function useIntegratedLowWeight(){
-    return state.lowNumberWeightEnabled&&!isolatedEntryActive();
-  }
+
   function isolatedEntryMotor(block=currentBlock()){
     if(!isolatedEntryActive()||!block)return null;
     if(state.playLock?.motor)return copy(state.playLock.motor);
-    const original=activeMotor(block.global);
+    const original=activeMotor(block.global,false);
     const changeTrio=state.strategy==="TERMINAL_SUGGESTION";
-    return applyLowNumberWeight(original,state.history,{isolated:true,changeTrio,
+    return applyBalancedWeight(original,state.history,{isolated:true,changeTrio,
       previous:state.isolatedLastTrios[state.strategy]||null});
   }
+
   function settleIsolatedEntry(row,motor){
     if(!validPlay(motor?.play))return;
-    const id=state.strategy, play=motor.play, base=play.kind==="ROTATED33"?play.base:play;
+    const id=state.strategy,play=motor.play,base=play.kind==="ROTATED33"?play.base:play;
     const green=play.numbers.includes(row.number);
-    const stats=state.isolatedScores[id]||(state.isolatedScores[id]={total:0,green:0,exact:0});
+    const stats=state.balancedScores[id]||(state.balancedScores[id]={total:0,green:0,exact:0});
     stats.total++;
     if(green)stats.green++;
     if(green&&base.terminalDigits?.includes(row.number%10)&&!play.offset)stats.exact++;
     if(base.terminalDigits)state.isolatedLastTrios[id]=[...base.terminalDigits];
-    row.isolatedEntry={id,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
+    row.isolatedEntry={id,profile:BALANCED_WEIGHT_RULE,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
       excluded:missing(play),trio:copy(base.terminalDigits||null),numberClass:recordedNumberClass(play,row.number),
       motor:motor.key,source:motor.terminalSuggestionTarget?.id||motor.followTarget?.id||null};
   }
-  function exactIsolatedLayout(weights){
+
+  function exactIsolatedLayout(weights,offset){
     let best=null,cost=Infinity;
     for(const layout of standardTerminalLayouts()){
+      if(excludesOnlyOneRange(layout.outside,offset))continue;
       const [a,b,c,d]=layout.outside, score=weights[a]+weights[b]+weights[c]+weights[d];
       if(score<cost-1e-12){best=layout;cost=score;}
     }
@@ -998,36 +1034,42 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return {blocks,numbers:W.filter((_,i)=>!excluded.has(i)),score:1-cost};
   }
 
-  function applyLowNumberWeight(motor,history=state.history,options={}) {
-    if(!motor?.play||!(options.isolated?state.lowNumberWeightEnabled:useIntegratedLowWeight()))return motor;
+  function applyBalancedWeight(motor,history=state.history,options={}) {
+    if(!validPlay(motor?.play))return motor;
     const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA",isolated=false}=options;
-    if(motor.lowNumberWeight?.rule===LOW_NUMBER_WEIGHT_RULE&&stage==="ENTRADA")return motor;
-    if(!validPlay(motor.play))return motor;
+    if(!isolated&&motor.lowNumberWeight?.rule===BALANCED_WEIGHT_RULE&&stage==="ENTRADA")return motor;
     const reading=terminalNextSearch(history);
     const rotated=motor.play.kind==="ROTATED33",offset=rotated?motor.play.offset:0;
     const base=rotated?motor.play.base:motor.play,terminal=terminalPlay(base);
-    const shift=(n,delta)=>W[mod(ix(n)+delta)];
-    const preferred=offset?mandatory.map(n=>shift(n,-offset)):mandatory;
+    const preferred=offset?mandatory.map(n=>W[mod(ix(n)-offset)]):mandatory;
     const allowTrioChange=terminal&&changeTrio&&!motor.fixedTerminalTrio;
     if(lowNumberWeightPrefix!==reading.key){
       lowNumberWeightCache=new Map();
       lowNumberWeightPrefix=reading.key;
     }
+    // Uma exclusão repetida perde força a cada giro. A proteção usa somente
+    // coberturas registradas antes da entrada e pertence à leitura atual.
+    const exclusions=isolated?state.ledger.slice(-4).map(row=>row.isolatedEntry)
+      .filter(row=>row?.id===state.strategy&&row.profile===BALANCED_WEIGHT_RULE)
+      .map(row=>row.excluded):[];
     const key=[coverageCode(motor.play),offset,terminal?base.terminalDigits.join():"",allowTrioChange?previous?.join()??"*":"",
-      preferred.join(),terminal?currentTerminalCoverage():"",isolated].join("|");
+      preferred.join(),terminal?currentTerminalCoverage():"",isolated,exclusions.map(out=>out.join()).join(";")].join("|");
     let play=lowNumberWeightCache.get(key);
     if(!play){
       const included=new Set(motor.play.numbers);
-      const w=W.map((_,i)=>{
-        const j=mod(i+offset);
-        return LOW_NUMBER_PRIOR[j]+.25*reading.weights[j]+(included.has(W[j])?.15/33:0);
+      const raw=W.map((n,i)=>{
+        const repeat=exclusions.reduce((count,out)=>count+Number(out.includes(n)),0);
+        return .55*reading.weights[i]+(included.has(n)?.45/33:0)+.006*Math.max(0,repeat-1);
       });
-      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):isolated?exactIsolatedLayout(w):rawGeometry(w,preferred);
+      const balanced=balanceNumberWeights(raw,history);
+      const w=offset?W.map((_,i)=>balanced[mod(i+offset)]):balanced;
+      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred,offset)
+        :preferred.length?rawGeometry(w,preferred):exactIsolatedLayout(w,offset);
       if(!validPlay(play))return motor;
       lowNumberWeightCache.set(key,play);
       if(lowNumberWeightCache.size>1024)lowNumberWeightCache.delete(lowNumberWeightCache.keys().next().value);
     }
-    const evidence={rule:LOW_NUMBER_WEIGHT_RULE,stage,beforeTurn:state.totalTurns+(stage==="ENTRADA"?0:1),
+    const evidence={rule:BALANCED_WEIGHT_RULE,stage,beforeTurn:state.totalTurns+(stage==="ENTRADA"?0:1),
       baseOutside:missing(motor.play)};
     let adjusted={...motor,play,lowNumberWeight:evidence};
     if(terminal)adjusted={...adjusted,terminalDigits:[...play.terminalDigits],
@@ -3252,8 +3294,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         weights[ix(n)] += (b * radius) / 5;
       }
     }
-    return applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
-      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h);
+    return balanceNumberWeights(applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h),h);
   }
 
   const motorDiversityCache = new Map();
@@ -3834,7 +3876,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function fineG1(original, trigger, h = state.history) {
-    return applyLowNumberWeight(baseFineG1(original,trigger,h),h,{stage:"AJUSTE FINO",mandatory:neighbors(trigger,1)});
+    return applyBalancedWeight(baseFineG1(original,trigger,h),h,{stage:"AJUSTE FINO",mandatory:neighbors(trigger,1)});
   }
   function baseFineG1(original, trigger, h = state.history) {
     if(original?.play?.kind==="ROTATED33"){
@@ -3960,7 +4002,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function reconstructG1(original, trigger, h, strategy) {
-    return applyLowNumberWeight(baseReconstructG1(original,trigger,h,strategy),h,{stage:"RECONSTRUÇÃO"});
+    return applyBalancedWeight(baseReconstructG1(original,trigger,h,strategy),h,{stage:"RECONSTRUÇÃO"});
   }
   function baseReconstructG1(original, trigger, h, strategy) {
     if(original?.play?.kind==="ROTATED33"){
@@ -4669,8 +4711,11 @@ const triangleMemory666 = createTriangleMemory666(W);
       readingSide: typeof side !== "undefined" && side === "INVERTIDO" ? "INVERTIDO" : "NORMAL",
       analysisSourceOrder: "CHRONOLOGICAL",
       structuralMemoryEnabled: false,
-      lowNumberWeightEnabled:true,
-      isolatedEntryEnabled:true,isolatedScores:{},isolatedLastTrios:{},
+      
+      isolatedScores:{},isolatedLastTrios:{},balancedScores:{},
+      complementScores:{},complementLastTrios:{},
+      calibratedScores:{},calibratedLastTrios:{},
+      followLiveScores:{green:0,total:0},
       forecastVersion: VERSION,
       history: [],
       historyTurns: [],
@@ -4773,8 +4818,27 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
-    r.lowNumberWeightEnabled=r.lowNumberWeightEnabled!==false;
-    r.isolatedEntryEnabled=r.isolatedEntryEnabled!==false;
+    const live=r.followLiveScores;
+    if(!Number.isSafeInteger(live?.total)||!Number.isSafeInteger(live?.green)||live.green<0||live.total<live.green)
+      r.followLiveScores={green:0,total:0};
+    r.calibratedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.calibratedScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,exact:Number(v.exact)||0}]]:[];
+    }));
+    r.calibratedLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.calibratedLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
+    r.complementScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.complementScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,recovered:Number(v.recovered)||0,lost:Number(v.lost)||0}]]:[];
+    }));
+    r.complementLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.complementLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
     r.isolatedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
       const v=r.isolatedScores?.[id];
       return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
@@ -4881,10 +4945,13 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", "6.6.43", VERSION].includes(r.forecastVersion)) {
+    if (r.forecastVersion !== VERSION) {
       r.block.data = null;
+      r.block.fixedForecasts = null;
+      r.block.policyForecasts = null;
+      r.block.best = null;
+      r.followPreview = null;
     }
-    if (r.forecastVersion !== VERSION) r.followPreview=null;
     r.forecastVersion = VERSION;
     r.rotationEnabled=!!r.rotationEnabled;
     r.rotation={...fresh().rotation,...(data.rotation||{})};
@@ -4926,7 +4993,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   function settings() {
     return Object.fromEntries(
       [
-        "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","isolatedEntryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
+        "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
         "postLossEnabled",
         "postThreeEnabled",
         "postOneAllEnabled",
@@ -5292,7 +5359,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function unifiedMotor(m,block=currentBlock(),id=null) {
-    return applyLowNumberWeight(unweightedUnifiedMotor(m,block,id));
+    return applyBalancedWeight(unweightedUnifiedMotor(m,block,id));
   }
   function unweightedUnifiedMotor(m,block=currentBlock(),id=null) {
     if(!canRefreshUnified(block)||!validPlay(m?.play)||m.followReading||m.terminalReading)return m;
@@ -5464,8 +5531,10 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
   }
 
-  function activeMotor(cs = currentBlock()?.global || []) {
-    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(unifiedMotor(activeMotorBase(cs))));
+  function activeMotor(cs = currentBlock()?.global || [], balance=true) {
+    if(state.playLock?.motor)return copy(state.playLock.motor);
+    const motor=unweightedUnifiedMotor(activeMotorBase(cs));
+    return permanenceMotor(applyRotation(balance?applyBalancedWeight(motor):motor));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -5838,7 +5907,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','isolatedEntryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['rotationEnabled','structuralMemoryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  if(opts.fixedTerminalTrio)config.fixedTerminalTrio=copy(opts.fixedTerminalTrio);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
@@ -7554,7 +7623,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.44",
+    const VERSION = "6.6.49",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7877,13 +7946,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     }
 
     const TERMINAL_SUGGESTION_RULE="TRIOS_INDEPENDENTES_PROXIMO_V1";
-    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(useIntegratedLowWeight()?"_BAIXOS":"");}
+    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+"_"+BALANCED_WEIGHT_RULE;}
     let terminalSuggestionCache=null;
     function terminalSuggestionCandidates(block=currentBlock(),nativeForecasts=null) {
       if(!block||state.history.length<8)return [];
       const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
       const signature=JSON.stringify([state.totalTurns,state.history,state.block.decisionTurn,terminalTrioKey(),
-        previous,currentTerminalCoverage(),useIntegratedLowWeight(),state.trainerChoice,state.globalStrategyPrevious]);
+        previous,currentTerminalCoverage(),state.trainerChoice,state.globalStrategyPrevious]);
       if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
         return terminalSuggestionCache.rows;
       const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -7898,7 +7967,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const motor=projectTerminalSuggestion(candidate.motor,template,
           {id:candidate.id,name:names.get(candidate.id)||candidate.id},fixedOrder,previous,projections,search);
         if(motor){
-          const weighted=applyLowNumberWeight(motor,state.history,{changeTrio:true,previous});
+          const weighted=applyBalancedWeight(motor,state.history,{changeTrio:true,previous});
           rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor:weighted});
         }
       }
@@ -7979,7 +8048,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     if(!state.permanenceEnabled||!terminalPlay(original?.play)||(record&&state.playLock))return null;
     const coverage=original.terminalCoverage||currentTerminalCoverage(),key=permanenceContext();
     const book=g1CoverageBook(key),candidates=g1Candidates(h),source=original.terminalSuggestionTarget?.id;
-    const same=candidates.find(row=>row.id===source)?.motor||applyRotation(applyLowNumberWeight(fixedTerminalMotor(h,original.fixedTerminalTrio||null,[],original.terminalProfile),h,{stage:"RECONSTRUÇÃO"}))||original;
+    const same=candidates.find(row=>row.id===source)?.motor||applyRotation(applyBalancedWeight(fixedTerminalMotor(h,original.fixedTerminalTrio||null,[],original.terminalProfile),h,{stage:"RECONSTRUÇÃO"}))||original;
     const other=candidates.filter(row=>row.id!==source).map(row=>({...row,score:g1CoverageRate(book.strategies[row.id]||[],row.motor,coverage)}))
       .sort((a,b)=>b.score-a.score||a.id.localeCompare(b.id))[0]?.motor||same;
     const choices=[{id:"FROZEN",label:"MANTER COBERTURA",motor:original},{id:"RECALCULATE",label:"RECALCULAR TERMINAIS",motor:same},{id:"OTHER",label:"OUTRA ESTRATÉGIA",motor:other}];
@@ -8167,10 +8236,32 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:score??avg(numbers.map(number=>weights[ix(number)]||0))};
   }
 
-  // Montagem comum: 60% preferência linear por 0–36, 25% transições
-  // do histórico disponível e 15% cobertura proposta pelo próprio motor.
-  const LOW_NUMBER_WEIGHT_RULE="NUMEROS_BAIXOS_60_25_15";
-  const LOW_NUMBER_PRIOR=W.map(n=>.60*(37-n)/703);
+  const BALANCED_WEIGHT_RULE="BAIXOS_ALTOS_V1";
+  const HIGH_NUMBER_START=19;
+
+  // Cada faixa tem de 42% a 58% do peso. A amostra recente ajusta a divisão
+  // e o motor mantém a ordem de preferência entre números da mesma faixa.
+  function balanceNumberWeights(weights,history){
+    const recent=history.slice(-14);
+    const lowCount=recent.filter(n=>n<HIGH_NUMBER_START).length;
+    const lowShare=clamp((10+lowCount)/(20+recent.length),.42,.58);
+    let lowMass=0,highMass=0;
+    for(let i=0;i<W.length;i++){
+      if(W[i]<HIGH_NUMBER_START)lowMass+=weights[i];
+      else highMass+=weights[i];
+    }
+    const total=lowMass+highMass||1;
+    return W.map((n,i)=>n<HIGH_NUMBER_START
+      ? lowShare*total*(lowMass?weights[i]/lowMass:1/19)
+      : (1-lowShare)*total*(highMass?weights[i]/highMass:1/18));
+  }
+
+  function excludesOnlyOneRange(outside,offset=0){
+    const [a,b,c,d]=outside;
+    const low=W[mod(a+offset)]<HIGH_NUMBER_START;
+    return low===(W[mod(b+offset)]<HIGH_NUMBER_START)&&
+      low===(W[mod(c+offset)]<HIGH_NUMBER_START)&&low===(W[mod(d+offset)]<HIGH_NUMBER_START);
+  }
   let lowNumberTrioOptions=null;
   let lowNumberWeightCache=new Map(),lowNumberWeightPrefix=null;
 
@@ -8179,11 +8270,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return lowNumberTrioOptions=terminalTrioSets().map(row=>({...row,...layoutsForTerminalTrio(row.digits)}));
   }
 
-  function lowNumberTerminalPlan(weights,trio,previous,preferred) {
+  function lowNumberTerminalPlan(weights,trio,previous,preferred,offset) {
     const blue=currentTerminalCoverage()==="BLUE";
     const favored=new Set(preferred.map(ix));
     const rows=trio?[{digits:trio,...layoutsForTerminalTrio(trio)}]:availableLowNumberTrios();
-    let best=null,bestCost=Infinity,bestMiss=Infinity,bestExact=-Infinity;
+    let best=null,bestCost=Infinity,bestMiss=Infinity,bestExact=-Infinity,bestSkew=Infinity;
     for(const row of rows){
       if(!trio&&previous&&row.digits.filter(d=>previous.includes(d)).length>1)continue;
       let exact=0;
@@ -8194,8 +8285,10 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         if(miss>bestMiss)continue;
         const [x,y,z]=layout.short;
         const cost=weights[a]+weights[b]+weights[c]+weights[d]+(blue?weights[x]+weights[y]+weights[z]:0);
-        if(miss<bestMiss||cost<bestCost-1e-12||(Math.abs(cost-bestCost)<=1e-12&&exact>bestExact+1e-12)){
-          best={row,layout};bestCost=cost;bestMiss=miss;bestExact=exact;
+        const skew=Number(excludesOnlyOneRange(layout.outside,offset));
+        if(miss<bestMiss||skew<bestSkew||(skew===bestSkew&&
+            (cost<bestCost-1e-12||(Math.abs(cost-bestCost)<=1e-12&&exact>bestExact+1e-12)))){
+          best={row,layout};bestCost=cost;bestMiss=miss;bestExact=exact;bestSkew=skew;
         }
       }
     }
@@ -8210,40 +8303,40 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:1-bestCost};
   }
 
-  // O ciclo de referência continua atualizando a indicação anterior ao peso.
-  // A cobertura efetivamente exibida e seu placar são decididos em separado.
+  // A entrada por giro usa a leitura automática. Permanência e segunda
+  // casa seguem o ciclo do modo escolhido e usam os pesos dos mesmos motores.
   function isolatedEntryActive(){
-    return !!state.isolatedEntryEnabled&&!!state.lowNumberWeightEnabled&&
-      !state.permanenceEnabled&&!state.secondHouse&&
+    return !state.permanenceEnabled&&!state.secondHouse&&
       ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy);
   }
-  function useIntegratedLowWeight(){
-    return state.lowNumberWeightEnabled&&!isolatedEntryActive();
-  }
+
   function isolatedEntryMotor(block=currentBlock()){
     if(!isolatedEntryActive()||!block)return null;
     if(state.playLock?.motor)return copy(state.playLock.motor);
-    const original=activeMotor(block.global);
+    const original=activeMotor(block.global,false);
     const changeTrio=state.strategy==="TERMINAL_SUGGESTION";
-    return applyLowNumberWeight(original,state.history,{isolated:true,changeTrio,
+    return applyBalancedWeight(original,state.history,{isolated:true,changeTrio,
       previous:state.isolatedLastTrios[state.strategy]||null});
   }
+
   function settleIsolatedEntry(row,motor){
     if(!validPlay(motor?.play))return;
-    const id=state.strategy, play=motor.play, base=play.kind==="ROTATED33"?play.base:play;
+    const id=state.strategy,play=motor.play,base=play.kind==="ROTATED33"?play.base:play;
     const green=play.numbers.includes(row.number);
-    const stats=state.isolatedScores[id]||(state.isolatedScores[id]={total:0,green:0,exact:0});
+    const stats=state.balancedScores[id]||(state.balancedScores[id]={total:0,green:0,exact:0});
     stats.total++;
     if(green)stats.green++;
     if(green&&base.terminalDigits?.includes(row.number%10)&&!play.offset)stats.exact++;
     if(base.terminalDigits)state.isolatedLastTrios[id]=[...base.terminalDigits];
-    row.isolatedEntry={id,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
+    row.isolatedEntry={id,profile:BALANCED_WEIGHT_RULE,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
       excluded:missing(play),trio:copy(base.terminalDigits||null),numberClass:recordedNumberClass(play,row.number),
       motor:motor.key,source:motor.terminalSuggestionTarget?.id||motor.followTarget?.id||null};
   }
-  function exactIsolatedLayout(weights){
+
+  function exactIsolatedLayout(weights,offset){
     let best=null,cost=Infinity;
     for(const layout of standardTerminalLayouts()){
+      if(excludesOnlyOneRange(layout.outside,offset))continue;
       const [a,b,c,d]=layout.outside, score=weights[a]+weights[b]+weights[c]+weights[d];
       if(score<cost-1e-12){best=layout;cost=score;}
     }
@@ -8253,36 +8346,42 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return {blocks,numbers:W.filter((_,i)=>!excluded.has(i)),score:1-cost};
   }
 
-  function applyLowNumberWeight(motor,history=state.history,options={}) {
-    if(!motor?.play||!(options.isolated?state.lowNumberWeightEnabled:useIntegratedLowWeight()))return motor;
+  function applyBalancedWeight(motor,history=state.history,options={}) {
+    if(!validPlay(motor?.play))return motor;
     const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA",isolated=false}=options;
-    if(motor.lowNumberWeight?.rule===LOW_NUMBER_WEIGHT_RULE&&stage==="ENTRADA")return motor;
-    if(!validPlay(motor.play))return motor;
+    if(!isolated&&motor.lowNumberWeight?.rule===BALANCED_WEIGHT_RULE&&stage==="ENTRADA")return motor;
     const reading=terminalNextSearch(history);
     const rotated=motor.play.kind==="ROTATED33",offset=rotated?motor.play.offset:0;
     const base=rotated?motor.play.base:motor.play,terminal=terminalPlay(base);
-    const shift=(n,delta)=>W[mod(ix(n)+delta)];
-    const preferred=offset?mandatory.map(n=>shift(n,-offset)):mandatory;
+    const preferred=offset?mandatory.map(n=>W[mod(ix(n)-offset)]):mandatory;
     const allowTrioChange=terminal&&changeTrio&&!motor.fixedTerminalTrio;
     if(lowNumberWeightPrefix!==reading.key){
       lowNumberWeightCache=new Map();
       lowNumberWeightPrefix=reading.key;
     }
+    // Uma exclusão repetida perde força a cada giro. A proteção usa somente
+    // coberturas registradas antes da entrada e pertence à leitura atual.
+    const exclusions=isolated?state.ledger.slice(-4).map(row=>row.isolatedEntry)
+      .filter(row=>row?.id===state.strategy&&row.profile===BALANCED_WEIGHT_RULE)
+      .map(row=>row.excluded):[];
     const key=[coverageCode(motor.play),offset,terminal?base.terminalDigits.join():"",allowTrioChange?previous?.join()??"*":"",
-      preferred.join(),terminal?currentTerminalCoverage():"",isolated].join("|");
+      preferred.join(),terminal?currentTerminalCoverage():"",isolated,exclusions.map(out=>out.join()).join(";")].join("|");
     let play=lowNumberWeightCache.get(key);
     if(!play){
       const included=new Set(motor.play.numbers);
-      const w=W.map((_,i)=>{
-        const j=mod(i+offset);
-        return LOW_NUMBER_PRIOR[j]+.25*reading.weights[j]+(included.has(W[j])?.15/33:0);
+      const raw=W.map((n,i)=>{
+        const repeat=exclusions.reduce((count,out)=>count+Number(out.includes(n)),0);
+        return .55*reading.weights[i]+(included.has(n)?.45/33:0)+.006*Math.max(0,repeat-1);
       });
-      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):isolated?exactIsolatedLayout(w):rawGeometry(w,preferred);
+      const balanced=balanceNumberWeights(raw,history);
+      const w=offset?W.map((_,i)=>balanced[mod(i+offset)]):balanced;
+      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred,offset)
+        :preferred.length?rawGeometry(w,preferred):exactIsolatedLayout(w,offset);
       if(!validPlay(play))return motor;
       lowNumberWeightCache.set(key,play);
       if(lowNumberWeightCache.size>1024)lowNumberWeightCache.delete(lowNumberWeightCache.keys().next().value);
     }
-    const evidence={rule:LOW_NUMBER_WEIGHT_RULE,stage,beforeTurn:state.totalTurns+(stage==="ENTRADA"?0:1),
+    const evidence={rule:BALANCED_WEIGHT_RULE,stage,beforeTurn:state.totalTurns+(stage==="ENTRADA"?0:1),
       baseOutside:missing(motor.play)};
     let adjusted={...motor,play,lowNumberWeight:evidence};
     if(terminal)adjusted={...adjusted,terminalDigits:[...play.terminalDigits],
@@ -10519,8 +10618,8 @@ const triangleMemory666 = createTriangleMemory666(W);
           weights[ix(n)] += (b * radius) / 5;
         }
       }
-      return applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
-      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h);
+      return balanceNumberWeights(applyReanalysisMemory(motorReadings667.merge(applySpatial(weights,h,
+      0.3+(radius-4)*0.035+(family.startsWith("RX")?0.035:0)),h,{family,radius},.12),h),h);
     }
 
     const motorDiversityCache = new Map();
@@ -11111,7 +11210,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function fineG1(original, trigger, h = state.history) {
-      return applyLowNumberWeight(baseFineG1(original,trigger,h),h,{stage:"AJUSTE FINO",mandatory:neighbors(trigger,1)});
+      return applyBalancedWeight(baseFineG1(original,trigger,h),h,{stage:"AJUSTE FINO",mandatory:neighbors(trigger,1)});
     }
     function baseFineG1(original, trigger, h = state.history) {
     if(original?.play?.kind==="ROTATED33"){
@@ -11237,7 +11336,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function reconstructG1(original, trigger, h, strategy) {
-      return applyLowNumberWeight(baseReconstructG1(original,trigger,h,strategy),h,{stage:"RECONSTRUÇÃO"});
+      return applyBalancedWeight(baseReconstructG1(original,trigger,h,strategy),h,{stage:"RECONSTRUÇÃO"});
     }
     function baseReconstructG1(original, trigger, h, strategy) {
     if(original?.play?.kind==="ROTATED33"){
@@ -11971,8 +12070,11 @@ const triangleMemory666 = createTriangleMemory666(W);
       readingSide: typeof side !== "undefined" && side === "INVERTIDO" ? "INVERTIDO" : "NORMAL",
       analysisSourceOrder: "CHRONOLOGICAL",
       structuralMemoryEnabled: false,
-      lowNumberWeightEnabled:true,
-      isolatedEntryEnabled:true,isolatedScores:{},isolatedLastTrios:{},
+      
+      isolatedScores:{},isolatedLastTrios:{},balancedScores:{},
+      complementScores:{},complementLastTrios:{},
+      calibratedScores:{},calibratedLastTrios:{},
+      followLiveScores:{green:0,total:0},
         forecastVersion: VERSION,
         history: [],
         historyTurns: [],
@@ -12075,8 +12177,27 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
-    r.lowNumberWeightEnabled=r.lowNumberWeightEnabled!==false;
-    r.isolatedEntryEnabled=r.isolatedEntryEnabled!==false;
+    const live=r.followLiveScores;
+    if(!Number.isSafeInteger(live?.total)||!Number.isSafeInteger(live?.green)||live.green<0||live.total<live.green)
+      r.followLiveScores={green:0,total:0};
+    r.calibratedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.calibratedScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,exact:Number(v.exact)||0}]]:[];
+    }));
+    r.calibratedLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.calibratedLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
+    r.complementScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.complementScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,recovered:Number(v.recovered)||0,lost:Number(v.lost)||0}]]:[];
+    }));
+    r.complementLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.complementLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
     r.isolatedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
       const v=r.isolatedScores?.[id];
       return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
@@ -12183,10 +12304,13 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", "6.6.43", VERSION].includes(r.forecastVersion)) {
-        r.block.data = null;
-      }
-      if (r.forecastVersion !== VERSION) r.followPreview=null;
+    if (r.forecastVersion !== VERSION) {
+      r.block.data = null;
+      r.block.fixedForecasts = null;
+      r.block.policyForecasts = null;
+      r.block.best = null;
+      r.followPreview = null;
+    }
     r.forecastVersion = VERSION;
     r.rotationEnabled=!!r.rotationEnabled;
     r.rotation={...fresh().rotation,...(data.rotation||{})};
@@ -12228,7 +12352,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     function settings() {
       return Object.fromEntries(
         [
-          "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","isolatedEntryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
+          "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
           "postLossEnabled",
           "postThreeEnabled",
         "postOneAllEnabled",
@@ -12596,7 +12720,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function unifiedMotor(m,block=currentBlock(),id=null) {
-    return applyLowNumberWeight(unweightedUnifiedMotor(m,block,id));
+    return applyBalancedWeight(unweightedUnifiedMotor(m,block,id));
   }
   function unweightedUnifiedMotor(m,block=currentBlock(),id=null) {
     if(!canRefreshUnified(block)||!validPlay(m?.play)||m.followReading||m.terminalReading)return m;
@@ -12768,8 +12892,10 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
     }
 
-    function activeMotor(cs = currentBlock()?.global || []) {
-    return state.playLock?.motor?copy(state.playLock.motor):permanenceMotor(applyRotation(unifiedMotor(activeMotorBase(cs))));
+    function activeMotor(cs = currentBlock()?.global || [], balance=true) {
+    if(state.playLock?.motor)return copy(state.playLock.motor);
+    const motor=unweightedUnifiedMotor(activeMotorBase(cs));
+    return permanenceMotor(applyRotation(balance?applyBalancedWeight(motor):motor));
   }
 
   function activeMotorBase(cs = currentBlock()?.global || []) {
@@ -12916,7 +13042,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         trigger = before.at(-1);
       const block =
         before.length >= 8 ? currentBlock() || prepareBlock() : null;
-      const isolated=source==="TEMPO REAL"?isolatedEntryMotor(block):null;
+    const isolated=source==="TEMPO REAL"?isolatedEntryMotor(block):null;
       const cs = block?.global || [],
         forecasts = block?.variants || [];
       const timelineForecasts = [...snapshotTimelineForecasts(block),...preparePermanenceForecasts(block)];
@@ -13144,7 +13270,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','isolatedEntryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['rotationEnabled','structuralMemoryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  if(opts.fixedTerminalTrio)config.fixedTerminalTrio=copy(opts.fixedTerminalTrio);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
@@ -15268,8 +15394,8 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       state.block.pending +
       "/10 • " +
       (state.block.data
-        ? (motor?.followReading
-          ? "INDICAÇÃO INVERSA A CADA GIRO • BANCOS A CADA DEZ"
+        ? (porGiro || motor?.followReading
+          ? "INDICAÇÃO A CADA GIRO • BANCOS A CADA DEZ"
           : "JOGADAS FIXAS • RECALIBRA AO COMPLETAR DEZ NOVOS")
         : "PREPARANDO PRÓXIMA JOGADA");
     $("cycleInfo").textContent = porGiro?"ENTRADA NOVA A CADA GIRO • SEM G1 NO PLACAR":cycleIsFree()
@@ -15397,7 +15523,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     if(porGiro){
       const play=motor?.play?.kind==="ROTATED33"?motor.play.base:motor?.play;
       const label=motor?.terminalSuggestionTarget?.name||motor?.followTarget?.name||definition.name;
-      $("selected").textContent="ENTRADA POR GIRO • "+label+
+      $("selected").textContent=label+
         (play?.terminalDigits?(motor.fixedTerminalTrio?" • TRIO FIXO • FORÇA: ":" • TERMINAIS USADOS: ")+play.terminalDigits.join(" • "):"");
     }
     if(state.playLock?.notice)$("selected").textContent=state.playLock.notice;
@@ -15413,7 +15539,6 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       if(state.cycle?.decision?.permanenceG1)$("selected").textContent+=" • G1: "+state.cycle.decision.mode;
     }
     $("centers").classList.toggle("terminalCenters",(motor?.play?.kind === "TERMINALS33" || motor?.play?.base?.kind === "TERMINALS33"));
-    if(motor?.lowNumberWeight)$("selected").textContent+=" • PESO PARA NÚMEROS BAIXOS";
     if(state.structuralMemoryEnabled)$("selected").textContent+=" • TRIANGULAÇÃO EXPERIMENTAL";
 
     $("centers").dataset.playAppearance = playAppearance(target, state.strategy === "FOLLOW_MASTER");
@@ -15873,16 +15998,18 @@ if(!isCurrentApp())return;
     return {id, name:definition?.name || baseActiveDefinition().name};
   }
   function isolatedScoreHTML(){
-    const p=state.isolatedScores[state.strategy]||{green:0,total:0};
-    return '<div class="selectedTimelineLabel">POR GIRO • <strong class="good">'+p.green+
+    const p=state.balancedScores[state.strategy]||{green:0,total:0};
+    return '<div class="selectedTimelineLabel"><strong class="good">'+p.green+
       ' GREEN DE PRIMEIRA</strong> / '+p.total+' • <span class="bad">'+(p.total-p.green)+' LOSS</span></div>';
   }
   function renderSelectedTimeline(motor) {
     if(isolatedEntryActive()){
-      const rows=state.ledger.filter(row=>row.isolatedEntry?.id===state.strategy).slice(-20);
-      patchHTML($("coverage"),isolatedScoreHTML()+'<div class="timelineCells">'+rows.map(row=>{
+      const rows=state.ledger.filter(row=>row.isolatedEntry?.id===state.strategy&&row.isolatedEntry.profile===BALANCED_WEIGHT_RULE).slice(-20);
+      const excluded=motor?.play?'<div class="muted">FORA DA ENTRADA: '+missing(motor.play).join(" • ")+'</div>':"";
+      patchHTML($("coverage"),isolatedScoreHTML()+excluded+'<div class="timelineCells">'+rows.map(row=>{
         const green=row.isolatedEntry.result==="GREEN";
-        return '<span class="wlCell '+(green?"wlWin":"wlLoss")+'" title="GIRO '+row.turn+'">'+(green?"W":"R")+'</span>';
+        const detail="GIRO "+row.turn+" • SAIU "+row.number+" • FORA: "+row.isolatedEntry.excluded.join(", ");
+        return '<span class="wlCell '+(green?"wlWin":"wlLoss")+'" title="'+esc(detail)+'">'+(green?"W":"R")+'</span>';
       }).join("")+'</div>');
       return;
     }
@@ -16336,8 +16463,6 @@ if(!isCurrentApp())return;
 </main>`;
 
   for (const [field, label] of [
-    ["isolatedEntryEnabled", "ENTRADA POR GIRO • INDICAÇÃO / SUGESTÃO"],
-    ["lowNumberWeightEnabled", "PESO PARA NÚMEROS BAIXOS"],
     ["g1Trainer", "TREINADOR GLOBAL G1"],
     ["g1", "G1 AJUSTE FINO"],
     ["galeSkip", "GALE 2ª RODADA"],
@@ -16561,7 +16686,7 @@ return {
  select(id){selectTimeline(id);},
  // Exportação para conferência dos testes e dos registros, sem tocar no motor.
  summary(){return {side,version:VERSION,turn:state.totalTurns,phase:state.phase,
-  history:[...state.history],audit:copy(state.importAudit),metrics:metrics(state.ledger),isolatedScores:copy(state.isolatedScores),
+  history:[...state.history],audit:copy(state.importAudit),metrics:metrics(state.ledger),isolatedScores:copy(state.isolatedScores),balancedScores:copy(state.balancedScores),complementScores:copy(state.complementScores),calibratedScores:copy(state.calibratedScores),followLiveScores:copy(state.followLiveScores),
   timelineIds:timelineDefinitions().map(d=>d.id),manual:state.manualLog.map(r=>r.number)};}
 };
 
@@ -16666,7 +16791,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.44</h1>
+<h1>ANÁLISE BETA 6.6.49</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
