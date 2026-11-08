@@ -1,3 +1,8 @@
+/* ANÁLISE BETA 6.6.44 — ENTRADA POR GIRO.
+   Seguir Indicação Master e Sugestão de Três Terminais têm placar próprio
+   para o teste isolado dos pesos: nova entrada por giro, sem contar o G1.
+   A indicação de referência segue a regra anterior; o peso monta só os 33 exibidos.
+*/
 /* ANÁLISE BETA 6.6.43 — PESO PARA NÚMEROS BAIXOS.
    Ligado por padrão nos dois lados. A montagem comum usa 60% de peso
    para números baixos, 25% de transições e 15% da cobertura do motor.
@@ -294,7 +299,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.43",
+  const VERSION = "6.6.44",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -617,13 +622,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   }
 
   const TERMINAL_SUGGESTION_RULE="TRIOS_INDEPENDENTES_PROXIMO_V1";
-    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(state.lowNumberWeightEnabled?"_BAIXOS":"");}
+    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(useIntegratedLowWeight()?"_BAIXOS":"");}
   let terminalSuggestionCache=null;
   function terminalSuggestionCandidates(block=currentBlock(),nativeForecasts=null) {
     if(!block||state.history.length<8)return [];
     const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
     const signature=JSON.stringify([state.totalTurns,state.history,state.block.decisionTurn,terminalTrioKey(),
-      previous,currentTerminalCoverage(),state.lowNumberWeightEnabled,state.trainerChoice,state.globalStrategyPrevious]);
+      previous,currentTerminalCoverage(),useIntegratedLowWeight(),state.trainerChoice,state.globalStrategyPrevious]);
     if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
       return terminalSuggestionCache.rows;
     const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -950,9 +955,52 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:1-bestCost};
   }
 
+  // O ciclo de referência continua atualizando a indicação anterior ao peso.
+  // A cobertura efetivamente exibida e seu placar são decididos em separado.
+  function isolatedEntryActive(){
+    return !!state.isolatedEntryEnabled&&!!state.lowNumberWeightEnabled&&
+      !state.permanenceEnabled&&!state.secondHouse&&
+      ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy);
+  }
+  function useIntegratedLowWeight(){
+    return state.lowNumberWeightEnabled&&!isolatedEntryActive();
+  }
+  function isolatedEntryMotor(block=currentBlock()){
+    if(!isolatedEntryActive()||!block)return null;
+    if(state.playLock?.motor)return copy(state.playLock.motor);
+    const original=activeMotor(block.global);
+    const changeTrio=state.strategy==="TERMINAL_SUGGESTION";
+    return applyLowNumberWeight(original,state.history,{isolated:true,changeTrio,
+      previous:state.isolatedLastTrios[state.strategy]||null});
+  }
+  function settleIsolatedEntry(row,motor){
+    if(!validPlay(motor?.play))return;
+    const id=state.strategy, play=motor.play, base=play.kind==="ROTATED33"?play.base:play;
+    const green=play.numbers.includes(row.number);
+    const stats=state.isolatedScores[id]||(state.isolatedScores[id]={total:0,green:0,exact:0});
+    stats.total++;
+    if(green)stats.green++;
+    if(green&&base.terminalDigits?.includes(row.number%10)&&!play.offset)stats.exact++;
+    if(base.terminalDigits)state.isolatedLastTrios[id]=[...base.terminalDigits];
+    row.isolatedEntry={id,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
+      excluded:missing(play),trio:copy(base.terminalDigits||null),numberClass:recordedNumberClass(play,row.number),
+      motor:motor.key,source:motor.terminalSuggestionTarget?.id||motor.followTarget?.id||null};
+  }
+  function exactIsolatedLayout(weights){
+    let best=null,cost=Infinity;
+    for(const layout of standardTerminalLayouts()){
+      const [a,b,c,d]=layout.outside, score=weights[a]+weights[b]+weights[c]+weights[d];
+      if(score<cost-1e-12){best=layout;cost=score;}
+    }
+    if(!best)return null;
+    const blocks=best.centers.map((pos,i)=>({center:W[pos],radius:i?2:1,numbers:neighbors(W[pos],i?2:1)}));
+    const excluded=new Set(best.outside);
+    return {blocks,numbers:W.filter((_,i)=>!excluded.has(i)),score:1-cost};
+  }
+
   function applyLowNumberWeight(motor,history=state.history,options={}) {
-    if(!state.lowNumberWeightEnabled||!motor?.play)return motor;
-    const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA"}=options;
+    if(!motor?.play||!(options.isolated?state.lowNumberWeightEnabled:useIntegratedLowWeight()))return motor;
+    const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA",isolated=false}=options;
     if(motor.lowNumberWeight?.rule===LOW_NUMBER_WEIGHT_RULE&&stage==="ENTRADA")return motor;
     if(!validPlay(motor.play))return motor;
     const reading=terminalNextSearch(history);
@@ -966,7 +1014,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       lowNumberWeightPrefix=reading.key;
     }
     const key=[coverageCode(motor.play),offset,terminal?base.terminalDigits.join():"",allowTrioChange?previous?.join()??"*":"",
-      preferred.join(),terminal?currentTerminalCoverage():""].join("|");
+      preferred.join(),terminal?currentTerminalCoverage():"",isolated].join("|");
     let play=lowNumberWeightCache.get(key);
     if(!play){
       const included=new Set(motor.play.numbers);
@@ -974,7 +1022,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const j=mod(i+offset);
         return LOW_NUMBER_PRIOR[j]+.25*reading.weights[j]+(included.has(W[j])?.15/33:0);
       });
-      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):rawGeometry(w,preferred);
+      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):isolated?exactIsolatedLayout(w):rawGeometry(w,preferred);
       if(!validPlay(play))return motor;
       lowNumberWeightCache.set(key,play);
       if(lowNumberWeightCache.size>1024)lowNumberWeightCache.delete(lowNumberWeightCache.keys().next().value);
@@ -4622,6 +4670,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       analysisSourceOrder: "CHRONOLOGICAL",
       structuralMemoryEnabled: false,
       lowNumberWeightEnabled:true,
+      isolatedEntryEnabled:true,isolatedScores:{},isolatedLastTrios:{},
       forecastVersion: VERSION,
       history: [],
       historyTurns: [],
@@ -4725,6 +4774,16 @@ const triangleMemory666 = createTriangleMemory666(W);
     if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.lowNumberWeightEnabled=r.lowNumberWeightEnabled!==false;
+    r.isolatedEntryEnabled=r.isolatedEntryEnabled!==false;
+    r.isolatedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.isolatedScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,exact:Number(v.exact)||0}]]:[];
+    }));
+    r.isolatedLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.isolatedLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
     r.permanenceEnabled=!!r.permanenceEnabled;
     r.permanenceSeed=cleanNumbers(r.permanenceSeed).slice(-70);
     if(!r.permanence||typeof r.permanence!=="object")r.permanence={books:{},applied:null};
@@ -4822,7 +4881,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", "6.6.43", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -4867,7 +4926,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   function settings() {
     return Object.fromEntries(
       [
-        "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
+        "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","isolatedEntryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
         "postLossEnabled",
         "postThreeEnabled",
         "postOneAllEnabled",
@@ -5551,6 +5610,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       turn = state.totalTurns + 1,
       trigger = before.at(-1);
     const block = before.length >= 8 ? currentBlock() || prepareBlock() : null;
+    const isolated=source==="TEMPO REAL"?isolatedEntryMotor(block):null;
     const cs = block?.global || [],
       forecasts = block?.variants || [];
     const timelineForecasts = [...snapshotTimelineForecasts(block),...preparePermanenceForecasts(block)];
@@ -5766,6 +5826,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       updateMaster(currentBlock());
     }
     terminalBank();
+    if(isolated)settleIsolatedEntry(state.ledger.at(-1),isolated);
     return state.ledger.at(-1);
   }
 
@@ -5777,7 +5838,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','isolatedEntryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  if(opts.fixedTerminalTrio)config.fixedTerminalTrio=copy(opts.fixedTerminalTrio);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
@@ -7493,7 +7554,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.43",
+    const VERSION = "6.6.44",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7816,13 +7877,13 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     }
 
     const TERMINAL_SUGGESTION_RULE="TRIOS_INDEPENDENTES_PROXIMO_V1";
-    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(state.lowNumberWeightEnabled?"_BAIXOS":"");}
+    function terminalSuggestionRule(){return TERMINAL_SUGGESTION_RULE+(useIntegratedLowWeight()?"_BAIXOS":"");}
     let terminalSuggestionCache=null;
     function terminalSuggestionCandidates(block=currentBlock(),nativeForecasts=null) {
       if(!block||state.history.length<8)return [];
       const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
       const signature=JSON.stringify([state.totalTurns,state.history,state.block.decisionTurn,terminalTrioKey(),
-        previous,currentTerminalCoverage(),state.lowNumberWeightEnabled,state.trainerChoice,state.globalStrategyPrevious]);
+        previous,currentTerminalCoverage(),useIntegratedLowWeight(),state.trainerChoice,state.globalStrategyPrevious]);
       if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
         return terminalSuggestionCache.rows;
       const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -8149,9 +8210,52 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       score:1-bestCost};
   }
 
+  // O ciclo de referência continua atualizando a indicação anterior ao peso.
+  // A cobertura efetivamente exibida e seu placar são decididos em separado.
+  function isolatedEntryActive(){
+    return !!state.isolatedEntryEnabled&&!!state.lowNumberWeightEnabled&&
+      !state.permanenceEnabled&&!state.secondHouse&&
+      ["FOLLOW_MASTER","TERMINAL_SUGGESTION"].includes(state.strategy);
+  }
+  function useIntegratedLowWeight(){
+    return state.lowNumberWeightEnabled&&!isolatedEntryActive();
+  }
+  function isolatedEntryMotor(block=currentBlock()){
+    if(!isolatedEntryActive()||!block)return null;
+    if(state.playLock?.motor)return copy(state.playLock.motor);
+    const original=activeMotor(block.global);
+    const changeTrio=state.strategy==="TERMINAL_SUGGESTION";
+    return applyLowNumberWeight(original,state.history,{isolated:true,changeTrio,
+      previous:state.isolatedLastTrios[state.strategy]||null});
+  }
+  function settleIsolatedEntry(row,motor){
+    if(!validPlay(motor?.play))return;
+    const id=state.strategy, play=motor.play, base=play.kind==="ROTATED33"?play.base:play;
+    const green=play.numbers.includes(row.number);
+    const stats=state.isolatedScores[id]||(state.isolatedScores[id]={total:0,green:0,exact:0});
+    stats.total++;
+    if(green)stats.green++;
+    if(green&&base.terminalDigits?.includes(row.number%10)&&!play.offset)stats.exact++;
+    if(base.terminalDigits)state.isolatedLastTrios[id]=[...base.terminalDigits];
+    row.isolatedEntry={id,result:green?"GREEN":"LOSS",beforeTurn:row.turn-1,
+      excluded:missing(play),trio:copy(base.terminalDigits||null),numberClass:recordedNumberClass(play,row.number),
+      motor:motor.key,source:motor.terminalSuggestionTarget?.id||motor.followTarget?.id||null};
+  }
+  function exactIsolatedLayout(weights){
+    let best=null,cost=Infinity;
+    for(const layout of standardTerminalLayouts()){
+      const [a,b,c,d]=layout.outside, score=weights[a]+weights[b]+weights[c]+weights[d];
+      if(score<cost-1e-12){best=layout;cost=score;}
+    }
+    if(!best)return null;
+    const blocks=best.centers.map((pos,i)=>({center:W[pos],radius:i?2:1,numbers:neighbors(W[pos],i?2:1)}));
+    const excluded=new Set(best.outside);
+    return {blocks,numbers:W.filter((_,i)=>!excluded.has(i)),score:1-cost};
+  }
+
   function applyLowNumberWeight(motor,history=state.history,options={}) {
-    if(!state.lowNumberWeightEnabled||!motor?.play)return motor;
-    const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA"}=options;
+    if(!motor?.play||!(options.isolated?state.lowNumberWeightEnabled:useIntegratedLowWeight()))return motor;
+    const {changeTrio=false,previous=null,mandatory=[],stage="ENTRADA",isolated=false}=options;
     if(motor.lowNumberWeight?.rule===LOW_NUMBER_WEIGHT_RULE&&stage==="ENTRADA")return motor;
     if(!validPlay(motor.play))return motor;
     const reading=terminalNextSearch(history);
@@ -8165,7 +8269,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       lowNumberWeightPrefix=reading.key;
     }
     const key=[coverageCode(motor.play),offset,terminal?base.terminalDigits.join():"",allowTrioChange?previous?.join()??"*":"",
-      preferred.join(),terminal?currentTerminalCoverage():""].join("|");
+      preferred.join(),terminal?currentTerminalCoverage():"",isolated].join("|");
     let play=lowNumberWeightCache.get(key);
     if(!play){
       const included=new Set(motor.play.numbers);
@@ -8173,7 +8277,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const j=mod(i+offset);
         return LOW_NUMBER_PRIOR[j]+.25*reading.weights[j]+(included.has(W[j])?.15/33:0);
       });
-      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):rawGeometry(w,preferred);
+      play=terminal?lowNumberTerminalPlan(w,allowTrioChange?null:base.terminalDigits,previous,preferred):isolated?exactIsolatedLayout(w):rawGeometry(w,preferred);
       if(!validPlay(play))return motor;
       lowNumberWeightCache.set(key,play);
       if(lowNumberWeightCache.size>1024)lowNumberWeightCache.delete(lowNumberWeightCache.keys().next().value);
@@ -11868,6 +11972,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       analysisSourceOrder: "CHRONOLOGICAL",
       structuralMemoryEnabled: false,
       lowNumberWeightEnabled:true,
+      isolatedEntryEnabled:true,isolatedScores:{},isolatedLastTrios:{},
         forecastVersion: VERSION,
         history: [],
         historyTurns: [],
@@ -11971,6 +12076,16 @@ const triangleMemory666 = createTriangleMemory666(W);
       if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.lowNumberWeightEnabled=r.lowNumberWeightEnabled!==false;
+    r.isolatedEntryEnabled=r.isolatedEntryEnabled!==false;
+    r.isolatedScores=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const v=r.isolatedScores?.[id];
+      return v&&Number.isSafeInteger(v.total)&&v.total>=0&&Number.isSafeInteger(v.green)&&v.green>=0&&v.green<=v.total
+        ?[[id,{total:v.total,green:v.green,exact:Number(v.exact)||0}]]:[];
+    }));
+    r.isolatedLastTrios=Object.fromEntries(["FOLLOW_MASTER","TERMINAL_SUGGESTION"].flatMap(id=>{
+      const trio=normalizeTerminalTrio(r.isolatedLastTrios?.[id]);
+      return trio?[[id,trio]]:[];
+    }));
     r.permanenceEnabled=!!r.permanenceEnabled;
     r.permanenceSeed=cleanNumbers(r.permanenceSeed).slice(-70);
     if(!r.permanence||typeof r.permanence!=="object")r.permanence={books:{},applied:null};
@@ -12068,7 +12183,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", "6.6.41", "6.6.42", "6.6.43", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -12113,7 +12228,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     function settings() {
       return Object.fromEntries(
         [
-          "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
+          "permanenceEnabled","rotationEnabled","terminalManual","fixedTerminalTrio","structuralMemoryEnabled","lowNumberWeightEnabled","isolatedEntryEnabled","strategy","followPreviousSelection","reorganizeTenEnabled","reorganizeTenDirection","readingSide","analysisSourceOrder",
           "postLossEnabled",
           "postThreeEnabled",
         "postOneAllEnabled",
@@ -12801,6 +12916,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         trigger = before.at(-1);
       const block =
         before.length >= 8 ? currentBlock() || prepareBlock() : null;
+      const isolated=source==="TEMPO REAL"?isolatedEntryMotor(block):null;
       const cs = block?.global || [],
         forecasts = block?.variants || [];
       const timelineForecasts = [...snapshotTimelineForecasts(block),...preparePermanenceForecasts(block)];
@@ -13016,6 +13132,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       updateMaster(currentBlock());
     }
     terminalBank();
+    if(isolated)settleIsolatedEntry(state.ledger.at(-1),isolated);
     return state.ledger.at(-1);
     }
 
@@ -13027,7 +13144,7 @@ function importFingerprint(value){
 }
 function describeImport(numbers,opts){
  const config={};
- for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
+ for(const key of ['rotationEnabled','structuralMemoryEnabled','lowNumberWeightEnabled','isolatedEntryEnabled','readingSide','reorganizeTenEnabled','reorganizeTenDirection','strategy','postLossEnabled','postThreeEnabled','postOneAllEnabled','postTwoAllEnabled','rank','manual','adaptive',
  'created','activeCreated','g1','g1Trainer','galeSkip','secondHouse'])config[key]=copy(opts[key]);
  if(opts.fixedTerminalTrio)config.fixedTerminalTrio=copy(opts.fixedTerminalTrio);
  return {version:VERSION,count:numbers.length,oldest:numbers[0],newest:numbers.at(-1),
@@ -14650,8 +14767,8 @@ state.importAudit=describeImport(clean,opts);
         const row = state.ledger.at(-1);
         state.manualLog.push({
           id: Date.now()+"_"+state.totalTurns,turn:state.totalTurns,number:data.number,
-          result:row.result,profit:row.profit,strategy:row.strategy,motor:row.motor,
-          phase:row.phase,controller:row.controller,masterTarget:copy(row.masterTarget),followTarget:copy(row.followTarget),
+          result:row.isolatedEntry?.result||row.result,profit:row.isolatedEntry?profit(row.isolatedEntry.result):row.profit,strategy:row.strategy,motor:row.isolatedEntry?.motor||row.motor,
+          phase:row.isolatedEntry?"ENTRY":row.phase,controller:row.controller,masterTarget:copy(row.masterTarget),followTarget:copy(row.followTarget),isolatedEntry:copy(row.isolatedEntry||null),
           playRoute:row.playRoute,postLossTarget:copy(row.postLossTarget),timestamp:Date.now()
         });
         state.manualCount++;
@@ -14982,7 +15099,7 @@ state.importAudit=describeImport(clean,opts);
       state.playLock=null;
     }else{
       const block=currentBlock();
-      const motor=state.defense||state.cycle?.original||(block?activeMotor(block.global):null);
+      const motor=isolatedEntryActive()?isolatedEntryMotor(block):(state.defense||state.cycle?.original||(block?activeMotor(block.global):null));
       if(!validPlay(motor?.play))return false;
       state.playLock={motor:copy(motor),definition:copy(activeDefinition()),
         notice:$("selected")?.textContent||"",turn:state.totalTurns};
@@ -15127,11 +15244,12 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     if(picker){picker.hidden=state.strategy!=="TERMINALS";picker.value=state.terminalManual||"";}
     const block = currentBlock(),
       definition = activeDefinition();
-    const motor =
+    const porGiro=isolatedEntryActive();
+    const motor = porGiro?isolatedEntryMotor(block):(
       state.playLock?.motor ||
       state.defense ||
       state.cycle?.original ||
-      (block ? activeMotor(block.global) : null);
+      (block ? activeMotor(block.global) : null));
     $("status").textContent =
       state.block.size +
       " NA JANELA + " +
@@ -15139,7 +15257,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       " NOVOS • GIRO " +
       state.totalTurns +
       " • " +
-      state.phase +
+      (porGiro?"ENTRADA POR GIRO":state.phase) +
       (saveError ? " • FALHA AO SALVAR: " + saveError : "");
     $("counter").textContent = state.block.size + " / 70";
     $("barfill").style.width = (100 * state.block.size) / 70 + "%";
@@ -15154,7 +15272,7 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
           ? "INDICAÇÃO INVERSA A CADA GIRO • BANCOS A CADA DEZ"
           : "JOGADAS FIXAS • RECALIBRA AO COMPLETAR DEZ NOVOS")
         : "PREPARANDO PRÓXIMA JOGADA");
-    $("cycleInfo").textContent = cycleIsFree()
+    $("cycleInfo").textContent = porGiro?"ENTRADA NOVA A CADA GIRO • SEM G1 NO PLACAR":cycleIsFree()
       ? "CICLO LIVRE"
       : "CICLO " + state.phase + " • JOGADA E DEFESA PRESERVADAS";
     $("selected").textContent =
@@ -15232,8 +15350,9 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
     $("general").hidden = !state.open.general;
     if (state.open.general) {
       patchHTML($("general"),
-        '<div class="title">RESULTADOS DA JANELA</div>' +
-        resultsSeparatedHTML(state.ledger) +
+        (porGiro?isolatedScoreHTML():'<div class="title">RESULTADOS DA JANELA</div>') +
+        (porGiro?'<details><summary>CICLO DE REFERÊNCIA (RANKING)</summary>':'')+
+        resultsSeparatedHTML(state.ledger) + (porGiro?'</details>':'')+
         '<details><summary>MANUAIS ARQUIVADOS</summary>'+resultsSeparatedHTML(state.manualLog)+'</details>'+reanalysisSummaryHTML());
     }
     const target =
@@ -15274,6 +15393,12 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       if(play?.omittedTerminalNeighbours?.length)
         $("selected").textContent+=" • VIZINHO FORA DO ENCAIXE: "+play.omittedTerminalNeighbours.map(n=>W[mod(ix(n)+(motor.play.offset||0))]).join(" • ");
       $("selected").className="playNotice terminalNotice";
+    }
+    if(porGiro){
+      const play=motor?.play?.kind==="ROTATED33"?motor.play.base:motor?.play;
+      const label=motor?.terminalSuggestionTarget?.name||motor?.followTarget?.name||definition.name;
+      $("selected").textContent="ENTRADA POR GIRO • "+label+
+        (play?.terminalDigits?(motor.fixedTerminalTrio?" • TRIO FIXO • FORÇA: ":" • TERMINAIS USADOS: ")+play.terminalDigits.join(" • "):"");
     }
     if(state.playLock?.notice)$("selected").textContent=state.playLock.notice;
     if(state.permanenceEnabled&&!state.playLock){
@@ -15471,11 +15596,12 @@ if(!isCurrentApp())return;
         id: Date.now() + "_" + state.totalTurns,
         turn: state.totalTurns,
         number,
-        result: row.result,
-        profit: row.profit,
+        result: row.isolatedEntry?.result||row.result,
+        profit: row.isolatedEntry?profit(row.isolatedEntry.result):row.profit,
+        isolatedEntry:copy(row.isolatedEntry||null),
         strategy: row.strategy,
-        motor: row.motor,
-        phase: row.phase,
+        motor: row.isolatedEntry?.motor||row.motor,
+        phase: row.isolatedEntry?"ENTRY":row.phase,
         controller: row.controller,
         masterTarget: copy(row.masterTarget),
         followTarget: copy(row.followTarget),
@@ -15746,7 +15872,20 @@ if(!isCurrentApp())return;
     const definition = timelineDefinitions().find(def => def.id === id);
     return {id, name:definition?.name || baseActiveDefinition().name};
   }
+  function isolatedScoreHTML(){
+    const p=state.isolatedScores[state.strategy]||{green:0,total:0};
+    return '<div class="selectedTimelineLabel">POR GIRO • <strong class="good">'+p.green+
+      ' GREEN DE PRIMEIRA</strong> / '+p.total+' • <span class="bad">'+(p.total-p.green)+' LOSS</span></div>';
+  }
   function renderSelectedTimeline(motor) {
+    if(isolatedEntryActive()){
+      const rows=state.ledger.filter(row=>row.isolatedEntry?.id===state.strategy).slice(-20);
+      patchHTML($("coverage"),isolatedScoreHTML()+'<div class="timelineCells">'+rows.map(row=>{
+        const green=row.isolatedEntry.result==="GREEN";
+        return '<span class="wlCell '+(green?"wlWin":"wlLoss")+'" title="GIRO '+row.turn+'">'+(green?"W":"R")+'</span>';
+      }).join("")+'</div>');
+      return;
+    }
     const identity = selectedTimelineIdentity(motor);
     patchHTML($("coverage"), '<div class="selectedTimelineLabel">' + esc(identity.name || "JOGADA SELECIONADA") +
       '</div><div class="timelineCells" aria-label="Linha do tempo da jogada selecionada">' + timelineCellsHTML(identity.id) + '</div>');
@@ -15897,8 +16036,8 @@ if(!isCurrentApp())return;
 
   function terminalHistoryContext() {
     if(!["TERMINALS","TERMINAL_SUGGESTION"].includes(state.strategy))return null;
-    const motor=state.playLock?.motor || state.defense || state.cycle?.original ||
-      (currentBlock()?activeMotor(currentBlock().global):null);
+    const motor=isolatedEntryActive()?isolatedEntryMotor():(state.playLock?.motor || state.defense || state.cycle?.original ||
+      (currentBlock()?activeMotor(currentBlock().global):null));
     const play=motor?.play;
     const base=play?.kind==="ROTATED33"?play.base:play;
     if(base?.kind!=="TERMINALS33" || !validPlay(play))return null;
@@ -15950,7 +16089,8 @@ if(!isCurrentApp())return;
           row = item.pending
             ? null
             : state.ledger.find((r) => r.turn === item.turn);
-        const result = item.pending ? "" : row?.result || "HISTÓRICO";
+        const porGiro=isolatedEntryActive()?row?.isolatedEntry:null;
+        const result = item.pending ? "" : isolatedEntryActive()?porGiro?.result||"HISTÓRICO":row?.result || "HISTÓRICO";
         const cls =
           result === "LOSS"
             ? "loss"
@@ -15961,7 +16101,7 @@ if(!isCurrentApp())return;
                 : "";
         const appearance=item.pending?null:terminalHistoryAppearance(n,terminalContext);
         // Borders describe the current terminals; the digit describes this past entry.
-        const savedNumberClass=row?.terminalNumberClass;
+        const savedNumberClass=porGiro?.numberClass||row?.terminalNumberClass;
         const numberClass=["terminalNumberNeighbour","terminalNumberSingle","terminalNumberUncovered"].includes(savedNumberClass)
           ? savedNumberClass : recordedNumberClass(row?.play,n);
         if(appearance){
@@ -16196,6 +16336,7 @@ if(!isCurrentApp())return;
 </main>`;
 
   for (const [field, label] of [
+    ["isolatedEntryEnabled", "ENTRADA POR GIRO • INDICAÇÃO / SUGESTÃO"],
     ["lowNumberWeightEnabled", "PESO PARA NÚMEROS BAIXOS"],
     ["g1Trainer", "TREINADOR GLOBAL G1"],
     ["g1", "G1 AJUSTE FINO"],
@@ -16420,7 +16561,7 @@ return {
  select(id){selectTimeline(id);},
  // Exportação para conferência dos testes e dos registros, sem tocar no motor.
  summary(){return {side,version:VERSION,turn:state.totalTurns,phase:state.phase,
-  history:[...state.history],audit:copy(state.importAudit),metrics:metrics(state.ledger),
+  history:[...state.history],audit:copy(state.importAudit),metrics:metrics(state.ledger),isolatedScores:copy(state.isolatedScores),
   timelineIds:timelineDefinitions().map(d=>d.id),manual:state.manualLog.map(r=>r.number)};}
 };
 
@@ -16525,7 +16666,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.43</h1>
+<h1>ANÁLISE BETA 6.6.44</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
