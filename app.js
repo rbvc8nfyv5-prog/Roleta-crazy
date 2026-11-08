@@ -1,3 +1,10 @@
+/* ANÁLISE BETA 6.6.37 — INDICAÇÃO MASTER E DEFESA G1
+   Normal: entrada no bloco de dez, sem mudar ranking ou cobertura.
+   Inversa: pesos do motor indicado atualizados a cada giro; cobertura exata de 33.
+   Memória por lado: falha de primeira é registrada antes do desfecho do G1.
+   G1 da Indicação Master: Reconstrução só recebe bônus com ganho na leitura atual.
+   Sessão, travas, rotação, terminais, pós-loss e outras estratégias preservados.
+*/
 /* V6.6.36 — VISUAL DOS ÚLTIMOS 14 NO MODO TERMINAIS.
 Segunda borda independente: primeiro terminal laranja, segundo rosa, terceiro azul.
 Inclui os vizinhos de cada terminal e respeita a atribuição sequencial pelas sobras.
@@ -254,7 +261,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.36",
+  const VERSION = "6.6.37",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -2771,7 +2778,7 @@ const triangleMemory666 = createTriangleMemory666(W);
   }
 
   function spatialRead(h, forceHistorical = false) {
-    if(!forceHistorical&&momentIsFixed())h=state.block.anchor;
+    if(!forceHistorical&&!readingFollowLive&&momentIsFixed())h=state.block.anchor;
     h = h.slice(-WINDOW);
     const key = h.join(",");
     if (spaceCache.has(key)) return spaceCache.get(key);
@@ -3816,14 +3823,15 @@ const triangleMemory666 = createTriangleMemory666(W);
       .sort((a, b) => b.score - a.score || b.numberTotal - a.numberTotal);
   }
 
-  function chooseG1(original, trigger, h, strategy) {
-    const ranked = rankDefenses(
+  function chooseG1(original, trigger, h, strategy, followContextual=false) {
+    let ranked = rankDefenses(
       defenses(original, trigger, h, strategy),
       strategy,
       h,
       trigger,
     );
     if (!ranked.length) return null;
+    if (followContextual) ranked=adjustFollowG1(ranked,h);
     let c = ranked[0];
     const frozen = ranked.find((x) => x.mode === "CONGELADA");
     if (
@@ -3831,7 +3839,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       c !== frozen &&
       c.total < 8 &&
       c.numberTotal < 4 &&
-      c.score - frozen.score < 0.025
+      c.score - frozen.score < 0.025 && !c.reconstructionBonus
     )
       c = frozen;
     return {
@@ -3846,8 +3854,11 @@ const triangleMemory666 = createTriangleMemory666(W);
       numberHits: c.numberHits,
       numberLoss: c.numberLoss,
       uncovered: c.uncovered,
+      reconstructionBonus: c.reconstructionBonus||0,
       alternatives: ranked.map((o) => ({
         mode: o.mode,
+        reconstructionBonus: o.reconstructionBonus||0,
+        liveCoverageGain: o.liveCoverageGain||0,
         score: o.score,
         spatialScore: o.spatialScore,
         contextTotal: o.contextTotal,
@@ -3904,9 +3915,9 @@ const triangleMemory666 = createTriangleMemory666(W);
     state.g1Pending = [];
   }
 
-  function standardDecision(motor, n, h, strategy) {
+  function standardDecision(motor, n, h, strategy, followContextual=false) {
     return state.g1Trainer
-      ? chooseG1(motor, n, h, strategy)
+      ? chooseG1(motor, n, h, strategy, followContextual)
       : {
           motor: state.g1 ? fineG1(motor, n, h) : copy(motor),
           mode: state.g1 ? "AJUSTE FINO" : "CONGELADA",
@@ -3922,7 +3933,9 @@ const triangleMemory666 = createTriangleMemory666(W);
     const independent=sessionG1Decision(motor,n,after,turn,true);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
-      : standardDecision(motor, n, after, strategy));
+      : standardDecision(motor, n, after, strategy,
+        !state.importTrainingActive && state.cycle.controller==="FOLLOW_MASTER" &&
+        !!motor.followTarget && !terminalPlay(motor.play)));
     state.cycle.decision = d;
     state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -4397,6 +4410,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
       masterChoice: null,
       masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
+      followEntryMemory: [], followPreview: null,
       masterResumeTurn: 0,
       globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -4468,6 +4482,11 @@ const triangleMemory666 = createTriangleMemory666(W);
     for (const key of Object.keys(r))
       if (data?.[key] !== undefined) r[key] = data[key];
     r.history = cleanNumbers(r.history);
+    r.followEntryMemory = Array.isArray(r.followEntryMemory) ? r.followEntryMemory.filter(row=>
+      Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
+      row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+      Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+    if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.permanenceEnabled=!!r.permanenceEnabled;
     r.permanenceSeed=cleanNumbers(r.permanenceSeed).slice(-70);
@@ -4566,7 +4585,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     r.forecastVersion = VERSION;
@@ -4711,14 +4730,14 @@ const triangleMemory666 = createTriangleMemory666(W);
       size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
   }
 
-  function reorganizedMotorReading(numbers) {
+  function reorganizedMotorReading(numbers, reorganize=state.reorganizeTenEnabled, sources=state.sources) {
     let received = [...numbers];
     if (state.readingSide === "INVERTIDO" && state.analysisSourceOrder === "LEGACY_REVERSED_IMPORT") {
       let imported = 0;
-      while (imported < received.length && state.sources[imported] !== "TEMPO REAL") imported++;
+      while (imported < received.length && sources[imported] !== "TEMPO REAL") imported++;
       received = [...received.slice(0, imported).reverse(), ...received.slice(imported)];
     }
-    if (!state.reorganizeTenEnabled)
+    if (!reorganize)
       return state.readingSide === "INVERTIDO" ? received.reverse() : received;
     const organized = [];
     const direction = state.readingSide === "INVERTIDO" ? -1 : 1;
@@ -4834,13 +4853,147 @@ const triangleMemory666 = createTriangleMemory666(W);
     return { ...choice.motor, autoRank: choice.rank };
   }
 
-  function followIndicationMotor(block = currentBlock()) {
+  // A memória guarda previsões e resultados observados, nunca o resultado
+  // do giro que está sendo preparado. Cada lado tem seu próprio estado.
+  let readingFollowLive = false;
+
+  function followContext(h) {
+    if (h.length < 3) return null;
+    const [a,b,c] = h.slice(-3);
+    return [direction(a,b),direction(b,c),distance(a,c)];
+  }
+
+  function recordFollowEntry(before, played, n, turn, result) {
+    if (!played?.followTarget || !["GREEN","GALE"].includes(result) ||
+        !validPlay(played.play) || terminalPlay(played.play)) return;
+    const shape=followContext(before);
+    if (!shape) return;
+    const entries=state.followEntryMemory;
+    entries.push({turn,shape,next:direction(before.at(-1),n),
+      hit:result==="GREEN",excluded:missing(played.play)});
+    if (entries.length>120) entries.shift();
+  }
+
+  function followContextWeights(weights,before,basePlay) {
+    const shape=followContext(before);
+    if (!shape) return {samples:0,protected:[]};
+    const mass=Array(37).fill(0),hits=Array(37).fill(0),misses=Array(37).fill(0);
+    let samples=0,total=0;
+    for (const r of state.followEntryMemory) {
+      if (r.turn>state.totalTurns) continue;
+      const [a,b,close]=r.shape;
+      const d=Math.abs(a-shape[0])+Math.abs(b-shape[1])+Math.abs(close-shape[2]);
+      if (Math.sign(a)!==Math.sign(shape[0]) || Math.sign(b)!==Math.sign(shape[1]) ||
+          Math.abs(a-shape[0])>3 || Math.abs(b-shape[1])>3 || Math.abs(close-shape[2])>4) continue;
+      const pos=mod(ix(before.at(-1))+r.next);
+      const w=Math.exp(-d/6)*Math.exp(-(state.totalTurns-r.turn)/70);
+      mass[pos]+=w; total+=w; samples++;
+      (r.hit?hits:misses)[pos]++;
+    }
+    const protectedNumbers=[];
+    if (samples>=3 && total>0) {
+      const scale=avg(weights)||1;
+      for (const n of missing(basePlay)) {
+        const pos=ix(n);
+        // Um caso isolado não entra. Inclui também os acertos na evidência
+        // e exige pelo menos uma exclusão errada observada nesse salto.
+        if (hits[pos]+misses[pos]<2 || !misses[pos]) continue;
+        const share=mass[pos]/total;
+        if (share<.25) continue;
+        weights[pos]+=scale*.18*(samples/(samples+4))*Math.min(1,share/.5);
+        protectedNumbers.push(n);
+      }
+    }
+    return {samples,protected:protectedNumbers};
+  }
+
+  function followLiveWeights(m,h) {
+    const parts=m.key?.match(/(RX_DINAMICO|RX_NORMAL|DINAMICO|NORMAL)_([456])$/);
+    const family=m.family||parts?.[1], radius=m.radius||Number(parts?.[2]);
+    if (!FAMILIES.includes(family)||!RADII.includes(radius)) return null;
+    const base=weightsFor(h,family,radius);
+    return m.owner && m.variation>=1 && m.variation<=8 && VARIANT_OWNERS.some(o=>o.id===m.owner)
+      ? variantAnalyticalWeights(h,family,radius,m.owner,m.variation,base,spatialRead(h)) : base;
+  }
+
+  function followPreviewKey(m) {
+    return JSON.stringify([VERSION,state.totalTurns,state.block.revision,state.block.decisionTurn,
+      state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled,
+      m.followTarget.id,m.key,coverageCode(m.play)]);
+  }
+
+  function prepareFollowPreview(block=currentBlock()) {
+    if (state.readingSide!=="INVERTIDO" || state.strategy!=="FOLLOW_MASTER" || state.importTrainingActive || !block) return;
+    const m=followIndicationMotor(block,false);
+    if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
+    const key=followPreviewKey(m);
+    if (state.followPreview?.key===key) return;
+    // O prefixo é do giro mais recente conhecido; a ordem da Inversa
+    // respeita a configuração usada na calibração do bloco.
+    const before=state.history.slice(-WINDOW);
+    const h=reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW));
+    readingFollowLive=true;
+    let play, context, method="PESOS DO MOTOR";
+    try {
+      let weights=followLiveWeights(m,h);
+      if (!weights && ["UNION","CONSENSUS"].includes(m.key)) {
+        method="PESOS DA COMPOSIÇÃO";
+        const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
+        const members=m.key==="UNION"?bank.slice(0,3):bank;
+        weights=Array(37).fill(0);
+        for (const member of members) {
+          const w=followLiveWeights(member,h), p=w?geometry(w):member.play;
+          for (const n of p.numbers) weights[ix(n)]+=1/(1+member.rank*.1);
+        }
+        applySpatial(weights,h,.25);
+      }
+      if (!weights) {
+        method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
+        weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
+        applySpatial(weights,h,.30);
+      }
+      const unadjusted=geometry(weights);
+      if (!validPlay(unadjusted)) {state.followPreview=null; return;}
+      context=followContextWeights(weights,before,unadjusted);
+      play=context.protected.length?geometry(weights):unadjusted;
+      context.included=context.protected.filter(n=>play?.numbers.includes(n));
+    } finally { readingFollowLive=false; }
+    state.followPreview=validPlay(play)?{key,play,audit:{
+      through:state.totalTurns,windowSize:before.length,method,previousExcluded:missing(m.play),excluded:missing(play),...context
+    }}:null;
+  }
+
+  function followPreviewMotor(m) {
+    if (state.readingSide!=="INVERTIDO" || state.importTrainingActive ||
+        state.playLock || state.rotationEnabled || state.permanenceEnabled ||
+        state.secondHouse || terminalPlay(m.play)) return m;
+    const p=state.followPreview;
+    return p?.key===followPreviewKey(m) && validPlay(p.play)
+      ? {...m,play:copy(p.play),score:p.play.score,followReading:copy(p.audit)} : m;
+  }
+
+  function adjustFollowG1(ranked,h) {
+    if (ranked.length<2 || h.length<3) return ranked;
+    const recon=ranked.find(o=>o.mode==="RECONSTRUÇÃO");
+    const frozen=ranked.find(o=>o.mode==="CONGELADA");
+    if (!recon || !frozen || coverageCode(recon.motor.play)===coverageCode(frozen.motor.play)) return ranked;
+    const latest=spatialRead(h,true).weights, total=latest.reduce((a,b)=>a+b,0);
+    const cover=o=>o.motor.play.numbers.reduce((s,n)=>s+latest[ix(n)],0)/total;
+    const gain=cover(recon)-Math.max(...ranked.filter(o=>o!==recon).map(cover));
+    const shifted=recon.behavior!=="CONTINUIDADE" || distance(h.at(-2),h.at(-1))>=10;
+    if (!shifted || gain<=.002) return ranked;
+    const bonus=Math.min(.04,2*gain);
+    return ranked.map(o=>o===recon?{...o,score:o.score+bonus,reconstructionBonus:bonus,liveCoverageGain:gain}:o)
+      .sort((a,b)=>b.score-a.score || b.numberTotal-a.numberTotal);
+  }
+
+  function followIndicationMotor(block = currentBlock(), usePreview = true) {
     if (!block) return null;
     const indication = state.block.best || masterRanking(block)[0];
     if (!indication) return null;
     const motor = masterCandidateMotor(indication, block);
     if (!validPlay(motor?.play)) return null;
-    return {
+    const indicated = {
       ...copy(motor),
       followTarget: {
         id: indication.id,
@@ -4850,6 +5003,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         calibrationTurn: state.block.decisionTurn
       }
     };
+    return usePreview ? followPreviewMotor(indicated) : indicated;
   }
 
   function followIndicationDefinition() {
@@ -5189,6 +5343,8 @@ const triangleMemory666 = createTriangleMemory666(W);
       state.cycle = null;
       state.defense = null;
     }
+    if (controller==="FOLLOW_MASTER" && phaseBefore==="ENTRY")
+      recordFollowEntry(before,played,n,turn,result);
     recordMasterCycle(controller, oldCycle, played, result, turn);
     settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -5222,7 +5378,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
     state.ledger.push({
       readingAudit: {
-        version: "6.6.36", ordering: state.block.reorganizedActive
+        version: VERSION, ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -5233,6 +5389,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
         readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play ? motorHit(played,n) : null,
+        followReading: copy(played?.followReading||null),
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
       controller,
@@ -7032,7 +7189,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.36",
+    const VERSION = "6.6.37",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -9557,7 +9714,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
 
     function spatialRead(h, forceHistorical = false) {
-    if(!forceHistorical&&momentIsFixed())h=state.block.anchor;
+    if(!forceHistorical&&!readingFollowLive&&momentIsFixed())h=state.block.anchor;
       h = h.slice(-WINDOW);
       const key = h.join(",");
       if (spaceCache.has(key)) return spaceCache.get(key);
@@ -10621,14 +10778,15 @@ const triangleMemory666 = createTriangleMemory666(W);
         .sort((a, b) => b.score - a.score || b.numberTotal - a.numberTotal);
     }
 
-    function chooseG1(original, trigger, h, strategy) {
-      const ranked = rankDefenses(
+    function chooseG1(original, trigger, h, strategy, followContextual=false) {
+      let ranked = rankDefenses(
         defenses(original, trigger, h, strategy),
         strategy,
         h,
         trigger,
       );
       if (!ranked.length) return null;
+      if (followContextual) ranked=adjustFollowG1(ranked,h);
       let c = ranked[0];
       const frozen = ranked.find((x) => x.mode === "CONGELADA");
       if (
@@ -10636,7 +10794,7 @@ const triangleMemory666 = createTriangleMemory666(W);
         c !== frozen &&
         c.total < 8 &&
         c.numberTotal < 4 &&
-        c.score - frozen.score < 0.025
+        c.score - frozen.score < 0.025 && !c.reconstructionBonus
       )
         c = frozen;
       return {
@@ -10651,8 +10809,11 @@ const triangleMemory666 = createTriangleMemory666(W);
         numberHits: c.numberHits,
         numberLoss: c.numberLoss,
         uncovered: c.uncovered,
+        reconstructionBonus: c.reconstructionBonus||0,
         alternatives: ranked.map((o) => ({
           mode: o.mode,
+          reconstructionBonus: o.reconstructionBonus||0,
+          liveCoverageGain: o.liveCoverageGain||0,
           score: o.score,
           spatialScore: o.spatialScore,
           contextTotal: o.contextTotal,
@@ -10709,9 +10870,9 @@ const triangleMemory666 = createTriangleMemory666(W);
       state.g1Pending = [];
     }
 
-    function standardDecision(motor, n, h, strategy) {
+    function standardDecision(motor, n, h, strategy, followContextual=false) {
       return state.g1Trainer
-        ? chooseG1(motor, n, h, strategy)
+        ? chooseG1(motor, n, h, strategy, followContextual)
         : {
             motor: state.g1 ? fineG1(motor, n, h) : copy(motor),
             mode: state.g1 ? "AJUSTE FINO" : "CONGELADA",
@@ -10727,7 +10888,9 @@ const triangleMemory666 = createTriangleMemory666(W);
       const independent=sessionG1Decision(motor,n,after,turn,true);
     const d = independent || ((state.playLock?.motor || (motor?.permanenceTarget?.period>1 ? motor : null))
       ? {motor:copy(state.playLock?.motor||motor),mode:"CONGELADA",behavior:"CONTINUIDADE",spatialKeys:[...spatialRead(after).keys]}
-      : standardDecision(motor, n, after, strategy));
+      : standardDecision(motor, n, after, strategy,
+        !state.importTrainingActive && state.cycle.controller==="FOLLOW_MASTER" &&
+        !!motor.followTarget && !terminalPlay(motor.play)));
       state.cycle.decision = d;
       state.defense = copy(d?.motor || motor);
     if(terminalPlay(state.defense?.play))state.defense.terminalCoverage=motor.terminalCoverage||"ALL";
@@ -11222,6 +11385,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       fixedTerminalTrio:null,
         masterChoice: null,
         masterHistory: [], masterLessons:[],masterReviews:[],importReanalyses:[],reanalysisPolicies:[],
+        followEntryMemory: [], followPreview: null,
         masterResumeTurn: 0,
         globalStrategyPrevious: null,
       followPreviousSelection: null,
@@ -11293,6 +11457,11 @@ const triangleMemory666 = createTriangleMemory666(W);
       for (const key of Object.keys(r))
         if (data?.[key] !== undefined) r[key] = data[key];
       r.history = cleanNumbers(r.history);
+      r.followEntryMemory = Array.isArray(r.followEntryMemory) ? r.followEntryMemory.filter(row=>
+        Number.isInteger(row?.turn) && Array.isArray(row.shape) && row.shape.length===3 &&
+        row.shape.every(x=>Number.isInteger(x)&&Math.abs(x)<=18) &&
+        Number.isInteger(row.next) && Math.abs(row.next)<=18).slice(-120) : [];
+      if (!validPlay(r.followPreview?.play)) r.followPreview=null;
     r.fixedTerminalTrio=normalizeTerminalTrio(r.fixedTerminalTrio);
     r.permanenceEnabled=!!r.permanenceEnabled;
     r.permanenceSeed=cleanNumbers(r.permanenceSeed).slice(-70);
@@ -11391,7 +11560,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       r.forecastVersion = VERSION;
@@ -11536,14 +11705,14 @@ const triangleMemory666 = createTriangleMemory666(W);
       size:state.block.anchor.length,interval:10,mode:'FIXED_TEN',replayed:false};
   }
 
-  function reorganizedMotorReading(numbers) {
+  function reorganizedMotorReading(numbers, reorganize=state.reorganizeTenEnabled, sources=state.sources) {
     let received = [...numbers];
     if (state.readingSide === "INVERTIDO" && state.analysisSourceOrder === "LEGACY_REVERSED_IMPORT") {
       let imported = 0;
-      while (imported < received.length && state.sources[imported] !== "TEMPO REAL") imported++;
+      while (imported < received.length && sources[imported] !== "TEMPO REAL") imported++;
       received = [...received.slice(0, imported).reverse(), ...received.slice(imported)];
     }
-    if (!state.reorganizeTenEnabled)
+    if (!reorganize)
       return state.readingSide === "INVERTIDO" ? received.reverse() : received;
     const organized = [];
     const direction = state.readingSide === "INVERTIDO" ? -1 : 1;
@@ -11661,13 +11830,147 @@ const triangleMemory666 = createTriangleMemory666(W);
       return { ...choice.motor, autoRank: choice.rank };
     }
 
-    function followIndicationMotor(block = currentBlock()) {
+  // A memória guarda previsões e resultados observados, nunca o resultado
+  // do giro que está sendo preparado. Cada lado tem seu próprio estado.
+  let readingFollowLive = false;
+
+  function followContext(h) {
+    if (h.length < 3) return null;
+    const [a,b,c] = h.slice(-3);
+    return [direction(a,b),direction(b,c),distance(a,c)];
+  }
+
+  function recordFollowEntry(before, played, n, turn, result) {
+    if (!played?.followTarget || !["GREEN","GALE"].includes(result) ||
+        !validPlay(played.play) || terminalPlay(played.play)) return;
+    const shape=followContext(before);
+    if (!shape) return;
+    const entries=state.followEntryMemory;
+    entries.push({turn,shape,next:direction(before.at(-1),n),
+      hit:result==="GREEN",excluded:missing(played.play)});
+    if (entries.length>120) entries.shift();
+  }
+
+  function followContextWeights(weights,before,basePlay) {
+    const shape=followContext(before);
+    if (!shape) return {samples:0,protected:[]};
+    const mass=Array(37).fill(0),hits=Array(37).fill(0),misses=Array(37).fill(0);
+    let samples=0,total=0;
+    for (const r of state.followEntryMemory) {
+      if (r.turn>state.totalTurns) continue;
+      const [a,b,close]=r.shape;
+      const d=Math.abs(a-shape[0])+Math.abs(b-shape[1])+Math.abs(close-shape[2]);
+      if (Math.sign(a)!==Math.sign(shape[0]) || Math.sign(b)!==Math.sign(shape[1]) ||
+          Math.abs(a-shape[0])>3 || Math.abs(b-shape[1])>3 || Math.abs(close-shape[2])>4) continue;
+      const pos=mod(ix(before.at(-1))+r.next);
+      const w=Math.exp(-d/6)*Math.exp(-(state.totalTurns-r.turn)/70);
+      mass[pos]+=w; total+=w; samples++;
+      (r.hit?hits:misses)[pos]++;
+    }
+    const protectedNumbers=[];
+    if (samples>=3 && total>0) {
+      const scale=avg(weights)||1;
+      for (const n of missing(basePlay)) {
+        const pos=ix(n);
+        // Um caso isolado não entra. Inclui também os acertos na evidência
+        // e exige pelo menos uma exclusão errada observada nesse salto.
+        if (hits[pos]+misses[pos]<2 || !misses[pos]) continue;
+        const share=mass[pos]/total;
+        if (share<.25) continue;
+        weights[pos]+=scale*.18*(samples/(samples+4))*Math.min(1,share/.5);
+        protectedNumbers.push(n);
+      }
+    }
+    return {samples,protected:protectedNumbers};
+  }
+
+  function followLiveWeights(m,h) {
+    const parts=m.key?.match(/(RX_DINAMICO|RX_NORMAL|DINAMICO|NORMAL)_([456])$/);
+    const family=m.family||parts?.[1], radius=m.radius||Number(parts?.[2]);
+    if (!FAMILIES.includes(family)||!RADII.includes(radius)) return null;
+    const base=weightsFor(h,family,radius);
+    return m.owner && m.variation>=1 && m.variation<=8 && VARIANT_OWNERS.some(o=>o.id===m.owner)
+      ? variantAnalyticalWeights(h,family,radius,m.owner,m.variation,base,spatialRead(h)) : base;
+  }
+
+  function followPreviewKey(m) {
+    return JSON.stringify([VERSION,state.totalTurns,state.block.revision,state.block.decisionTurn,
+      state.block.reorganizedActive,state.analysisSourceOrder,state.structuralMemoryEnabled,
+      m.followTarget.id,m.key,coverageCode(m.play)]);
+  }
+
+  function prepareFollowPreview(block=currentBlock()) {
+    if (state.readingSide!=="INVERTIDO" || state.strategy!=="FOLLOW_MASTER" || state.importTrainingActive || !block) return;
+    const m=followIndicationMotor(block,false);
+    if (!m || terminalPlay(m.play)) {state.followPreview=null; return;}
+    const key=followPreviewKey(m);
+    if (state.followPreview?.key===key) return;
+    // O prefixo é do giro mais recente conhecido; a ordem da Inversa
+    // respeita a configuração usada na calibração do bloco.
+    const before=state.history.slice(-WINDOW);
+    const h=reorganizedMotorReading(before,state.block.reorganizedActive,state.sources.slice(-WINDOW));
+    readingFollowLive=true;
+    let play, context, method="PESOS DO MOTOR";
+    try {
+      let weights=followLiveWeights(m,h);
+      if (!weights && ["UNION","CONSENSUS"].includes(m.key)) {
+        method="PESOS DA COMPOSIÇÃO";
+        const bank=block.variants.find(f=>f.bankId===m.bankId)?.motors||block.global;
+        const members=m.key==="UNION"?bank.slice(0,3):bank;
+        weights=Array(37).fill(0);
+        for (const member of members) {
+          const w=followLiveWeights(member,h), p=w?geometry(w):member.play;
+          for (const n of p.numbers) weights[ix(n)]+=1/(1+member.rank*.1);
+        }
+        applySpatial(weights,h,.25);
+      }
+      if (!weights) {
+        method="COMBINAÇÃO HISTÓRICA + LEITURA ATUAL";
+        weights=W.map(n=>m.play.numbers.includes(n)?1:.65);
+        applySpatial(weights,h,.30);
+      }
+      const unadjusted=geometry(weights);
+      if (!validPlay(unadjusted)) {state.followPreview=null; return;}
+      context=followContextWeights(weights,before,unadjusted);
+      play=context.protected.length?geometry(weights):unadjusted;
+      context.included=context.protected.filter(n=>play?.numbers.includes(n));
+    } finally { readingFollowLive=false; }
+    state.followPreview=validPlay(play)?{key,play,audit:{
+      through:state.totalTurns,windowSize:before.length,method,previousExcluded:missing(m.play),excluded:missing(play),...context
+    }}:null;
+  }
+
+  function followPreviewMotor(m) {
+    if (state.readingSide!=="INVERTIDO" || state.importTrainingActive ||
+        state.playLock || state.rotationEnabled || state.permanenceEnabled ||
+        state.secondHouse || terminalPlay(m.play)) return m;
+    const p=state.followPreview;
+    return p?.key===followPreviewKey(m) && validPlay(p.play)
+      ? {...m,play:copy(p.play),score:p.play.score,followReading:copy(p.audit)} : m;
+  }
+
+  function adjustFollowG1(ranked,h) {
+    if (ranked.length<2 || h.length<3) return ranked;
+    const recon=ranked.find(o=>o.mode==="RECONSTRUÇÃO");
+    const frozen=ranked.find(o=>o.mode==="CONGELADA");
+    if (!recon || !frozen || coverageCode(recon.motor.play)===coverageCode(frozen.motor.play)) return ranked;
+    const latest=spatialRead(h,true).weights, total=latest.reduce((a,b)=>a+b,0);
+    const cover=o=>o.motor.play.numbers.reduce((s,n)=>s+latest[ix(n)],0)/total;
+    const gain=cover(recon)-Math.max(...ranked.filter(o=>o!==recon).map(cover));
+    const shifted=recon.behavior!=="CONTINUIDADE" || distance(h.at(-2),h.at(-1))>=10;
+    if (!shifted || gain<=.002) return ranked;
+    const bonus=Math.min(.04,2*gain);
+    return ranked.map(o=>o===recon?{...o,score:o.score+bonus,reconstructionBonus:bonus,liveCoverageGain:gain}:o)
+      .sort((a,b)=>b.score-a.score || b.numberTotal-a.numberTotal);
+  }
+
+    function followIndicationMotor(block = currentBlock(), usePreview = true) {
       if (!block) return null;
       const indication = state.block.best || masterRanking(block)[0];
       if (!indication) return null;
       const motor = masterCandidateMotor(indication, block);
       if (!validPlay(motor?.play)) return null;
-      return {
+      const indicated = {
         ...copy(motor),
         followTarget: {
           id: indication.id,
@@ -11677,6 +11980,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           calibrationTurn: state.block.decisionTurn
         }
       };
+      return usePreview ? followPreviewMotor(indicated) : indicated;
     }
 
     function followIndicationDefinition() {
@@ -12018,6 +12322,8 @@ const triangleMemory666 = createTriangleMemory666(W);
         state.cycle = null;
         state.defense = null;
       }
+      if (controller==="FOLLOW_MASTER" && phaseBefore==="ENTRY")
+        recordFollowEntry(before,played,n,turn,result);
       recordMasterCycle(controller, oldCycle, played, result, turn);
       settleTimelineForecasts(timelineForecasts, n, turn, before);
     advanceMasterReviews(masterReviewDraft,played,controller,oldCycle,result,n,turn,before);
@@ -12051,7 +12357,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       const modelTurn=state.block.data?state.block.decisionTurn:turn-1;
       state.ledger.push({
       readingAudit: {
-        version: "6.6.36", ordering: state.block.reorganizedActive
+        version: VERSION, ordering: state.block.reorganizedActive
           ? (state.block.reorganizedDirection === -1 ? "DESCENDING_TEN" : "ASCENDING_TEN") : (state.readingSide === "INVERTIDO" ? "INVERSE_CHRONOLOGY" : "RECEIVED"),
         readingSide: state.readingSide, prefix: [...modelHistory].slice(-70), beforeTurn: modelTurn, evaluationBeforeTurn:turn-1,
         candidateCount: 37, chainMaximum:modelHistory.length, poleTolerances:19, polePairPositions:1369, arcWindowCount:modelHistory.length, relativeForms:1369, amplitudeForms:361, formsEvaluated:motorReadings667.summary(modelHistory).formsEvaluated, channelCount: motorReadings667.summary(modelHistory).channelCount,
@@ -12062,6 +12368,7 @@ const triangleMemory666 = createTriangleMemory666(W);
           ...forecasts.map(forecast=>({bankId:forecast.bankId,coveredBy:forecast.motors.filter(motor=>motor.play.numbers.includes(n)).map(motor=>motor.key)}))],
         readingSupport: motorReadings667.candidate(modelHistory,n)?.historicalSupport||0,
         chosenCovered: played?.play ? motorHit(played,n) : null,
+        followReading: copy(played?.followReading||null),
         note: "HIPÓTESES ENUMERADAS NÃO SÃO ACERTOS VIRTUAIS"
       },
         controller,
@@ -13731,6 +14038,7 @@ state.importAudit=describeImport(clean,opts);
         }
         if (data.action === "IMPORT") {
           importNumbersCore(data.numbers, data.settings, data.manualLog);
+          prepareFollowPreview();
           self.postMessage({ id: data.id, kind: "FINAL", state });
           return;
         }
@@ -13739,6 +14047,7 @@ state.importAudit=describeImport(clean,opts);
         if (data.action === "RESTORE") {
           clearSpatialCaches();
           await prepareBlockParallel();
+          prepareFollowPreview();
           self.postMessage({ id: data.id, kind: "FINAL", state });
           return;
         }
@@ -13759,8 +14068,10 @@ state.importAudit=describeImport(clean,opts);
           return;
         }
         const before = undoSnapshot();
+        if (state.phase==="ENTRY" && state.strategy==="FOLLOW_MASTER") prepareFollowPreview();
         spin(data.number, "TEMPO REAL");
         if (!state.block.data && state.history.length >= 8) await prepareBlockParallel();
+        prepareFollowPreview();
         const row = state.ledger.at(-1);
         state.manualLog.push({
           id: Date.now()+"_"+state.totalTurns,turn:state.totalTurns,number:data.number,
@@ -14139,6 +14450,17 @@ state.importAudit=describeImport(clean,opts);
       state.manual = null;
     }
     state.focusTimelineId = null;
+    if (state.strategy==="FOLLOW_MASTER" && state.readingSide==="INVERTIDO" && state.history.length>=8) {
+      setBusy(true,"PREPARANDO INDICAÇÃO INVERSA");
+      workerRequest("RESTORE",{state:{...state,undoStack:[]}}).then(result=>{
+        if (isCurrentApp() && result) state.followPreview=result.followPreview;
+      }).catch(error=>{
+        if (isCurrentApp()) alert(String(error.message||error));
+      }).finally(()=>{
+        if (isCurrentApp()) {setBusy(false);scheduleSave();render();}
+      });
+      return;
+    }
     scheduleSave();
     render();
   }
@@ -14253,7 +14575,9 @@ if(receipt)receipt.textContent=audit?'ÚLTIMA IMPORTAÇÃO '+audit.historyId+' �
       state.block.pending +
       "/10 • " +
       (state.block.data
-        ? "JOGADAS FIXAS • RECALIBRA AO COMPLETAR DEZ NOVOS"
+        ? (motor?.followReading
+          ? "INDICAÇÃO INVERSA A CADA GIRO • BANCOS A CADA DEZ"
+          : "JOGADAS FIXAS • RECALIBRA AO COMPLETAR DEZ NOVOS")
         : "PREPARANDO PRÓXIMA JOGADA");
     $("cycleInfo").textContent = cycleIsFree()
       ? "CICLO LIVRE"
@@ -15413,7 +15737,8 @@ if(!isCurrentApp())return;
       if (recovered) state = normalizeState(recovered);
       durableTurn = state.totalTurns;
       render();
-      if (state.history.length >= 8 && !state.block.data) {
+      if (state.history.length >= 8 && (!state.block.data ||
+          (state.readingSide==="INVERTIDO" && state.strategy==="FOLLOW_MASTER" && !state.followPreview))) {
         const result = await workerRequest('RESTORE', {state:{...state,undoStack:[]}});
         if (!isCurrentApp()) return;
         if (result) state = {...result,undoStack:state.undoStack};
@@ -15623,7 +15948,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.36</h1>
+<h1>ANÁLISE BETA 6.6.37</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
