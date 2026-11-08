@@ -1,3 +1,7 @@
+/* ANÁLISE BETA 6.6.41 — RENOVAÇÃO DOS TRÊS TERMINAIS.
+   Cada nova entrada automática conserva no máximo um terminal da entrada anterior.
+   Normal e Inverso mantêm 33 números, trio manual, trava, permanência e defesa G1.
+*/
 /* ANÁLISE BETA 6.6.40 — REGRAS COMUNS PARA TODOS OS MOTORES E JOGADAS.
    A leitura Normal mantém seu fluxo por bloco. A Inversa usa os giros conhecidos
    até a entrada, com memória de acertos e falhas por jogada.
@@ -279,7 +283,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-  const VERSION = "6.6.40",
+  const VERSION = "6.6.41",
     KEY = 'ANALISE_BETA_33_DUAL_'+side,
     WINDOW = 70;
   const OLD_KEYS=['ANALISE_BETA_31_DUAL_'+side,'ANALISE_BETA_V664_DUAL_'+side];
@@ -460,6 +464,20 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       ? [...digits].sort((a,b)=>a-b) : null;
   }
 
+  // Compara com a última entrada de terminais, nunca com a defesa G1.
+  function previousTerminalTrio(mode) {
+    if(state.fixedTerminalTrio || state.strategy!==mode)return null;
+    const row=state.ledger.findLast(row=>row.phase==="ENTRY" &&
+      (row.controller==="TERMINALS" || row.controller==="TERMINAL_SUGGESTION") &&
+      terminalPlay(row.play));
+    const base=row?.play?.kind==="ROTATED33"?row.play.base:row?.play;
+    return normalizeTerminalTrio(base?.terminalDigits);
+  }
+
+  function allowedTerminal(digit,selected,previous) {
+    return !previous?.includes(digit) || !selected.some(value=>previous.includes(value));
+  }
+
   function fixedTerminalOrder(h, trio) {
     if(!trio)return null;
     const history=h.slice(-14), ranked=[];
@@ -492,8 +510,12 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   // Project each strategy's actual reading into terminal groups. The first button
   // keeps its existing last-14 rule; this pool uses the strategy to resolve ties
   // and to complete its own 33-pocket coverage. No future outcomes enter here.
-  function projectTerminalSuggestion(source, template, history, identity, fixedOrder=null) {
+  function projectTerminalSuggestion(source, template, history, identity, fixedOrder=null, previous=null, projections=null) {
     if(!validPlay(source?.play)||!template)return null;
+    // Motores com a mesma cobertura e centros compartilham o mesmo encaixe.
+    const key=coverageCode(source.play)+"|"+source.play.blocks.map(block=>block.center).join(",");
+    let projection=projections?.get(key);
+    if(!projection){
     const support=W.map(number=>{
       const coverage=source.play.numbers.includes(number)?1:0;
       return coverage+source.play.blocks.reduce((sum,block)=>sum+1/(1+distance(number,block.center)),0)/source.play.blocks.length;
@@ -501,7 +523,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     const used=new Set(),digits=fixedOrder?[...fixedOrder]:[],groups=Array.from({length:10},(_,digit)=>terminalGroup(digit));
     let remaining=history.map((_,i)=>i);
     for(let step=0;!fixedOrder&&step<3;step++){
-      const ranked=groups.filter(group=>!used.has(group.digit)).map(group=>({
+      const ranked=groups.filter(group=>!used.has(group.digit)&&allowedTerminal(group.digit,digits,previous)).map(group=>({
         ...group,added:remaining.filter(i=>group.numbers.includes(history[i])),
         support:avg(group.numbers.map(number=>support[ix(number)]))
       })).sort((a,b)=>b.added.length-a.added.length||b.support-a.support||
@@ -509,7 +531,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
       const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
     }
-    let play=packTerminalTrio(digits,support), terminalReading=null;
+    projection={support,digits,play:packTerminalTrio(digits,support)};
+    projections?.set(key,projection);
+    }
+    const {support,digits}=projection;
+    let {play}=projection, terminalReading=null;
     if(identity.id==="MASTER" && state.strategy==="TERMINAL_SUGGESTION" &&
         state.readingSide==="INVERTIDO" && !state.importTrainingActive){
       const adjusted=support.slice();
@@ -530,7 +556,8 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   let terminalSuggestionCache=null;
   function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
     if(!block||state.history.length<8)return [];
-    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"");
+    const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
+    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"")+"|"+(previous?.join(',')||"")+"|"+currentTerminalCoverage();
     if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
       return terminalSuggestionCache.rows;
     const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -540,12 +567,12 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
     const master=followIndicationMotor(block);
     if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
-    const seen=new Set(),rows=[];
+    const seen=new Set(),rows=[],projections=new Map();
     for(const candidate of candidates){
       if(seen.has(candidate.id))continue;seen.add(candidate.id);
       const motor=projectTerminalSuggestion(candidate.motor,template,history,
         {id:candidate.id,name:candidate.id==="MASTER" && master?.followTarget
-          ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder);
+          ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder,previous,projections);
         if(motor){
           if(candidate.id==="MASTER")motor.terminalMasterIndication=copy(master.followTarget);
           rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
@@ -756,6 +783,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       for(let start=0;start<37;start++)layouts.push({
         centers:centers.map(pos=>mod(start+pos)),
         outside:outside.map(pos=>mod(start+pos)),
+        excludedDigits:outside.reduce((mask,pos)=>mask|(1<<(W[mod(start+pos)]%10)),0),
         short:[start,mod(start+1),mod(start+2)]
       });
     }
@@ -766,14 +794,17 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   function layoutsForTerminalTrio(digits) {
     const key=[...digits].sort((a,b)=>a-b).join(',');
     if(terminalLayoutsByTrio.has(key))return terminalLayoutsByTrio.get(key);
-    const endings=W.map(number=>digits.includes(number%10));
+    const terminalMask=digits.reduce((mask,digit)=>mask|(1<<digit),0);
+    const endings=W.map(number=>Boolean(terminalMask&(1<<(number%10))));
     const core=new Set(digits.flatMap(digit=>terminalGroup(digit).numbers));
+    const corePositions=W.map(number=>core.has(number));
     let smallestLoss=Infinity,options=[];
     for(const layout of standardTerminalLayouts()){
       // Terminal pockets always stay in play, even if an exact tiling
       // requires sacrificing a neighbour (only the 2/3/4 trio needs this).
-      if(layout.outside.some(pos=>endings[pos]))continue;
-      const missing=layout.outside.reduce((sum,pos)=>sum+Number(core.has(W[pos])),0);
+      if(layout.excludedDigits&terminalMask)continue;
+      const [a,b,c,d]=layout.outside;
+      const missing=Number(corePositions[a])+Number(corePositions[b])+Number(corePositions[c])+Number(corePositions[d]);
       if(missing>smallestLoss)continue;
       if(missing<smallestLoss){smallestLoss=missing;options=[];}
       options.push({...layout,terminalCenters:layout.centers.reduce((sum,pos)=>sum+Number(endings[pos]),0)});
@@ -823,10 +854,12 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return {id:"TERMINALS", name:"TERMINAIS • TRÊS COM VIZINHOS", type:"TERMINALS"};
   }
 
+  const terminalGroups = [];
   function terminalGroup(digit) {
+    if(terminalGroups[digit])return terminalGroups[digit];
     const centers = W.filter(number => number % 10 === digit);
     const covered = new Set(centers.flatMap(number => neighbors(number, 1)));
-    return {digit, centers, numbers:W.filter(number => covered.has(number))};
+    return terminalGroups[digit]={digit, centers, numbers:W.filter(number => covered.has(number))};
   }
 
   function validTerminalPlay(play) {
@@ -858,8 +891,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     return union.size === 33 && play.numbers.every(number => union.has(number));
   }
 
-  function terminalAnalysis(h, profile = {family:"NORMAL", radius:5}) {
+  let terminalAnalysisCache=null;
+  function terminalAnalysis(h, previous=null) {
     const history=h.slice(-14);
+    const key=history.join(",")+"|"+(previous?.join(",")||"");
+    if(terminalAnalysisCache?.key===key)return terminalAnalysisCache.analysis;
     const groups=Array.from({length:10},(_,digit)=>{
       const group=terminalGroup(digit);
       const hit=number=>group.numbers.includes(number);
@@ -874,7 +910,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     // separate spins, but an occurrence can be credited to only one terminal.
     let remaining=history.map((_,index)=>index);
     for(let step=0;step<3;step++){
-      const candidates=groups.filter(group=>!used.has(group.digit)).map(group=>{
+      const candidates=groups.filter(group=>!used.has(group.digit)&&allowedTerminal(group.digit,selectedDigits,previous)).map(group=>{
         const hitIndices=remaining.filter(index=>group.numbers.includes(history[index]));
         return {digit:group.digit,hitIndices,addedHits:hitIndices.length,
           recentAdded:hitIndices.filter(index=>index>=history.length-5).length,
@@ -899,14 +935,16 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const hits=history.filter(number=>union.has(number)).length;
       combinations.push({digits,numbers,hits,score:history.length?hits/history.length:0});
     }
-    return {groups,ranking,selectedDigits,steps,remainingIndices:remaining,combinations,
+    const analysis={groups,ranking,selectedDigits,steps,remainingIndices:remaining,combinations,
       samples:history.length,history:[...history],rule:TERMINAL_LAYOUT_RULE};
+    terminalAnalysisCache={key,analysis};
+    return analysis;
   }
 
-  function buildTerminalMotor(h, forcedDigits = null, preferred = [], profile = {family:"NORMAL", radius:5}) {
+  function buildTerminalMotor(h, forcedDigits = null, preferred = [], profile = {family:"NORMAL", radius:5}, previous = null) {
     const history=h.slice(-14);
     if(history.length<8)return null;
-    const analysis=terminalAnalysis(history,profile);
+    const analysis=terminalAnalysis(history,forcedDigits?null:previous);
     const digits=forcedDigits?[...forcedDigits]:[...analysis.selectedDigits];
     const sorted=[...digits].sort((a,b)=>a-b).join(',');
     const choice=analysis.combinations.find(row=>row.digits.join(',')===sorted);
@@ -945,19 +983,22 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   function terminalBank() {
     if(state.history.length<8)return [];
     const recent=state.history.slice(-14);
-    const key=state.readingSide+"|"+recent.join(',')+(state.fixedTerminalTrio?"|"+terminalTrioKey():"");
+    const previous=previousTerminalTrio("TERMINALS");
+    const key=state.readingSide+"|"+recent.join(',')+"|"+terminalTrioKey()+"|"+(previous?.join(',')||"")+"|"+currentTerminalCoverage();
     if(state.block.terminalMomentKey!==key || !Array.isArray(state.block.terminalBank) ||
         state.block.terminalBank.length!==12 || !state.block.terminalBank.every(motor=>
           motor.terminalRule===TERMINAL_LAYOUT_RULE && validTerminalPlay(motor.play))){
-      state.block.terminalBank=buildTerminalBank(recent);
+      state.block.terminalBank=buildTerminalBank(recent,previous);
       state.block.terminalMomentKey=key;
     }
     return state.block.terminalBank;
   }
 
-  function buildTerminalBank(h) {
+  function buildTerminalBank(h,previous=null) {
     const trio=state.fixedTerminalTrio,order=fixedTerminalOrder(h,trio);
-    return FAMILIES.flatMap(family=>RADII.map(radius=>fixedTerminalMotor(h,trio,[],{family,radius},order)));
+    return FAMILIES.flatMap(family=>RADII.map(radius=>trio
+      ? fixedTerminalMotor(h,trio,[],{family,radius},order)
+      : buildTerminalMotor(h,null,[],{family,radius},previous)));
   }
 
   function terminalRanking() {
@@ -4624,7 +4665,7 @@ const triangleMemory666 = createTriangleMemory666(W);
     }
     r.block.size = clamp(r.block.size || r.history.length, 0, 70);
     r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", VERSION].includes(r.forecastVersion)) {
+    if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", VERSION].includes(r.forecastVersion)) {
       r.block.data = null;
     }
     if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -7290,7 +7331,7 @@ ANÁLISE BETA V6.6.36 — BASE V6.4.5 + VARIAÇÕES V6.4.9.
 
 Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 37.
 */
-    const VERSION = "6.6.40",
+    const VERSION = "6.6.41",
       KEY = "ANALISE_BETA_V664",
       WINDOW = 70;
     const OLD_KEYS=[];
@@ -7471,6 +7512,20 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       ? [...digits].sort((a,b)=>a-b) : null;
   }
 
+  // Compara com a última entrada de terminais, nunca com a defesa G1.
+  function previousTerminalTrio(mode) {
+    if(state.fixedTerminalTrio || state.strategy!==mode)return null;
+    const row=state.ledger.findLast(row=>row.phase==="ENTRY" &&
+      (row.controller==="TERMINALS" || row.controller==="TERMINAL_SUGGESTION") &&
+      terminalPlay(row.play));
+    const base=row?.play?.kind==="ROTATED33"?row.play.base:row?.play;
+    return normalizeTerminalTrio(base?.terminalDigits);
+  }
+
+  function allowedTerminal(digit,selected,previous) {
+    return !previous?.includes(digit) || !selected.some(value=>previous.includes(value));
+  }
+
   function fixedTerminalOrder(h, trio) {
     if(!trio)return null;
     const history=h.slice(-14), ranked=[];
@@ -7503,16 +7558,20 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     // Project each strategy's actual reading into terminal groups. The first button
     // keeps its existing last-14 rule; this pool uses the strategy to resolve ties
     // and to complete its own 33-pocket coverage. No future outcomes enter here.
-    function projectTerminalSuggestion(source, template, history, identity, fixedOrder=null) {
+    function projectTerminalSuggestion(source, template, history, identity, fixedOrder=null, previous=null, projections=null) {
       if(!validPlay(source?.play)||!template)return null;
-      const support=W.map(number=>{
+      // Motores com a mesma cobertura e centros compartilham o mesmo encaixe.
+    const key=coverageCode(source.play)+"|"+source.play.blocks.map(block=>block.center).join(",");
+    let projection=projections?.get(key);
+    if(!projection){
+    const support=W.map(number=>{
         const coverage=source.play.numbers.includes(number)?1:0;
         return coverage+source.play.blocks.reduce((sum,block)=>sum+1/(1+distance(number,block.center)),0)/source.play.blocks.length;
       });
       const used=new Set(),digits=fixedOrder?[...fixedOrder]:[],groups=Array.from({length:10},(_,digit)=>terminalGroup(digit));
       let remaining=history.map((_,i)=>i);
       for(let step=0;!fixedOrder&&step<3;step++){
-        const ranked=groups.filter(group=>!used.has(group.digit)).map(group=>({
+        const ranked=groups.filter(group=>!used.has(group.digit)&&allowedTerminal(group.digit,digits,previous)).map(group=>({
           ...group,added:remaining.filter(i=>group.numbers.includes(history[i])),
           support:avg(group.numbers.map(number=>support[ix(number)]))
         })).sort((a,b)=>b.added.length-a.added.length||b.support-a.support||
@@ -7520,7 +7579,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const winner=ranked[0];digits.push(winner.digit);used.add(winner.digit);
         const covered=new Set(winner.added);remaining=remaining.filter(i=>!covered.has(i));
       }
-      let play=packTerminalTrio(digits,support), terminalReading=null;
+      projection={support,digits,play:packTerminalTrio(digits,support)};
+    projections?.set(key,projection);
+    }
+    const {support,digits}=projection;
+    let {play}=projection, terminalReading=null;
       if(identity.id==="MASTER" && state.strategy==="TERMINAL_SUGGESTION" &&
           state.readingSide==="INVERTIDO" && !state.importTrainingActive){
         const adjusted=support.slice();
@@ -7541,7 +7604,8 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     let terminalSuggestionCache=null;
     function terminalSuggestionCandidates(block=currentBlock(), nativeForecasts=null) {
       if(!block||state.history.length<8)return [];
-      const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"");
+      const previous=previousTerminalTrio("TERMINAL_SUGGESTION");
+    const signature=state.totalTurns+"|"+state.history.join(',')+"|"+state.block.decisionTurn+"|"+terminalTrioKey()+"|"+(state.followPreview?.key||"")+"|"+(state.block.best?.id||"")+"|"+(previous?.join(',')||"")+"|"+currentTerminalCoverage();
       if(terminalSuggestionCache?.state===state&&terminalSuggestionCache.signature===signature)
         return terminalSuggestionCache.rows;
       const native=nativeForecasts||snapshotTimelineForecastsBase(block);
@@ -7551,12 +7615,12 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       const candidates=native.filter(row=>!["TERMINALS","TERMINAL_SUGGESTION","POSTLOSS","MASTER"].includes(row.id));
       const master=followIndicationMotor(block);
       if(validPlay(master?.play))candidates.push({id:"MASTER",motor:master});
-      const seen=new Set(),rows=[];
-      for(const candidate of candidates){
+      const seen=new Set(),rows=[],projections=new Map();
+    for(const candidate of candidates){
         if(seen.has(candidate.id))continue;seen.add(candidate.id);
         const motor=projectTerminalSuggestion(candidate.motor,template,history,
           {id:candidate.id,name:candidate.id==="MASTER" && master?.followTarget
-            ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder);
+            ? "MASTER • "+master.followTarget.name : names.get(candidate.id)||candidate.id},fixedOrder,previous,projections);
           if(motor){
             if(candidate.id==="MASTER")motor.terminalMasterIndication=copy(master.followTarget);
             rows.push({id:candidate.id,name:motor.terminalSuggestionTarget.name,motor});
@@ -7767,6 +7831,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       for(let start=0;start<37;start++)layouts.push({
         centers:centers.map(pos=>mod(start+pos)),
         outside:outside.map(pos=>mod(start+pos)),
+        excludedDigits:outside.reduce((mask,pos)=>mask|(1<<(W[mod(start+pos)]%10)),0),
         short:[start,mod(start+1),mod(start+2)]
       });
     }
@@ -7777,14 +7842,17 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
   function layoutsForTerminalTrio(digits) {
     const key=[...digits].sort((a,b)=>a-b).join(',');
     if(terminalLayoutsByTrio.has(key))return terminalLayoutsByTrio.get(key);
-    const endings=W.map(number=>digits.includes(number%10));
+    const terminalMask=digits.reduce((mask,digit)=>mask|(1<<digit),0);
+    const endings=W.map(number=>Boolean(terminalMask&(1<<(number%10))));
     const core=new Set(digits.flatMap(digit=>terminalGroup(digit).numbers));
+    const corePositions=W.map(number=>core.has(number));
     let smallestLoss=Infinity,options=[];
     for(const layout of standardTerminalLayouts()){
       // Terminal pockets always stay in play, even if an exact tiling
       // requires sacrificing a neighbour (only the 2/3/4 trio needs this).
-      if(layout.outside.some(pos=>endings[pos]))continue;
-      const missing=layout.outside.reduce((sum,pos)=>sum+Number(core.has(W[pos])),0);
+      if(layout.excludedDigits&terminalMask)continue;
+      const [a,b,c,d]=layout.outside;
+      const missing=Number(corePositions[a])+Number(corePositions[b])+Number(corePositions[c])+Number(corePositions[d]);
       if(missing>smallestLoss)continue;
       if(missing<smallestLoss){smallestLoss=missing;options=[];}
       options.push({...layout,terminalCenters:layout.centers.reduce((sum,pos)=>sum+Number(endings[pos]),0)});
@@ -7834,10 +7902,12 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       return {id:"TERMINALS", name:"TERMINAIS • TRÊS COM VIZINHOS", type:"TERMINALS"};
     }
 
-    function terminalGroup(digit) {
+    const terminalGroups = [];
+  function terminalGroup(digit) {
+    if(terminalGroups[digit])return terminalGroups[digit];
       const centers = W.filter(number => number % 10 === digit);
       const covered = new Set(centers.flatMap(number => neighbors(number, 1)));
-      return {digit, centers, numbers:W.filter(number => covered.has(number))};
+      return terminalGroups[digit]={digit, centers, numbers:W.filter(number => covered.has(number))};
     }
 
     function validTerminalPlay(play) {
@@ -7869,8 +7939,11 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       return union.size === 33 && play.numbers.every(number => union.has(number));
     }
 
-    function terminalAnalysis(h, profile = {family:"NORMAL", radius:5}) {
-      const history=h.slice(-14);
+    let terminalAnalysisCache=null;
+  function terminalAnalysis(h, previous=null) {
+    const history=h.slice(-14);
+    const key=history.join(",")+"|"+(previous?.join(",")||"");
+    if(terminalAnalysisCache?.key===key)return terminalAnalysisCache.analysis;
       const groups=Array.from({length:10},(_,digit)=>{
         const group=terminalGroup(digit);
         const hit=number=>group.numbers.includes(number);
@@ -7885,7 +7958,7 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
       // separate spins, but an occurrence can be credited to only one terminal.
       let remaining=history.map((_,index)=>index);
       for(let step=0;step<3;step++){
-        const candidates=groups.filter(group=>!used.has(group.digit)).map(group=>{
+        const candidates=groups.filter(group=>!used.has(group.digit)&&allowedTerminal(group.digit,selectedDigits,previous)).map(group=>{
           const hitIndices=remaining.filter(index=>group.numbers.includes(history[index]));
           return {digit:group.digit,hitIndices,addedHits:hitIndices.length,
             recentAdded:hitIndices.filter(index=>index>=history.length-5).length,
@@ -7910,14 +7983,16 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
         const hits=history.filter(number=>union.has(number)).length;
         combinations.push({digits,numbers,hits,score:history.length?hits/history.length:0});
       }
-      return {groups,ranking,selectedDigits,steps,remainingIndices:remaining,combinations,
-        samples:history.length,history:[...history],rule:TERMINAL_LAYOUT_RULE};
+      const analysis={groups,ranking,selectedDigits,steps,remainingIndices:remaining,combinations,
+      samples:history.length,history:[...history],rule:TERMINAL_LAYOUT_RULE};
+    terminalAnalysisCache={key,analysis};
+    return analysis;
     }
 
-    function buildTerminalMotor(h, forcedDigits = null, preferred = [], profile = {family:"NORMAL", radius:5}) {
+    function buildTerminalMotor(h, forcedDigits = null, preferred = [], profile = {family:"NORMAL", radius:5}, previous = null) {
       const history=h.slice(-14);
       if(history.length<8)return null;
-      const analysis=terminalAnalysis(history,profile);
+      const analysis=terminalAnalysis(history,forcedDigits?null:previous);
       const digits=forcedDigits?[...forcedDigits]:[...analysis.selectedDigits];
       const sorted=[...digits].sort((a,b)=>a-b).join(',');
       const choice=analysis.combinations.find(row=>row.digits.join(',')===sorted);
@@ -7956,19 +8031,22 @@ Cobertura conjunta não transforma uma jogada de 33 em cobertura individual de 3
     function terminalBank() {
       if(state.history.length<8)return [];
       const recent=state.history.slice(-14);
-      const key=state.readingSide+"|"+recent.join(',')+(state.fixedTerminalTrio?"|"+terminalTrioKey():"");
+      const previous=previousTerminalTrio("TERMINALS");
+    const key=state.readingSide+"|"+recent.join(',')+"|"+terminalTrioKey()+"|"+(previous?.join(',')||"")+"|"+currentTerminalCoverage();
       if(state.block.terminalMomentKey!==key || !Array.isArray(state.block.terminalBank) ||
           state.block.terminalBank.length!==12 || !state.block.terminalBank.every(motor=>
             motor.terminalRule===TERMINAL_LAYOUT_RULE && validTerminalPlay(motor.play))){
-        state.block.terminalBank=buildTerminalBank(recent);
+        state.block.terminalBank=buildTerminalBank(recent,previous);
         state.block.terminalMomentKey=key;
       }
       return state.block.terminalBank;
     }
 
-    function buildTerminalBank(h) {
-      const trio=state.fixedTerminalTrio,order=fixedTerminalOrder(h,trio);
-    return FAMILIES.flatMap(family=>RADII.map(radius=>fixedTerminalMotor(h,trio,[],{family,radius},order)));
+    function buildTerminalBank(h,previous=null) {
+    const trio=state.fixedTerminalTrio,order=fixedTerminalOrder(h,trio);
+    return FAMILIES.flatMap(family=>RADII.map(radius=>trio
+      ? fixedTerminalMotor(h,trio,[],{family,radius},order)
+      : buildTerminalMotor(h,null,[],{family,radius},previous)));
     }
 
     function terminalRanking() {
@@ -11682,7 +11760,7 @@ const triangleMemory666 = createTriangleMemory666(W);
       }
       r.block.size = clamp(r.block.size || r.history.length, 0, 70);
       r.block.pending = clamp(Number(r.block.pending) || 0, 0, 9);
-      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", VERSION].includes(r.forecastVersion)) {
+      if (!["6.6.15", "6.6.16", "6.6.22", "6.6.23", "6.6.24", "6.6.25", "6.6.26", "6.6.27", "6.6.28", "6.6.29", "6.6.30", "6.6.31", "6.6.32", "6.6.33", "6.6.34", "6.6.35", "6.6.36", "6.6.37", "6.6.38", "6.6.39", "6.6.40", VERSION].includes(r.forecastVersion)) {
         r.block.data = null;
       }
       if (r.forecastVersion !== VERSION) r.followPreview=null;
@@ -16147,7 +16225,7 @@ body{margin:0;background:#101720;color:#f4f7fb;font:13px Arial,sans-serif}
 </style>
 <main id="beta-dual-app">
 <section class="panel">
-<h1>ANÁLISE BETA 6.6.40</h1>
+<h1>ANÁLISE BETA 6.6.41</h1>
 <label for="dual-paste">IMPORTAR HISTÓRICO</label>
 <textarea id="dual-paste" placeholder="Cole de 8 a 70 resultados."></textarea>
 <div class="dual-controls">
