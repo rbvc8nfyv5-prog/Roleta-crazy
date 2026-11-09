@@ -1,4 +1,4 @@
-/* Vitória Master V4 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
+/* Vitória Master V5 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
 (() => {
 "use strict";
 function analysisBackground() {
@@ -7411,18 +7411,20 @@ function selectRegionalCoverage(candidates,history,rows=[]){
     }
   }
 
-  const used=new Set(),recent=rows.slice(-16);
+  const overlap=Array(37).fill(0),used=new Set(),recent=rows.slice(-16);
   const proposals=candidates.map((candidate,index)=>{
     const omitted=new Set(candidate.outside);
     const costByNumber=weights.map((weight,n)=>weight+(omitted.has(n)?0:.65));
     let best=null,bestCost=Infinity;
     for(const layout of REGIONAL_LAYOUTS){
-      if(used.has(layout))continue;
+      if(used.has(layout)||layout.outside.some(n=>overlap[n]>=2))continue;
       let cost=0;
       for(const n of layout.outside)cost+=costByNumber[n];
       if(cost<bestCost-1e-12){best=layout;bestCost=cost;}
     }
+    if(!best)throw Error("Nenhum conjunto regional sob o limite de exclusões.");
     used.add(best);
+    for(const n of best.outside)overlap[n]++;
     // Os quatro placares virtuais usam a proposta que cada motor publicou
     // antes do giro, mesmo quando ela não foi a escolhida para a jogada.
     let weightedLosses=1,mass=8,losses=0;
@@ -7494,7 +7496,7 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V4</h1><p class="muted">33 casas · 1 número de fora por setor</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V5</h1><p class="muted">33 casas · 1 de fora por setor · máximo de 2 exclusões por número</p></header>
 <section><h2>Importar histórico</h2>
 <label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
@@ -7511,7 +7513,7 @@ const VIEW=`
 </main>`;
 
 function install(){
-  const id='vitoria-master-v4-host';
+  const id='vitoria-master-v5-host';
   const existing=document.getElementById(id);
   if(existing){existing.focus();return;}
   const host=document.createElement('div');
@@ -7520,7 +7522,7 @@ function install(){
   root.innerHTML=VIEW;
   document.body.appendChild(host);
   const $=id=>root.getElementById(id);
-  const storageKey='vitoria-master-v4';
+  const storageKey='vitoria-master-v5';
   const source='('+analysisBackground.toString()+')();';
   let seed=[],manual=[],rows=[],channels=[],previews=[],busy=false,closed=false;
   const color=n=>n===0?'zero':RED.has(n)?'red':'black';
