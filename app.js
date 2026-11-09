@@ -1,4 +1,4 @@
-/* Vitória Master V2 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
+/* Vitória Master V4 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
 (() => {
 "use strict";
 function analysisBackground() {
@@ -7354,11 +7354,93 @@ const CANDIDATES=[
 const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const valid=n=>Number.isInteger(n)&&n>=0&&n<=36;
 
-function selectCoverage(candidates,history){
+const WHEEL=[0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const mod=i=>(i+37)%37;
+const SECTORS=[
+  ['Zero',[12,35,3,26,0,32,15]],
+  ['Voisins',[19,4,21,2,25,22,18,29,7,28]],
+  ['Tiers',[27,13,36,11,30,8,23,10,5,24,16,33]],
+  ['Orphelins',[17,34,6,1,20,14,31,9]],
+];
+const SECTOR_BY_NUMBER=[];
+SECTORS.forEach(([,numbers],i)=>numbers.forEach(n=>{SECTOR_BY_NUMBER[n]=i;}));
+
+function layouts(){
+  const result=[],seen=new Set();
+  function place(gaps,left){
+    if(gaps.length<6){
+      for(let gap=0;gap<=left;gap++) place([...gaps,gap],left-gap);
+      return;
+    }
+    const spaces=[...gaps,left];
+    for(let start=0;start<37;start++){
+      const centers=[],outside=[];
+      let cursor=start;
+      for(let block=0;block<7;block++){
+        const radius=block===0?1:2;
+        centers.push(mod(cursor+radius));
+        cursor+=2*radius+1;
+        for(let i=0;i<spaces[block];i++) outside.push(mod(cursor++));
+      }
+      const omitted=outside.map(i=>WHEEL[i]);
+      if(new Set(omitted.map(n=>SECTOR_BY_NUMBER[n])).size!==4)continue;
+      const key=[...omitted].sort((a,b)=>a-b).join(',');
+      if(seen.has(key))continue;
+      seen.add(key);
+      result.push({
+        outside:omitted.sort((a,b)=>SECTOR_BY_NUMBER[a]-SECTOR_BY_NUMBER[b]),
+        groups:centers.map((i,j)=>({center:WHEEL[i],radius:j?2:1})),
+      });
+    }
+  }
+  place([],4);
+  return result;
+}
+const REGIONAL_LAYOUTS=layouts();
+
+function selectRegionalCoverage(candidates,history,rows=[]){
   const last=history.slice(-40),weights=Array(37).fill(0);
   for(let i=0;i<last.length;i++)weights[last[i]]+=Math.exp((i-last.length+1)/18);
-  const risks=candidates.map(candidate=>candidate.outside.reduce((sum,n)=>sum+weights[n],0));
-  return risks.reduce((best,risk,i)=>risk<risks[best]?i:best,0);
+
+  const previous=rows.slice(-4);
+  if(previous.length>=2){
+    for(const n of previous.at(-1).outside){
+      let run=1;
+      while(run<previous.length&&previous[previous.length-1-run].outside.includes(n))run++;
+      weights[n]+=.24*Math.max(0,run-1);
+    }
+  }
+
+  const used=new Set(),recent=rows.slice(-16);
+  const proposals=candidates.map((candidate,index)=>{
+    const omitted=new Set(candidate.outside);
+    const costByNumber=weights.map((weight,n)=>weight+(omitted.has(n)?0:.65));
+    let best=null,bestCost=Infinity;
+    for(const layout of REGIONAL_LAYOUTS){
+      if(used.has(layout))continue;
+      let cost=0;
+      for(const n of layout.outside)cost+=costByNumber[n];
+      if(cost<bestCost-1e-12){best=layout;bestCost=cost;}
+    }
+    used.add(best);
+    // Os quatro placares virtuais usam a proposta que cada motor publicou
+    // antes do giro, mesmo quando ela não foi a escolhida para a jogada.
+    let weightedLosses=1,mass=8,losses=0;
+    for(let i=0;i<recent.length;i++){
+      const age=Math.exp((i-recent.length+1)/8);
+      const loss=Number(recent[i].virtual[index]);
+      weightedLosses+=age*loss;mass+=age;losses+=loss;
+    }
+    return {...best,index,label:CANDIDATES[index][2],wheel:WHEEL,
+      score:bestCost+weightedLosses/mass,losses,samples:recent.length};
+  });
+  const chosen=proposals.reduce((best,p)=>p.score<best.score-1e-12?p:best);
+  return {...chosen,proposals};
+}
+
+function settleRegionalCoverage(number,prediction){
+  return {number,hit:!prediction.outside.includes(number),label:prediction.label,
+    outside:prediction.outside,virtual:prediction.proposals.map(p=>p.outside.includes(number))};
 }
 
 function parseHistory(text,order){
@@ -7412,7 +7494,7 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V2</h1><p class="muted">33 casas · seleção automática</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V4</h1><p class="muted">33 casas · 1 número de fora por setor</p></header>
 <section><h2>Importar histórico</h2>
 <label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
@@ -7421,6 +7503,7 @@ const VIEW=`
 <p id="timeline-label" class="muted">Histórico importado · 14 últimos</p>
 <div class="timeline" id="timeline" aria-label="14 últimos números, do mais antigo ao mais recente"></div>
 <p id="mode" class="muted"></p><div id="groups" class="groups"></div>
+<details id="comparison"><summary>Conferir as 4 propostas</summary><ul id="proposal-list" class="muted"></ul></details>
 <p id="outside" class="muted"></p><div id="wheel" class="wheel" aria-label="Cobertura na ordem da roda"></div>
 <div class="stats"><div><strong id="hits">0</strong><small>Acertos</small></div><div><strong id="misses">0</strong><small>LOSS</small></div><div><strong id="total">0</strong><small>Giros lançados</small></div></div>
 <div id="latest" role="status" aria-live="polite"></div></section>
@@ -7428,7 +7511,7 @@ const VIEW=`
 </main>`;
 
 function install(){
-  const id='vitoria-master-v2-host';
+  const id='vitoria-master-v4-host';
   const existing=document.getElementById(id);
   if(existing){existing.focus();return;}
   const host=document.createElement('div');
@@ -7437,7 +7520,7 @@ function install(){
   root.innerHTML=VIEW;
   document.body.appendChild(host);
   const $=id=>root.getElementById(id);
-  const storageKey='vitoria-master-v2';
+  const storageKey='vitoria-master-v4';
   const source='('+analysisBackground.toString()+')();';
   let seed=[],manual=[],rows=[],channels=[],previews=[],busy=false,closed=false;
   const color=n=>n===0?'zero':RED.has(n)?'red':'black';
@@ -7449,16 +7532,19 @@ function install(){
   }
   function current(){
     if(previews.length!==CANDIDATES.length)return null;
-    const index=selectCoverage(previews,seed.concat(manual));
-    return {...previews[index],label:CANDIDATES[index][2]};
+    return selectRegionalCoverage(previews,seed.concat(manual),rows);
   }
   function render(){
     const play=current(),latest=rows.at(-1);
     $('timeline-label').textContent=manual.length?'Últimos 14 números':'Histórico importado · 14 últimos';
     $('timeline').innerHTML=seed.concat(manual).slice(-14).map(n=>'<span class="chip '+color(n)+'">'+n+'</span>').join('');
     $('mode').textContent=play?play.label:'Aguardando histórico';
+    $('comparison').hidden=!play;
+    $('proposal-list').innerHTML=play?play.proposals.map(p=>
+      '<li>'+p.label+(p.index===play.index?' · escolhida':'')+' · fora '+p.outside.join(' / ')+
+      ' · '+p.losses+' LOSS virtuais em '+p.samples+'</li>').join(''):'';
     $('groups').innerHTML=play?play.groups.map(({center,radius})=>'<span><strong>'+center+'</strong> <small>± '+radius+'</small></span>').join(''):'';
-    $('outside').textContent=play?'Quatro de fora · '+play.outside.join(' · '):'';
+    $('outside').textContent=play?play.outside.map((n,i)=>SECTORS[i][0]+' '+n).join(' · '):'';
     $('wheel').innerHTML=play?play.wheel.map(n=>'<span class="chip '+color(n)+(play.outside.includes(n)?' outside':'')+'">'+n+'</span>').join(''):'';
     const hits=rows.reduce((sum,row)=>sum+Number(row.hit),0);
     $('hits').textContent=hits;$('misses').textContent=rows.length-hits;$('total').textContent=rows.length;
@@ -7480,8 +7566,9 @@ function install(){
       })));
       const replay=[],known=[...nextSeed];
       for(let i=0;i<nextManual.length;i++){
-        const number=nextManual[i],selected=selectCoverage(views,known),prior=views[selected];
-        replay.push({number,hit:!prior.outside.includes(number),label:CANDIDATES[selected][2]});
+        const number=nextManual[i];
+        const prior=selectRegionalCoverage(views,known,replay);
+        replay.push(settleRegionalCoverage(number,prior));
         views=await Promise.all(opened.map(channel=>channel.send({action:'SPIN',number})));
         known.push(number);
       }
@@ -7503,11 +7590,10 @@ function install(){
     return exclusive('Calculando o próximo giro…',async()=>{
       if(!previews.length)await rebuild(seed,manual);
       const prediction=current();
-      const hit=!prediction.outside.includes(number);
       try{
         const views=await Promise.all(channels.map(channel=>channel.send({action:'SPIN',number})));
         if(closed)return;
-        previews=views;manual.push(number);rows.push({number,hit,label:prediction.label});
+        previews=views;manual.push(number);rows.push(settleRegionalCoverage(number,prediction));
         status('');save();
       }catch(error){
         release(channels);channels=[];previews=[];
@@ -7550,7 +7636,7 @@ function install(){
   }catch{}
 }
 
-if(typeof module==='object'&&module.exports)module.exports={selectCoverage,parseHistory,analysisBackground,CANDIDATES};
+if(typeof module==='object'&&module.exports)module.exports={selectRegionalCoverage,settleRegionalCoverage,parseHistory,analysisBackground,CANDIDATES,SECTORS,WHEEL,REGIONAL_LAYOUTS};
 if(typeof document!=='undefined'){
   if(document.body)install();
   else document.addEventListener('DOMContentLoaded',install,{once:true});
