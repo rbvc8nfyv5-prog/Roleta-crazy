@@ -1,4 +1,4 @@
-/* Vitória Master V5 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
+/* Vitória Master V6 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
 (() => {
 "use strict";
 function analysisBackground() {
@@ -7323,7 +7323,8 @@ state.importAudit=describeImport(clean,opts);
       if(!validPlay(play))throw Error("A leitura não formou uma cobertura válida.");
       const outside=missing(play);
       if(outside.length!==4||new Set(outside).size!==4)throw Error("Cobertura fora do limite de 33 casas.");
-      return {outside,groups:play.blocks.map(({center,radius})=>({center,radius})),wheel:W};
+      return {outside,groups:play.blocks.map(({center,radius})=>({center,radius})),wheel:W,
+        terminalDigits:play.terminalDigits??null};
     }
 
     self.onmessage = async ({data})=>{
@@ -7351,6 +7352,8 @@ const CANDIDATES=[
   ['NORMAL','TERMINAL_SUGGESTION','Sugestão Normal'],
   ['INVERTIDO','TERMINAL_SUGGESTION','Sugestão Inversa'],
 ];
+const TERMINAL_INDEX=CANDIDATES.findIndex(([side,mode])=>side==='NORMAL'&&mode==='TERMINAL_SUGGESTION');
+const TERMINAL_LABEL='Vitória Terminais';
 const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const valid=n=>Number.isInteger(n)&&n>=0&&n<=36;
 
@@ -7398,7 +7401,8 @@ function layouts(){
 }
 const REGIONAL_LAYOUTS=layouts();
 
-function selectRegionalCoverage(candidates,history,rows=[]){
+function selectRegionalCoverage(candidates,history,rows=[],risk=null){
+  const options=risk?FLEXIBLE_LAYOUTS:REGIONAL_LAYOUTS;
   const last=history.slice(-40),weights=Array(37).fill(0);
   for(let i=0;i<last.length;i++)weights[last[i]]+=Math.exp((i-last.length+1)/18);
 
@@ -7415,12 +7419,17 @@ function selectRegionalCoverage(candidates,history,rows=[]){
   const proposals=candidates.map((candidate,index)=>{
     const omitted=new Set(candidate.outside);
     const costByNumber=weights.map((weight,n)=>weight+(omitted.has(n)?0:.65));
-    let best=null,bestCost=Infinity;
-    for(const layout of REGIONAL_LAYOUTS){
+    let best=null,bestCost=Infinity,bestRisk=Infinity;
+    for(const layout of options){
       if(used.has(layout)||layout.outside.some(n=>overlap[n]>=2))continue;
-      let cost=0;
-      for(const n of layout.outside)cost+=costByNumber[n];
-      if(cost<bestCost-1e-12){best=layout;bestCost=cost;}
+      let cost=0,estimated=0;
+      for(const n of layout.outside){
+        cost+=costByNumber[n];
+        if(risk)estimated+=risk[n];
+      }
+      if(estimated<bestRisk-1e-12 || (Math.abs(estimated-bestRisk)<=1e-12 && cost<bestCost-1e-12)){
+        best=layout;bestCost=cost;bestRisk=estimated;
+      }
     }
     if(!best)throw Error("Nenhum conjunto regional sob o limite de exclusões.");
     used.add(best);
@@ -7434,15 +7443,126 @@ function selectRegionalCoverage(candidates,history,rows=[]){
       weightedLosses+=age*loss;mass+=age;losses+=loss;
     }
     return {...best,index,label:CANDIDATES[index][2],wheel:WHEEL,
-      score:bestCost+weightedLosses/mass,losses,samples:recent.length};
+      score:bestCost+weightedLosses/mass,risk:bestRisk,losses,samples:recent.length};
   });
-  const chosen=proposals.reduce((best,p)=>p.score<best.score-1e-12?p:best);
+  const chosen=proposals.reduce((best,p)=>{
+    if(Math.abs(p.risk-best.risk)>1e-12)return p.risk<best.risk?p:best;
+    return p.score<best.score-1e-12?p:best;
+  });
   return {...chosen,proposals};
 }
 
 function settleRegionalCoverage(number,prediction){
   return {number,hit:!prediction.outside.includes(number),label:prediction.label,
     outside:prediction.outside,virtual:prediction.proposals.map(p=>p.outside.includes(number))};
+}
+
+// Geometrias extras com três blocos de cinco e seis blocos de três.
+const POCKETS=Array.from({length:37},(_,n)=>n);
+const WHEEL_INDEX=[];
+WHEEL.forEach((n,i)=>{WHEEL_INDEX[n]=i;});
+const jump=(from,to)=>mod(WHEEL_INDEX[to]-WHEEL_INDEX[from]);
+
+function flexibleLayouts(){
+  const result=[...REGIONAL_LAYOUTS];
+  const seen=new Set(result.map(layout=>layout.outside.join(',')));
+  function visit(outside){
+    if(outside.length<SECTORS.length){
+      for(const n of SECTORS[outside.length][1])visit([...outside,n]);
+      return;
+    }
+    if(seen.has(outside.join(',')))return;
+    const positions=outside.map(n=>WHEEL_INDEX[n]).sort((a,b)=>a-b);
+    const groups=[];
+    function place(index,fiveLeft,threeLeft){
+      if(index===positions.length)return fiveLeft===0&&threeLeft===0;
+      const length=mod(positions[(index+1)%positions.length]-positions[index])-1;
+      for(let five=Math.min(fiveLeft,Math.floor(length/5));five>=0;five--){
+        const three=(length-5*five)/3;
+        if(!Number.isInteger(three)||three>threeLeft)continue;
+        let cursor=positions[index]+1;
+        const before=groups.length;
+        for(let i=0;i<five+three;i++){
+          const radius=i<five?2:1;
+          groups.push({center:WHEEL[mod(cursor+radius)],radius});
+          cursor+=2*radius+1;
+        }
+        if(place(index+1,fiveLeft-five,threeLeft-three))return true;
+        groups.length=before;
+      }
+      return false;
+    }
+    if(place(0,3,6))result.push({outside,groups});
+  }
+  visit([]);
+  return result;
+}
+const FLEXIBLE_LAYOUTS=flexibleLayouts();
+const anyContext=()=>0;
+const pocket=(_,n)=>n;
+const sectorOf=n=>SECTOR_BY_NUMBER[n];
+const MODELS=[
+  [anyContext,pocket],
+  [anyContext,jump],
+  [anyContext,(prev,n)=>Math.min(jump(prev,n),jump(n,prev))],
+  [anyContext,(prev,n,older)=>mod(jump(prev,n)-jump(older,prev)),2],
+  [sectorOf,pocket],
+  [sectorOf,jump],
+  [(prev,older)=>Number(jump(older,prev)>18),jump,2],
+  [anyContext,(_,n,older)=>jump(older,n),2],
+  [(_,__,i)=>i%2,pocket],
+  [(_,__,i)=>i%3,pocket],
+];
+const EVIDENCE_THRESHOLD=Math.log(20);
+
+function transitionProbabilities(history){
+  const h=history.slice(-256);
+  return MODELS.map(([context,key,start=1])=>{
+    const prev=h.at(-1),older=h.at(-2);
+    const current=context(prev,older,h.length);
+    const counts=Array(37).fill(0),widths=Array(37).fill(0);
+    const keys=POCKETS.map(n=>key(prev,n,older));
+    for(const k of keys)widths[k]++;
+    let total=0;
+    for(let i=start;i<h.length;i++){
+      if(context(h[i-1],h[i-2],i)!==current)continue;
+      counts[key(h[i-1],h[i],h[i-2])]++;
+      total++;
+    }
+    return keys.map(k=>(1+counts[k]/widths[k])/(37+total));
+  });
+}
+
+function selectAuditedCoverage(candidates,history,rows=[]){
+  const recent=rows.slice(-16);
+  const base=selectRegionalCoverage(candidates,history,recent.map(row=>row.base));
+  const prior=rows.at(-1)?.evidence;
+  const logScores=prior?.logScores??MODELS.map(()=>0);
+  const maximum=Math.max(...logScores);
+  const relative=logScores.map(score=>Math.exp(score-maximum));
+  const mass=relative.reduce((sum,weight)=>sum+weight,0);
+  const distributions=transitionProbabilities(history);
+  const risk=POCKETS.map(n=>distributions.reduce((sum,p,i)=>sum+relative[i]*p[n],0)/mass);
+  const challenger=selectRegionalCoverage(candidates,history,recent.map(row=>row.challenger),risk);
+  // Só aciona a alternativa com evidência contra o uniforme e contra o V5.
+  // Os dois placares são atualizados depois de sair o resultado.
+  const active=maximum+Math.log(mass/MODELS.length)>=EVIDENCE_THRESHOLD
+    && (prior?.paired??0)>=EVIDENCE_THRESHOLD;
+  return {...(active?challenger:base),base,challenger,active,distributions,prior};
+}
+
+function settleAuditedCoverage(number,prediction){
+  const base=settleRegionalCoverage(number,prediction.base);
+  const challenger=settleRegionalCoverage(number,prediction.challenger);
+  const prior=prediction.prior;
+  // Como ambas cobrem 33, os dois tipos de divergência são equiprováveis
+  // sob o modelo uniforme. Resultados iguais não alteram o placar pareado.
+  const change=base.hit===challenger.hit?0:Math.log(challenger.hit?1.5:.5);
+  const evidence={
+    paired:(prior?.paired??0)+change,
+    logScores:prediction.distributions.map((p,i)=>(prior?.logScores[i]??0)+Math.log(37*p[number])),
+  };
+  return {...(prediction.active?challenger:base),base,challenger,evidence};
 }
 
 function parseHistory(text,order){
@@ -7496,24 +7616,30 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V5</h1><p class="muted">33 casas · 1 de fora por setor · máximo de 2 exclusões por número</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V6</h1><p class="muted">33 casas · 1 de fora por setor · máximo de 2 exclusões por número</p></header>
 <section><h2>Importar histórico</h2>
 <label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
 <div id="status" role="status" aria-live="polite"></div></section>
 <section><h2>Cobertura do próximo giro</h2>
+<div class="row" role="group" aria-label="Escolher jogada">
+<button id="choose-master" type="button" class="primary" aria-pressed="true">Vitória Master</button>
+<button id="choose-terminals" type="button" aria-pressed="false">Vitória Terminais</button>
+</div>
 <p id="timeline-label" class="muted">Histórico importado · 14 últimos</p>
 <div class="timeline" id="timeline" aria-label="14 últimos números, do mais antigo ao mais recente"></div>
 <p id="mode" class="muted"></p><div id="groups" class="groups"></div>
 <details id="comparison"><summary>Conferir as 4 propostas</summary><ul id="proposal-list" class="muted"></ul></details>
-<p id="outside" class="muted"></p><div id="wheel" class="wheel" aria-label="Cobertura na ordem da roda"></div>
+<p id="outside" class="muted"></p><div id="wheel" class="wheel" aria-label="Cobertura na ordem da roda"></div></section>
+<section><h2>Último giro conferido</h2>
 <div class="stats"><div><strong id="hits">0</strong><small>Acertos</small></div><div><strong id="misses">0</strong><small>LOSS</small></div><div><strong id="total">0</strong><small>Giros lançados</small></div></div>
-<div id="latest" role="status" aria-live="polite"></div></section>
+<div id="latest" role="status" aria-live="polite"></div>
+<p id="previous-outside" class="muted"></p></section>
 <section><h2>Lançar resultado</h2><div id="keys" class="keys"></div><div class="row"><button id="undo" type="button">Desfazer último giro</button></div></section>
 </main>`;
 
 function install(){
-  const id='vitoria-master-v5-host';
+  const id='vitoria-master-v6-host';
   const existing=document.getElementById(id);
   if(existing){existing.focus();return;}
   const host=document.createElement('div');
@@ -7522,43 +7648,66 @@ function install(){
   root.innerHTML=VIEW;
   document.body.appendChild(host);
   const $=id=>root.getElementById(id);
-  const storageKey='vitoria-master-v5';
+  const storageKey='vitoria-master-v6';
   const source='('+analysisBackground.toString()+')();';
-  let seed=[],manual=[],rows=[],channels=[],previews=[],busy=false,closed=false;
+  let seed=[],manual=[],rows=[],channels=[],published=null,busy=false,closed=false;
+  let selectedMode='master';
   const color=n=>n===0?'zero':RED.has(n)?'red':'black';
   const status=text=>{$('status').textContent=text;};
   const buttons=[];
   function save(){
-    try{localStorage.setItem(storageKey,JSON.stringify({seed,manual}));}
+    try{localStorage.setItem(storageKey,JSON.stringify({seed,manual,selectedMode}));}
     catch{status('O navegador bloqueou o salvamento da sessão.');}
   }
-  function current(){
-    if(previews.length!==CANDIDATES.length)return null;
-    return selectRegionalCoverage(previews,seed.concat(manual),rows);
+  function publish(views,history,scored){
+    return {
+      master:selectAuditedCoverage(views,history,scored),
+      terminals:{...views[TERMINAL_INDEX],label:TERMINAL_LABEL},
+    };
+  }
+  function settle(number,prediction){
+    const play=prediction.terminals;
+    return {...settleAuditedCoverage(number,prediction.master),terminals:{
+      number,hit:!play.outside.includes(number),outside:play.outside,
+      terminalDigits:play.terminalDigits,label:play.label,
+    }};
   }
   function render(){
-    const play=current(),latest=rows.at(-1);
+    const terminals=selectedMode==='terminals';
+    const play=published?.[selectedMode];
+    const last=rows.at(-1);
+    const latest=terminals?last?.terminals:last;
+    for(const [mode,id] of [['master','choose-master'],['terminals','choose-terminals']]){
+      const selected=mode===selectedMode;
+      $(id).className=selected?'primary':'';
+      $(id).setAttribute('aria-pressed',String(selected));
+      $(id).disabled=busy;
+    }
     $('timeline-label').textContent=manual.length?'Últimos 14 números':'Histórico importado · 14 últimos';
     $('timeline').innerHTML=seed.concat(manual).slice(-14).map(n=>'<span class="chip '+color(n)+'">'+n+'</span>').join('');
-    $('mode').textContent=play?play.label:'Aguardando histórico';
-    $('comparison').hidden=!play;
-    $('proposal-list').innerHTML=play?play.proposals.map(p=>
+    $('mode').textContent=play?play.label+(terminals?' · Finais '+play.terminalDigits.join(' / '):
+      play.active?' · leitura de transições':''):'Aguardando histórico';
+    $('comparison').hidden=!play?.proposals;
+    $('proposal-list').innerHTML=play?.proposals?play.proposals.map(p=>
       '<li>'+p.label+(p.index===play.index?' · escolhida':'')+' · fora '+p.outside.join(' / ')+
       ' · '+p.losses+' LOSS virtuais em '+p.samples+'</li>').join(''):'';
     $('groups').innerHTML=play?play.groups.map(({center,radius})=>'<span><strong>'+center+'</strong> <small>± '+radius+'</small></span>').join(''):'';
-    $('outside').textContent=play?play.outside.map((n,i)=>SECTORS[i][0]+' '+n).join(' · '):'';
+    $('outside').textContent=play?'Fora no próximo giro · '+(terminals?play.outside.join(' / '):
+      play.outside.map((n,i)=>SECTORS[i][0]+' '+n).join(' · ')):'';
     $('wheel').innerHTML=play?play.wheel.map(n=>'<span class="chip '+color(n)+(play.outside.includes(n)?' outside':'')+'">'+n+'</span>').join(''):'';
-    const hits=rows.reduce((sum,row)=>sum+Number(row.hit),0);
+    const hits=rows.reduce((sum,row)=>sum+Number((terminals?row.terminals:row).hit),0);
     $('hits').textContent=hits;$('misses').textContent=rows.length-hits;$('total').textContent=rows.length;
-    $('latest').textContent=latest?latest.number+' · '+(latest.hit?'ACERTO':'LOSS')+' · '+latest.label:'';
+    $('latest').textContent=latest?'Giro '+rows.length+' · '+latest.number+' · '+(latest.hit?'ACERTO':'LOSS')+' · '+latest.label:'Aguardando primeiro resultado';
     $('latest').className=latest?(latest.hit?'good':'bad'):'';
+    $('previous-outside').textContent=latest?'Fora antes do giro · '+latest.outside.join(' / ')+
+      (terminals?' · Finais '+latest.terminalDigits.join(' / '):''):'';
     $('import').disabled=busy;$('undo').disabled=busy||!manual.length;
-    buttons.forEach(button=>{button.disabled=busy||!seed.length;});
+    buttons.forEach(button=>{button.disabled=busy||!play;});
   }
   function release(pool){pool.forEach(channel=>channel.close());}
   async function rebuild(nextSeed,nextManual){
     // Quatro sessões independentes avançam com os mesmos resultados conhecidos.
-    release(channels);channels=[];previews=[];
+    release(channels);channels=[];
     const opened=[];
     try{
       for(const candidate of CANDIDATES)opened.push(createChannel(source));
@@ -7569,15 +7718,16 @@ function install(){
       const replay=[],known=[...nextSeed];
       for(let i=0;i<nextManual.length;i++){
         const number=nextManual[i];
-        const prior=selectRegionalCoverage(views,known,replay);
-        replay.push(settleRegionalCoverage(number,prior));
+        const prior=publish(views,known,replay);
+        replay.push(settle(number,prior));
         views=await Promise.all(opened.map(channel=>channel.send({action:'SPIN',number})));
         known.push(number);
       }
       if(closed){release(opened);return;}
-      seed=nextSeed;manual=nextManual;rows=replay;previews=views;
+      const next=publish(views,known,replay);
+      seed=nextSeed;manual=nextManual;rows=replay;published=next;
     }catch(error){
-      release(opened);channels=[];previews=[];
+      release(opened);channels=[];
       throw error;
     }
   }
@@ -7589,18 +7739,29 @@ function install(){
     finally{busy=false;if(!closed)render();}
   }
   function append(number){
+    const prediction=published;
+    if(!prediction)return;
     return exclusive('Calculando o próximo giro…',async()=>{
-      if(!previews.length)await rebuild(seed,manual);
-      const prediction=current();
+      if(!channels.length)await rebuild(seed,manual);
       try{
+        const scored=settle(number,prediction);
         const views=await Promise.all(channels.map(channel=>channel.send({action:'SPIN',number})));
         if(closed)return;
-        previews=views;manual.push(number);rows.push(settleRegionalCoverage(number,prediction));
+        const next=publish(views,seed.concat(manual,number),rows.concat(scored));
+        manual.push(number);rows.push(scored);published=next;
         status('');save();
       }catch(error){
-        release(channels);channels=[];previews=[];
+        release(channels);channels=[];
         throw error;
       }
+    });
+  }
+  for(const [mode,id] of [['master','choose-master'],['terminals','choose-terminals']]){
+    $(id).addEventListener('click',()=>{
+      if(busy||closed)return;
+      selectedMode=mode;
+      if(seed.length)save();
+      render();
     });
   }
   for(let n=0;n<=36;n++){
@@ -7627,9 +7788,10 @@ function install(){
   });
   render();
   try{
-    const saved=JSON.parse(localStorage.getItem(storageKey)||'null');
+    const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v5')??'null');
     if(saved&&Array.isArray(saved.seed)&&saved.seed.length>=8&&saved.seed.length<=70&&saved.seed.every(valid)&&
       Array.isArray(saved.manual)&&saved.manual.every(valid)){
+      selectedMode=saved.selectedMode==='terminals'?'terminals':'master';
       exclusive('Restaurando histórico…',async()=>{
         await rebuild(saved.seed,saved.manual);
         if(!closed)status('Histórico importado · '+seed.length+' números.');
@@ -7638,7 +7800,7 @@ function install(){
   }catch{}
 }
 
-if(typeof module==='object'&&module.exports)module.exports={selectRegionalCoverage,settleRegionalCoverage,parseHistory,analysisBackground,CANDIDATES,SECTORS,WHEEL,REGIONAL_LAYOUTS};
+if(typeof module==='object'&&module.exports)module.exports={selectAuditedCoverage,settleAuditedCoverage,FLEXIBLE_LAYOUTS,transitionProbabilities,selectRegionalCoverage,settleRegionalCoverage,parseHistory,analysisBackground,CANDIDATES,SECTORS,WHEEL,REGIONAL_LAYOUTS};
 if(typeof document!=='undefined'){
   if(document.body)install();
   else document.addEventListener('DOMContentLoaded',install,{once:true});
