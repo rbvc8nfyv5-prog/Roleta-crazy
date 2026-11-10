@@ -1,4 +1,4 @@
-/* Vitória V10 — pula nove resultados e confere o décimo. */
+/* Vitória V11 — Pula Dez e Horizontal. */
 (() => {
   'use strict';
 
@@ -32,12 +32,12 @@
     return newest ? numbers.reverse() : numbers;
   }
 
-  function predict(history) {
-    if (history.length < 10) return null;
-    const trigger = history.at(-10);
+  function predict(history, distance = 10) {
+    if (history.length < distance) return null;
+    const trigger = history.at(-distance);
     const targets = [];
-    for (let i = 10; i < history.length; i++) {
-      if (history[i - 10] % 10 === trigger % 10) targets.push(history[i]);
+    for (let i = distance; i < history.length; i++) {
+      if (history[i - distance] % 10 === trigger % 10) targets.push(history[i]);
     }
     if (!targets.length) return null;
     const scored = trios.map(trio => {
@@ -91,7 +91,8 @@
     if (!saved || !Array.isArray(saved.seed) || saved.seed.length < 10 ||
         saved.seed.length > 200 || !saved.seed.every(valid) ||
         !Array.isArray(saved.rows)) throw Error('Sessão salva inválida.');
-    for (const row of saved.rows) {
+    for (const row of saved.rows.flatMap(entry =>
+      entry && Object.hasOwn(entry, 'horizontal') ? [entry, entry.horizontal] : [entry])) {
       if (!row || !valid(row.number)) throw Error('Sessão salva inválida.');
       if (row.prediction === null && row.hit === null) continue;
       const p = row.prediction;
@@ -106,11 +107,11 @@
       if (expected.length !== p.numbers.length ||
           expected.some(n => !p.numbers.includes(n))) throw Error('Sessão salva inválida.');
     }
-    return saved;
+    return {...saved, mode:saved.mode === 'horizontal' ? 'horizontal' : 'pula'};
   }
 
   function install() {
-    const id = 'vitoria-v10';
+    const id = 'vitoria-v11';
     if (document.getElementById(id)) return;
     const host = document.createElement('div');
     host.id = id;
@@ -125,6 +126,7 @@ h1{font-size:24px;margin:0}p{margin:8px 0}
 textarea,button,select{font:inherit;color:inherit;background:#182329;border:1px solid #405057;border-radius:7px}
 textarea{width:100%;padding:9px;margin-top:14px;resize:vertical}
 button,select{padding:8px;min-height:44px}
+button[aria-pressed="true"]{background:#28513c;border-color:#8ff0b8}
 .actions{justify-content:flex-start;flex-wrap:wrap;margin:8px 0 14px}
 .timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:10px 0}
 .chip{text-align:center;min-width:0;border:1px solid #405057;border-radius:4px;padding:4px 0;font-size:clamp(10px,3vw,17px)}
@@ -139,10 +141,10 @@ button,select{padding:8px;min-height:44px}
 #score{color:#bdc9cb;font-size:14px}
 </style>
 <main>
-<header><h1>Vitória V10</h1><button id="close" type="button">Fechar</button></header>
+<header><h1>Vitória V11</h1><button id="close" type="button">Fechar</button></header>
 <textarea id="seed" rows="2" aria-label="Histórico" placeholder="Cole de 10 a 200 números"></textarea>
 <div class="actions"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button id="import" type="button">Importar</button></div>
-<p>Vitória Pula Dez</p>
+<div class="actions"><button id="pula" type="button" aria-pressed="true">Vitória Pula Dez</button><button id="horizontal" type="button" aria-pressed="false">Vitória Horizontal</button></div>
 <div id="timeline" class="timeline" aria-label="Últimos 14 números"></div>
 <div id="terminals" class="terminals" aria-label="Três terminais em ordem de força"></div>
 <div id="results" class="results" aria-label="Últimos 14 resultados registrados"></div>
@@ -154,24 +156,38 @@ button,select{padding:8px;min-height:44px}
     const $ = name => root.getElementById(name);
     const red = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
     const color = n => n === 0 ? 'zero' : red.has(n) ? 'red' : 'black';
-    const storageKey = 'vitoria-v10';
-    let state = {seed:[], rows:[]};
+    const storageKey = 'vitoria-v11';
+    let state = {seed:[], rows:[], mode:'pula'};
     let published = null;
     const keys = [];
     const history = () => state.seed.concat(state.rows.map(row => row.number));
 
+    function reading(numbers) {
+      return {pula:predict(numbers), horizontal:predict(numbers, 1)};
+    }
+
+    function modeRow(row) {
+      return state.mode === 'horizontal'
+        ? row.horizontal || {number:row.number, prediction:null, hit:null}
+        : row;
+    }
+
     function render() {
+      const play = published?.[state.mode];
+      for (const mode of ['pula','horizontal']) {
+        $(mode).setAttribute('aria-pressed', String(state.mode === mode));
+      }
       $('timeline').innerHTML = history().slice(-14).map(n =>
         '<span class="chip ' + color(n) + '">' + n + '</span>').join('');
-      $('terminals').innerHTML = (published?.digits || ['—','—','—']).map(n =>
+      $('terminals').innerHTML = (play?.digits || ['—','—','—']).map(n =>
         '<div class="terminal">' + n + '</div>').join('');
-      $('results').innerHTML = state.rows.slice(-14).map(row => {
+      $('results').innerHTML = state.rows.slice(-14).map(modeRow).map(row => {
         const label = row.hit === null ? 'SEM INDICAÇÃO' : row.hit ? 'GREEN' : 'LOSS';
         const style = row.hit === null ? '' : row.hit ? 'green' : 'loss';
         return '<span class="result ' + style + '" role="img" aria-label="' +
           row.number + ' · ' + label + '" title="' + row.number + ' · ' + label + '">' + (row.hit === null ? '—' : row.hit ? 'G' : 'L') + '</span>';
       }).join('');
-      const scored = state.rows.filter(row => row.hit !== null);
+      const scored = state.rows.map(modeRow).filter(row => row.hit !== null);
       const greens = scored.filter(row => row.hit).length;
       $('score').textContent = scored.length
         ? 'GREEN ' + greens + ' · LOSS ' + (scored.length - greens) : '';
@@ -181,14 +197,14 @@ button,select{padding:8px;min-height:44px}
 
     function commit(next) {
       const nextHistory = next.seed.concat(next.rows.map(row => row.number));
-      const nextPublished = predict(nextHistory);
+      const nextPublished = reading(nextHistory);
       let warning = '';
-      try { localStorage.setItem(storageKey, JSON.stringify(next)); }
+      try { if (next.seed.length) localStorage.setItem(storageKey, JSON.stringify(next)); }
       catch { warning = 'O navegador não conseguiu salvar a sessão.'; }
       state = next;
       published = nextPublished;
       render();
-      $('status').textContent = warning || (state.seed.length && !published
+      $('status').textContent = warning || (state.seed.length && !published[state.mode]
         ? 'Aguardando ocorrências completas desse final.' : '');
     }
 
@@ -199,8 +215,9 @@ button,select{padding:8px;min-height:44px}
       button.className = color(n);
       button.addEventListener('click', () => {
         if (!state.seed.length) return;
-        const row = settle(n, published);
-        commit({seed:state.seed, rows:state.rows.concat(row)});
+        const row = {...settle(n, published.pula),
+          horizontal:settle(n, published.horizontal)};
+        commit({...state, rows:state.rows.concat(row)});
       });
       keys.push(button);
       $('keys').appendChild(button);
@@ -209,20 +226,23 @@ button,select{padding:8px;min-height:44px}
     $('import').addEventListener('click', () => {
       try {
         const seed = parse($('seed').value, $('order').value === 'newest');
-        commit({seed, rows:[]});
+        commit({seed, rows:[], mode:state.mode});
         $('seed').value = '';
       } catch (error) { $('status').textContent = error.message; }
     });
     $('undo').addEventListener('click', () => {
-      if (state.rows.length) commit({seed:state.seed, rows:state.rows.slice(0,-1)});
+      if (state.rows.length) commit({...state, rows:state.rows.slice(0,-1)});
     });
+    for (const mode of ['pula','horizontal']) {
+      $(mode).addEventListener('click', () => commit({...state, mode}));
+    }
     $('close').addEventListener('click', () => host.remove());
     render();
     try {
-      const saved = localStorage.getItem(storageKey);
+      const saved = localStorage.getItem(storageKey) ?? localStorage.getItem('vitoria-v10');
       if (saved) {
         state = validate(JSON.parse(saved));
-        published = predict(history());
+        published = reading(history());
         render();
       }
     } catch (error) { $('status').textContent = error.message; }
