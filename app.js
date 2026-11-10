@@ -7327,6 +7327,33 @@ state.importAudit=describeImport(clean,opts);
         terminalDigits:play.terminalDigits??null};
     }
 
+    const fixedEndings=[0,2,3,4,6,9];
+    function fixedTerminalPreview(){
+      const history=state.history.slice(-14);
+      const weights=Array(37).fill(0);
+      history.forEach((number,i)=>{weights[ix(number)]+=i+1;});
+      let best=null;
+      for(let a=0;a<fixedEndings.length-2;a++){
+        for(let b=a+1;b<fixedEndings.length-1;b++){
+          for(let c=b+1;c<fixedEndings.length;c++){
+            const terminalDigits=[fixedEndings[a],fixedEndings[b],fixedEndings[c]];
+            const play=packTerminalTrio(terminalDigits,weights);
+            const {core}=layoutsForTerminalTrio(terminalDigits);
+            const hits=history.map(n=>core.has(n)&&play.numbers.includes(n));
+            const territoryHits=hits.filter(Boolean).length;
+            const recent=hits.slice(-5).filter(Boolean).length;
+            const recency=hits.reduce((sum,hit,i)=>sum+(hit?i+1:0),0);
+            if(best&&(territoryHits<best.territoryHits||
+              (territoryHits===best.territoryHits&&(recent<best.recent||
+                (recent===best.recent&&recency<=best.recency)))))continue;
+            best={terminalDigits,territoryHits,recent,recency,samples:history.length,
+              outside:missing(play),groups:play.blocks.map(({center,radius})=>({center,radius})),wheel:W};
+          }
+        }
+      }
+      return best;
+    }
+
     self.onmessage = async ({data})=>{
       try{
         if(data.action==="IMPORT"){
@@ -7342,7 +7369,11 @@ state.importAudit=describeImport(clean,opts);
           if(!state.block.data&&state.history.length>=8)await prepareBlockParallel();
           prepareFollowPreview();
         }else throw Error("Comando desconhecido.");
-        self.postMessage({result:preview()});
+        const result=preview();
+        if(state.strategy==="TERMINAL_SUGGESTION"&&state.readingSide==="NORMAL"){
+          result.fixedTerminals=fixedTerminalPreview();
+        }
+        self.postMessage({result});
       }catch(error){self.postMessage({error:String(error.message||error)});}
     };
   }
@@ -7354,6 +7385,8 @@ const CANDIDATES=[
 ];
 const TERMINAL_INDEX=CANDIDATES.findIndex(([side,mode])=>side==='NORMAL'&&mode==='TERMINAL_SUGGESTION');
 const TERMINAL_LABEL='Vitória Terminais';
+const FIXED_TERMINAL_LABEL='Vitória Terminais Fixos';
+const PLAY_MODES=[['master','choose-master'],['terminals','choose-terminals'],['fixed','choose-fixed']];
 const RED=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
 const valid=n=>Number.isInteger(n)&&n>=0&&n<=36;
 
@@ -7616,7 +7649,7 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V6</h1><p class="muted">33 casas · 1 de fora por setor · máximo de 2 exclusões por número</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V6</h1><p class="muted">33 casas por jogada</p></header>
 <section><h2>Importar histórico</h2>
 <label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
@@ -7625,10 +7658,11 @@ const VIEW=`
 <div class="row" role="group" aria-label="Escolher jogada">
 <button id="choose-master" type="button" class="primary" aria-pressed="true">Vitória Master</button>
 <button id="choose-terminals" type="button" aria-pressed="false">Vitória Terminais</button>
+<button id="choose-fixed" type="button" aria-pressed="false">Vitória Terminais Fixos</button>
 </div>
 <p id="timeline-label" class="muted">Histórico importado · 14 últimos</p>
 <div class="timeline" id="timeline" aria-label="14 últimos números, do mais antigo ao mais recente"></div>
-<p id="mode" class="muted"></p><div id="groups" class="groups"></div>
+<p id="mode" class="muted"></p><div id="territory-hits" class="muted"></div><div id="groups" class="groups"></div>
 <details id="comparison"><summary>Conferir as 4 propostas</summary><ul id="proposal-list" class="muted"></ul></details>
 <p id="outside" class="muted"></p><div id="wheel" class="wheel" aria-label="Cobertura na ordem da roda"></div></section>
 <section><h2>Último giro conferido</h2>
@@ -7663,21 +7697,23 @@ function install(){
     return {
       master:selectAuditedCoverage(views,history,scored),
       terminals:{...views[TERMINAL_INDEX],label:TERMINAL_LABEL},
+      fixed:{...views[TERMINAL_INDEX].fixedTerminals,label:FIXED_TERMINAL_LABEL},
     };
   }
   function settle(number,prediction){
-    const play=prediction.terminals;
-    return {...settleAuditedCoverage(number,prediction.master),terminals:{
+    const score=play=>({
       number,hit:!play.outside.includes(number),outside:play.outside,
       terminalDigits:play.terminalDigits,label:play.label,
-    }};
+    });
+    return {...settleAuditedCoverage(number,prediction.master),
+      terminals:score(prediction.terminals),fixed:score(prediction.fixed)};
   }
   function render(){
-    const terminals=selectedMode==='terminals';
+    const terminals=selectedMode!=='master';
     const play=published?.[selectedMode];
     const last=rows.at(-1);
-    const latest=terminals?last?.terminals:last;
-    for(const [mode,id] of [['master','choose-master'],['terminals','choose-terminals']]){
+    const latest=terminals?last?.[selectedMode]:last;
+    for(const [mode,id] of PLAY_MODES){
       const selected=mode===selectedMode;
       $(id).className=selected?'primary':'';
       $(id).setAttribute('aria-pressed',String(selected));
@@ -7687,6 +7723,8 @@ function install(){
     $('timeline').innerHTML=seed.concat(manual).slice(-14).map(n=>'<span class="chip '+color(n)+'">'+n+'</span>').join('');
     $('mode').textContent=play?play.label+(terminals?' · Finais '+play.terminalDigits.join(' / '):
       play.active?' · leitura de transições':''):'Aguardando histórico';
+    $('territory-hits').textContent=play&&selectedMode==='fixed'?
+      play.territoryHits+'/'+play.samples+' giros da janela dentro do território escolhido':'';
     $('comparison').hidden=!play?.proposals;
     $('proposal-list').innerHTML=play?.proposals?play.proposals.map(p=>
       '<li>'+p.label+(p.index===play.index?' · escolhida':'')+' · fora '+p.outside.join(' / ')+
@@ -7695,7 +7733,7 @@ function install(){
     $('outside').textContent=play?'Fora no próximo giro · '+(terminals?play.outside.join(' / '):
       play.outside.map((n,i)=>SECTORS[i][0]+' '+n).join(' · ')):'';
     $('wheel').innerHTML=play?play.wheel.map(n=>'<span class="chip '+color(n)+(play.outside.includes(n)?' outside':'')+'">'+n+'</span>').join(''):'';
-    const hits=rows.reduce((sum,row)=>sum+Number((terminals?row.terminals:row).hit),0);
+    const hits=rows.reduce((sum,row)=>sum+Number((terminals?row[selectedMode]:row).hit),0);
     $('hits').textContent=hits;$('misses').textContent=rows.length-hits;$('total').textContent=rows.length;
     $('latest').textContent=latest?'Giro '+rows.length+' · '+latest.number+' · '+(latest.hit?'ACERTO':'LOSS')+' · '+latest.label:'Aguardando primeiro resultado';
     $('latest').className=latest?(latest.hit?'good':'bad'):'';
@@ -7756,7 +7794,7 @@ function install(){
       }
     });
   }
-  for(const [mode,id] of [['master','choose-master'],['terminals','choose-terminals']]){
+  for(const [mode,id] of PLAY_MODES){
     $(id).addEventListener('click',()=>{
       if(busy||closed)return;
       selectedMode=mode;
@@ -7791,7 +7829,7 @@ function install(){
     const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v5')??'null');
     if(saved&&Array.isArray(saved.seed)&&saved.seed.length>=8&&saved.seed.length<=70&&saved.seed.every(valid)&&
       Array.isArray(saved.manual)&&saved.manual.every(valid)){
-      selectedMode=saved.selectedMode==='terminals'?'terminals':'master';
+      selectedMode=PLAY_MODES.some(([mode])=>mode===saved.selectedMode)?saved.selectedMode:'master';
       exclusive('Restaurando histórico…',async()=>{
         await rebuild(saved.seed,saved.manual);
         if(!closed)status('Histórico importado · '+seed.length+' números.');
