@@ -7351,6 +7351,18 @@ state.importAudit=describeImport(clean,opts);
           }
         }
       }
+      const terminalRanking=best.terminalDigits.map(digit=>{
+        const territory=terminalGroup(digit).numbers;
+        const hits=history.map(n=>territory.includes(n)&&!best.outside.includes(n));
+        return {
+          digit,
+          hits:hits.filter(Boolean).length,
+          recent:hits.slice(-5).filter(Boolean).length,
+          recency:hits.reduce((sum,hit,i)=>sum+(hit?i+1:0),0),
+        };
+      }).sort((a,b)=>b.hits-a.hits||b.recent-a.recent||b.recency-a.recency||a.digit-b.digit);
+      best.terminalRanking=terminalRanking;
+      best.terminalDigits=terminalRanking.map(({digit})=>digit);
       return best;
     }
 
@@ -7724,7 +7736,8 @@ function install(){
     $('mode').textContent=play?play.label+(terminals?' · Finais '+play.terminalDigits.join(' / '):
       play.active?' · leitura de transições':''):'Aguardando histórico';
     $('territory-hits').textContent=play&&selectedMode==='fixed'?
-      play.territoryHits+'/'+play.samples+' giros da janela dentro do território escolhido':'';
+      play.terminalRanking.map(({digit,hits})=>'Final '+digit+' · '+hits+'/'+play.samples).join(' | ')+
+      ' · Trio '+play.territoryHits+'/'+play.samples+' na janela':'';
     $('comparison').hidden=!play?.proposals;
     $('proposal-list').innerHTML=play?.proposals?play.proposals.map(p=>
       '<li>'+p.label+(p.index===play.index?' · escolhida':'')+' · fora '+p.outside.join(' / ')+
