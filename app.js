@@ -1,4 +1,4 @@
-/* Vitória Master V7 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
+/* Vitória Master V8 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
 (() => {
 "use strict";
 function analysisBackground() {
@@ -7616,10 +7616,61 @@ function settleAuditedCoverage(number,prediction){
   return {...(prediction.active?challenger:base),base,challenger,evidence};
 }
 
+// Cada partida usa o resultado oito posições depois, sem contar a partida.
+const TERMINAL_TERRITORIES=Array.from({length:10},(_,digit)=>new Set(
+  WHEEL.flatMap((number,i)=>number%10===digit?
+    [WHEEL[mod(i-1)],number,WHEEL[mod(i+1)]]:[])));
+const LAG_TRIOS=[];
+for(let a=0;a<8;a++)for(let b=a+1;b<9;b++)for(let c=b+1;c<10;c++){
+  const digits=[a,b,c];
+  const numbers=WHEEL.filter(n=>digits.some(d=>TERMINAL_TERRITORIES[d].has(n)));
+  LAG_TRIOS.push({digits,numbers});
+}
+
+function countEight(history){
+  if(history.length<8)return null;
+  const trigger=history.at(-8),terminal=trigger%10;
+  const targets=[];
+  for(let i=8;i<history.length;i++){
+    if(history[i-8]%10===terminal)targets.push(history[i]);
+  }
+  const samples=targets.length;
+  if(!samples)return {trigger,terminal,samples,turn:history.length+1,most:null,least:null};
+  const candidates=LAG_TRIOS.map(trio=>({
+    ...trio,hits:targets.filter(n=>trio.numbers.includes(n)).length,
+  }));
+  const most=candidates.reduce((best,p)=>{
+    if(p.hits!==best.hits)return p.hits>best.hits?p:best;
+    return p.numbers.length<best.numbers.length?p:best;
+  });
+  const least=candidates.reduce((best,p)=>{
+    if(p.hits!==best.hits)return p.hits<best.hits?p:best;
+    return p.numbers.length<best.numbers.length?p:best;
+  });
+  function rank(trio,descending){
+    const terminalDigits=[...trio.digits].sort((a,b)=>{
+      const difference=targets.filter(n=>TERMINAL_TERRITORIES[b].has(n)).length-
+        targets.filter(n=>TERMINAL_TERRITORIES[a].has(n)).length;
+      return (descending?difference:-difference)||a-b;
+    });
+    return {...trio,terminalDigits,samples,
+      ties:candidates.filter(p=>p.hits===trio.hits).length};
+  }
+  return {trigger,terminal,samples,turn:history.length+1,most:rank(most,true),least:rank(least,false)};
+}
+
+function settleCountEight(number,prediction){
+  if(!prediction?.samples)return null;
+  return {number,trigger:prediction.trigger,terminal:prediction.terminal,turn:prediction.turn,
+    most:prediction.most,least:prediction.least,
+    mostHit:prediction.most.numbers.includes(number),
+    leastHit:prediction.least.numbers.includes(number)};
+}
+
 function parseHistory(text,order){
   const tokens=text.trim().split(/[\s,;|]+/).filter(Boolean);
-  if(tokens.length<8||tokens.length>70||tokens.some(t=>!/^\d{1,2}$/.test(t)||!valid(Number(t)))){
-    throw new Error('Cole de 8 a 70 números inteiros de 0 a 36.');
+  if(tokens.length<8||tokens.length>200||tokens.some(t=>!/^\d{1,2}$/.test(t)||!valid(Number(t)))){
+    throw new Error('Cole de 8 a 200 números inteiros de 0 a 36.');
   }
   const values=tokens.map(Number);
   return order==='newest'?values.reverse():values;
@@ -7667,11 +7718,17 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V7</h1><p class="muted">33 casas por jogada</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V8</h1><p class="muted">33 casas por jogada</p></header>
 <section><h2>Importar histórico</h2>
-<label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
+<label for="seed">Cole de 8 a 200 números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
 <div id="status" role="status" aria-live="polite"></div></section>
+<section><h2>Vitória Contagem de 8</h2>
+<p id="lag-context" class="muted"></p>
+<p id="lag-most"></p><p id="lag-least"></p>
+<p id="lag-last" class="muted"></p>
+<p id="lag-score" class="muted"></p>
+</section>
 <section><h2>Cobertura do próximo giro</h2>
 <div class="row" role="group" aria-label="Escolher jogada">
 <button id="choose-master" type="button" class="primary" aria-pressed="true">Vitória Master</button>
@@ -7691,7 +7748,7 @@ const VIEW=`
 </main>`;
 
 function install(){
-  const id='vitoria-master-v7-host';
+  const id='vitoria-master-v8-host';
   const existing=document.getElementById(id);
   if(existing){existing.focus();return;}
   const host=document.createElement('div');
@@ -7700,7 +7757,7 @@ function install(){
   root.innerHTML=VIEW;
   document.body.appendChild(host);
   const $=id=>root.getElementById(id);
-  const storageKey='vitoria-master-v7';
+  const storageKey='vitoria-master-v8';
   const source='('+analysisBackground.toString()+')();';
   let seed=[],manual=[],rows=[],channels=[],published=null,busy=false,closed=false;
   let selectedMode='master';
@@ -7716,6 +7773,7 @@ function install(){
       master:selectAuditedCoverage(views,history,scored),
       terminals:{...views[TERMINAL_INDEX],label:TERMINAL_LABEL},
       fixed:{...views[TERMINAL_INDEX].fixedTerminals,label:FIXED_TERMINAL_LABEL},
+      countEight:countEight(history),
     };
   }
   function settle(number,prediction){
@@ -7724,9 +7782,29 @@ function install(){
       terminalDigits:play.terminalDigits,label:play.label,
     });
     return {...settleAuditedCoverage(number,prediction.master),
-      terminals:score(prediction.terminals),fixed:score(prediction.fixed)};
+      terminals:score(prediction.terminals),fixed:score(prediction.fixed),
+      countEight:settleCountEight(number,prediction.countEight)};
   }
   function render(){
+    const lag=published?.countEight;
+    $('lag-context').textContent=lag?'Próximo giro '+lag.turn+' · partida '+lag.trigger+
+      ' · final '+lag.terminal+' · '+lag.samples+' ocorrências completas':
+      'Importe o histórico para iniciar a contagem.';
+    for(const [id,key,label] of [['lag-most','most','Maior acerto'],['lag-least','least','Menor acerto']]){
+      const trio=lag?.[key];
+      $(id).textContent=trio?label+' · '+trio.terminalDigits.join(' / ')+
+        ' · '+trio.hits+'/'+lag.samples+' · '+trio.numbers.length+' casas'+
+        (trio.ties>1?' · '+trio.ties+' trios empatados':''):
+        lag?'Aguardando uma ocorrência completa desse final na contagem de 8.':'';
+    }
+    const priorLag=rows.at(-1)?.countEight;
+    $('lag-last').textContent=priorLag?'Último giro '+priorLag.turn+' · saiu '+priorLag.number+
+      ' · maior '+priorLag.most.terminalDigits.join('/')+' '+(priorLag.mostHit?'ACERTO':'LOSS')+
+      ' · menor '+priorLag.least.terminalDigits.join('/')+' '+(priorLag.leastHit?'ACERTO':'LOSS'):'';
+    const scoredLag=rows.map(row=>row.countEight).filter(Boolean);
+    $('lag-score').textContent=scoredLag.length?'Giros lançados com indicação · maior '+
+      scoredLag.filter(row=>row.mostHit).length+'/'+scoredLag.length+' · menor '+
+      scoredLag.filter(row=>row.leastHit).length+'/'+scoredLag.length:'';
     const terminals=selectedMode!=='master';
     const play=published?.[selectedMode];
     const last=rows.at(-1);
@@ -7770,7 +7848,7 @@ function install(){
       for(const candidate of CANDIDATES)opened.push(createChannel(source));
       channels=opened;
       let views=await Promise.all(opened.map((channel,i)=>channel.send({
-        action:'IMPORT',numbers:nextSeed,readingSide:CANDIDATES[i][0],strategy:CANDIDATES[i][1]
+        action:'IMPORT',numbers:nextSeed.slice(-70),readingSide:CANDIDATES[i][0],strategy:CANDIDATES[i][1]
       })));
       const replay=[],known=[...nextSeed];
       for(let i=0;i<nextManual.length;i++){
@@ -7845,8 +7923,8 @@ function install(){
   });
   render();
   try{
-    const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v6')??localStorage.getItem('vitoria-master-v5')??'null');
-    if(saved&&Array.isArray(saved.seed)&&saved.seed.length>=8&&saved.seed.length<=70&&saved.seed.every(valid)&&
+    const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v7')??localStorage.getItem('vitoria-master-v6')??localStorage.getItem('vitoria-master-v5')??'null');
+    if(saved&&Array.isArray(saved.seed)&&saved.seed.length>=8&&saved.seed.length<=200&&saved.seed.every(valid)&&
       Array.isArray(saved.manual)&&saved.manual.every(valid)){
       selectedMode=PLAY_MODES.some(([mode])=>mode===saved.selectedMode)?saved.selectedMode:'master';
       exclusive('Restaurando histórico…',async()=>{
@@ -7857,7 +7935,7 @@ function install(){
   }catch{}
 }
 
-if(typeof module==='object'&&module.exports)module.exports={selectAuditedCoverage,settleAuditedCoverage,FLEXIBLE_LAYOUTS,transitionProbabilities,selectRegionalCoverage,settleRegionalCoverage,parseHistory,analysisBackground,CANDIDATES,SECTORS,WHEEL,REGIONAL_LAYOUTS};
+if(typeof module==='object'&&module.exports)module.exports={countEight,settleCountEight,LAG_TRIOS,selectAuditedCoverage,settleAuditedCoverage,FLEXIBLE_LAYOUTS,transitionProbabilities,selectRegionalCoverage,settleRegionalCoverage,parseHistory,analysisBackground,CANDIDATES,SECTORS,WHEEL,REGIONAL_LAYOUTS};
 if(typeof document!=='undefined'){
   if(document.body)install();
   else document.addEventListener('DOMContentLoaded',install,{once:true});
