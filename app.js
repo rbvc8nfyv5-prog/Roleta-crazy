@@ -1,4 +1,4 @@
-/* Vitória Master V6 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
+/* Vitória Master V7 · JavaScript completo · quatro leituras e uma cobertura de 33 casas. */
 (() => {
 "use strict";
 function analysisBackground() {
@@ -7327,6 +7327,21 @@ state.importAudit=describeImport(clean,opts);
         terminalDigits:play.terminalDigits??null};
     }
 
+    function rankTerminalPreview(play,history){
+      const terminalRanking=play.terminalDigits.map(digit=>{
+        const territory=terminalGroup(digit).numbers;
+        const hits=history.map(n=>territory.includes(n)&&!play.outside.includes(n));
+        return {
+          digit,
+          hits:hits.filter(Boolean).length,
+          recent:hits.slice(-5).filter(Boolean).length,
+          recency:hits.reduce((sum,hit,i)=>sum+(hit?i+1:0),0),
+        };
+      }).sort((a,b)=>b.hits-a.hits||b.recent-a.recent||b.recency-a.recency||a.digit-b.digit);
+      return {...play,terminalRanking,samples:history.length,
+        terminalDigits:terminalRanking.map(({digit})=>digit)};
+    }
+
     const fixedEndings=[0,2,3,4,6,9];
     function fixedTerminalPreview(){
       const history=state.history.slice(-14);
@@ -7343,27 +7358,17 @@ state.importAudit=describeImport(clean,opts);
             const territoryHits=hits.filter(Boolean).length;
             const recent=hits.slice(-5).filter(Boolean).length;
             const recency=hits.reduce((sum,hit,i)=>sum+(hit?i+1:0),0);
-            if(best&&(territoryHits<best.territoryHits||
-              (territoryHits===best.territoryHits&&(recent<best.recent||
+            // Os cinco giros mais recentes valem dois pontos na escolha do trio.
+            const priority=territoryHits+recent;
+            if(best&&(priority<best.priority||
+              (priority===best.priority&&(recent<best.recent||
                 (recent===best.recent&&recency<=best.recency)))))continue;
-            best={terminalDigits,territoryHits,recent,recency,samples:history.length,
+            best={terminalDigits,territoryHits,recent,recency,priority,
               outside:missing(play),groups:play.blocks.map(({center,radius})=>({center,radius})),wheel:W};
           }
         }
       }
-      const terminalRanking=best.terminalDigits.map(digit=>{
-        const territory=terminalGroup(digit).numbers;
-        const hits=history.map(n=>territory.includes(n)&&!best.outside.includes(n));
-        return {
-          digit,
-          hits:hits.filter(Boolean).length,
-          recent:hits.slice(-5).filter(Boolean).length,
-          recency:hits.reduce((sum,hit,i)=>sum+(hit?i+1:0),0),
-        };
-      }).sort((a,b)=>b.hits-a.hits||b.recent-a.recent||b.recency-a.recency||a.digit-b.digit);
-      best.terminalRanking=terminalRanking;
-      best.terminalDigits=terminalRanking.map(({digit})=>digit);
-      return best;
+      return rankTerminalPreview(best,history);
     }
 
     self.onmessage = async ({data})=>{
@@ -7381,8 +7386,9 @@ state.importAudit=describeImport(clean,opts);
           if(!state.block.data&&state.history.length>=8)await prepareBlockParallel();
           prepareFollowPreview();
         }else throw Error("Comando desconhecido.");
-        const result=preview();
+        let result=preview();
         if(state.strategy==="TERMINAL_SUGGESTION"&&state.readingSide==="NORMAL"){
+          result=rankTerminalPreview(result,state.history.slice(-14));
           result.fixedTerminals=fixedTerminalPreview();
         }
         self.postMessage({result});
@@ -7661,7 +7667,7 @@ const VIEW=`
 *{box-sizing:border-box}main{max-width:760px;margin:auto;padding:16px 10px 32px}h1,h2,p{margin:0 0 8px}h1{font-size:1.75rem}h2{font-size:1.12rem}section{background:#1b2229;border:1px solid var(--border);border-radius:10px;margin:10px 0;padding:10px}label{display:block}textarea,button,select{font:inherit;color:inherit;border:1px solid var(--border);border-radius:6px;background:#111a20;padding:7px}textarea{width:100%;display:block;resize:vertical;margin:5px 0}button{min-height:42px;cursor:pointer}button:disabled{opacity:.55;cursor:default}button.primary{background:var(--accent);color:#10231a;font-weight:700}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}#close{float:right}.row,.groups,.wheel{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:7px 0}.groups span{background:#111a20;border-radius:5px;padding:3px 6px}.groups strong{color:var(--accent);font-size:1.16em}.groups small,.muted{color:var(--muted)}.timeline{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:3px;margin:5px 0 10px}.chip{display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:4px;min-width:0;font-weight:650;font-variant-numeric:tabular-nums}.timeline .chip{min-height:26px;font-size:clamp(10px,3.3vw,17px);white-space:nowrap}.wheel .chip{width:27px;min-height:24px;font-size:14px}.wheel .outside{outline:2px solid #ffc897;outline-offset:-2px}.red{background:#702a36}.black{background:#10151b}.zero{background:#26543f}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:9px 0}.stats strong{display:block;font-size:1.22rem}.stats small{color:var(--muted)}.keys{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px}.keys button{padding:2px}.good{color:var(--accent)}.bad{color:#ffc897}#status,#latest{min-height:1.4em}@media(max-width:480px){.keys{grid-template-columns:repeat(7,minmax(0,1fr))}.timeline{gap:2px}}
 </style>
 <main>
-<header><button id="close" type="button">Fechar</button><h1>Vitória Master V6</h1><p class="muted">33 casas por jogada</p></header>
+<header><button id="close" type="button">Fechar</button><h1>Vitória Master V7</h1><p class="muted">33 casas por jogada</p></header>
 <section><h2>Importar histórico</h2>
 <label for="seed">Cole os números</label><textarea id="seed" rows="2" placeholder="26 20 27 4 32"></textarea>
 <div class="row"><select id="order" aria-label="Ordem do histórico"><option value="oldest">Mais antigo primeiro</option><option value="newest">Mais recente primeiro</option></select><button class="primary" type="button" id="import">Importar</button></div>
@@ -7685,7 +7691,7 @@ const VIEW=`
 </main>`;
 
 function install(){
-  const id='vitoria-master-v6-host';
+  const id='vitoria-master-v7-host';
   const existing=document.getElementById(id);
   if(existing){existing.focus();return;}
   const host=document.createElement('div');
@@ -7694,7 +7700,7 @@ function install(){
   root.innerHTML=VIEW;
   document.body.appendChild(host);
   const $=id=>root.getElementById(id);
-  const storageKey='vitoria-master-v6';
+  const storageKey='vitoria-master-v7';
   const source='('+analysisBackground.toString()+')();';
   let seed=[],manual=[],rows=[],channels=[],published=null,busy=false,closed=false;
   let selectedMode='master';
@@ -7735,9 +7741,9 @@ function install(){
     $('timeline').innerHTML=seed.concat(manual).slice(-14).map(n=>'<span class="chip '+color(n)+'">'+n+'</span>').join('');
     $('mode').textContent=play?play.label+(terminals?' · Finais '+play.terminalDigits.join(' / '):
       play.active?' · leitura de transições':''):'Aguardando histórico';
-    $('territory-hits').textContent=play&&selectedMode==='fixed'?
+    $('territory-hits').textContent=play&&terminals?
       play.terminalRanking.map(({digit,hits})=>'Final '+digit+' · '+hits+'/'+play.samples).join(' | ')+
-      ' · Trio '+play.territoryHits+'/'+play.samples+' na janela':'';
+      (selectedMode==='fixed'?' · Trio '+play.territoryHits+'/'+play.samples+' na janela':''):'';
     $('comparison').hidden=!play?.proposals;
     $('proposal-list').innerHTML=play?.proposals?play.proposals.map(p=>
       '<li>'+p.label+(p.index===play.index?' · escolhida':'')+' · fora '+p.outside.join(' / ')+
@@ -7839,7 +7845,7 @@ function install(){
   });
   render();
   try{
-    const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v5')??'null');
+    const saved=JSON.parse(localStorage.getItem(storageKey)??localStorage.getItem('vitoria-master-v6')??localStorage.getItem('vitoria-master-v5')??'null');
     if(saved&&Array.isArray(saved.seed)&&saved.seed.length>=8&&saved.seed.length<=70&&saved.seed.every(valid)&&
       Array.isArray(saved.manual)&&saved.manual.every(valid)){
       selectedMode=PLAY_MODES.some(([mode])=>mode===saved.selectedMode)?saved.selectedMode:'master';
